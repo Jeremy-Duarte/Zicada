@@ -1,1 +1,2 @@
 # Zicada proyect
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=Jeremy-Duarte_Zicada&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=Jeremy-Duarte_Zicada)
