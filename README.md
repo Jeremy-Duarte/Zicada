@@ -1,7 +1,7 @@
 # Zicada - Tienda de Ropa
 
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=Jeremy-Duarte_Zicada&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=Jeremy-Duarte_Zicada)
-[![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)](https://python.org)
+[![Python](https://img.shields.io/badge/Python-3.14-3776AB?logo=python&logoColor=white)](https://python.org)
 [![Django](https://img.shields.io/badge/Django-6.0-092E20?logo=django&logoColor=white)](https://djangoproject.com)
 [![Astro](https://img.shields.io/badge/Astro-5.x-BC52EE?logo=astro&logoColor=white)](https://astro.build)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.x-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
