@@ -6,12 +6,11 @@ from .models import Size, Category, Product, ProductVariant, Collection
 
 @admin.register(Size)
 class SizeAdmin(admin.ModelAdmin):
-    list_display = ('name', 'code', 'sort_order')
+    list_display = ('name', 'sort_order')
     list_editable = ('sort_order',)
-    search_fields = ('name', 'code')
+    search_fields = ('name',)
     ordering = ('sort_order',)
     list_per_page = 20
-
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
@@ -30,8 +29,9 @@ class CategoryAdmin(admin.ModelAdmin):
 class ProductVariantInline(admin.TabularInline):
     model = ProductVariant
     extra = 1
-    fields = ('size', 'sku', 'stock', 'image_preview', 'image', 'is_portrait', 'is_active')
-    readonly_fields = ('image_preview', 'sku')
+    fields = ('size', 'stock', 'image_preview', 'image', 'is_portrait', 'is_active')
+    exclude = ('sku',)
+    readonly_fields = ('image_preview',)
     classes = ('collapse',)
     
     def image_preview(self, obj):
@@ -97,17 +97,18 @@ class ProductAdmin(admin.ModelAdmin):
 
 @admin.register(ProductVariant)
 class ProductVariantAdmin(admin.ModelAdmin):
-    list_display = ('product_link', 'size', 'sku', 'stock', 'is_portrait', 'is_active', 'updated_at')
+    list_display = ('product_link', 'size', 'stock', 'is_portrait', 'is_active', 'updated_at')
     list_filter = ('size', 'is_active', 'is_portrait')
     search_fields = ('sku', 'product__name')
     list_editable = ('stock', 'is_active')
     readonly_fields = ('created_at', 'updated_at', 'created_by', 'updated_by')
+    exclude = ('sku',)
     list_per_page = 30
     list_select_related = ('product', 'size')
     
     fieldsets = (
         ('Información de la variante', {
-            'fields': ('product', 'size', 'sku', 'stock')
+            'fields': ('product', 'size', 'stock')
         }),
         ('Imagen', {
             'fields': ('image', 'is_portrait'),
@@ -131,6 +132,10 @@ class ProductVariantAdmin(admin.ModelAdmin):
         if not change:
             obj.created_by = request.user
         obj.updated_by = request.user
+        if not obj.sku:
+            from datetime import datetime
+            timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+            obj.sku = f"ZCD-{obj.product.id}-{timestamp}"
         super().save_model(request, obj, form, change)
     
     def get_queryset(self, request):

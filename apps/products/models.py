@@ -12,12 +12,6 @@ class Size(models.Model):
         verbose_name='Talla',
         help_text='Ej: XS, S, M, L, XL, XXL, 6M'
     )
-    code = models.CharField(
-        max_length=5,
-        unique=True,
-        verbose_name='Código',
-        help_text='Código corto para ordenamiento'
-    )
     sort_order = models.IntegerField(
         default=0,
         verbose_name='Orden',
@@ -183,14 +177,14 @@ class ProductVariant(BaseAuditModel):
         if self.stock < 0:
             raise ValidationError({'stock': 'El stock no puede ser negativo.'})
     
-    def save(self, *args, **kwargs):
-        self.full_clean()
-        
+    def save(self, *args, **kwargs):        
         # Generar SKU automáticamente si no existe
         if not self.sku:
             from datetime import datetime
             timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
             self.sku = f"ZCD-{self.product.id}-{self.size.code}-{timestamp}"
+
+        self.full_clean()
         
         super().save(*args, **kwargs)
 
