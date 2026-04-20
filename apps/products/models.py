@@ -156,11 +156,12 @@ class ProductVariant(BaseAuditModel):
         verbose_name='Stock',
         help_text='Cantidad disponible (no puede ser negativo)'
     )
-    image = models.CharField(
-        max_length=500,
+    image = models.ImageField(
+        upload_to='products/variants/',
         blank=True,
-        verbose_name='URL de imagen',
-        help_text='URL de la imagen en Cloudinary'
+        null=True,
+        verbose_name='Imagen',
+        help_text='Imagen de la variante'
     )
     is_portrait = models.BooleanField(
         default=False,
