@@ -36,12 +36,13 @@ class ColorAdmin(admin.ModelAdmin):
     ordering = ('sort_order',)
     list_per_page = 20
     
-    # Widget personalizado para el campo 'code' (color picker)
-    formfield_overrides = {
-        django_models.CharField: {
-            'widget': admin.widgets.AdminTextInputWidget(attrs={'type': 'color', 'style': 'width: 80px; height: 35px; cursor: pointer;'})
-        }
-    }
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        # Solo aplicar el widget al campo 'code'
+        form.base_fields['code'].widget = admin.widgets.AdminTextInputWidget(
+            attrs={'type': 'color', 'style': 'width: 80px; height: 35px; cursor: pointer;'}
+        )
+        return form
     
     def color_preview(self, obj):
         if obj.code:
