@@ -60,6 +60,34 @@ class Category(models.Model):
             self.slug = slugify(self.name)
         super().save(*args, **kwargs)
 
+class Color(models.Model):
+    # Catálogo de colores (sin auditoría, es estático).
+    name = models.CharField(
+        max_length=30,
+        unique=True,
+        verbose_name='Color',
+        help_text='Ej: Negro, Blanco, Rojo, Azul, Verde'
+    )
+    code = models.CharField(
+        max_length=10,
+        unique=True,
+        verbose_name='Código hexadecimal',
+        help_text='Ej: #000000, #FFFFFF, #FF0000'
+    )
+    sort_order = models.IntegerField(
+        default=0,
+        verbose_name='Orden',
+        help_text='Orden de aparición en filtros (0, 1, 2...)'
+    )
+    
+    class Meta:
+        ordering = ['sort_order']
+        verbose_name = 'Color'
+        verbose_name_plural = 'Colores'
+    
+    def __str__(self):
+        return self.name
+    
 
 class Product(BaseAuditModel):
     # Producto del catálogo.
@@ -126,7 +154,7 @@ class Product(BaseAuditModel):
 
 
 class ProductVariant(BaseAuditModel):
-    # Variante por talla.
+    # Variante por talla y color.
     product = models.ForeignKey(
         Product,
         on_delete=models.CASCADE,
@@ -138,6 +166,13 @@ class ProductVariant(BaseAuditModel):
         on_delete=models.PROTECT,
         related_name='variants',
         verbose_name='Talla'
+    )
+    color = models.ForeignKey(
+        Color,
+        on_delete=models.PROTECT,
+        related_name='variants',
+        verbose_name='Color',
+        help_text='Color de esta variante'
     )
     sku = models.CharField(
         max_length=50,
@@ -164,28 +199,26 @@ class ProductVariant(BaseAuditModel):
     )
     
     class Meta:
-        unique_together = ['product', 'size']
+        unique_together = ['product', 'size', 'color']
         verbose_name = 'Variante de producto'
         verbose_name_plural = 'Variantes de productos'
-        ordering = ['product', 'size__sort_order']
+        ordering = ['product', 'size__sort_order', 'color__sort_order']
     
     def __str__(self):
-        return f"{self.product.name} - {self.size.name}"
+        return f"{self.product.name} - {self.size.name} - {self.color.name}"
     
     def clean(self):
-        # Validaciones a nivel de modelo.
         if self.stock < 0:
             raise ValidationError({'stock': 'El stock no puede ser negativo.'})
     
-    def save(self, *args, **kwargs):        
+    def save(self, *args, **kwargs):
         # Generar SKU automáticamente si no existe
         if not self.sku:
             from datetime import datetime
             timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
-            self.sku = f"ZCD-{self.product.id}-{self.size.code}-{timestamp}"
-
+            self.sku = f"ZCD-{self.product.id}-{self.size.name}-{self.color.name}-{timestamp}"
+       
         self.full_clean()
-        
         super().save(*args, **kwargs)
 
 
