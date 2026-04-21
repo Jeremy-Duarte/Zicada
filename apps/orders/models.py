@@ -137,6 +137,91 @@ class Order(models.Model):
         verbose_name = 'Pedido'
         verbose_name_plural = 'Pedidos'
     
+    def can_transition_to(self, new_status):
+        allowed = {
+            'pendiente': ['confirmado', 'cancelado'],
+            'confirmado': ['preparando', 'cancelado'],
+            'preparando': ['listo', 'cancelado'],
+            'listo': ['en_camino', 'cancelado'],
+            'en_camino': ['entregado', 'cancelado'],
+            'entregado': [],
+            'cancelado': [],
+        }
+        return new_status in allowed.get(self.status, [])
+
+    def confirm(self, user=None):
+        """Cambia a confirmado y reduce stock."""
+        if not self.can_transition_to('confirmado'):
+            raise ValidationError(f'No se puede confirmar un pedido en estado {self.status}.')
+        self.status = 'confirmado'
+        self.save()
+        # Reducir stock de cada variante
+        for item in self.items.all():
+            if item.variant:
+                if item.variant.stock < item.quantity:
+                    raise ValidationError(f'Stock insuficiente para {item.product_name_snapshot}')
+                item.variant.stock -= item.quantity
+                item.variant.save()
+        if user:
+            self.updated_by = user
+            self.save(update_fields=['updated_by'])
+
+    def cancel(self, reason, user=None):
+        # Cancela el pedido y libera stock
+        if self.status == 'entregado':
+            raise ValidationError('No se puede cancelar un pedido ya entregado.')
+        if not reason:
+            raise ValidationError('Debe indicar un motivo de cancelación.')
+        self.status = 'cancelado'
+        self.cancelled_reason = reason
+        self.save()
+        # Liberar stock
+        for item in self.items.all():
+            if item.variant:
+                item.variant.stock += item.quantity
+                item.variant.save()
+        if user:
+            self.updated_by = user
+            self.save(update_fields=['updated_by'])
+
+    def mark_as_ready(self, user=None):
+        if not self.can_transition_to('listo'):
+            raise ValidationError(f'No se puede marcar como listo un pedido en estado {self.status}.')
+        self.status = 'listo'
+        self.save()
+        if user:
+            self.updated_by = user
+            self.save(update_fields=['updated_by'])
+
+    def mark_as_preparing(self, user=None):
+        if not self.can_transition_to('preparando'):
+            raise ValidationError(f'No se puede marcar como preparando un pedido en estado {self.status}.')
+        self.status = 'preparando'
+        self.save()
+        if user:
+            self.updated_by = user
+            self.save(update_fields=['updated_by'])
+
+    def assign_delivery(self, delivery_user, user=None):
+        if self.status != 'listo':
+            raise ValidationError('Solo se puede asignar un repartidor a pedidos listos.')
+        self.assigned_delivery_user = delivery_user
+        self.status = 'en_camino'
+        self.save()
+        if user:
+            self.updated_by = user
+            self.save(update_fields=['updated_by'])
+
+    def mark_as_delivered(self, user=None):
+        if self.status != 'en_camino':
+            raise ValidationError('Solo se puede entregar un pedido que está en camino.')
+        self.status = 'entregado'
+        self.is_paid = True
+        self.save()
+        if user:
+            self.updated_by = user
+            self.save(update_fields=['updated_by'])
+
     def __str__(self):
         return f"{self.order_number} - {self.customer_name}"
     
