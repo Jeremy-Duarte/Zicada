@@ -2,7 +2,7 @@ from django.db import models
 from django.core.exceptions import ValidationError
 from django.utils.text import slugify
 from apps.core.models import BaseAuditModel
-
+from django.utils import timezone
 
 class Size(models.Model):
     # Catálogo de tallas (sin auditoría, es estático).
@@ -287,6 +287,42 @@ class Collection(BaseAuditModel):
     
     def __str__(self):
         return self.name
+    
+    def update_products_type(self):
+        """
+        Actualiza el tipo de producto de todos los productos de esta colección.
+        Si la colección está publicada, los productos pasan a 'coleccion_limitada'.
+        Si está archivada o borrador, pasan a 'fabrica' (pero cuidado: un producto puede estar en varias colecciones).
+        """
+        for product in self.products.all():
+            otras_publicadas = product.collections.filter(
+                status='publicada',
+                is_active=True
+            ).exclude(id=self.id)
+            
+            if self.status == 'publicada' and not otras_publicadas.exists():
+                product.product_type = 'coleccion_limitada'
+            elif self.status != 'publicada' and not otras_publicadas.exists():
+                product.product_type = 'fabrica'
+            product.save(update_fields=['product_type'])
+
+    def check_and_update_status(self):
+        changed = False
+        hoy = timezone.now()
+        
+        if self.status == 'publicada' and self.end_date and self.end_date < hoy:
+            self.status = 'archivada'
+            self.save(update_fields=['status'])
+            self.update_products_type()
+            changed = True
+        
+        if self.status == 'borrador' and self.start_date and self.start_date <= hoy:
+            self.status = 'publicada'
+            self.save(update_fields=['status'])
+            self.update_products_type()
+            changed = True
+        
+        return changed
     
     def clean(self):
         # Validar fechas
