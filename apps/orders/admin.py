@@ -76,7 +76,6 @@ class OrderItemInline(admin.TabularInline):
         return "-"
     subtotal_display.short_description = 'Subtotal'
 
-
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
     form = OrderForm
@@ -192,23 +191,120 @@ class OrderAdmin(admin.ModelAdmin):
         order.subtotal = subtotal
         order.total_amount = subtotal + (order.shipping_cost or 0)
         order.save(update_fields=['subtotal', 'total_amount'])
+
+    actions = ['confirm_orders', 'mark_as_preparing_orders', 'mark_as_ready_orders', 'mark_as_delivered_orders', 'cancel_orders']
+
+    def confirm_orders(self, request, queryset):
+        """Confirmar pedidos seleccionados (reduce stock)."""
+        success_count = 0
+        error_count = 0
+        for order in queryset:
+            try:
+                order.confirm(user=request.user)
+                success_count += 1
+            except ValidationError as e:
+                error_count += 1
+                self.message_user(request, f'Error en {order.order_number}: {e}', level='ERROR')
+        self.message_user(request, f'{success_count} pedido(s) confirmado(s). {error_count} error(es).')
+    confirm_orders.short_description = 'Confirmar pedidos seleccionados'
     
-    actions = ['mark_as_paid', 'mark_as_delivered', 'mark_as_ready']
+    def mark_as_ready_orders(self, request, queryset):
+        success_count = 0
+        error_count = 0
+        for order in queryset:
+            try:
+                order.mark_as_ready(user=request.user)
+                success_count += 1
+            except ValidationError as e:
+                error_count += 1
+                self.message_user(request, f'Error en {order.order_number}: {e}', level='ERROR')
+        self.message_user(request, f'{success_count} pedido(s) marcado(s) como listos.')
+    mark_as_ready_orders.short_description = 'Marcar seleccionados como listos para envío'
+
+    def mark_as_preparing_orders(self, request, queryset):
+        success_count = 0
+        error_count = 0
+        for order in queryset:
+            try:
+                order.mark_as_preparing(user=request.user)
+                success_count += 1
+            except ValidationError as e:
+                error_count += 1
+                self.message_user(request, f'Error en {order.order_number}: {e}', level='ERROR')
+        self.message_user(request, f'{success_count} pedido(s) marcado(s) como en preparación.')
+    mark_as_preparing_orders.short_description = 'Marcar seleccionados como en preparación'
+
+    def mark_as_delivered_orders(self, request, queryset):
+        """Marcar pedidos como entregados."""
+        success_count = 0
+        error_count = 0
+        for order in queryset:
+            try:
+                order.mark_as_delivered(user=request.user)
+                success_count += 1
+            except ValidationError as e:
+                error_count += 1
+                self.message_user(request, f'Error en {order.order_number}: {e}', level='ERROR')
+        self.message_user(request, f'{success_count} pedido(s) marcado(s) como entregados.')
+    mark_as_delivered_orders.short_description = 'Marcar seleccionados como entregados'
     
-    def mark_as_paid(self, request, queryset):
-        updated = queryset.update(is_paid=True)
-        self.message_user(request, f'{updated} pedido(s) marcado(s) como pagados.')
-    mark_as_paid.short_description = 'Marcar seleccionados como pagados'
-    
-    def mark_as_delivered(self, request, queryset):
-        updated = queryset.update(status='entregado', is_paid=True)
-        self.message_user(request, f'{updated} pedido(s) marcado(s) como entregados.')
-    mark_as_delivered.short_description = 'Marcar seleccionados como entregados'
-    
-    def mark_as_ready(self, request, queryset):
-        updated = queryset.update(status='listo')
-        self.message_user(request, f'{updated} pedido(s) marcado(s) como listos para envío.')
-    mark_as_ready.short_description = 'Marcar seleccionados como listos para envío'
+    def cancel_orders(self, request, queryset):
+        """Cancelar pedidos seleccionados (libera stock)."""
+        # Mostrar un formulario para ingresar el motivo de cancelación
+        from django.shortcuts import render
+        from django.http import HttpResponseRedirect
+        from django.urls import reverse
+        from django.contrib import messages
+        
+        if 'cancel' in request.POST:
+            reason = request.POST.get('cancelled_reason', '')
+            if not reason:
+                self.message_user(request, 'Debe ingresar un motivo de cancelación.', level='ERROR')
+                return HttpResponseRedirect(request.get_full_path())
+            
+            success_count = 0
+            error_count = 0
+            for order in queryset:
+                try:
+                    order.cancel(reason=reason, user=request.user)
+                    success_count += 1
+                except ValidationError as e:
+                    error_count += 1
+                    self.message_user(request, f'Error en {order.order_number}: {e}', level='ERROR')
+            self.message_user(request, f'{success_count} pedido(s) cancelado(s). {error_count} error(es).')
+            return HttpResponseRedirect(reverse('admin:orders_order_changelist'))
+        
+        context = {
+            'orders': queryset,
+            'title': 'Cancelar pedidos',
+            'action': 'cancel_orders',
+        }
+        return render(request, 'admin/cancel_orders_confirmation.html', context)
+    cancel_orders.short_description = 'Cancelar pedidos seleccionados'
+
+    def get_urls(self):
+        from django.urls import path
+        from apps.orders.views import delivery_dashboard, take_order, deliver_order
+        
+        url = super().get_urls()
+        custom_urls = [
+            path('delivery/', delivery_dashboard, name='delivery_dashboard'),
+            path('delivery/take/<int:order_id>/', take_order, name='take_order'),
+            path('delivery/deliver/<int:order_id>/', deliver_order, name='deliver_order'),
+        ]
+        return custom_urls + url
+
+    def app_index(self, request, extra_context=None):        
+        context = {
+            'pending_count': Order.objects.filter(status='pendiente').count(),
+            'confirmed_count': Order.objects.filter(status='confirmado').count(),
+            'preparing_count': Order.objects.filter(status='preparando').count(),
+            'ready_count': Order.objects.filter(status='listo').count(),
+            'en_camino_count': Order.objects.filter(status='en_camino').count(),
+            'delivered_count': Order.objects.filter(status='entregado').count(),
+            'cancelled_count': Order.objects.filter(status='cancelado').count(),
+        }
+        return super().app_index(request, extra_context=context)
 
 
 @admin.register(OrderItem)
