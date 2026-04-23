@@ -1,0 +1,1 @@
+STOCK_LOW_THRESHOLD = 5  # Umbral de bajo stock

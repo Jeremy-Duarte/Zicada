@@ -1,0 +1,181 @@
+{% extends "admin/base_site.html" %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">Inicio</a>
+    &rsaquo; <a href="{% url 'admin:app_list' app_label='products' %}">Productos y Colecciones</a>
+    &rsaquo; Dashboard de Stock
+</div>
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+    <div style="margin-bottom: 20px;">
+        <a href="{% url 'admin:app_list' app_label='products' %}" 
+           style="background: #417690; color: white; padding: 8px 16px; text-decoration: none; border-radius: 4px; display: inline-block;">
+            ← Volver al panel de Productos
+        </a>
+    </div>
+
+    <h1 style="margin: 0 0 20px 0;">📊 Dashboard de Inventario - Zicada</h1>
+
+    <div style="display: flex; gap: 15px; margin-bottom: 30px; flex-wrap: wrap;">
+        <div style="background: #2d2d2d; border-left: 4px solid #ffc107; padding: 15px; border-radius: 4px; min-width: 150px;">
+            <div style="color: #ffc107; font-size: 28px; font-weight: bold;">{{ low_stock_count }}</div>
+            <div style="color: #ccc;">Variantes con bajo stock (≤5)</div>
+        </div>
+        <div style="background: #2d2d2d; border-left: 4px solid #dc3545; padding: 15px; border-radius: 4px; min-width: 150px;">
+            <div style="color: #dc3545; font-size: 28px; font-weight: bold;">{{ out_of_stock_variants_count }}</div>
+            <div style="color: #ccc;">Variantes agotadas</div>
+        </div>
+        <div style="background: #2d2d2d; border-left: 4px solid #dc3545; padding: 15px; border-radius: 4px; min-width: 150px;">
+            <div style="color: #dc3545; font-size: 28px; font-weight: bold;">{{ out_of_stock_products_count }}</div>
+            <div style="color: #ccc;">Productos completamente agotados</div>
+        </div>
+    </div>
+
+    <div class="module" style="margin-bottom: 30px;">
+        <h2 style="margin: 0 0 15px 0; color: #79aec8;">⚠️ Variantes con bajo stock (≤5 unidades)</h2>
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; background: white;">
+                <thead>
+                    <tr style="background: #f5f5f5; border-bottom: 1px solid #ddd;">
+                        <th style="padding: 10px; text-align: left;">Producto</th>
+                        <th style="padding: 10px; text-align: left;">Talla</th>
+                        <th style="padding: 10px; text-align: left;">Color</th>
+                        <th style="padding: 10px; text-align: left;">Stock</th>
+                        <th style="padding: 10px; text-align: center;">Acción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for variant in low_stock_variants %}
+                    <tr style="border-bottom: 1px solid #eee;">
+                        <td style="padding: 8px 10px;">{{ variant.product.name }}</td>
+                        <td style="padding: 8px 10px;">{{ variant.size.name }}</td>
+                        <td style="padding: 8px 10px;">{{ variant.color.name }}</td>
+                        <td style="padding: 8px 10px; font-weight: bold; color: #ffc107;">{{ variant.stock }}</td>
+                        <td style="padding: 8px 10px; text-align: center;">
+                            <a href="{% url 'admin:products_productvariant_change' variant.id %}" 
+                               style="background: #417690; color: white; padding: 4px 8px; text-decoration: none; border-radius: 3px; font-size: 12px;">
+                                Editar
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" style="padding: 20px; text-align: center; color: #999;">No hay variantes con bajo stock.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="module" style="margin-bottom: 30px;">
+        <h2 style="margin: 0 0 15px 0; color: #79aec8;">❌ Variantes agotadas (stock=0)</h2>
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; background: white;">
+                <thead>
+                    <tr style="background: #f5f5f5; border-bottom: 1px solid #ddd;">
+                        <th style="padding: 10px; text-align: left;">Producto</th>
+                        <th style="padding: 10px; text-align: left;">Talla</th>
+                        <th style="padding: 10px; text-align: left;">Color</th>
+                        <th style="padding: 10px; text-align: center;">Acción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for variant in out_of_stock_variants %}
+                    <tr style="border-bottom: 1px solid #eee;">
+                        <td style="padding: 8px 10px;">{{ variant.product.name }}</td>
+                        <td style="padding: 8px 10px;">{{ variant.size.name }}</td>
+                        <td style="padding: 8px 10px;">{{ variant.color.name }}</td>
+                        <td style="padding: 8px 10px; text-align: center;">
+                            <a href="{% url 'admin:products_productvariant_change' variant.id %}" 
+                               style="background: #ba2121; color: white; padding: 4px 8px; text-decoration: none; border-radius: 3px; font-size: 12px;">
+                                Revisar
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" style="padding: 20px; text-align: center; color: #999;">No hay variantes agotadas.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="module" style="margin-bottom: 30px;">
+        <h2 style="margin: 0 0 15px 0; color: #79aec8;">🚫 Productos sin stock (ninguna variante disponible)</h2>
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; background: white;">
+                <thead>
+                    <tr style="background: #f5f5f5; border-bottom: 1px solid #ddd;">
+                        <th style="padding: 10px; text-align: left;">Producto</th>
+                        <th style="padding: 10px; text-align: left;">Categoría</th>
+                        <th style="padding: 10px; text-align: left;">Precio</th>
+                        <th style="padding: 10px; text-align: center;">Acción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for product in out_of_stock_products %}
+                    <tr style="border-bottom: 1px solid #eee;">
+                        <td style="padding: 8px 10px;">{{ product.name }}</td>
+                        <td style="padding: 8px 10px;">{{ product.category.name }}</td>
+                        <td style="padding: 8px 10px;">${{ product.price|floatformat:0 }}</td>
+                        <td style="padding: 8px 10px; text-align: center;">
+                            <a href="{% url 'admin:products_product_change' product.id %}" 
+                               style="background: #417690; color: white; padding: 4px 8px; text-decoration: none; border-radius: 3px; font-size: 12px;">
+                                Editar producto
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" style="padding: 20px; text-align: center; color: #999;">Todos los productos tienen al menos una variante con stock.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="module">
+        <h2 style="margin: 0 0 15px 0; color: #79aec8;">📦 Resumen de stock por producto (top 20)</h2>
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; background: white;">
+                <thead>
+                    <tr style="background: #f5f5f5; border-bottom: 1px solid #ddd;">
+                        <th style="padding: 10px; text-align: left;">Producto</th>
+                        <th style="padding: 10px; text-align: left;">Categoría</th>
+                        <th style="padding: 10px; text-align: center;">Stock total</th>
+                        <th style="padding: 10px; text-align: center;">Variantes activas</th>
+                        <th style="padding: 10px; text-align: center;">Acción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in product_stock_summary %}
+                    <tr style="border-bottom: 1px solid #eee;">
+                        <td style="padding: 8px 10px;">{{ item.product.name }}</td>
+                        <td style="padding: 8px 10px;">{{ item.product.category.name }}</td>
+                        <td style="padding: 8px 10px; text-align: center; font-weight: bold;">{{ item.total_stock }}</td>
+                        <td style="padding: 8px 10px; text-align: center;">{{ item.variants_count }}</td>
+                        <td style="padding: 8px 10px; text-align: center;">
+                            <a href="{% url 'admin:products_product_change' item.product.id %}" 
+                               style="background: #417690; color: white; padding: 4px 8px; text-decoration: none; border-radius: 3px; font-size: 12px;">
+                                Editar
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" style="padding: 20px; text-align: center; color: #999;">No hay productos con stock.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

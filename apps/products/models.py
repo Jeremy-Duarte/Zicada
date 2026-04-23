@@ -3,6 +3,7 @@ from django.core.exceptions import ValidationError
 from django.utils.text import slugify
 from apps.core.models import BaseAuditModel
 from django.utils import timezone
+from apps.products.constants import STOCK_LOW_THRESHOLD
 
 class Size(models.Model):
     # Catálogo de tallas (sin auditoría, es estático).
@@ -139,6 +140,22 @@ class Product(BaseAuditModel):
         verbose_name = 'Producto'
         verbose_name_plural = 'Productos'
     
+    def total_stock(self):
+        return sum(v.stock for v in self.variants.filter(is_active=True))
+
+    def stock_by_size_color(self):
+        result = {}
+        for variant in self.variants.filter(is_active=True).select_related('size', 'color'):
+            key = f"{variant.size.name}-{variant.color.name}"
+            result[key] = variant.stock
+        return result
+
+    def available_variants(self):
+        return self.variants.filter(is_active=True, stock__gt=0).select_related('size', 'color')
+
+    def is_available(self):
+        return self.variants.filter(is_active=True, stock__gt=0).exists()
+    
     def __str__(self):
         return self.name
     
@@ -151,6 +168,32 @@ class Product(BaseAuditModel):
             self.slug = slugify(self.name)
         self.full_clean()
         super().save(*args, **kwargs)
+
+
+class ProductVariantManager(models.Manager):  
+    # Manager para consultas  
+    def available(self):
+        return self.filter(is_active=True, stock__gt=0)
+    
+    def in_stock(self):
+        return self.filter(stock__gt=0)
+    
+    def out_of_stock(self):
+        return self.filter(is_active=True, stock=0)
+    
+    def low_stock(self, threshold=STOCK_LOW_THRESHOLD):
+        return self.filter(is_active=True, stock__gt=0, stock__lte=threshold)
+    
+    def for_product(self, product):
+        return self.filter(product=product).select_related('size', 'color')
+    
+    def by_size_color(self, size_id=None, color_id=None):
+        qs = self.all()
+        if size_id:
+            qs = qs.filter(size_id=size_id)
+        if color_id:
+            qs = qs.filter(color_id=color_id)
+        return qs
 
 
 class ProductVariant(BaseAuditModel):
@@ -197,13 +240,45 @@ class ProductVariant(BaseAuditModel):
         verbose_name='Imagen destacada',
         help_text='Si es True, muestra esta imagen como destacada en el catálogo'
     )
-    
+
+    objects = ProductVariantManager()
+
     class Meta:
         unique_together = ['product', 'size', 'color']
+        indexes = [
+            models.Index(fields=['stock']),
+            models.Index(fields=['is_active', 'stock']),
+            models.Index(fields=['size', 'color']),
+        ]
         verbose_name = 'Variante de producto'
         verbose_name_plural = 'Variantes de productos'
         ordering = ['product', 'size__sort_order', 'color__sort_order']
-    
+
+    @property
+    def stock_status(self):
+        if not self.is_active:
+            return 'discontinued'
+        if self.stock == 0:
+            return 'out_of_stock'
+        if self.stock <= STOCK_LOW_THRESHOLD:
+            return 'low_stock'
+        return 'available'
+
+    @property
+    def is_available(self):
+        return self.is_active and self.stock > 0
+
+    def get_stock_display(self):
+        status = self.stock_status
+        if status == 'available':
+            return f"{self.stock} disponibles"
+        elif status == 'low_stock':
+            return f"¡Últimas {self.stock} unidades!"
+        elif status == 'out_of_stock':
+            return "Agotado"
+        else:
+            return "No disponible"
+
     def __str__(self):
         return f"{self.product.name} - {self.size.name} - {self.color.name}"
     
