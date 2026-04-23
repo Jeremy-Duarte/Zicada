@@ -1,0 +1,62 @@
+{% load static %}
+<nav class="bg-zicada-dark text-white sticky top-0 z-50 shadow-lg">
+    <div class="container mx-auto px-4 py-3">
+        <div class="flex items-center justify-between flex-wrap">
+            <!-- Logo -->
+            <div class="flex items-center space-x-4">
+                <a href="{% url 'home' %}" class="text-2xl font-bold tracking-tight hover:text-zicada-accent transition">
+                    ZICADA
+                </a>
+                <span class="hidden md:inline text-xs text-gray-400">| LA MODA SE VA, TU ESTILO PERMANECE</span>
+            </div>
+            
+            <!-- Desktop Navigation -->
+            <div class="hidden md:flex items-center space-x-6">
+                <a href="{% url 'products:catalog' %}" class="hover:text-zicada-accent transition">Catálogo</a>
+                <a href="{% url 'products:collections_list' %}" class="hover:text-zicada-accent transition">Colecciones</a>
+                <a href="{% url 'core:about' %}" class="hover:text-zicada-accent transition">Nosotros</a>
+                <a href="{% url 'core:contact' %}" class="hover:text-zicada-accent transition">Contacto</a>
+                {% include 'components/cart_icon.html' %}
+            </div>
+            
+            <!-- Mobile menu button -->
+            <div class="md:hidden">
+                <button id="mobile-menu-button" class="focus:outline-none">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Mobile Navigation -->
+        <div id="mobile-menu" class="hidden md:hidden mt-3 pt-3 border-t border-gray-700 flex flex-col space-y-3">
+            <a href="{% url 'products:catalog' %}" class="hover:text-zicada-accent transition py-1">Catálogo</a>
+            <a href="{% url 'products:collections_list' %}" class="hover:text-zicada-accent transition py-1">Colecciones</a>
+            <a href="{% url 'core:about' %}" class="hover:text-zicada-accent transition py-1">Nosotros</a>
+            <a href="{% url 'core:contact' %}" class="hover:text-zicada-accent transition py-1">Contacto</a>
+            <div class="flex items-center justify-between pt-2">
+                <span class="text-gray-400">Carrito</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.5 6M17 13l1.5 6M9 21h6M6 21h.01M18 21h.01" />
+                    </svg>
+                    <span id="mobile-cart-count" class="absolute -top-2 -right-3 bg-zicada-accent text-white text-xs rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
+                        0
+                    </span>
+                </a>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const menuButton = document.getElementById('mobile-menu-button');
+        const mobileMenu = document.getElementById('mobile-menu');
+        if (menuButton && mobileMenu) {
+            menuButton.addEventListener('click', () => {
+                mobileMenu.classList.toggle('hidden');
+            });
+        }
+    });
+</script>

@@ -1,0 +1,15 @@
+{% if breadcrumbs %}
+<div class="bg-gray-50 border-b border-gray-200">
+    <div class="container mx-auto px-4 py-2 text-sm text-gray-600">
+        <a href="{% url 'home' %}" class="hover:text-zicada-accent">Inicio</a>
+        {% for crumb in breadcrumbs %}
+        <span class="mx-2">/</span>
+        {% if crumb.url %}
+        <a href="{{ crumb.url }}" class="hover:text-zicada-accent">{{ crumb.name }}</a>
+        {% else %}
+        <span class="text-gray-500">{{ crumb.name }}</span>
+        {% endif %}
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
