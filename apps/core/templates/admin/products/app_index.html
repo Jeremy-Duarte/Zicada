@@ -1,0 +1,17 @@
+{% extends "admin/app_index.html" %}
+
+{% block content %}
+<div id="content-main">
+    <div class="module" style="margin-bottom: 20px;">
+        <h2>📦 Gestión de Inventario</h2>
+        <div style="display: flex; gap: 15px;">
+            <div style="background: #2d2d2d; padding: 15px; border-radius: 4px;">
+                <a href="{% url 'products:stock_dashboard' %}" style="color: #79aec8; text-decoration: none; font-weight: bold;">
+                    📊 Dashboard de Stock
+                </a>
+            </div>
+        </div>
+    </div>
+    {{ block.super }}
+</div>
+{% endblock %}
