@@ -1,7 +1,6 @@
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from django.contrib.admin.views.decorators import staff_member_required
-from .models import Product, ProductVariant
-
+from .models import Product, ProductVariant, Collection, Category
 
 @staff_member_required
 def stock_dashboard(request):
@@ -34,3 +33,58 @@ def stock_dashboard(request):
         'out_of_stock_products_count': out_of_stock_products.count(),
     }
     return render(request, 'products/stock_dashboard.html', context)
+
+def catalog(request):
+    """Catálogo de productos con filtros básicos"""
+    products = Product.objects.filter(is_active=True).select_related('category').prefetch_related('variants')
+    categories = Category.objects.all().order_by('sort_order')
+    
+    # Filtros simples
+    category_slug = request.GET.get('category')
+    if category_slug:
+        products = products.filter(category__slug=category_slug)
+    
+    context = {
+        'products': products,
+        'categories': categories,
+        'current_category': category_slug,
+    }
+    return render(request, 'products/catalog.html', context)
+
+
+def collections_list(request):
+    """Listado de colecciones públicas"""
+    collections = Collection.objects.filter(
+        status='publicada',
+        is_active=True
+    ).order_by('-created_at')
+    
+    context = {
+        'collections': collections,
+    }
+    return render(request, 'products/collections_list.html', context)
+
+
+def collection_detail(request, slug):
+    collection = get_object_or_404(Collection, slug=slug, status='publicada', is_active=True)
+    products = collection.products.filter(is_active=True)
+    
+    style_config = collection.style_config or {}
+    
+    context = {
+        'collection': collection,
+        'products': products,
+        'style_config': style_config,
+    }
+    return render(request, 'products/collection_detail.html', context)
+
+
+def product_detail(request, slug):
+    product = get_object_or_404(Product, slug=slug, is_active=True)
+    variants = product.variants.filter(is_active=True).select_related('size', 'color')
+    
+    context = {
+        'product': product,
+        'variants': variants,
+    }
+    return render(request, 'products/product_detail.html', context)
