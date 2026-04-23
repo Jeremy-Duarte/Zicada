@@ -26,6 +26,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'cloudinary',
     'cloudinary_storage',
+    'django_crontab',
     # Zicada Apps
     'apps.core',
     'apps.users',
@@ -138,3 +139,14 @@ STORAGES = {
         'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage',
     },
 }
+
+CRONJOBS = [
+    # Actualizar colecciones: cada domingo a las 2:00 AM
+    ('0 2 * * 0', 'django.core.management.call_command', ['update_collections_status']),
+]
+
+CRONTAB_LOCK_JOBS = True
+
+CRONTAB_COMMAND_PREFIX = 'TZ=America/Bogota'
+
+CRONTAB_DJANGO_SETTINGS_MODULE = 'config.settings'

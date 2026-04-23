@@ -3,6 +3,8 @@ from django.urls import reverse
 from django.utils.html import format_html
 from django.db import models as django_models
 from .models import Size, Category, Color, Product, ProductVariant, Collection
+from django.core.management import call_command
+from django.contrib import messages
 
 
 @admin.register(Size)
@@ -223,3 +225,28 @@ class CollectionAdmin(admin.ModelAdmin):
     
     def get_queryset(self, request):
         return super().get_queryset(request).prefetch_related('products')
+    
+    actions = ['archive_expired_collections', 'publish_scheduled_collections']
+    
+    def archive_expired_collections(self, request, queryset):
+        call_command('archive_collections')
+        self.message_user(request, 'Colecciones expiradas archivadas correctamente.', messages.SUCCESS)
+    archive_expired_collections.short_description = 'Archivar colecciones expiradas'
+    
+    def publish_scheduled_collections(self, request, queryset):
+        call_command('publish_collections')
+        self.message_user(request, 'Colecciones programadas publicadas correctamente.', messages.SUCCESS)
+    publish_scheduled_collections.short_description = 'Publicar colecciones programadas'
+    
+    actions.append('archive_selected_collections')
+    
+    def archive_selected_collections(self, request, queryset):
+        count = 0
+        for collection in queryset:
+            if collection.status == 'publicada':
+                collection.status = 'archivada'
+                collection.save()
+                collection.update_products_type()
+                count += 1
+        self.message_user(request, f'{count} colección(es) archivada(s).')
+    archive_selected_collections.short_description = 'Archivar colecciones seleccionadas'
