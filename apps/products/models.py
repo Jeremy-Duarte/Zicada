@@ -340,11 +340,73 @@ class Collection(BaseAuditModel):
         verbose_name='Estado',
         help_text='Borrador (no visible), Publicada (visible), Archivada (oculta)'
     )
+    
+    # Imagen de portada para la tarjeta
+    cover_image = models.ImageField(
+        upload_to='collections/covers/',
+        blank=True,
+        null=True,
+        verbose_name='Imagen de portada',
+        help_text='Imagen que se mostrará en la tarjeta de la colección (recomendado: 800x600px)'
+    )
+    primary_color = models.CharField(
+        max_length=20,
+        blank=True,
+        default='#c2a575',
+        verbose_name='Color principal',
+        help_text='Color de botones, enlaces y acentos'
+    )
+    secondary_color = models.CharField(
+        max_length=20,
+        blank=True,
+        default='#8b5e3c',
+        verbose_name='Color secundario',
+        help_text='Color para hover y detalles'
+    )
+    background_color = models.CharField(
+        max_length=20,
+        blank=True,
+        default='#ffffff',
+        verbose_name='Color de fondo',
+        help_text='Color de fondo de la página de la colección'
+    )
+    text_color = models.CharField(
+        max_length=20,
+        blank=True,
+        default='#1a1a1a',
+        verbose_name='Color de texto',
+        help_text='Color principal del texto'
+    )
+    background_image = models.ImageField(
+        upload_to='collections/bg/',
+        blank=True,
+        null=True,
+        verbose_name='Imagen de fondo',
+        help_text='Imagen de fondo para la página de la colección'
+    )
+    title_font = models.CharField(
+        max_length=100,
+        blank=True,
+        default="'Inter', sans-serif",
+        verbose_name='Fuente de títulos',
+        help_text='Ej: "Playfair Display", serif'
+    )
+    effects_config = models.JSONField(
+        blank=True,
+        null=True,
+        verbose_name='Configuración de efectos',
+        help_text='JSON para efectos avanzados (hover, animaciones)'
+    )
+    custom_css = models.TextField(
+        blank=True,
+        verbose_name='CSS personalizado',
+        help_text='CSS adicional para esta colección (solo si sabes lo que haces)'
+    )    
     style_config = models.JSONField(
         blank=True,
         null=True,
-        verbose_name='Configuración visual',
-        help_text='JSON con colores, fondos, tipografías para la colección'
+        verbose_name='Configuración visual (legado)',
+        help_text='JSON con configuración visual (se genera automáticamente desde los campos)'
     )
     
     products = models.ManyToManyField(
@@ -363,6 +425,38 @@ class Collection(BaseAuditModel):
     def __str__(self):
         return self.name
     
+    def get_style_config(self):
+        if self.style_config and not self._has_individual_styles():
+            return self.style_config
+        
+        return {
+            'cover_image': self.cover_image.url if self.cover_image else None,
+            'colors': {
+                'primary': self.primary_color or '#c2a575',
+                'secondary': self.secondary_color or '#8b5e3c',
+                'background': self.background_color or '#ffffff',
+                'text': self.text_color or '#1a1a1a',
+            },
+            'background_image': self.background_image.url if self.background_image else None,
+            'typography': {
+                'title_font': self.title_font or "'Inter', sans-serif",
+            },
+            'effects': self.effects_config or {},
+            'custom_css': self.custom_css or '',
+        }
+    
+    def _has_individual_styles(self):
+        return any([
+            self.cover_image,
+            self.primary_color != '#c2a575',
+            self.secondary_color != '#8b5e3c',
+            self.background_color != '#ffffff',
+            self.text_color != '#1a1a1a',
+            self.background_image,
+            self.title_font != "'Inter', sans-serif",
+            self.custom_css,
+        ])
+
     def update_products_type(self):
         """
         Actualiza el tipo de producto de todos los productos de esta colección.
@@ -416,5 +510,9 @@ class Collection(BaseAuditModel):
     def save(self, *args, **kwargs):
         if not self.slug:
             self.slug = slugify(self.name)
+
+        if self._has_individual_styles():
+            self.style_config = self.get_style_config()
+
         self.full_clean()
         super().save(*args, **kwargs)
