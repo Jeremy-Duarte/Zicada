@@ -1,6 +1,7 @@
 from django.shortcuts import render, get_object_or_404
 from django.contrib.admin.views.decorators import staff_member_required
 from .models import Product, ProductVariant, Collection, Category
+from django.utils import timezone
 
 @staff_member_required
 def stock_dashboard(request):
@@ -61,6 +62,7 @@ def collections_list(request):
     
     context = {
         'collections': collections,
+        'now': timezone.now(),
     }
     return render(request, 'products/collections_list.html', context)
 
