@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django import forms
 from django.urls import reverse
 from django.utils.html import format_html
 from django.db import models as django_models
@@ -181,8 +182,22 @@ class ProductVariantAdmin(admin.ModelAdmin):
         return super().get_queryset(request).select_related('product', 'size', 'color')
 
 
+class CollectionStyleForm(forms.ModelForm):    
+    class Meta:
+        model = Collection
+        fields = '__all__'
+        widgets = {
+            'primary_color': forms.TextInput(attrs={'type': 'color', 'style': 'width: 60px; height: 35px; cursor: pointer;'}),
+            'secondary_color': forms.TextInput(attrs={'type': 'color', 'style': 'width: 60px; height: 35px; cursor: pointer;'}),
+            'background_color': forms.TextInput(attrs={'type': 'color', 'style': 'width: 60px; height: 35px; cursor: pointer;'}),
+            'text_color': forms.TextInput(attrs={'type': 'color', 'style': 'width: 60px; height: 35px; cursor: pointer;'}),
+            'custom_css': forms.Textarea(attrs={'rows': 8, 'style': 'font-family: monospace;'}),
+            'effects_config': forms.Textarea(attrs={'rows': 6, 'style': 'font-family: monospace;', 'placeholder': '{\n  "hover_effect": "zoom",\n  "animation": "fadeIn"\n}'}),
+        }
+
 @admin.register(Collection)
 class CollectionAdmin(admin.ModelAdmin):
+    form = CollectionStyleForm
     list_display = ('name', 'status', 'start_date', 'end_date', 'product_count', 'is_active')
     list_filter = ('status', 'is_active', 'start_date', 'end_date')
     search_fields = ('name', 'slug')
@@ -200,9 +215,51 @@ class CollectionAdmin(admin.ModelAdmin):
             'fields': ('start_date', 'end_date'),
             'classes': ('collapse',)
         }),
-        ('Estilos visuales', {
+        ('🎨 Imagen de portada', {
+            'fields': ('cover_image',),
+            'description': 'Imagen que aparecerá en la tarjeta de la colección (recomendado: 800x600px)'
+        }),
+        ('🎨 Colores de la colección', {
+            'fields': (('primary_color', 'secondary_color'), ('background_color', 'text_color')),
+            'description': 'Define la paleta de colores única para esta colección',
+            'classes': ('wide',)
+        }),
+        ('🖼️ Imagen de fondo', {
+            'fields': ('background_image',),
+            'classes': ('collapse',),
+            'description': 'Imagen de fondo para la página de la colección (opcional)'
+        }),
+        ('✍️ Tipografía', {
+            'fields': ('title_font',),
+            'classes': ('collapse',),
+            'description': 'Fuente personalizada para los títulos de esta colección.<br>Ejemplos: "Playfair Display", serif | "Poppins", sans-serif | "Montserrat", sans-serif'
+        }),
+        ('✨ Efectos avanzados', {
+            'fields': ('effects_config',),
+            'classes': ('collapse',),
+            'description': '''
+                <details>
+                    <summary>📝 Configuración JSON para efectos (click para ver ejemplo)</summary>
+                    <pre style="background: #f5f5f5; padding: 10px; border-radius: 5px;">
+{
+  "hover_effect": "zoom",      // zoom, glow, slide, none
+  "card_animation": "fadeInUp", // fadeInUp, slideIn, bounce
+  "parallax": true,            // efecto parallax al hacer scroll
+  "particles": false           // partículas flotantes
+}
+                    </pre>
+                </details>
+            '''
+        }),
+        ('🎨 CSS personalizado', {
+            'fields': ('custom_css',),
+            'classes': ('collapse',),
+            'description': 'CSS adicional para personalizar aún más la apariencia de esta colección (solo si sabes lo que haces)'
+        }),
+        ('Configuración visual (JSON legado)', {
             'fields': ('style_config',),
             'classes': ('collapse',),
+            'description': 'JSON manual (solo para casos avanzados, los campos anteriores ya generan esto automáticamente)'
         }),
         ('Auditoría', {
             'fields': ('is_active', 'created_at', 'updated_at', 'created_by', 'updated_by'),
@@ -226,7 +283,7 @@ class CollectionAdmin(admin.ModelAdmin):
     def get_queryset(self, request):
         return super().get_queryset(request).prefetch_related('products')
     
-    actions = ['archive_expired_collections', 'publish_scheduled_collections']
+    actions = ['archive_expired_collections', 'publish_scheduled_collections', 'archive_selected_collections']
     
     def archive_expired_collections(self, request, queryset):
         call_command('archive_collections')
@@ -237,8 +294,6 @@ class CollectionAdmin(admin.ModelAdmin):
         call_command('publish_collections')
         self.message_user(request, 'Colecciones programadas publicadas correctamente.', messages.SUCCESS)
     publish_scheduled_collections.short_description = 'Publicar colecciones programadas'
-    
-    actions.append('archive_selected_collections')
     
     def archive_selected_collections(self, request, queryset):
         count = 0

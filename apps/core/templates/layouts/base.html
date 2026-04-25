@@ -1,0 +1,58 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    
+    {% include 'components/seo_tags.html' %}
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'zicada-dark': '#1a1a1a',
+                        'zicada-primary': '#2d2d2d',
+                        'zicada-accent': '#c2a575',
+                        'zicada-light': '#f5f5f5',
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/custom.css' %}">
+    
+    {% block extra_css %}{% endblock %}
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="bg-white font-['Inter'] antialiased">
+    
+    {% include 'components/header.html' %}
+    
+    <main>
+        {% include 'components/breadcrumbs.html' %}
+        {% include 'components/messages.html' %}
+        
+        {% block content %}{% endblock %}
+    </main>
+    
+    {% include 'components/footer.html' %}
+    
+    <script src="{% static 'js/main.js' %}"></script>
+    
+    <script>
+        function updateCartCount(count) {
+            const cartCount = document.getElementById('cart-count');
+            const mobileCartCount = document.getElementById('mobile-cart-count');
+            if (cartCount) cartCount.textContent = count;
+            if (mobileCartCount) mobileCartCount.textContent = count;
+        }
+    </script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
