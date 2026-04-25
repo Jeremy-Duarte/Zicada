@@ -3,30 +3,468 @@
 
 {% block title %}{{ product.name }} - Zicada{% endblock %}
 
+{% block extra_css %}
+<style>
+    .product-gallery-thumb {
+        transition: all 0.2s ease;
+        cursor: pointer;
+        border: 2px solid transparent;
+    }
+    
+    .product-gallery-thumb:hover {
+        transform: scale(1.05);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    
+    .product-gallery-thumb.active {
+        border-color: #c2a575;
+        transform: scale(1.02);
+    }
+    
+    .quantity-input {
+        width: 60px;
+        text-align: center;
+        border: 1px solid #e2e8f0;
+        border-radius: 0.5rem;
+        padding: 0.5rem;
+    }
+    
+    .quantity-btn {
+        background-color: #f3f4f6;
+        border: 1px solid #e2e8f0;
+        border-radius: 0.5rem;
+        padding: 0.5rem 1rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    
+    .quantity-btn:hover {
+        background-color: #e5e7eb;
+    }
+    
+    .variant-btn {
+        transition: all 0.2s ease;
+        cursor: pointer;
+        border-width: 2px;
+    }
+    
+    .variant-btn.selected {
+        background-color: #c2a575 !important;
+        color: white !important;
+        border-color: #c2a575 !important;
+    }
+    
+    .variant-btn.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        background-color: #f3f4f6 !important;
+        color: #9ca3af !important;
+        border-color: #e5e7eb !important;
+        text-decoration: line-through;
+    }
+    
+    .color-preview {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        border: 2px solid #e2e8f0;
+        transition: all 0.2s ease;
+    }
+    
+    .color-preview:hover {
+        transform: scale(1.1);
+        border-color: #c2a575;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container mx-auto px-4 py-12">
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div class="bg-gray-100 rounded-lg h-96 flex items-center justify-center">
-            <p class="text-gray-500">Imagen del producto</p>
-        </div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
+        
         <div>
-            <h1 class="text-3xl font-bold mb-4">{{ product.name }}</h1>
-            <p class="text-2xl font-bold text-zicada-accent mb-4">${{ product.price|floatformat:0 }}</p>
-            <p class="text-gray-600 mb-6">{{ product.description }}</p>
+            <div class="bg-gray-100 rounded-2xl overflow-hidden mb-4">
+                <img id="main-image" 
+                    src="{% if gallery_images %}{{ gallery_images.0.image }}{% else %}{% static 'img/product-placeholder.jpeg' %}{% endif %}" 
+                    alt="{{ product.name }}" 
+                    class="w-full h-96 object-cover">
+            </div>
+            
+            {% if gallery_images|length > 1 %}
+            <div class="grid grid-cols-4 gap-3" id="thumbnail-gallery">
+                {% for gallery_item in gallery_images %}
+                <div class="product-gallery-thumb rounded-lg overflow-hidden bg-gray-100" 
+                    data-image="{{ gallery_item.image }}"
+                    data-color-id="{{ gallery_item.color_id }}"
+                    data-color-name="{{ gallery_item.color_name }}">
+                    {% if gallery_item.image %}
+                        <img src="{{ gallery_item.image }}" alt="{{ gallery_item.color_name }}" class="w-full h-24 object-cover">
+                    {% else %}
+                        <div class="w-full h-24 bg-gray-200 flex items-center justify-center text-xs text-gray-400">
+                            Sin imagen
+                        </div>
+                    {% endif %}
+                    <div class="text-center text-xs py-1">{{ gallery_item.color_name }}</div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+        
+        <!-- COLUMNA DERECHA: Información del producto -->
+        <div>
+            <div class="mb-2">
+                <span class="text-sm text-zicada-accent uppercase tracking-wide">{{ product.category.name }}</span>
+            </div>
+            
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">{{ product.name }}</h1>
             
             <div class="mb-6">
-                <h3 class="font-semibold mb-2">Tallas y colores disponibles:</h3>
-                <div class="flex flex-wrap gap-2">
-                    {% for variant in variants %}
-                    <span class="bg-gray-100 px-3 py-1 rounded text-sm">{{ variant.size.name }} - {{ variant.color.name }}</span>
-                    {% endfor %}
+                <span id="product-price" class="text-3xl font-bold text-zicada-accent">${{ product.price|floatformat:0 }}</span>
+                <span class="text-gray-500 ml-2">COP</span>
+            </div>
+            
+            <div class="mb-6">
+                <p class="text-gray-600 leading-relaxed">{{ product.description|default:"Sin descripción disponible." }}</p>
+            </div>
+            
+            <!-- Selector de COLOR -->
+            <div class="mb-6">
+                <h3 class="font-semibold text-gray-800 mb-3">Color</h3>
+                <div class="flex flex-wrap gap-3" id="color-selector"></div>
+            </div>
+            
+            <!-- Selector de TALLA -->
+            <div class="mb-6">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="font-semibold text-gray-800">Talla</h3>
+                    <a href="#" class="text-sm text-zicada-accent hover:underline">Guía de tallas</a>
+                </div>
+                <div class="flex flex-wrap gap-3" id="size-selector"></div>
+                <div id="stock-info" class="mt-2 text-sm"></div>
+            </div>
+            
+            <!-- Selector de CANTIDAD -->
+            <div class="mb-8">
+                <h3 class="font-semibold text-gray-800 mb-3">Cantidad</h3>
+                <div class="flex items-center gap-3">
+                    <button class="quantity-btn" id="decrease-qty">−</button>
+                    <input type="number" id="quantity" value="1" min="1" max="99" class="quantity-input">
+                    <button class="quantity-btn" id="increase-qty">+</button>
                 </div>
             </div>
             
-            <button class="bg-zicada-accent text-white px-6 py-2 rounded-lg hover:bg-opacity-90 transition">
+            <button id="add-to-cart-btn" 
+                    class="w-full bg-zicada-accent text-white py-3 rounded-lg font-semibold hover:bg-opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed">
                 Agregar al carrito
             </button>
+            
+            <div id="stock-warning" class="mt-3 text-sm text-red-500 hidden">
+                ⚠️ Stock insuficiente para la cantidad seleccionada
+            </div>
         </div>
     </div>
+    
+    {% if related_products %}
+    <section class="mt-20">
+        <h3 class="text-2xl font-bold text-gray-900 mb-6">Productos que también te pueden interesar</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+            {% for related in related_products %}
+                {% include 'components/product_card.html' with product=related %}
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
 </div>
+
+<script>
+    // ============================================
+    // DATOS DE VARIANTES
+    // ============================================
+    const variantsData = {{ variants_json|safe }};
+    
+    // ============================================
+    // ESTADO DE LA PÁGINA
+    // ============================================
+    let selectedColorId = null;
+    let selectedSizeId = null;
+    let currentVariant = null;
+    
+    // ============================================
+    // UTILIDADES
+    // ============================================
+    function getUniqueColors() {
+        const unique = new Map();
+        variantsData.forEach(v => {
+            if (!unique.has(v.color_id)) {
+                unique.set(v.color_id, {
+                    id: v.color_id,
+                    name: v.color_name,
+                    code: v.color_code
+                });
+            }
+        });
+        return Array.from(unique.values());
+    }
+    
+    function getUniqueSizes() {
+        const unique = new Map();
+        variantsData.forEach(v => {
+            if (!unique.has(v.size_id)) {
+                unique.set(v.size_id, {
+                    id: v.size_id,
+                    name: v.size_name
+                });
+            }
+        });
+        return Array.from(unique.values());
+    }
+    
+    function getVariantByColorAndSize(colorId, sizeId) {
+        if (colorId && sizeId) {
+            return variantsData.find(v => v.color_id === colorId && v.size_id === sizeId);
+        }
+        return null;
+    }
+    
+    function isVariantAvailable(colorId, sizeId) {
+        const variant = getVariantByColorAndSize(colorId, sizeId);
+        return variant && variant.stock > 0;
+    }
+    
+    function updateUI() {
+        if (selectedColorId && selectedSizeId) {
+            currentVariant = getVariantByColorAndSize(selectedColorId, selectedSizeId);
+        } else {
+            currentVariant = null;
+        }
+        
+        if (currentVariant) {
+            // Actualizar precio
+            document.getElementById('product-price').innerText = `$${currentVariant.price.toLocaleString()}`;
+            
+            // Actualizar info de stock (con mensaje seguro)
+            const stockInfo = document.getElementById('stock-info');
+            if (currentVariant.stock === 0) {
+                stockInfo.innerHTML = '<span class="text-red-500">❌ Agotado</span>';
+                document.getElementById('add-to-cart-btn').disabled = true;
+            } else if (currentVariant.stock <= 10) {
+                stockInfo.innerHTML = `<span class="text-orange-500">⚠️ ¡Últimas ${currentVariant.stock} unidades!</span>`;
+                document.getElementById('add-to-cart-btn').disabled = false;
+            } else {
+                stockInfo.innerHTML = '<span class="text-green-500">✅ Disponible</span>';
+                document.getElementById('add-to-cart-btn').disabled = false;
+            }
+            
+            // Actualizar cantidad máxima
+            const quantityInput = document.getElementById('quantity');
+            quantityInput.max = currentVariant.stock > 0 ? currentVariant.stock : 1;
+            if (parseInt(quantityInput.value) > currentVariant.stock && currentVariant.stock > 0) {
+                quantityInput.value = currentVariant.stock;
+            }
+            
+            // Actualizar imagen principal
+            if (currentVariant.image && currentVariant.image !== '') {
+                document.getElementById('main-image').src = currentVariant.image;
+            }
+        } else {
+            // Sin selección completa
+            document.getElementById('stock-info').innerHTML = '<span class="text-gray-500">Selecciona un color y una talla</span>';
+            document.getElementById('add-to-cart-btn').disabled = true;
+        }
+        
+        updateSizeSelectorState();
+        updateColorSelectorState();
+        checkStockWarning();
+    }
+    
+    function updateSizeSelectorState() {
+        const sizes = getUniqueSizes();
+        const container = document.getElementById('size-selector');
+        
+        container.querySelectorAll('.variant-btn').forEach(btn => {
+            const sizeId = parseInt(btn.dataset.id);
+            if (selectedColorId && !isVariantAvailable(selectedColorId, sizeId)) {
+                btn.classList.add('disabled');
+            } else {
+                btn.classList.remove('disabled');
+            }
+        });
+    }
+    
+    function updateColorSelectorState() {
+        const colors = getUniqueColors();
+        const container = document.getElementById('color-selector');
+        
+        container.querySelectorAll('.variant-btn').forEach(btn => {
+            const colorId = parseInt(btn.dataset.id);
+            if (selectedSizeId && !isVariantAvailable(colorId, selectedSizeId)) {
+                btn.classList.add('disabled');
+            } else {
+                btn.classList.remove('disabled');
+            }
+        });
+    }
+    
+    function checkStockWarning() {
+        const quantity = parseInt(document.getElementById('quantity').value);
+        const warning = document.getElementById('stock-warning');
+        const addBtn = document.getElementById('add-to-cart-btn');
+        
+        if (currentVariant && quantity > currentVariant.stock && currentVariant.stock > 0) {
+            warning.classList.remove('hidden');
+            addBtn.disabled = true;
+        } else {
+            warning.classList.add('hidden');
+            if (currentVariant && currentVariant.stock > 0) addBtn.disabled = false;
+        }
+    }
+    
+    // ============================================
+    // RENDERIZADO DE SELECTORES
+    // ============================================
+    function renderColorSelector() {
+        const container = document.getElementById('color-selector');
+        const colors = getUniqueColors();
+        
+        container.innerHTML = colors.map(color => `
+            <div class="variant-btn flex items-center gap-2 border rounded-lg px-4 py-2 transition"
+                 data-type="color"
+                 data-id="${color.id}"
+                 data-name="${color.name}">
+                <div class="color-preview" style="background-color: ${color.code};"></div>
+                <span>${color.name}</span>
+            </div>
+        `).join('');
+        
+        container.querySelectorAll('.variant-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (btn.classList.contains('disabled')) return;
+                selectedColorId = parseInt(btn.dataset.id);
+                // Remover active de otros colores y marcar este
+                container.querySelectorAll('.variant-btn').forEach(b => b.classList.remove('selected'));
+                btn.classList.add('selected');
+                updateUI();
+            });
+        });
+    }
+    
+    function renderSizeSelector() {
+        const container = document.getElementById('size-selector');
+        const sizes = getUniqueSizes();
+        
+        container.innerHTML = sizes.map(size => `
+            <div class="variant-btn border rounded-lg px-5 py-2 text-center transition"
+                 data-type="size"
+                 data-id="${size.id}">
+                ${size.name}
+            </div>
+        `).join('');
+        
+        container.querySelectorAll('.variant-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (btn.classList.contains('disabled')) return;
+                selectedSizeId = parseInt(btn.dataset.id);
+                // Remover active de otras tallas y marcar esta
+                container.querySelectorAll('.variant-btn').forEach(b => b.classList.remove('selected'));
+                btn.classList.add('selected');
+                updateUI();
+            });
+        });
+    }
+    
+    // ============================================
+    // EVENTOS
+    // ============================================
+    function setupQuantityButtons() {
+        const decreaseBtn = document.getElementById('decrease-qty');
+        const increaseBtn = document.getElementById('increase-qty');
+        const quantityInput = document.getElementById('quantity');
+        
+        decreaseBtn.addEventListener('click', () => {
+            let val = parseInt(quantityInput.value);
+            if (val > 1) {
+                quantityInput.value = val - 1;
+                checkStockWarning();
+            }
+        });
+        
+        increaseBtn.addEventListener('click', () => {
+            let val = parseInt(quantityInput.value);
+            let max = currentVariant ? currentVariant.stock : 99;
+            if (val < max) {
+                quantityInput.value = val + 1;
+                checkStockWarning();
+            } else if (max > 0 && val !== max) {
+                quantityInput.value = max;
+                checkStockWarning();
+            }
+        });
+        
+        quantityInput.addEventListener('change', () => {
+            let val = parseInt(quantityInput.value);
+            let max = currentVariant ? currentVariant.stock : 99;
+            if (isNaN(val)) val = 1;
+            if (val < 1) val = 1;
+            if (val > max && max > 0) val = max;
+            quantityInput.value = val;
+            checkStockWarning();
+        });
+    }
+    
+    function setupThumbnailGallery() {
+        document.querySelectorAll('.product-gallery-thumb').forEach(thumb => {
+            thumb.addEventListener('click', () => {
+                const imageUrl = thumb.dataset.image;
+                if (imageUrl && imageUrl !== '') {
+                    document.getElementById('main-image').src = imageUrl;
+                }
+                document.querySelectorAll('.product-gallery-thumb').forEach(t => t.classList.remove('active'));
+                thumb.classList.add('active');
+                
+                // También seleccionar el color correspondiente
+                const colorId = thumb.dataset.colorId;
+                if (colorId) {
+                    // Buscar y hacer click en el botón de color correspondiente
+                    const colorBtn = document.querySelector(`#color-selector .variant-btn[data-id="${colorId}"]`);
+                    if (colorBtn && !colorBtn.classList.contains('disabled')) {
+                        colorBtn.click();
+                    }
+                }
+            });
+        });
+    }
+    
+    function setupAddToCart() {
+        document.getElementById('add-to-cart-btn').addEventListener('click', () => {
+            const quantity = parseInt(document.getElementById('quantity').value);
+            
+            if (!selectedColorId || !selectedSizeId) {
+                alert('❌ Por favor selecciona un color y una talla');
+                return;
+            }
+            if (!currentVariant) {
+                alert('❌ Combinación no disponible');
+                return;
+            }
+            if (quantity > currentVariant.stock) {
+                alert('❌ No hay suficiente stock disponible');
+                return;
+            }
+
+            alert(`Agregado al carrito: ${quantity}x ${currentVariant.color_name} - ${currentVariant.size_name}`);
+        });
+    }
+
+    function init() {
+        renderColorSelector();
+        renderSizeSelector();
+        setupQuantityButtons();
+        setupThumbnailGallery();
+        setupAddToCart();
+        updateUI();
+    }
+    
+    init();
+</script>
 {% endblock %}
