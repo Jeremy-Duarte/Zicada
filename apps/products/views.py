@@ -2,6 +2,7 @@ from django.shortcuts import render, get_object_or_404
 from django.contrib.admin.views.decorators import staff_member_required
 from .models import Product, ProductVariant, Collection, Category
 from django.utils import timezone
+import json
 
 @staff_member_required
 def stock_dashboard(request):
@@ -85,8 +86,56 @@ def product_detail(request, slug):
     product = get_object_or_404(Product, slug=slug, is_active=True)
     variants = product.variants.filter(is_active=True).select_related('size', 'color')
     
+    unique_color_images = {}
+    for variant in variants:
+        if variant.color.id not in unique_color_images:
+            unique_color_images[variant.color.id] = {
+                'image': variant.image.url if variant.image else '',
+                'color_id': variant.color.id,
+                'color_name': variant.color.name,
+                'color_code': variant.color.code or '#cccccc',
+                'is_portrait': variant.is_portrait,
+            }
+    
+    gallery_images = list(unique_color_images.values())
+    gallery_images.sort(key=lambda x: not x['is_portrait'])
+
+    variants_data = []
+    for variant in variants:
+        if variant.stock == 0:
+            stock_display = 'out_of_stock'
+            stock_message = 'Agotado'
+        elif variant.stock <= 10:
+            stock_display = 'low_stock'
+            stock_message = f'¡Últimas {variant.stock} unidades!'
+        else:
+            stock_display = 'available'
+            stock_message = 'Disponible'
+        
+        variants_data.append({
+            'id': variant.id,
+            'color_id': variant.color.id,
+            'color_name': variant.color.name,
+            'color_code': variant.color.code or '#cccccc',
+            'size_id': variant.size.id,
+            'size_name': variant.size.name,
+            'stock': variant.stock,
+            'stock_display': stock_display,
+            'stock_message': stock_message,
+            'price': float(product.price),
+            'image': variant.image.url if variant.image else '',
+        })
+
+    related_products = Product.objects.filter(
+        category=product.category,
+        is_active=True
+    ).exclude(id=product.id).select_related('category').prefetch_related('variants')[:4]
+    
     context = {
         'product': product,
         'variants': variants,
+        'gallery_images': gallery_images,
+        'variants_json': json.dumps(variants_data),
+        'related_products': related_products,
     }
     return render(request, 'products/product_detail.html', context)
