@@ -89,6 +89,70 @@ class Color(models.Model):
     def __str__(self):
         return self.name
     
+class ProductImage(models.Model):
+    # Almacena una imagen física (archivo).
+    image = models.ImageField(
+        upload_to='products/images/',
+        verbose_name='Imagen'
+    )
+    alt_text = models.CharField(
+        max_length=200,
+        blank=True,
+        verbose_name='Texto alternativo'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['id']
+        verbose_name = 'Imagen'
+        verbose_name_plural = 'Imágenes'
+
+    def __str__(self):
+        return f"Imagen {self.id}"
+    
+
+class ProductColor(BaseAuditModel):
+    # Asociación de imagen de un producto con su color
+    product = models.ForeignKey(
+        'Product',
+        on_delete=models.CASCADE,
+        related_name='product_colors'
+    )
+    color = models.ForeignKey(
+        Color,
+        on_delete=models.PROTECT,
+        related_name='product_colors'
+    )
+    images = models.ManyToManyField(
+        ProductImage,
+        blank=True,
+        related_name='product_colors',
+        verbose_name='Imágenes'
+    )
+    featured_image = models.ForeignKey(
+        ProductImage,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='+',
+        verbose_name='Imagen destacada'
+    )
+    sort_order = models.PositiveIntegerField(default=0, verbose_name='Orden')
+
+    class Meta:
+        unique_together = ['product', 'color']
+        ordering = ['sort_order']
+        verbose_name = 'Color del producto'
+
+    def __str__(self):
+        return f"{self.product.name} - {self.color.name}"
+
+    def get_images(self):
+        qs = self.images.all()
+        if self.featured_image and self.featured_image in qs:
+            return [self.featured_image] + list(qs.exclude(id=self.featured_image.id))
+        return list(qs)
+
 
 class Product(BaseAuditModel):
     # Producto del catálogo.
@@ -204,18 +268,18 @@ class ProductVariant(BaseAuditModel):
         related_name='variants',
         verbose_name='Producto'
     )
+    product_color = models.ForeignKey(
+        ProductColor,
+        on_delete=models.CASCADE,
+        related_name='variants',
+        verbose_name='Producto y color',
+        help_text='Asociación producto-color que define las imágenes'
+    )
     size = models.ForeignKey(
         Size,
         on_delete=models.PROTECT,
         related_name='variants',
         verbose_name='Talla'
-    )
-    color = models.ForeignKey(
-        Color,
-        on_delete=models.PROTECT,
-        related_name='variants',
-        verbose_name='Color',
-        help_text='Color de esta variante'
     )
     sku = models.CharField(
         max_length=50,
@@ -228,31 +292,40 @@ class ProductVariant(BaseAuditModel):
         verbose_name='Stock',
         help_text='Cantidad disponible (no puede ser negativo)'
     )
-    image = models.ImageField(
-        upload_to='products/variants/',
-        blank=True,
-        null=True,
-        verbose_name='Imagen',
-        help_text='Imagen de la variante'
-    )
-    is_portrait = models.BooleanField(
-        default=False,
-        verbose_name='Imagen destacada',
-        help_text='Si es True, muestra esta imagen como destacada en el catálogo'
-    )
 
     objects = ProductVariantManager()
 
     class Meta:
-        unique_together = ['product', 'size', 'color']
+        unique_together = ['product', 'product_color', 'size']
         indexes = [
             models.Index(fields=['stock']),
             models.Index(fields=['is_active', 'stock']),
-            models.Index(fields=['size', 'color']),
+            models.Index(fields=['product', 'product_color']),
+            models.Index(fields=['size']),
         ]
         verbose_name = 'Variante de producto'
         verbose_name_plural = 'Variantes de productos'
-        ordering = ['product', 'size__sort_order', 'color__sort_order']
+        ordering = ['product', 'product_color__sort_order', 'size__sort_order']
+
+    @property
+    def color(self):
+        return self.product_color.color
+
+    @property
+    def color_name(self):
+        return self.product_color.color.name
+
+    @property
+    def color_code(self):
+        return self.product_color.color.code
+
+    @property
+    def images(self):
+        return self.product_color.get_images()
+
+    @property
+    def featured_image(self):
+        return self.product_color.featured_image
 
     @property
     def stock_status(self):
@@ -280,19 +353,23 @@ class ProductVariant(BaseAuditModel):
             return "No disponible"
 
     def __str__(self):
-        return f"{self.product.name} - {self.size.name} - {self.color.name}"
-    
+        return f"{self.product.name} - {self.product_color.color.name} - {self.size.name}"
+
     def clean(self):
         if self.stock < 0:
             raise ValidationError({'stock': 'El stock no puede ser negativo.'})
+        
+        if self.product_color.product_id != self.product.id:
+            raise ValidationError({
+                'product_color': 'El color seleccionado no pertenece a este producto.'
+            })
     
     def save(self, *args, **kwargs):
-        # Generar SKU automáticamente si no existe
         if not self.sku:
             from datetime import datetime
             timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
-            self.sku = f"ZCD-{self.product.id}-{self.size.name}-{self.color.name}-{timestamp}"
-       
+            self.sku = f"ZCD-{self.product.id}-{self.product_color.color.name}-{self.size.name}-{timestamp}"
+
         self.full_clean()
         super().save(*args, **kwargs)
 
