@@ -108,6 +108,8 @@ class ProductImage(models.Model):
         verbose_name_plural = 'Imágenes'
 
     def __str__(self):
+        if self.alt_text:
+            return self.alt_text
         return f"Imagen {self.id}"
     
 
