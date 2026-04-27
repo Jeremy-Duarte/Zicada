@@ -1,13 +1,13 @@
 from django.shortcuts import render, get_object_or_404
 from django.contrib.admin.views.decorators import staff_member_required
-from .models import Product, ProductVariant, Collection, Category
+from .models import Product, ProductVariant, ProductColor, Collection, Category
 from django.utils import timezone
 import json
 
 @staff_member_required
 def stock_dashboard(request):
-    low_stock_variants = ProductVariant.objects.low_stock().select_related('product', 'size', 'color')
-    out_of_stock_variants = ProductVariant.objects.out_of_stock().select_related('product', 'size', 'color')
+    low_stock_variants = ProductVariant.objects.low_stock().select_related('product', 'product_color__color', 'size')
+    out_of_stock_variants = ProductVariant.objects.out_of_stock().select_related('product', 'product_color__color', 'size')
     products_with_stock = Product.objects.filter(
         variants__is_active=True,
         variants__stock__gt=0
@@ -37,11 +37,11 @@ def stock_dashboard(request):
     return render(request, 'products/stock_dashboard.html', context)
 
 def catalog(request):
-    """Catálogo de productos con filtros básicos"""
-    products = Product.objects.filter(is_active=True).select_related('category').prefetch_related('variants')
+    products = Product.objects.filter(is_active=True).select_related('category').prefetch_related(
+        'product_colors', 'product_colors__images', 'variants', 'variants__size'
+    )
     categories = Category.objects.all().order_by('sort_order')
     
-    # Filtros simples
     category_slug = request.GET.get('category')
     if category_slug:
         products = products.filter(category__slug=category_slug)
@@ -53,9 +53,7 @@ def catalog(request):
     }
     return render(request, 'products/catalog.html', context)
 
-
 def collections_list(request):
-    """Listado de colecciones públicas"""
     collections = Collection.objects.filter(
         status='publicada',
         is_active=True
@@ -67,74 +65,104 @@ def collections_list(request):
     }
     return render(request, 'products/collections_list.html', context)
 
-
 def collection_detail(request, slug):
     collection = get_object_or_404(Collection, slug=slug, status='publicada', is_active=True)
-    products = collection.products.filter(is_active=True)
-    
-    style_config = collection.style_config or {}
+    products = collection.products.filter(is_active=True).prefetch_related(
+        'product_colors', 'product_colors__images', 'variants', 'variants__size'
+    )
     
     context = {
         'collection': collection,
         'products': products,
-        'style_config': style_config,
     }
     return render(request, 'products/collection_detail.html', context)
 
-
 def product_detail(request, slug):
     product = get_object_or_404(Product, slug=slug, is_active=True)
-    variants = product.variants.filter(is_active=True).select_related('size', 'color')
+    product_colors = product.product_colors.filter(is_active=True).prefetch_related('images').order_by('sort_order')
     
-    unique_color_images = {}
-    for variant in variants:
-        if variant.color.id not in unique_color_images:
-            unique_color_images[variant.color.id] = {
-                'image': variant.image.url if variant.image else '',
-                'color_id': variant.color.id,
-                'color_name': variant.color.name,
-                'color_code': variant.color.code or '#cccccc',
-                'is_portrait': variant.is_portrait,
-            }
+    variants = product.variants.filter(is_active=True).select_related('product_color', 'size')
     
-    gallery_images = list(unique_color_images.values())
-    gallery_images.sort(key=lambda x: not x['is_portrait'])
-
+    gallery_images = []
+    for pc in product_colors:
+        for img in pc.get_images():
+            gallery_images.append({
+                'image': img.image.url if img.image else '',
+                'color_id': pc.color.id,
+                'color_name': pc.color.name,
+                'color_code': pc.color.code or '#cccccc',
+                'is_featured': pc.featured_image == img,
+            })
+    
     variants_data = []
     for variant in variants:
-        if variant.stock == 0:
+        stock = variant.stock
+        if stock == 0:
             stock_display = 'out_of_stock'
             stock_message = 'Agotado'
-        elif variant.stock <= 10:
+        elif stock <= 10:
             stock_display = 'low_stock'
-            stock_message = f'¡Últimas {variant.stock} unidades!'
+            stock_message = f'¡Últimas {stock} unidades!'
         else:
             stock_display = 'available'
             stock_message = 'Disponible'
         
         variants_data.append({
             'id': variant.id,
-            'color_id': variant.color.id,
-            'color_name': variant.color.name,
-            'color_code': variant.color.code or '#cccccc',
+            'color_id': variant.product_color.color.id,
+            'color_name': variant.product_color.color.name,
+            'color_code': variant.product_color.color.code or '#cccccc',
             'size_id': variant.size.id,
             'size_name': variant.size.name,
-            'stock': variant.stock,
+            'stock': stock,
             'stock_display': stock_display,
             'stock_message': stock_message,
             'price': float(product.price),
-            'image': variant.image.url if variant.image else '',
+            'image': variant.product_color.featured_image.image.url if variant.product_color.featured_image and variant.product_color.featured_image.image else '',
         })
-
+    
+    unique_colors = []
+    seen_color_ids = set()
+    for variant in variants:
+        if variant.product_color.color.id not in seen_color_ids:
+            seen_color_ids.add(variant.product_color.color.id)
+            unique_colors.append({
+                'id': variant.product_color.color.id,
+                'name': variant.product_color.color.name,
+                'code': variant.product_color.color.code or '#cccccc',
+            })
+    
+    unique_sizes = []
+    seen_size_ids = set()
+    for variant in variants:
+        if variant.size.id not in seen_size_ids:
+            seen_size_ids.add(variant.size.id)
+            unique_sizes.append({
+                'id': variant.size.id,
+                'name': variant.size.name,
+            })
+    
+    featured_image = None
+    for img in gallery_images:
+        if img.get('is_featured'):
+            featured_image = img['image']
+            break
+    if not featured_image and gallery_images:
+        featured_image = gallery_images[0]['image']
+    
     related_products = Product.objects.filter(
         category=product.category,
         is_active=True
-    ).exclude(id=product.id).select_related('category').prefetch_related('variants')[:4]
+    ).exclude(id=product.id).select_related('category').prefetch_related('product_colors', 'product_colors__images')[:4]
     
     context = {
         'product': product,
         'variants': variants,
+        'unique_colors': unique_colors,
+        'unique_sizes': unique_sizes,
         'gallery_images': gallery_images,
+        'gallery_images_json': json.dumps(gallery_images),
+        'featured_image': featured_image,
         'variants_json': json.dumps(variants_data),
         'related_products': related_products,
     }

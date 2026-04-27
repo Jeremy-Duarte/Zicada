@@ -3,7 +3,7 @@ from django import forms
 from django.urls import reverse
 from django.utils.html import format_html
 from django.db import models as django_models
-from .models import Size, Category, Color, Product, ProductVariant, Collection
+from .models import Size, Category, Color, Product, ProductVariant, Collection, ProductColor, ProductImage
 from django.core.management import call_command
 from django.contrib import messages
 
@@ -30,6 +30,49 @@ class CategoryAdmin(admin.ModelAdmin):
         return f"{count} productos"
     product_count.short_description = 'Productos'
 
+@admin.register(ProductImage)
+class ProductImageAdmin(admin.ModelAdmin):
+    list_display = ('id', 'image_preview', 'alt_text', 'created_at')
+    list_display_links = ('id', 'image_preview')
+    search_fields = ('alt_text',)
+    list_per_page = 30
+    readonly_fields = ('created_at',)
+    
+    fieldsets = (
+        ('Imagen', {
+            'fields': ('image', 'alt_text')
+        }),        ('Información', {
+            'fields': ('created_at',),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def image_preview(self, obj):
+        if obj.image:
+            return format_html('<img src="{}" width="50" height="50" style="object-fit: cover;" />', obj.image.url)
+        return "Sin imagen"
+    image_preview.short_description = 'Vista previa'
+
+class ProductColorInline(admin.TabularInline):
+    model = ProductColor
+    extra = 1
+    fields = ('color', 'images_preview', 'featured_image', 'sort_order')
+    readonly_fields = ('images_preview',)
+    classes = ('collapse',)
+    
+    def images_preview(self, obj):
+        if obj.images.exists():
+            previews = []
+            for img in obj.images.all()[:3]:
+                if img.image:
+                    previews.append(format_html(
+                        '<img src="{}" width="30" height="30" style="object-fit: cover; margin-right: 5px;" />',
+                        img.image.url
+                    ))
+            return format_html(''.join(previews))
+        return "Sin imágenes"
+    images_preview.short_description = 'Imágenes'
+
 
 @admin.register(Color)
 class ColorAdmin(admin.ModelAdmin):
@@ -41,7 +84,6 @@ class ColorAdmin(admin.ModelAdmin):
     
     def get_form(self, request, obj=None, **kwargs):
         form = super().get_form(request, obj, **kwargs)
-        # Solo aplicar el widget al campo 'code'
         form.base_fields['code'].widget = admin.widgets.AdminTextInputWidget(
             attrs={'type': 'color', 'style': 'width: 80px; height: 35px; cursor: pointer;'}
         )
@@ -56,29 +98,51 @@ class ColorAdmin(admin.ModelAdmin):
         return "—"
     color_preview.short_description = 'Vista previa'
 
+@admin.register(ProductColor)
+class ProductColorAdmin(admin.ModelAdmin):
+    list_display = ('product', 'color', 'sort_order', 'images_count', 'featured_image_preview')
+    list_filter = ('color',)
+    search_fields = ('product__name', 'color__name')
+    list_editable = ('sort_order',)
+    list_per_page = 30
+    filter_horizontal = ('images',)
+    
+    fieldsets = (
+        ('Información', {
+            'fields': ('product', 'color', 'sort_order')
+        }),
+        ('Imágenes', {
+            'fields': ('images', 'featured_image'),
+            'description': 'Selecciona las imágenes para este color. La imagen destacada será la principal.'
+        }),
+    )
+    
+    def images_count(self, obj):
+        return obj.images.count()
+    images_count.short_description = 'Cantidad de imágenes'
+    
+    def featured_image_preview(self, obj):
+        if obj.featured_image and obj.featured_image.image:
+            return format_html('<img src="{}" width="40" height="40" style="object-fit: cover;" />', obj.featured_image.image.url)
+        return "—"
+    featured_image_preview.short_description = 'Imagen destacada'
+
 
 class ProductVariantInline(admin.TabularInline):
     model = ProductVariant
     extra = 1
-    fields = ('size', 'color', 'stock', 'image_preview', 'image', 'is_portrait', 'is_active')
-    exclude = ('sku',)
-    readonly_fields = ('image_preview',)
+    fields = ('product_color', 'size', 'stock', 'sku')
+    readonly_fields = ('sku',)
     classes = ('collapse',)
-    
-    def image_preview(self, obj):
-        if obj and obj.image and obj.image.url:
-            return format_html('<img src="{}" width="50" height="50" style="object-fit: cover;" />', obj.image.url)
-        return "Sin imagen"
-    image_preview.short_description = 'Vista previa'
 
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ('name', 'category', 'price_display', 'product_type', 'stock_display', 'is_active', 'created_at')
+    list_display = ('name', 'category', 'price_display', 'product_type', 'colors_count', 'stock_display', 'is_active', 'created_at')
     list_filter = ('product_type', 'category', 'is_active', 'created_at')
     search_fields = ('name', 'slug')
     prepopulated_fields = {'slug': ('name',)}
-    inlines = [ProductVariantInline]
+    inlines = [ProductColorInline, ProductVariantInline]
     readonly_fields = ('created_at', 'updated_at', 'created_by', 'updated_by', 'total_stock')
     list_per_page = 25
     date_hierarchy = 'created_at'
@@ -116,6 +180,10 @@ class ProductAdmin(admin.ModelAdmin):
         return f"Disponible ({total})"
     stock_display.short_description = 'Stock'
     
+    def colors_count(self, obj):
+        return obj.product_colors.count()
+    colors_count.short_description = 'Colores'
+    
     def save_model(self, request, obj, form, change):
         if not change:
             obj.created_by = request.user
@@ -123,26 +191,24 @@ class ProductAdmin(admin.ModelAdmin):
         super().save_model(request, obj, form, change)
     
     def get_queryset(self, request):
-        return super().get_queryset(request).select_related('category')
+        return super().get_queryset(request).select_related('category').prefetch_related('product_colors', 'variants')
 
 
 @admin.register(ProductVariant)
 class ProductVariantAdmin(admin.ModelAdmin):
-    list_display = ('product_link', 'size', 'color_preview', 'color', 'stock', 'is_portrait', 'is_active', 'updated_at')
-    list_filter = ('size', 'color', 'is_active', 'is_portrait')
+    list_display = ('product_link', 'product_color', 'size', 'sku', 'stock', 'is_active', 'updated_at')
+    list_filter = ('product_color__color', 'size', 'is_active')
     search_fields = ('sku', 'product__name')
     list_editable = ('stock', 'is_active')
     readonly_fields = ('created_at', 'updated_at', 'created_by', 'updated_by')
-    exclude = ('sku',)
     list_per_page = 30
-    list_select_related = ('product', 'size', 'color')
     
     fieldsets = (
         ('Información de la variante', {
-            'fields': ('product', 'size', 'color', 'stock')
+            'fields': ('product', 'product_color', 'size', 'stock')
         }),
-        ('Imagen', {
-            'fields': ('image', 'is_portrait'),
+        ('SKU', {
+            'fields': ('sku',),
             'classes': ('collapse',)
         }),
         ('Auditoría', {
@@ -159,15 +225,6 @@ class ProductVariantAdmin(admin.ModelAdmin):
     product_link.short_description = 'Producto'
     product_link.admin_order_field = 'product__name'
     
-    def color_preview(self, obj):
-        if obj and obj.color and obj.color.code:
-            return format_html(
-                '<div style="background-color: {}; width: 25px; height: 25px; border-radius: 4px; border: 1px solid #ccc;"></div>',
-                obj.color.code
-            )
-        return "—"
-    color_preview.short_description = 'Color'
-    
     def save_model(self, request, obj, form, change):
         if not change:
             obj.created_by = request.user
@@ -175,11 +232,11 @@ class ProductVariantAdmin(admin.ModelAdmin):
         if not obj.sku:
             from datetime import datetime
             timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
-            obj.sku = f"ZCD-{obj.product.id}-{obj.size.name}-{obj.color.name}-{timestamp}"
+            obj.sku = f"ZCD-{obj.product.id}-{obj.product_color.color.name}-{obj.size.name}-{timestamp}"
         super().save_model(request, obj, form, change)
     
     def get_queryset(self, request):
-        return super().get_queryset(request).select_related('product', 'size', 'color')
+        return super().get_queryset(request).select_related('product', 'product_color', 'product_color__color', 'size')
 
 
 class CollectionStyleForm(forms.ModelForm):    
