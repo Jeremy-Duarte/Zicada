@@ -236,17 +236,6 @@
             currentVariant = null;
         }
 
-        if (selectedColorId) {
-            updateGalleryByColor(selectedColorId);
-            
-            const firstImage = galleryImages.find(img => img && img.color_id == selectedColorId);
-            if (firstImage && firstImage.image) {
-                document.getElementById('main-image').src = firstImage.image;
-            }
-        } else {
-            updateGalleryByColor(null);
-        }
-        
         if (currentVariant) {
             document.getElementById('product-price').innerText = `$${currentVariant.price.toLocaleString()}`;
             
@@ -282,9 +271,8 @@
     }
     
     function updateSizeSelectorState() {
-        const sizes = getUniqueSizes();
         const container = document.getElementById('size-selector');
-        
+        if (!container) return;
         container.querySelectorAll('.variant-btn').forEach(btn => {
             const sizeId = parseInt(btn.dataset.id);
             if (selectedColorId && !isVariantAvailable(selectedColorId, sizeId)) {
@@ -296,9 +284,8 @@
     }
     
     function updateColorSelectorState() {
-        const colors = getUniqueColors();
         const container = document.getElementById('color-selector');
-        
+        if (!container) return;
         container.querySelectorAll('.variant-btn').forEach(btn => {
             const colorId = parseInt(btn.dataset.id);
             if (selectedSizeId && !isVariantAvailable(colorId, selectedSizeId)) {
@@ -332,9 +319,8 @@
         
         container.innerHTML = colors.map(color => `
             <div class="variant-btn flex items-center gap-2 border rounded-lg px-4 py-2 transition"
-                 data-type="color"
-                 data-id="${color.id}"
-                 data-name="${color.name}">
+                data-id="${color.id}"
+                data-name="${color.name}">
                 <div class="color-preview" style="background-color: ${color.code};"></div>
                 <span>${color.name}</span>
             </div>
@@ -344,9 +330,14 @@
             btn.addEventListener('click', () => {
                 if (btn.classList.contains('disabled')) return;
                 selectedColorId = parseInt(btn.dataset.id);
-                // Remover active de otros colores y marcar este
                 container.querySelectorAll('.variant-btn').forEach(b => b.classList.remove('selected'));
                 btn.classList.add('selected');
+                
+                const firstImage = galleryImages.find(img => img && img.color_id == selectedColorId);
+                if (firstImage && firstImage.image) {
+                    document.getElementById('main-image').src = firstImage.image;
+                }
+                
                 updateGalleryByColor(selectedColorId);
                 updateUI();
             });
@@ -359,7 +350,6 @@
         
         container.innerHTML = sizes.map(size => `
             <div class="variant-btn border rounded-lg px-5 py-2 text-center transition"
-                 data-type="size"
                  data-id="${size.id}">
                 ${size.name}
             </div>
@@ -369,13 +359,65 @@
             btn.addEventListener('click', () => {
                 if (btn.classList.contains('disabled')) return;
                 selectedSizeId = parseInt(btn.dataset.id);
-                // Remover active de otras tallas y marcar esta
                 container.querySelectorAll('.variant-btn').forEach(b => b.classList.remove('selected'));
                 btn.classList.add('selected');
                 updateUI();
             });
         });
     }
+    
+    // ============================================
+    // FUNCIONES DE GALERÍA
+    // ============================================
+    
+    function updateGalleryByColor(colorId) {
+        const galleryContainer = document.getElementById('thumbnail-gallery');
+        if (!galleryContainer) return;
+        
+        if (!galleryImages || galleryImages.length === 0) {
+            galleryContainer.innerHTML = '<div class="text-center text-gray-500 col-span-4">No hay imágenes disponibles</div>';
+            return;
+        }
+        
+        let filteredImages = galleryImages;
+        if (colorId) {
+            filteredImages = galleryImages.filter(img => img && img.color_id == colorId);
+        }
+        
+        if (!filteredImages || filteredImages.length === 0) {
+            galleryContainer.innerHTML = '<div class="text-center text-gray-500 col-span-4">No hay imágenes para este color</div>';
+            return;
+        }
+        
+        galleryContainer.innerHTML = filteredImages.map(img => `
+            <div class="product-gallery-thumb rounded-lg overflow-hidden bg-gray-100" 
+                 data-image="${img.image || ''}"
+                 data-color-id="${img.color_id || ''}"
+                 data-color-name="${img.color_name || ''}"
+                 onclick="changeMainImage('${img.image || ''}', ${img.color_id || 0})">
+                <img src="${img.image || ''}" alt="${img.color_name || ''}" class="w-full h-24 object-cover" onerror="this.src='{% static 'img/product-placeholder.jpeg' %}'">
+                <div class="text-center text-xs py-1">${img.color_name || ''}</div>
+            </div>
+        `).join('');
+    }
+    
+    window.changeMainImage = function(imageUrl, colorId) {
+        if (imageUrl && imageUrl !== '') {
+            document.getElementById('main-image').src = imageUrl;
+        }
+        
+        document.querySelectorAll('.product-gallery-thumb').forEach(thumb => {
+            thumb.classList.remove('active');
+        });
+        event?.target?.closest('.product-gallery-thumb')?.classList.add('active');
+        
+        if (colorId && colorId !== selectedColorId) {
+            const colorBtn = document.querySelector(`#color-selector .variant-btn[data-id="${colorId}"]`);
+            if (colorBtn && !colorBtn.classList.contains('disabled')) {
+                colorBtn.click();
+            }
+        }
+    };
     
     // ============================================
     // EVENTOS
@@ -414,76 +456,6 @@
             quantityInput.value = val;
             checkStockWarning();
         });
-    }
-    
-    function updateGalleryByColor(colorId) {
-        const galleryContainer = document.getElementById('thumbnail-gallery');
-        if (!galleryContainer) return;
-        
-        if (!galleryImages || galleryImages.length === 0) {
-            galleryContainer.innerHTML = '<div class="text-center text-gray-500 col-span-4">No hay imágenes disponibles</div>';
-            return;
-        }
-        
-        let filteredImages = galleryImages;
-        if (colorId) {
-            filteredImages = galleryImages.filter(img => img && img.color_id == colorId);
-        }
-        
-        if (!filteredImages || filteredImages.length === 0) {
-            galleryContainer.innerHTML = '<div class="text-center text-gray-500 col-span-4">No hay imágenes para este color</div>';
-            return;
-        }
-        
-        galleryContainer.innerHTML = filteredImages.map(img => `
-            <div class="product-gallery-thumb rounded-lg overflow-hidden bg-gray-100" 
-                data-image="${img.image || ''}"
-                data-color-id="${img.color_id || ''}"
-                data-color-name="${img.color_name || ''}">
-                <img src="${img.image || ''}" alt="${img.color_name || ''}" class="w-full h-24 object-cover" onerror="this.src='{% static 'img/product-placeholder.jpeg' %}'">
-                <div class="text-center text-xs py-1">${img.color_name || ''}</div>
-            </div>
-        `).join('');
-        
-        setupThumbnailGalleryEvents();
-    }
-
-    function setupThumbnailGalleryEvents() {
-        const thumbs = document.querySelectorAll('.product-gallery-thumb');
-        if (!thumbs.length) return;
-        
-        thumbs.forEach(thumb => {
-            if (thumb._listener) {
-                thumb.removeEventListener('click', thumb._listener);
-            }
-            const handler = (e) => {
-                e.preventDefault();
-                const imageUrl = thumb.dataset.image;
-                const colorId = parseInt(thumb.dataset.colorId);
-                
-                if (imageUrl && imageUrl !== '') {
-                    document.getElementById('main-image').src = imageUrl;
-                }
-                
-                document.querySelectorAll('.product-gallery-thumb').forEach(t => t.classList.remove('active'));
-                thumb.classList.add('active');
-                
-                if (colorId && !isNaN(colorId)) {
-                    const colorBtn = document.querySelector(`#color-selector .variant-btn[data-id="${colorId}"]`);
-                    if (colorBtn && !colorBtn.classList.contains('disabled')) {
-                        colorBtn.click();
-                    }
-                }
-            };
-            thumb._listener = handler;
-            thumb.addEventListener('click', handler);
-        });
-    }
-
-    function setupThumbnailGallery() {
-        setTimeout(() => {
-            setupThumbnailGalleryEvents();
-        }, 100);
     }
     
     function setupAddToCart() {
@@ -535,12 +507,24 @@
             }
         });
     }
+    
+    function setupInitialThumbnails() {
+        const thumbs = document.querySelectorAll('.product-gallery-thumb');
+        thumbs.forEach(thumb => {
+            const imageUrl = thumb.dataset.image;
+            const colorId = parseInt(thumb.dataset.colorId);
+            thumb.onclick = function(e) {
+                e.preventDefault();
+                window.changeMainImage(imageUrl, colorId);
+            };
+        });
+    }
 
     function init() {
         renderColorSelector();
         renderSizeSelector();
         setupQuantityButtons();
-        setupThumbnailGallery();
+        setupInitialThumbnails();
         setupAddToCart();
         setupClearSelection();
         updateUI();
