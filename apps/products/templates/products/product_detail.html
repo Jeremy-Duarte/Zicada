@@ -153,7 +153,12 @@
                     <button class="quantity-btn" id="increase-qty">+</button>
                 </div>
             </div>
-            
+            <div class="mb-4">
+                <button id="clear-selection-btn" 
+                        class="w-full border border-gray-300 text-gray-600 py-2 rounded-lg font-medium hover:bg-gray-50 transition">
+                    Limpiar selección
+                </button>
+            </div>
             <button id="add-to-cart-btn" 
                     class="w-full bg-zicada-accent text-white py-3 rounded-lg font-semibold hover:bg-opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed">
                 Agregar al carrito
@@ -178,21 +183,13 @@
 </div>
 
 <script>
-    // ============================================
-    // DATOS DE VARIANTES
-    // ============================================
     const variantsData = {{ variants_json|safe }};
+    const galleryImages = {{ gallery_images_json|safe }};
     
-    // ============================================
-    // ESTADO DE LA PÁGINA
-    // ============================================
     let selectedColorId = null;
     let selectedSizeId = null;
     let currentVariant = null;
-    
-    // ============================================
-    // UTILIDADES
-    // ============================================
+
     function getUniqueColors() {
         const unique = new Map();
         variantsData.forEach(v => {
@@ -238,12 +235,21 @@
         } else {
             currentVariant = null;
         }
+
+        if (selectedColorId) {
+            updateGalleryByColor(selectedColorId);
+            
+            const firstImage = galleryImages.find(img => img && img.color_id == selectedColorId);
+            if (firstImage && firstImage.image) {
+                document.getElementById('main-image').src = firstImage.image;
+            }
+        } else {
+            updateGalleryByColor(null);
+        }
         
         if (currentVariant) {
-            // Actualizar precio
             document.getElementById('product-price').innerText = `$${currentVariant.price.toLocaleString()}`;
             
-            // Actualizar info de stock (con mensaje seguro)
             const stockInfo = document.getElementById('stock-info');
             if (currentVariant.stock === 0) {
                 stockInfo.innerHTML = '<span class="text-red-500">❌ Agotado</span>';
@@ -256,19 +262,16 @@
                 document.getElementById('add-to-cart-btn').disabled = false;
             }
             
-            // Actualizar cantidad máxima
             const quantityInput = document.getElementById('quantity');
             quantityInput.max = currentVariant.stock > 0 ? currentVariant.stock : 1;
             if (parseInt(quantityInput.value) > currentVariant.stock && currentVariant.stock > 0) {
                 quantityInput.value = currentVariant.stock;
             }
             
-            // Actualizar imagen principal
             if (currentVariant.image && currentVariant.image !== '') {
                 document.getElementById('main-image').src = currentVariant.image;
             }
         } else {
-            // Sin selección completa
             document.getElementById('stock-info').innerHTML = '<span class="text-gray-500">Selecciona un color y una talla</span>';
             document.getElementById('add-to-cart-btn').disabled = true;
         }
@@ -344,6 +347,7 @@
                 // Remover active de otros colores y marcar este
                 container.querySelectorAll('.variant-btn').forEach(b => b.classList.remove('selected'));
                 btn.classList.add('selected');
+                updateGalleryByColor(selectedColorId);
                 updateUI();
             });
         });
@@ -412,27 +416,74 @@
         });
     }
     
-    function setupThumbnailGallery() {
-        document.querySelectorAll('.product-gallery-thumb').forEach(thumb => {
-            thumb.addEventListener('click', () => {
+    function updateGalleryByColor(colorId) {
+        const galleryContainer = document.getElementById('thumbnail-gallery');
+        if (!galleryContainer) return;
+        
+        if (!galleryImages || galleryImages.length === 0) {
+            galleryContainer.innerHTML = '<div class="text-center text-gray-500 col-span-4">No hay imágenes disponibles</div>';
+            return;
+        }
+        
+        let filteredImages = galleryImages;
+        if (colorId) {
+            filteredImages = galleryImages.filter(img => img && img.color_id == colorId);
+        }
+        
+        if (!filteredImages || filteredImages.length === 0) {
+            galleryContainer.innerHTML = '<div class="text-center text-gray-500 col-span-4">No hay imágenes para este color</div>';
+            return;
+        }
+        
+        galleryContainer.innerHTML = filteredImages.map(img => `
+            <div class="product-gallery-thumb rounded-lg overflow-hidden bg-gray-100" 
+                data-image="${img.image || ''}"
+                data-color-id="${img.color_id || ''}"
+                data-color-name="${img.color_name || ''}">
+                <img src="${img.image || ''}" alt="${img.color_name || ''}" class="w-full h-24 object-cover" onerror="this.src='{% static 'img/product-placeholder.jpeg' %}'">
+                <div class="text-center text-xs py-1">${img.color_name || ''}</div>
+            </div>
+        `).join('');
+        
+        setupThumbnailGalleryEvents();
+    }
+
+    function setupThumbnailGalleryEvents() {
+        const thumbs = document.querySelectorAll('.product-gallery-thumb');
+        if (!thumbs.length) return;
+        
+        thumbs.forEach(thumb => {
+            if (thumb._listener) {
+                thumb.removeEventListener('click', thumb._listener);
+            }
+            const handler = (e) => {
+                e.preventDefault();
                 const imageUrl = thumb.dataset.image;
+                const colorId = parseInt(thumb.dataset.colorId);
+                
                 if (imageUrl && imageUrl !== '') {
                     document.getElementById('main-image').src = imageUrl;
                 }
+                
                 document.querySelectorAll('.product-gallery-thumb').forEach(t => t.classList.remove('active'));
                 thumb.classList.add('active');
                 
-                // También seleccionar el color correspondiente
-                const colorId = thumb.dataset.colorId;
-                if (colorId) {
-                    // Buscar y hacer click en el botón de color correspondiente
+                if (colorId && !isNaN(colorId)) {
                     const colorBtn = document.querySelector(`#color-selector .variant-btn[data-id="${colorId}"]`);
                     if (colorBtn && !colorBtn.classList.contains('disabled')) {
                         colorBtn.click();
                     }
                 }
-            });
+            };
+            thumb._listener = handler;
+            thumb.addEventListener('click', handler);
         });
+    }
+
+    function setupThumbnailGallery() {
+        setTimeout(() => {
+            setupThumbnailGalleryEvents();
+        }, 100);
     }
     
     function setupAddToCart() {
@@ -456,12 +507,42 @@
         });
     }
 
+    function setupClearSelection() {
+        const clearBtn = document.getElementById('clear-selection-btn');
+        if (!clearBtn) return;
+        
+        clearBtn.addEventListener('click', () => {
+            selectedColorId = null;
+            selectedSizeId = null;
+            currentVariant = null;
+            
+            document.querySelectorAll('#color-selector .variant-btn').forEach(btn => {
+                btn.classList.remove('selected');
+            });
+            document.querySelectorAll('#size-selector .variant-btn').forEach(btn => {
+                btn.classList.remove('selected');
+            });
+            
+            document.getElementById('quantity').value = 1;
+            
+            updateGalleryByColor(null);
+            updateUI();
+            
+            if (galleryImages && galleryImages.length > 0 && galleryImages[0].image) {
+                document.getElementById('main-image').src = galleryImages[0].image;
+            } else {
+                document.getElementById('main-image').src = "{% static 'img/product-placeholder.jpeg' %}";
+            }
+        });
+    }
+
     function init() {
         renderColorSelector();
         renderSizeSelector();
         setupQuantityButtons();
         setupThumbnailGallery();
         setupAddToCart();
+        setupClearSelection();
         updateUI();
     }
     
