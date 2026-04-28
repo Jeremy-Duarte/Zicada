@@ -9,53 +9,63 @@
         transition: all 0.2s ease;
         cursor: pointer;
         border: 2px solid transparent;
+        filter: grayscale(0.3);
     }
     
     .product-gallery-thumb:hover {
         transform: scale(1.05);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        filter: grayscale(0);
     }
     
     .product-gallery-thumb.active {
-        border-color: #c2a575;
+        border-color: #dc2626;
         transform: scale(1.02);
+        filter: grayscale(0);
     }
     
     .quantity-input {
         width: 60px;
         text-align: center;
-        border: 1px solid #e2e8f0;
+        border: 1px solid #d1d5db;
         border-radius: 0.5rem;
         padding: 0.5rem;
+        font-weight: 500;
     }
     
     .quantity-btn {
-        background-color: #f3f4f6;
-        border: 1px solid #e2e8f0;
+        background-color: #f9fafb;
+        border: 1px solid #d1d5db;
         border-radius: 0.5rem;
         padding: 0.5rem 1rem;
         cursor: pointer;
         transition: all 0.2s ease;
+        font-weight: 500;
+        color: #111827;
     }
     
     .quantity-btn:hover {
         background-color: #e5e7eb;
+        border-color: #9ca3af;
     }
     
     .variant-btn {
         transition: all 0.2s ease;
         cursor: pointer;
         border-width: 2px;
+        border-color: #d1d5db;
+        color: #374151;
+        background-color: #ffffff;
     }
     
     .variant-btn.selected {
-        background-color: #c2a575 !important;
-        color: white !important;
-        border-color: #c2a575 !important;
+        background-color: #111827 !important;
+        color: #ffffff !important;
+        border-color: #111827 !important;
     }
     
     .variant-btn.disabled {
-        opacity: 0.5;
+        opacity: 0.4;
         cursor: not-allowed;
         background-color: #f3f4f6 !important;
         color: #9ca3af !important;
@@ -67,44 +77,98 @@
         width: 32px;
         height: 32px;
         border-radius: 50%;
-        border: 2px solid #e2e8f0;
+        border: 2px solid #d1d5db;
         transition: all 0.2s ease;
     }
     
     .color-preview:hover {
         transform: scale(1.1);
-        border-color: #c2a575;
+        border-color: #111827;
+    }
+
+    .product-price {
+        color: #dc2626;
+    }
+
+    .section-title {
+        font-weight: 600;
+        color: #111827;
+        letter-spacing: -0.02em;
+    }
+
+    .description-text {
+        color: #4b5563;
+        line-height: 1.75;
+    }
+
+    .clear-btn {
+        border: 2px solid #d1d5db;
+        color: #374151;
+        transition: all 0.2s;
+    }
+
+    .clear-btn:hover {
+        background-color: #f3f4f6;
+        border-color: #9ca3af;
+    }
+
+    .add-to-cart-btn {
+        background-color: #111827;
+        color: #ffffff;
+        transition: all 0.2s;
+    }
+
+    .add-to-cart-btn:hover:not(:disabled) {
+        background-color: #374151;
+    }
+
+    .add-to-cart-btn:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+    }
+
+    .stock-warning {
+        color: #dc2626;
+    }
+
+    .guide-link {
+        color: #dc2626;
+    }
+
+    .guide-link:hover {
+        text-decoration: underline;
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container mx-auto px-4 py-12">
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
+<div class="container mx-auto px-4 py-16 max-w-7xl">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-16">
         
+        <!-- COLUMNA IZQUIERDA: Galería -->
         <div>
-            <div class="bg-gray-100 rounded-2xl overflow-hidden mb-4">
+            <div class="bg-gray-100 rounded-2xl overflow-hidden mb-4 shadow-sm">
                 <img id="main-image" 
                     src="{% if gallery_images %}{{ gallery_images.0.image }}{% else %}{% static 'img/product-placeholder.jpeg' %}{% endif %}" 
                     alt="{{ product.name }}" 
-                    class="w-full h-96 object-cover">
+                    class="w-full h-96 md:h-128 object-cover">
             </div>
             
             {% if gallery_images|length > 1 %}
             <div class="grid grid-cols-4 gap-3" id="thumbnail-gallery">
                 {% for gallery_item in gallery_images %}
-                <div class="product-gallery-thumb rounded-lg overflow-hidden bg-gray-100" 
+                <div class="product-gallery-thumb rounded-lg overflow-hidden bg-gray-100 shadow-sm"
                     data-image="{{ gallery_item.image }}"
                     data-color-id="{{ gallery_item.color_id }}"
                     data-color-name="{{ gallery_item.color_name }}">
                     {% if gallery_item.image %}
                         <img src="{{ gallery_item.image }}" alt="{{ gallery_item.color_name }}" class="w-full h-24 object-cover">
                     {% else %}
-                        <div class="w-full h-24 bg-gray-200 flex items-center justify-center text-xs text-gray-400">
+                        <div class="w-full h-24 bg-gray-200 flex items-center justify-center text-xs text-gray-500">
                             Sin imagen
                         </div>
                     {% endif %}
-                    <div class="text-center text-xs py-1">{{ gallery_item.color_name }}</div>
+                    <div class="text-center text-xs py-1 text-gray-600">{{ gallery_item.color_name }}</div>
                 </div>
                 {% endfor %}
             </div>
@@ -112,68 +176,68 @@
         </div>
         
         <!-- COLUMNA DERECHA: Información del producto -->
-        <div>
-            <div class="mb-2">
-                <span class="text-sm text-zicada-accent uppercase tracking-wide">{{ product.category.name }}</span>
+        <div class="flex flex-col gap-6">
+            <div>
+                <span class="text-sm text-gray-600 uppercase tracking-wider">{{ product.category.name }}</span>
+                <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mt-1">{{ product.name }}</h1>
             </div>
             
-            <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">{{ product.name }}</h1>
-            
-            <div class="mb-6">
-                <span id="product-price" class="text-3xl font-bold text-zicada-accent">${{ product.price|floatformat:0 }}</span>
-                <span class="text-gray-500 ml-2">COP</span>
+            <div class="flex items-baseline gap-2">
+                <span id="product-price" class="text-3xl font-bold product-price">${{ product.price|floatformat:0 }}</span>
+                <span class="text-gray-500">COP</span>
             </div>
             
-            <div class="mb-6">
-                <p class="text-gray-600 leading-relaxed">{{ product.description|default:"Sin descripción disponible." }}</p>
+            <div class="description-text">
+                <p>{{ product.description|default:"Sin descripción disponible." }}</p>
             </div>
             
             <!-- Selector de COLOR -->
-            <div class="mb-6">
-                <h3 class="font-semibold text-gray-800 mb-3">Color</h3>
+            <div>
+                <h3 class="section-title mb-3">Color</h3>
                 <div class="flex flex-wrap gap-3" id="color-selector"></div>
             </div>
             
             <!-- Selector de TALLA -->
-            <div class="mb-6">
+            <div>
                 <div class="flex justify-between items-center mb-3">
-                    <h3 class="font-semibold text-gray-800">Talla</h3>
-                    <a href="#" class="text-sm text-zicada-accent hover:underline">Guía de tallas</a>
+                    <h3 class="section-title">Talla</h3>
+                    <a href="#" class="text-sm guide-link">Guía de tallas</a>
                 </div>
                 <div class="flex flex-wrap gap-3" id="size-selector"></div>
-                <div id="stock-info" class="mt-2 text-sm"></div>
+                <div id="stock-info" class="mt-2 text-sm text-gray-600"></div>
             </div>
             
             <!-- Selector de CANTIDAD -->
-            <div class="mb-8">
-                <h3 class="font-semibold text-gray-800 mb-3">Cantidad</h3>
+            <div>
+                <h3 class="section-title mb-3">Cantidad</h3>
                 <div class="flex items-center gap-3">
                     <button class="quantity-btn" id="decrease-qty">−</button>
                     <input type="number" id="quantity" value="1" min="1" max="99" class="quantity-input">
                     <button class="quantity-btn" id="increase-qty">+</button>
                 </div>
             </div>
-            <div class="mb-4">
-                <button id="clear-selection-btn" 
-                        class="w-full border border-gray-300 text-gray-600 py-2 rounded-lg font-medium hover:bg-gray-50 transition">
-                    Limpiar selección
+
+            <div class="grid grid-cols-2 gap-4">
+                <button id="clear-selection-btn"
+                        class="clear-btn py-3 rounded-lg font-medium">
+                    Limpiar
+            </button>
+                <button id="add-to-cart-btn"
+                        class="add-to-cart-btn py-3 rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed">
+                    Agregar al carrito
                 </button>
             </div>
-            <button id="add-to-cart-btn" 
-                    class="w-full bg-zicada-accent text-white py-3 rounded-lg font-semibold hover:bg-opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed">
-                Agregar al carrito
-            </button>
-            
-            <div id="stock-warning" class="mt-3 text-sm text-red-500 hidden">
-                ⚠️ Stock insuficiente para la cantidad seleccionada
-            </div>
+
+            <div id="stock-warning" class="stock-warning text-sm hidden">
+                ⚠️ Stock insuficiente
         </div>
     </div>
-    
+        </div>
+
     {% if related_products %}
-    <section class="mt-20">
-        <h3 class="text-2xl font-bold text-gray-900 mb-6">Productos que también te pueden interesar</h3>
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+    <section class="mt-24">
+        <h3 class="text-2xl font-bold text-gray-900 mb-8">También te puede interesar</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
             {% for related in related_products %}
                 {% include 'components/product_card.html' with product=related %}
             {% endfor %}
@@ -241,16 +305,16 @@
             
             const stockInfo = document.getElementById('stock-info');
             if (currentVariant.stock === 0) {
-                stockInfo.innerHTML = '<span class="text-red-500">❌ Agotado</span>';
+                stockInfo.innerHTML = '<span class="text-red-600">❌ Agotado</span>';
                 document.getElementById('add-to-cart-btn').disabled = true;
             } else if (currentVariant.stock <= 10) {
-                stockInfo.innerHTML = `<span class="text-orange-500">⚠️ ¡Últimas ${currentVariant.stock} unidades!</span>`;
+                stockInfo.innerHTML = `<span class="text-red-500">⚠️ ¡Últimas ${currentVariant.stock} unidades!</span>`;
                 document.getElementById('add-to-cart-btn').disabled = false;
             } else {
-                stockInfo.innerHTML = '<span class="text-green-500">✅ Disponible</span>';
+                stockInfo.innerHTML = '<span class="text-green-600">✅ Disponible</span>';
                 document.getElementById('add-to-cart-btn').disabled = false;
-            }
-            
+    }
+    
             const quantityInput = document.getElementById('quantity');
             quantityInput.max = currentVariant.stock > 0 ? currentVariant.stock : 1;
             if (parseInt(quantityInput.value) > currentVariant.stock && currentVariant.stock > 0) {
