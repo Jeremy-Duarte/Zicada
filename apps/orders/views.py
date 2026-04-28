@@ -1,8 +1,10 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib import messages
+from django.http import JsonResponse
+from .cart import Cart
 from .models import Order
-
+from decimal import Decimal
 
 @staff_member_required
 def delivery_dashboard(request):
@@ -38,3 +40,14 @@ def deliver_order(request, order_id):
     order.mark_as_delivered(user=request.user)
     messages.success(request, f'Pedido {order.order_number} entregado y pagado.')
     return redirect('orders:delivery_dashboard')
+
+def cart_data(request):
+    cart = Cart(request)
+    summary = cart.get_summary()
+    summary['subtotal'] = float(summary['subtotal'])
+    summary['shipping_cost'] = float(summary['shipping_cost'])
+    summary['total'] = float(summary['total'])
+    for item in summary['items']:
+        item['price'] = float(item['price'])
+        item['subtotal'] = float(Decimal(item['price']) * item['quantity'])
+    return JsonResponse(summary)
