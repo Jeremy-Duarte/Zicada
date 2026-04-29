@@ -344,9 +344,8 @@ class Cart:
                     variant=variant,
                     product_name_snapshot=item['product_name'],
                     size_snapshot=item['size_name'],
-                    color_snapshot=item['color_name'],
                     quantity=item['quantity'],
-                    unit_price=Decimal(item['price']),     # precio almacenado como cadena
+                    unit_price=Decimal(item['price']),
                     stock_snapshot=variant.stock,
                     subtotal=Decimal(item['price']) * item['quantity']
                 )
