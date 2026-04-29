@@ -7,6 +7,11 @@ from .cart import Cart
 from .models import Order
 from decimal import Decimal
 import json
+from django.core.exceptions import ValidationError
+from django.db import transaction
+from decimal import Decimal
+from .cart import Cart
+from .models import Order
 
 @staff_member_required
 def delivery_dashboard(request):
@@ -121,3 +126,113 @@ def cart_detail(request):
     cart = Cart(request)
     context = cart.get_summary()
     return render(request, 'orders/cart_detail.html', context)
+
+def checkout(request):
+    """Página de checkout - formulario de datos del cliente y resumen del pedido."""
+    cart = Cart(request)
+    
+    if cart.is_empty():
+        messages.warning(request, 'Tu carrito está vacío. Agrega productos antes de continuar.')
+        return redirect('products:catalog')
+    
+    stock_errors = cart.validate_stock()
+    if stock_errors:
+        for error in stock_errors:
+            messages.error(
+                request, 
+                f'"{error["name"]}" ({error["size"]}, {error["color"]}): '
+                f'solicitado {error["requested"]}, disponible {error["available"]}'
+            )
+        return redirect('orders:cart_detail')
+    
+    if request.method == 'POST':
+        # Si es una petición de pago simulada
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return process_payment(request, cart)
+        return process_order(request, cart)
+    
+    summary = cart.get_summary()
+    summary['shipping_cost'] = float(summary['shipping_cost'])
+    summary['subtotal'] = float(summary['subtotal'])
+    summary['total'] = float(summary['total'])
+    
+    context = {
+        'cart_summary': summary,
+        'shipping_cost': summary['shipping_cost'],
+    }
+    return render(request, 'orders/checkout.html', context)
+
+
+def process_payment(request, cart):
+    """Procesa el pago del pedido (simulado o con pasarela real)."""
+    import json
+    from decimal import Decimal
+    
+    try:
+        data = json.loads(request.body)
+        payment_method = data.get('payment_method', 'contraentrega')
+        
+        # Aquí iría la integración con pasarela de pagos (Wompi, PayU, etc.)
+        # Por ahora, simulamos un pago exitoso
+        
+        # Simular procesamiento
+        import time
+        time.sleep(1)  # Simular latencia de red
+        
+        # Crear el pedido después del pago exitoso
+        customer_name = data.get('customer_name', '').strip()
+        customer_phone = data.get('customer_phone', '').strip()
+        customer_email = data.get('customer_email', '').strip() or None
+        shipping_address = data.get('shipping_address', '').strip()
+        delivery_notes = data.get('delivery_notes', '').strip()
+        
+        if not customer_name or not customer_phone or not shipping_address:
+            return JsonResponse({'success': False, 'error': 'Faltan datos obligatorios'}, status=400)
+        
+        with transaction.atomic():
+            order = Order(
+                customer_name=customer_name,
+                customer_phone=customer_phone,
+                customer_email=customer_email,
+                shipping_address=shipping_address,
+                delivery_notes=delivery_notes or '',
+                subtotal=cart.get_subtotal(),
+                shipping_cost=cart.get_shipping_cost(),
+                total_amount=cart.get_total(),
+                status='confirmado',  # El pedido se confirma inmediatamente después del pago
+                is_paid=True,  # Se marca como pagado
+                created_by=request.user if request.user.is_authenticated else None,
+                updated_by=request.user if request.user.is_authenticated else None,
+            )
+            order.save()
+            
+            cart.to_order_items(order)
+            cart.clear()
+            
+            return JsonResponse({
+                'success': True,
+                'order_number': order.order_number,
+                'message': 'Pago procesado exitosamente'
+            })
+            
+    except ValidationError as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': f'Error inesperado: {str(e)}'}, status=400)
+
+
+def order_confirmation(request, order_number):
+    """Página de confirmación de pedido (factura/comprobante)."""
+    from .models import Order
+    
+    try:
+        order = Order.objects.select_related('created_by').get(order_number=order_number)
+    except Order.DoesNotExist:
+        messages.error(request, 'Pedido no encontrado.')
+        return redirect('products:catalog')
+    
+    context = {
+        'order': order,
+        'items': order.items.all(),
+    }
+    return render(request, 'orders/order_confirmation.html', context)
