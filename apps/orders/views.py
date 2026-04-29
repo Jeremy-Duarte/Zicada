@@ -1,10 +1,12 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib import messages
+from django.views.decorators.http import require_http_methods
 from django.http import JsonResponse
 from .cart import Cart
 from .models import Order
 from decimal import Decimal
+import json
 
 @staff_member_required
 def delivery_dashboard(request):
@@ -41,6 +43,69 @@ def deliver_order(request, order_id):
     messages.success(request, f'Pedido {order.order_number} entregado y pagado.')
     return redirect('orders:delivery_dashboard')
 
+@require_http_methods(['POST'])
+def cart_add(request):
+    try:
+        data = json.loads(request.body) if request.body else request.POST
+        variant_id = data.get('variant_id')
+        quantity = int(data.get('quantity', 1))
+    except (json.JSONDecodeError, ValueError, TypeError):
+        return JsonResponse({'error': 'Datos inválidos'}, status=400)
+
+    cart = Cart(request)
+    try:
+        cart.add(variant_id, quantity)
+        return JsonResponse({
+            'success': True,
+            'total_items': cart.get_total_items(),
+            'message': 'Producto agregado al carrito'
+        })
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+
+
+@require_http_methods(['POST'])
+def cart_remove(request):
+    try:
+        data = json.loads(request.body) if request.body else request.POST
+        variant_id = data.get('variant_id')
+    except (json.JSONDecodeError, ValueError, TypeError):
+        return JsonResponse({'error': 'Datos inválidos'}, status=400)
+
+    cart = Cart(request)
+    cart.remove(variant_id)
+    return JsonResponse({
+        'success': True,
+        'total_items': cart.get_total_items(),
+    })
+
+@require_http_methods(['POST'])
+def cart_update(request):
+    try:
+        data = json.loads(request.body) if request.body else request.POST
+        variant_id = data.get('variant_id')
+        quantity = data.get('quantity')
+        
+        if isinstance(quantity, str):
+            quantity = int(quantity)
+        elif isinstance(quantity, int):
+            pass
+        else:
+            return JsonResponse({'error': 'Cantidad inválida'}, status=400)
+            
+    except (json.JSONDecodeError, ValueError, TypeError) as e:
+        return JsonResponse({'error': f'Datos inválidos: {str(e)}'}, status=400)
+
+    cart = Cart(request)
+    try:
+        cart.update_quantity(variant_id, quantity)
+        return JsonResponse({
+            'success': True,
+            'total_items': cart.get_total_items(),
+        })
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+
 def cart_data(request):
     cart = Cart(request)
     summary = cart.get_summary()
@@ -51,3 +116,8 @@ def cart_data(request):
         item['price'] = float(item['price'])
         item['subtotal'] = float(Decimal(item['price']) * item['quantity'])
     return JsonResponse(summary)
+
+def cart_detail(request):
+    cart = Cart(request)
+    context = cart.get_summary()
+    return render(request, 'orders/cart_detail.html', context)

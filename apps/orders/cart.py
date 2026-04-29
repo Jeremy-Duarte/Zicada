@@ -26,6 +26,10 @@ class Cart:
         if not cart:
             cart = {'items': {}, 'updated_at': None}
         self.cart = cart
+        self.FREE_SHIPPING_THRESHOLD = FREE_SHIPPING_THRESHOLD
+        self.DEFAULT_SHIPPING_COST = DEFAULT_SHIPPING_COST
+        self.CART_EXPIRATION_DAYS = CART_EXPIRATION_DAYS
+        self.MAX_QUANTITY_PER_ITEM = MAX_QUANTITY_PER_ITEM
         # Limpia carritos expirados en memoria sin forzar una escritura en la sesión
         self._clean_if_expired()
 
@@ -61,7 +65,10 @@ class Cart:
         """
         try:
             return ProductVariant.objects.select_related(
-                'product', 'size', 'color'
+                'product', 
+                'size', 
+                'product_color',
+                'product_color__color'
             ).get(id=variant_id, is_active=True)
         except ProductVariant.DoesNotExist:
             logger.warning("Attempt to access unavailable variant (id=%s).", variant_id)
@@ -88,9 +95,9 @@ class Cart:
         if not isinstance(quantity, int) or quantity < 1:
             raise ValidationError('La cantidad debe ser un número entero positivo.')
 
-        if quantity > self.MAX_QUANTITY_PER_ITEM:
+        if quantity > MAX_QUANTITY_PER_ITEM:
             raise ValidationError(
-                f'No puedes agregar más de {self.MAX_QUANTITY_PER_ITEM} '
+                f'No puedes agregar más de {MAX_QUANTITY_PER_ITEM} '
                 f'unidades del mismo producto.'
             )
 
@@ -104,18 +111,24 @@ class Cart:
             logger.warning("Out of stock (id=%s, name=%s).", variant_id, variant.product.name)
             raise ValidationError(
                 f'Lo sentimos, "{variant.product.name}" ({variant.size.name}, '
-                f'{variant.color.name}) está agotado.'
+                f'{variant.product_color.color.name}) está agotado.'
             )
 
         if variant.stock < new_qty:
             max_extra = variant.stock - current_qty
             raise ValidationError(
                 f'No tenemos suficiente stock de "{variant.product.name}" '
-                f'({variant.size.name}, {variant.color.name}). '
+                f'({variant.size.name}, {variant.product_color.color.name}). '
                 f'Disponible: {variant.stock}. '
                 f'Ya tienes {current_qty} en el carrito. '
                 f'Puedes agregar hasta {max_extra} más.'
             )
+
+        featured_image = ''
+        if variant.product_color.featured_image:
+            featured_image = variant.product_color.featured_image.image.url
+        elif variant.product_color.images.exists():
+            featured_image = variant.product_color.images.first().image.url
 
         if item_key in items:
             items[item_key]['quantity'] = new_qty
@@ -124,11 +137,11 @@ class Cart:
                 'variant_id': variant.id,
                 'product_name': variant.product.name,
                 'size_name': variant.size.name,
-                'color_name': variant.color.name,
-                'color_code': variant.color.code or '#cccccc',
-                'price': str(variant.product.price),  # Conservar como cadena para mantener precisión decimal
+                'color_name': variant.product_color.color.name,
+                'color_code': variant.product_color.color.code or '#cccccc',
+                'price': str(variant.product.price),
                 'quantity': quantity,
-                'image': variant.image.url if variant.image else '',
+                'image': featured_image,
                 'stock': variant.stock,
             }
 
@@ -170,13 +183,14 @@ class Cart:
             raise ValidationError('El producto no está en tu carrito.')
 
         with transaction.atomic():
-            variant = ProductVariant.objects.select_for_update().get(
-                id=variant_id, is_active=True
-            )
+            variant = ProductVariant.objects.select_for_update().select_related(
+                'product', 'size', 'product_color', 'product_color__color'
+            ).get(id=variant_id, is_active=True)
+            
             if variant.stock < quantity:
                 raise ValidationError(
                     f'Stock insuficiente para "{variant.product.name}" '
-                    f'({variant.size.name}, {variant.color.name}). '
+                    f'({variant.size.name}, {variant.product_color.color.name}). '
                     f'Disponible: {variant.stock}.'
                 )
             self.cart['items'][item_key]['quantity'] = quantity
@@ -250,7 +264,7 @@ class Cart:
         for item in self.get_items():
             try:
                 variant = ProductVariant.objects.select_related(
-                    'product', 'size', 'color'
+                    'product', 'size', 'product_color', 'product_color__color'
                 ).get(id=item['variant_id'], is_active=True)
                 if variant.stock < item['quantity']:
                     errors.append({
@@ -303,10 +317,8 @@ class Cart:
                 try:
                     # Bloquea y carga la variante, asegurando que siga activa
                     variant = ProductVariant.objects.select_related(
-                        'product', 'size', 'color'
-                    ).select_for_update().get(
-                        id=item['variant_id'], is_active=True
-                    )
+                        'product', 'size', 'product_color', 'product_color__color'
+                    ).get(id=item['variant_id'], is_active=True)
                 except ProductVariant.DoesNotExist:
                     logger.error("Variant %d vanished during order creation.", item['variant_id'])
                     raise ValidationError(
