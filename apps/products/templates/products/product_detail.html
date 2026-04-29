@@ -523,9 +523,13 @@
     }
     
     function setupAddToCart() {
-        document.getElementById('add-to-cart-btn').addEventListener('click', () => {
+        const addBtn = document.getElementById('add-to-cart-btn');
+        if (!addBtn) return;
+        
+        addBtn.addEventListener('click', async () => {
             const quantity = parseInt(document.getElementById('quantity').value);
             
+            // Validaciones
             if (!selectedColorId || !selectedSizeId) {
                 alert('❌ Por favor selecciona un color y una talla');
                 return;
@@ -538,9 +542,68 @@
                 alert('❌ No hay suficiente stock disponible');
                 return;
             }
-
-            alert(`Agregado al carrito: ${quantity}x ${currentVariant.color_name} - ${currentVariant.size_name}`);
+            
+            // Deshabilitar botón mientras se procesa
+            addBtn.disabled = true;
+            addBtn.textContent = 'Agregando...';
+            
+            try {
+                const response = await fetch('{% url "orders:cart_add" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        variant_id: currentVariant.id,
+                        quantity: quantity
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Actualizar contador del carrito en el header
+                    const cartCountSpan = document.getElementById('cart-count');
+                    if (cartCountSpan) {
+                        cartCountSpan.textContent = data.total_items;
+                    }
+                    
+                    // Mostrar mensaje de éxito (puedes usar un toast en lugar de alert)
+                    alert(`✅ Agregado al carrito: ${quantity}x ${currentVariant.color_name} - ${currentVariant.size_name}`);
+                    
+                    // Opcional: animación en el ícono del carrito
+                    const cartIcon = document.getElementById('cart-icon');
+                    if (cartIcon) {
+                        cartIcon.classList.add('scale-110');
+                        setTimeout(() => cartIcon.classList.remove('scale-110'), 300);
+                    }
+                } else {
+                    alert(`❌ Error: ${data.error}`);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('❌ Error al agregar al carrito. Intenta de nuevo.');
+            } finally {
+                addBtn.disabled = false;
+                addBtn.textContent = 'Agregar al carrito';
+            }
         });
+    }
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
     }
 
     function setupClearSelection() {
