@@ -1,8 +1,305 @@
 {% load static %}
+
+<!-- Icono del carrito -->
+<a href="#" id="cart-icon" class="relative hover:text-zicada-accent transition">
     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.5 6M17 13l1.5 6M9 21h6M6 21h.01M18 21h.01" />
     </svg>
     <span id="cart-count" class="absolute -top-2 -right-3 bg-zicada-accent text-white text-xs rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
-        0
+        {{ cart_total_items|default:0 }}
     </span>
 </a>
+
+<!-- Modal del carrito -->
+<div id="cart-modal" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div class="flex items-center justify-center min-h-screen px-4">
+        <!-- Fondo oscuro -->
+        <div class="fixed inset-0 bg-black bg-opacity-50 transition-opacity" id="modal-backdrop"></div>
+
+        <!-- Modal content -->
+        <div class="relative bg-white rounded-lg shadow-xl max-w-lg w-full mx-auto transform transition-all">
+            <!-- Header -->
+            <div class="flex justify-between items-center p-4 border-b border-gray-200">
+                <h3 class="text-xl font-bold text-gray-900">Tu carrito</h3>
+                <button id="close-modal" class="text-gray-500 hover:text-gray-700 transition">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Body (contenido dinámico) -->
+            <div id="cart-modal-body" class="p-4 max-h-96 overflow-y-auto bg-gray-50">
+                <div class="text-center py-8">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-zicada-accent mx-auto"></div>
+                    <p class="mt-2 text-gray-600">Cargando carrito...</p>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div id="cart-modal-footer" class="border-t border-gray-200 p-4 bg-white">
+                <!-- El footer se llena dinámicamente -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Elementos del DOM
+    const cartIcon = document.getElementById('cart-icon');
+    const modal = document.getElementById('cart-modal');
+    const closeModalBtn = document.getElementById('close-modal');
+    const modalBody = document.getElementById('cart-modal-body');
+    const modalFooter = document.getElementById('cart-modal-footer');
+    const cartCountSpan = document.getElementById('cart-count');
+
+    let currentCartData = null;  // Guardar datos actuales
+
+    function openCartModal() {
+        modal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+        loadCartData();
+    }
+
+    function closeCartModal() {
+        modal.classList.add('hidden');
+        document.body.style.overflow = '';
+    }
+
+    function loadCartData() {
+        fetch('{% url "orders:cart_data" %}')
+            .then(response => response.json())
+            .then(data => {
+                currentCartData = data;
+                renderCartModal(data);
+            })
+            .catch(error => {
+                console.error('Error al cargar carrito:', error);
+                modalBody.innerHTML = '<div class="text-center py-8 text-red-600">Error al cargar el carrito. Intente de nuevo.</div>';
+                modalFooter.innerHTML = '';
+            });
+    }
+
+    function renderCartModal(data) {
+        const { items, subtotal, shipping_cost, total, is_empty } = data;
+        
+        if (is_empty) {
+            modalBody.innerHTML = `
+                <div class="text-center py-8">
+                    <svg class="mx-auto h-16 w-16 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.5 6M17 13l1.5 6M9 21h6M6 21h.01M18 21h.01" />
+                    </svg>
+                    <p class="mt-4 text-gray-600">Tu carrito está vacío</p>
+                    <button id="continue-shopping-empty" class="mt-6 bg-zicada-accent text-white px-6 py-2 rounded-lg font-medium hover:bg-opacity-90 transition">Seguir comprando</button>
+                </div>
+            `;
+            modalFooter.innerHTML = '';
+            const continueBtn = document.getElementById('continue-shopping-empty');
+            if (continueBtn) continueBtn.addEventListener('click', closeCartModal);
+            return;
+        }
+
+        // Renderizar items
+        modalBody.innerHTML = items.map(item => `
+            <div class="flex gap-4 mb-4 pb-4 border-b border-gray-200 last:border-0" data-variant-id="${item.variant_id}">
+                <img src="${item.image || '{% static 'img/product-placeholder.jpeg' %}'}" alt="${item.product_name}" class="w-20 h-20 object-cover rounded-lg bg-white">
+                <div class="flex-1">
+                    <h4 class="font-semibold text-gray-900">${escapeHtml(item.product_name)}</h4>
+                    <p class="text-sm text-gray-500">Talla: ${escapeHtml(item.size_name)} | Color: ${escapeHtml(item.color_name)}</p>
+                    <div class="flex items-center justify-between mt-2">
+                        <div class="flex items-center gap-2">
+                            <button class="qty-decr w-7 h-7 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-full transition">-</button>
+                            <span class="qty-value w-8 text-center font-medium text-gray-900">${item.quantity}</span>
+                            <button class="qty-incr w-7 h-7 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-full transition">+</button>
+                        </div>
+                        <div class="font-bold text-gray-900">$${(item.price * item.quantity).toLocaleString()}</div>
+                        <button class="remove-item text-red-500 hover:text-red-700 transition" title="Eliminar">🗑️</button>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+
+        modalFooter.innerHTML = `
+            <div class="space-y-3">
+                <div class="flex justify-between text-gray-700">
+                    <span>Subtotal:</span>
+                    <span class="font-medium">$${subtotal.toLocaleString()}</span>
+                </div>
+                <div class="flex justify-between text-gray-700">
+                    <span>Envío:</span>
+                    <span class="font-medium">$${shipping_cost.toLocaleString()}</span>
+                </div>
+                <div class="flex justify-between text-lg font-bold text-gray-900 pt-3 border-t border-gray-200">
+                    <span>Total:</span>
+                    <span>$${total.toLocaleString()}</span>
+                </div>
+                <div class="grid grid-cols-2 gap-3 pt-4">
+                    <button id="goto-cart-btn" class="bg-zicada-accent text-white py-2.5 rounded-lg font-semibold hover:bg-opacity-90 transition">Ver carrito</button>
+                    <button id="close-modal-footer-btn" class="border border-gray-300 text-gray-700 py-2.5 rounded-lg font-medium hover:bg-gray-50 transition">Seguir comprando</button>
+                </div>
+            </div>
+        `;
+
+        // Reasignar eventos después de renderizar
+        attachItemEvents();
+        
+        const gotoCartBtn = document.getElementById('goto-cart-btn');
+        if (gotoCartBtn) {
+            gotoCartBtn.addEventListener('click', () => {
+                window.location.href = '{% url "orders:cart_detail" %}';
+            });
+        }
+        const closeFooterBtn = document.getElementById('close-modal-footer-btn');
+        if (closeFooterBtn) {
+            closeFooterBtn.addEventListener('click', closeCartModal);
+        }
+    }
+
+    function attachItemEvents() {
+        // Botones incrementar
+        document.querySelectorAll('.qty-incr').forEach(btn => {
+            btn.removeEventListener('click', handleIncrement);
+            btn.addEventListener('click', handleIncrement);
+        });
+        // Botones decrementar
+        document.querySelectorAll('.qty-decr').forEach(btn => {
+            btn.removeEventListener('click', handleDecrement);
+            btn.addEventListener('click', handleDecrement);
+        });
+        // Botones eliminar
+        document.querySelectorAll('.remove-item').forEach(btn => {
+            btn.removeEventListener('click', handleRemove);
+            btn.addEventListener('click', handleRemove);
+        });
+    }
+
+    function getVariantIdFromButton(btn) {
+        const itemDiv = btn.closest('[data-variant-id]');
+        return itemDiv ? parseInt(itemDiv.dataset.variantId) : null;
+    }
+
+    function handleIncrement(e) {
+        e.preventDefault();
+        const variantId = getVariantIdFromButton(e.currentTarget);
+        if (!variantId) return;
+        updateItemQuantity(variantId, 'increase');
+    }
+
+    function handleDecrement(e) {
+        e.preventDefault();
+        const variantId = getVariantIdFromButton(e.currentTarget);
+        if (!variantId) return;
+        updateItemQuantity(variantId, 'decrease');
+    }
+
+    function handleRemove(e) {
+        e.preventDefault();
+        const variantId = getVariantIdFromButton(e.currentTarget);
+        if (!variantId) return;
+        updateItemQuantity(variantId, 'remove');
+    }
+
+    function updateItemQuantity(variantId, action) {
+        let url = '';
+        let body = {};
+        
+        if (action === 'increase') {
+            const itemDiv = document.querySelector(`[data-variant-id="${variantId}"]`);
+            if (!itemDiv) return;
+            const qtySpan = itemDiv.querySelector('.qty-value');
+            if (!qtySpan) return;
+            let currentQty = parseInt(qtySpan.innerText);
+            url = '{% url "orders:cart_update" %}';
+            body = { variant_id: variantId, quantity: currentQty + 1 };
+        } else if (action === 'decrease') {
+            const itemDiv = document.querySelector(`[data-variant-id="${variantId}"]`);
+            if (!itemDiv) return;
+            const qtySpan = itemDiv.querySelector('.qty-value');
+            if (!qtySpan) return;
+            let currentQty = parseInt(qtySpan.innerText);
+            if (currentQty <= 1) {
+                action = 'remove';
+            } else {
+                url = '{% url "orders:cart_update" %}';
+                body = { variant_id: variantId, quantity: currentQty - 1 };
+            }
+        }
+        
+        if (action === 'remove') {
+            url = '{% url "orders:cart_remove" %}';
+            body = { variant_id: variantId };
+        }
+
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify(body)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                if (data.total_items !== undefined) {
+                    cartCountSpan.innerText = data.total_items;
+                }
+                // Recargar todo el carrito para mostrar datos actualizados
+                loadCartData();
+            } else {
+                alert(data.error || 'Error al actualizar');
+                loadCartData();
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            loadCartData();
+        });
+    }
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+
+    // Eventos
+    if (cartIcon) {
+        cartIcon.addEventListener('click', (e) => {
+            e.preventDefault();
+            openCartModal();
+        });
+    }
+    if (closeModalBtn) {
+        closeModalBtn.addEventListener('click', closeCartModal);
+    }
+    const backdrop = document.getElementById('modal-backdrop');
+    if (backdrop) {
+        backdrop.addEventListener('click', closeCartModal);
+    }
+    
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal && !modal.classList.contains('hidden')) {
+            closeCartModal();
+        }
+    });
+</script>
