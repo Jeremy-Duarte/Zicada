@@ -3,7 +3,7 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib import messages
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from .cart import Cart
 from .models import Order
 from decimal import Decimal
@@ -239,6 +239,13 @@ def order_confirmation(request, order_number):
         'items': order.items.all(),
     }
     return render(request, 'orders/order_confirmation.html', context)
+
+@csrf_exempt
+def stripe_webhook(request):
+    print("Webhook recibido!")
+    print("Headers:", request.headers)
+    print("Body:", request.body.decode('utf-8'))
+    return HttpResponse(status=200)
 
 @require_http_methods(['POST'])
 def create_stripe_checkout_session(request):
