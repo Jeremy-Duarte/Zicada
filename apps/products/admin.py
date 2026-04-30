@@ -2,6 +2,7 @@ from django.contrib import admin
 from django import forms
 from django.urls import reverse
 from django.utils.html import format_html
+from django.utils.safestring import mark_safe
 from django.db import models as django_models
 from .models import Size, Category, Color, Product, ProductVariant, Collection, ProductColor, ProductImage
 from django.core.management import call_command
@@ -61,17 +62,22 @@ class ProductColorInline(admin.TabularInline):
     classes = ('collapse',)
     
     def images_preview(self, obj):
-        if obj.images.exists():
-            previews = []
-            for img in obj.images.all()[:3]:
-                if img.image:
-                    previews.append(format_html(
-                        '<img src="{}" width="30" height="30" style="object-fit: cover; margin-right: 5px;" />',
-                        img.image.url
-                    ))
-            return format_html(''.join(previews))
-        return "Sin imágenes"
-    images_preview.short_description = 'Imágenes'
+        sin_imagen = mark_safe('<span class="text-muted">Sin imágenes</span>')
+        if not obj or not obj.pk:
+            return sin_imagen
+        
+        if not obj.images.exists():
+            return sin_imagen
+        
+        previews = []
+        for img in obj.images.all()[:3]:
+            if img.image and img.image.url:
+                previews.append(f'<img src="{img.image.url}" width="30" height="30" style="object-fit: cover; margin-right: 5px;" />')
+        
+        if not previews:
+            return sin_imagen
+        
+        return mark_safe(''.join(previews))
 
 
 @admin.register(Color)

@@ -108,6 +108,8 @@ class ProductImage(models.Model):
         verbose_name_plural = 'Imágenes'
 
     def __str__(self):
+        if self.alt_text:
+            return self.alt_text
         return f"Imagen {self.id}"
     
 
@@ -220,6 +222,23 @@ class Product(BaseAuditModel):
     def is_available(self):
         return self.variants.filter(is_active=True, stock__gt=0).exists()
     
+    def get_featured_image(self):
+        if hasattr(self, '_prefetched_objects_cache') and 'product_colors' in self._prefetched_objects_cache:
+            for product_color in self.product_colors.all():
+                if product_color.featured_image:
+                    return product_color.featured_image
+                first_image = product_color.images.first()
+                if first_image:
+                    return first_image
+        else:
+            for product_color in self.product_colors.filter(is_active=True).order_by('sort_order'):
+                if product_color.featured_image:
+                    return product_color.featured_image
+                first_image = product_color.images.first()
+                if first_image:
+                    return first_image
+        return None
+
     def __str__(self):
         return self.name
     
