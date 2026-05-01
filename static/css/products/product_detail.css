@@ -1,0 +1,157 @@
+/* --------------------------------------------
+   1. GALERÍA DE IMÁGENES
+   -------------------------------------------- */
+.product-gallery-thumb {
+    transition: all 0.2s ease;
+    cursor: pointer;
+    border: 2px solid transparent;
+    filter: grayscale(0.3);
+}
+
+.product-gallery-thumb:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    filter: grayscale(0);
+}
+
+.product-gallery-thumb.active {
+    border-color: #dc2626;
+    transform: scale(1.02);
+    filter: grayscale(0);
+}
+
+/* --------------------------------------------
+   2. SELECTOR DE CANTIDAD
+   -------------------------------------------- */
+.quantity-input {
+    width: 60px;
+    text-align: center;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    padding: 0.5rem;
+    font-weight: 500;
+}
+
+.quantity-btn {
+    background-color: #f9fafb;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-weight: 500;
+    color: #111827;
+}
+
+.quantity-btn:hover {
+    background-color: #e5e7eb;
+    border-color: #9ca3af;
+}
+
+/* --------------------------------------------
+   3. SELECTORES DE VARIANTES (COLOR / TALLA)
+   -------------------------------------------- */
+.variant-btn {
+    transition: all 0.2s ease;
+    cursor: pointer;
+    border-width: 2px;
+    border-color: #d1d5db;
+    color: #374151;
+    background-color: #ffffff;
+}
+
+.variant-btn.selected {
+    background-color: #111827 !important;
+    color: #ffffff !important;
+    border-color: #111827 !important;
+}
+
+.variant-btn.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    background-color: #f3f4f6 !important;
+    color: #9ca3af !important;
+    border-color: #e5e7eb !important;
+    text-decoration: line-through;
+}
+
+/* --------------------------------------------
+   4. VISTA PREVIA DE COLOR
+   -------------------------------------------- */
+.color-preview {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 2px solid #d1d5db;
+    transition: all 0.2s ease;
+}
+
+.color-preview:hover {
+    transform: scale(1.1);
+    border-color: #111827;
+}
+
+/* --------------------------------------------
+   5. TIPOGRAFÍA Y TEXTOS
+   -------------------------------------------- */
+.product-price {
+    color: #dc2626;
+}
+
+.section-title {
+    font-weight: 600;
+    color: #111827;
+    letter-spacing: -0.02em;
+}
+
+.description-text {
+    color: #4b5563;
+    line-height: 1.75;
+}
+
+/* --------------------------------------------
+   6. BOTONES DE ACCIÓN
+   -------------------------------------------- */
+.clear-btn {
+    border: 2px solid #d1d5db;
+    color: #374151;
+    transition: all 0.2s;
+}
+
+.clear-btn:hover {
+    background-color: #f3f4f6;
+    border-color: #9ca3af;
+}
+
+.add-to-cart-btn {
+    background-color: #111827;
+    color: #ffffff;
+    transition: all 0.2s;
+}
+
+.add-to-cart-btn:hover:not(:disabled) {
+    background-color: #374151;
+}
+
+.add-to-cart-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* --------------------------------------------
+   7. ESTADOS Y ADVERTENCIAS
+   -------------------------------------------- */
+.stock-warning {
+    color: #dc2626;
+}
+
+/* --------------------------------------------
+   8. ENLACES
+   -------------------------------------------- */
+.guide-link {
+    color: #dc2626;
+}
+
+.guide-link:hover {
+    text-decoration: underline;
+}
