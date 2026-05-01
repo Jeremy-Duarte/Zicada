@@ -11,8 +11,8 @@ import json
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from decimal import Decimal
-from .cart import Cart
 from .models import Order
+from apps.products.models import ProductVariant
 from django.conf import settings
 from apps.orders.stripe_client import get_stripe
 
@@ -63,10 +63,19 @@ def cart_add(request):
     cart = Cart(request)
     try:
         cart.add(variant_id, quantity)
+        
+        variant = ProductVariant.objects.select_related(
+            'product', 'product_color__color', 'size'
+        ).get(id=variant_id)
+        
+        mensaje = f'{quantity}x {variant.product.name} - {variant.product_color.color.name} - {variant.size.name} agregado al carrito'
+        
+        messages.success(request, mensaje)
+        
         return JsonResponse({
             'success': True,
             'total_items': cart.get_total_items(),
-            'message': 'Producto agregado al carrito'
+            'message': mensaje
         })
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
