@@ -1,0 +1,76 @@
+/* ============================================
+   CART ITEMS
+   ============================================ */
+.cart-item {
+    transition: all 0.2s ease;
+    background: white;
+    border-radius: 1rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.cart-item:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+}
+
+/* ============================================
+   QUANTITY BUTTONS
+   ============================================ */
+.quantity-btn {
+    transition: all 0.2s ease;
+    width: 2rem;
+    height: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #f3f4f6;
+    border-radius: 9999px;
+    font-weight: 600;
+}
+
+.quantity-btn:hover {
+    background-color: #e5e7eb;
+    transform: scale(1.05);
+}
+
+/* ============================================
+   REMOVE BUTTON
+   ============================================ */
+.remove-btn {
+    transition: all 0.2s ease;
+    padding: 0.5rem;
+    border-radius: 0.5rem;
+}
+
+.remove-btn:hover {
+    background-color: #fee2e2;
+    color: #dc2626;
+}
+
+/* ============================================
+   SUMMARY CARD (STICKY)
+   ============================================ */
+.summary-card {
+    position: sticky;
+    top: 6rem;
+    background: white;
+    border-radius: 1rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    padding: 1.5rem;
+}
+
+/* ============================================
+   RESPONSIVE (MOBILE)
+   ============================================ */
+@media (max-width: 768px) {
+    .cart-item {
+        padding: 0.75rem;
+    }
+    
+    .cart-item-image {
+        width: 80px;
+        height: 80px;
+    }
+}
