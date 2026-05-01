@@ -46,6 +46,8 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'config.urls'
 
+SITE_URL = 'http://localhost:8000'
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -153,9 +155,6 @@ CRONTAB_COMMAND_PREFIX = 'TZ=America/Bogota'
 CRONTAB_DJANGO_SETTINGS_MODULE = 'config.settings'
 
 # Configuración API stripe pasarela de pagos
-import stripe
-STRIPE_PUBLISHABLE_KEY=env("STRIPE_PUBLISHABLE_KEY")
-STRIPE_SECRET_KEY=env("STRIPE_SECRET_KEY")
-STRIPE_WEBHOOK_KEY=env("STRIPE_WEBHOOK_KEY")
-
-stripe.api.key = STRIPE_SECRET_KEY
+STRIPE_PUBLISHABLE_KEY= env("STRIPE_PUBLISHABLE_KEY")
+STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY")
+STRIPE_WEBHOOK_KEY= env("STRIPE_WEBHOOK_KEY")
