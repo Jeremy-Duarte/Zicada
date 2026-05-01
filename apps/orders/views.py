@@ -2,7 +2,8 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib import messages
 from django.views.decorators.http import require_http_methods
-from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse, HttpResponse
 from .cart import Cart
 from .models import Order
 from decimal import Decimal
@@ -10,8 +11,10 @@ import json
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from decimal import Decimal
-from .cart import Cart
 from .models import Order
+from apps.products.models import ProductVariant
+from django.conf import settings
+from apps.orders.stripe_client import get_stripe
 
 @staff_member_required
 def delivery_dashboard(request):
@@ -60,10 +63,19 @@ def cart_add(request):
     cart = Cart(request)
     try:
         cart.add(variant_id, quantity)
+        
+        variant = ProductVariant.objects.select_related(
+            'product', 'product_color__color', 'size'
+        ).get(id=variant_id)
+        
+        mensaje = f'{quantity}x {variant.product.name} - {variant.product_color.color.name} - {variant.size.name} agregado al carrito'
+        
+        messages.success(request, mensaje)
+        
         return JsonResponse({
             'success': True,
             'total_items': cart.get_total_items(),
-            'message': 'Producto agregado al carrito'
+            'message': mensaje
         })
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
@@ -236,3 +248,89 @@ def order_confirmation(request, order_number):
         'items': order.items.all(),
     }
     return render(request, 'orders/order_confirmation.html', context)
+
+@csrf_exempt
+def stripe_webhook(request):
+    print("Webhook recibido!")
+    print("Headers:", request.headers)
+    print("Body:", request.body.decode('utf-8'))
+    return HttpResponse(status=200)
+
+@require_http_methods(['POST'])
+def create_stripe_checkout_session(request):
+    """
+    Crea una sesión de pago en Stripe y redirige al checkout de Stripe.
+    """
+    stripe = get_stripe()
+    cart = Cart(request)
+    
+    if cart.is_empty():
+        return JsonResponse({'error': 'Carrito vacío'}, status=400)
+    
+    stock_errors = cart.validate_stock()
+    if stock_errors:
+        return JsonResponse({'error': 'Stock insuficiente para algunos productos'}, status=400)
+    
+    customer_name = request.POST.get('customer_name', '').strip()
+    customer_phone = request.POST.get('customer_phone', '').strip()
+    customer_email = request.POST.get('customer_email', '').strip()
+    shipping_address = request.POST.get('shipping_address', '').strip()
+    delivery_notes = request.POST.get('delivery_notes', '').strip()
+    
+    if not all([customer_name, customer_phone, shipping_address]):
+        return JsonResponse({'error': 'Faltan datos obligatorios'}, status=400)
+    
+    # Convertir Decimal a float para JSON
+    cart_summary = cart.get_summary()
+    cart_summary['subtotal'] = float(cart_summary['subtotal'])
+    cart_summary['shipping_cost'] = float(cart_summary['shipping_cost'])
+    cart_summary['total'] = float(cart_summary['total'])
+    
+    for item in cart_summary['items']:
+        item['price'] = float(item['price'])
+    
+    # Guardar datos del cliente en la sesión
+    request.session['checkout_data'] = {
+        'customer_name': customer_name,
+        'customer_phone': customer_phone,
+        'customer_email': customer_email,
+        'shipping_address': shipping_address,
+        'delivery_notes': delivery_notes,
+        'cart_summary': cart_summary,
+    }
+    
+    try:
+        # Usar SITE_URL con placeholder para el session_id
+        success_url = settings.SITE_URL + '/orders/confirmacion/{CHECKOUT_SESSION_ID}/'
+        
+        checkout_session = stripe.checkout.Session.create(
+            payment_method_types=['card'],
+            line_items=[{
+                'price_data': {
+                    'currency': 'cop',
+                    'unit_amount': int(cart.get_total() * 100),
+                    'product_data': {
+                        'name': f'Pedido Zicada - {customer_name}',
+                        'description': f'{cart.get_total_items()} productos',
+                    },
+                },
+                'quantity': 1,
+            }],
+            mode='payment',
+            success_url=success_url,
+            cancel_url=settings.SITE_URL + '/orders/carrito/',
+            client_reference_id=request.session.session_key,
+            customer_email=customer_email or None,
+            metadata={
+                'session_key': request.session.session_key,
+            }
+        )
+        
+        request.session['stripe_session_id'] = checkout_session.id
+        
+        return JsonResponse({'redirect_url': checkout_session.url})
+        
+    except stripe.error.StripeError as e:
+        return JsonResponse({'error': str(e)}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': f'Error inesperado: {str(e)}'}, status=400)
