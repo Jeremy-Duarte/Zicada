@@ -14,7 +14,7 @@ from decimal import Decimal
 from .cart import Cart
 from .models import Order
 from django.conf import settings
-import stripe
+from apps.orders.stripe_client import get_stripe
 
 @staff_member_required
 def delivery_dashboard(request):
@@ -251,8 +251,8 @@ def stripe_webhook(request):
 def create_stripe_checkout_session(request):
     """
     Crea una sesión de pago en Stripe y redirige al checkout de Stripe.
-    Esta vista maneja SOLO la creación de la sesión.
     """
+    stripe = get_stripe()
     cart = Cart(request)
     
     if cart.is_empty():
@@ -271,17 +271,29 @@ def create_stripe_checkout_session(request):
     if not all([customer_name, customer_phone, shipping_address]):
         return JsonResponse({'error': 'Faltan datos obligatorios'}, status=400)
     
-    # Guardar datos del cliente en la sesión (para usarlos en el webhook)
+    # Convertir Decimal a float para JSON
+    cart_summary = cart.get_summary()
+    cart_summary['subtotal'] = float(cart_summary['subtotal'])
+    cart_summary['shipping_cost'] = float(cart_summary['shipping_cost'])
+    cart_summary['total'] = float(cart_summary['total'])
+    
+    for item in cart_summary['items']:
+        item['price'] = float(item['price'])
+    
+    # Guardar datos del cliente en la sesión
     request.session['checkout_data'] = {
         'customer_name': customer_name,
         'customer_phone': customer_phone,
         'customer_email': customer_email,
         'shipping_address': shipping_address,
         'delivery_notes': delivery_notes,
-        'cart_summary': cart.get_summary(),
+        'cart_summary': cart_summary,
     }
     
     try:
+        # Usar SITE_URL con placeholder para el session_id
+        success_url = settings.SITE_URL + '/orders/confirmacion/{CHECKOUT_SESSION_ID}/'
+        
         checkout_session = stripe.checkout.Session.create(
             payment_method_types=['card'],
             line_items=[{
@@ -296,7 +308,7 @@ def create_stripe_checkout_session(request):
                 'quantity': 1,
             }],
             mode='payment',
-            success_url=settings.SITE_URL + f'/orders/confirmacion/{checkout_session.id}/',
+            success_url=success_url,
             cancel_url=settings.SITE_URL + '/orders/carrito/',
             client_reference_id=request.session.session_key,
             customer_email=customer_email or None,
