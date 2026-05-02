@@ -1,0 +1,96 @@
+{% load static %}
+
+{% if is_empty %}
+    <div class="text-center py-16 bg-white rounded-2xl shadow-sm">
+        <svg class="mx-auto h-24 w-24 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.5 6M17 13l1.5 6M9 21h6M6 21h.01M18 21h.01" />
+        </svg>
+        <p class="mt-4 text-gray-500 text-lg">Tu carrito está vacío</p>
+        <p class="text-gray-400 mt-1">¡Agrega productos para comenzar!</p>
+        <a href="{% url 'products:catalog' %}" class="mt-6 inline-block bg-zicada-accent text-white px-8 py-3 rounded-xl font-semibold hover:bg-opacity-90 transition">Seguir comprando</a>
+    </div>
+{% else %}
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Lista de items -->
+        <div class="lg:col-span-2 space-y-3">
+            {% for item in items %}
+            <div class="cart-item bg-white rounded-xl shadow-sm hover:shadow-md transition" data-variant-id="{{ item.variant_id }}">
+                <div class="flex gap-4 p-4">
+                    <!-- Imagen del producto -->
+                    <div class="flex-shrink-0">
+                        <img src="{% if item.image %}{{ item.image }}{% else %}{% static 'img/product-placeholder.jpeg' %}{% endif %}" 
+                            alt="{{ item.product_name }}" 
+                            class="w-24 h-24 object-cover rounded-lg">
+                    </div>
+                    
+                    <!-- Detalles del producto -->
+                    <div class="flex-1 min-w-0">
+                        <!-- Cabecera: nombre y botón eliminar -->
+                        <div class="flex justify-between items-start gap-2">
+                            <h3 class="font-semibold text-gray-800 text-base truncate">{{ item.product_name }}</h3>
+                            <button class="remove-item text-gray-400 hover:text-red-500 transition p-1 flex-shrink-0" title="Eliminar">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </button>
+                        </div>
+                        
+                        <!-- Variantes (talla y color) -->
+                        <div class="flex flex-wrap gap-2 mt-1">
+                            <span class="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">Talla: {{ item.size_name }}</span>
+                            <span class="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">Color: {{ item.color_name }}</span>
+                        </div>
+                        
+                        <!-- Precio unitario (referencia) -->
+                        <div class="text-xs text-gray-400 mt-2">
+                            Unitario: ${{ item.price|floatformat:0 }}
+                        </div>
+                        
+                        <!-- Controles de cantidad y subtotal -->
+                        <div class="flex justify-between items-center mt-3">
+                            <div class="flex items-center gap-2">
+                                <button class="quantity-btn qty-decr w-7 h-7 bg-gray-100 rounded-full hover:bg-gray-200 transition text-gray-600 font-medium">-</button>
+                                <span class="qty-value w-8 text-center font-medium text-gray-800">{{ item.quantity }}</span>
+                                <button class="quantity-btn qty-incr w-7 h-7 bg-gray-100 rounded-full hover:bg-gray-200 transition text-gray-600 font-medium">+</button>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-lg font-bold text-zicada-accent item-subtotal">${% widthratio item.price|floatformat:0 1 item.quantity %}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <!-- Resumen -->
+        <div>
+            <div class="bg-white rounded-xl shadow-md p-6 sticky top-24">
+                <h3 class="text-xl font-bold text-gray-900 mb-4">Resumen del pedido</h3>
+                <div class="space-y-3">
+                    <div class="flex justify-between py-2">
+                        <span class="text-gray-600">Subtotal</span>
+                        <span id="cart-subtotal" class="font-semibold text-gray-900">${{ subtotal|floatformat:0 }}</span>
+                    </div>
+                    <div class="flex justify-between py-2 border-b border-gray-100">
+                        <span class="text-gray-600">Envío</span>
+                        <span id="cart-shipping" class="font-semibold text-gray-900">${{ shipping_cost|floatformat:0 }}</span>
+                    </div>
+                    <div class="flex justify-between py-3">
+                        <span class="text-lg font-bold text-gray-900">Total</span>
+                        <span id="cart-total" class="text-2xl font-bold text-zicada-accent">${{ total|floatformat:0 }}</span>
+                    </div>
+                </div>
+                
+                <div class="mt-6 space-y-3">
+                    <button id="checkout-btn" class="w-full bg-zicada-accent text-white py-3 rounded-xl font-semibold hover:bg-opacity-90 transition shadow-md">
+                        Proceder al pago
+                    </button>
+                    <a href="{% url 'products:catalog' %}" class="block text-center text-gray-500 text-sm hover:text-gray-700 transition">
+                        ← Seguir comprando
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endif %}

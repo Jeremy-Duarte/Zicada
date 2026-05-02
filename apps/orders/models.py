@@ -106,6 +106,15 @@ class Order(models.Model):
         verbose_name='Entregador asignado',
         limit_choices_to={'is_delivery': True}
     )
+
+    payment_session_id = models.CharField(
+        max_length=100,
+        unique=True,
+        null=True,
+        blank=True,
+        verbose_name='ID de sesión de pago',
+        help_text='Identificador de la sesión/transacción en la pasarela de pagos'
+    )
     
     created_at = models.DateTimeField(
         auto_now_add=True,
