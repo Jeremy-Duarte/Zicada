@@ -14,39 +14,47 @@
         <!-- Lista de items -->
         <div class="lg:col-span-2 space-y-3">
             {% for item in items %}
-            <div class="cart-item bg-white rounded-xl shadow-sm p-4 hover:shadow-md transition" data-variant-id="{{ item.variant_id }}">
-                <div class="flex gap-5">
+            <div class="cart-item bg-white rounded-xl shadow-sm hover:shadow-md transition" data-variant-id="{{ item.variant_id }}">
+                <div class="flex gap-4 p-4">
+                    <!-- Imagen del producto -->
                     <div class="flex-shrink-0">
                         <img src="{% if item.image %}{{ item.image }}{% else %}{% static 'img/product-placeholder.jpeg' %}{% endif %}" 
-                             alt="{{ item.product_name }}" 
-                             class="w-28 h-28 object-cover rounded-xl">
+                            alt="{{ item.product_name }}" 
+                            class="w-24 h-24 object-cover rounded-lg">
                     </div>
                     
-                    <div class="flex-1">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <h3 class="font-semibold text-lg text-gray-900">{{ item.product_name }}</h3>
-                                <div class="flex gap-3 mt-1 text-sm text-gray-500">
-                                    <span>Talla: {{ item.size_name }}</span>
-                                    <span>Color: {{ item.color_name }}</span>
-                                </div>
-                            </div>
-                            <button class="remove-item text-gray-400 hover:text-red-500 transition p-1" title="Eliminar">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <!-- Detalles del producto -->
+                    <div class="flex-1 min-w-0">
+                        <!-- Cabecera: nombre y botón eliminar -->
+                        <div class="flex justify-between items-start gap-2">
+                            <h3 class="font-semibold text-gray-800 text-base truncate">{{ item.product_name }}</h3>
+                            <button class="remove-item text-gray-400 hover:text-red-500 transition p-1 flex-shrink-0" title="Eliminar">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                 </svg>
                             </button>
                         </div>
                         
-                        <div class="flex justify-between items-end mt-4">
-                            <div class="flex items-center gap-3">
-                                <button class="quantity-btn qty-decr w-8 h-8 bg-gray-100 rounded-full hover:bg-gray-200 transition">-</button>
-                                <span class="qty-value w-8 text-center font-medium text-gray-900">{{ item.quantity }}</span>
-                                <button class="quantity-btn qty-incr w-8 h-8 bg-gray-100 rounded-full hover:bg-gray-200 transition">+</button>
+                        <!-- Variantes (talla y color) -->
+                        <div class="flex flex-wrap gap-2 mt-1">
+                            <span class="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">Talla: {{ item.size_name }}</span>
+                            <span class="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">Color: {{ item.color_name }}</span>
+                        </div>
+                        
+                        <!-- Precio unitario (referencia) -->
+                        <div class="text-xs text-gray-400 mt-2">
+                            Unitario: ${{ item.price|floatformat:0 }}
+                        </div>
+                        
+                        <!-- Controles de cantidad y subtotal -->
+                        <div class="flex justify-between items-center mt-3">
+                            <div class="flex items-center gap-2">
+                                <button class="quantity-btn qty-decr w-7 h-7 bg-gray-100 rounded-full hover:bg-gray-200 transition text-gray-600 font-medium">-</button>
+                                <span class="qty-value w-8 text-center font-medium text-gray-800">{{ item.quantity }}</span>
+                                <button class="quantity-btn qty-incr w-7 h-7 bg-gray-100 rounded-full hover:bg-gray-200 transition text-gray-600 font-medium">+</button>
                             </div>
                             <div class="text-right">
-                                <div class="text-xl font-bold text-zicada-accent item-subtotal">${{ item.total|floatformat:0 }}</div>
-                                <div class="text-xs text-gray-400">Unitario: ${{ item.price|floatformat:0 }}</div>
+                                <div class="text-lg font-bold text-zicada-accent item-subtotal">${% widthratio item.price|floatformat:0 1 item.quantity %}</div>
                             </div>
                         </div>
                     </div>

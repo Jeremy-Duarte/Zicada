@@ -136,7 +136,20 @@ def cart_data(request):
 
 def cart_detail(request):
     cart = Cart(request)
-    context = cart.get_summary()
+    summary = cart.get_summary()
+    
+    for item in summary['items']:
+        item['total'] = item['price'] * item['quantity']
+    
+    context = {
+        'items': summary['items'],
+        'subtotal': summary['subtotal'],
+        'shipping_cost': summary['shipping_cost'],
+        'total': summary['total'],
+        'is_empty': summary['is_empty'],
+        'total_items': summary['total_items'],
+    }
+    
     return render(request, 'orders/cart_detail.html', context)
 
 def checkout(request):
