@@ -61,6 +61,16 @@
     padding: 1.5rem;
 }
 
+.form-label {
+    font-weight: 600;
+    color: #374151;
+    transition: color 0.2s ease;
+}
+
+.form-label:hover {
+    color: #c2a575;
+}
+
 /* ============================================
    RESPONSIVE (MOBILE)
    ============================================ */

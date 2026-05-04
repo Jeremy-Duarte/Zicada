@@ -1,0 +1,19 @@
+¡Gracias por tu compra!
+
+Hola {{ order.customer_name }},
+
+Tu pedido #{{ order.order_number }} ha sido confirmado y está siendo procesado.
+
+Detalles del pedido:
+{% for item in items %}
+- {{ item.product_name_snapshot }} (Talla {{ item.size_snapshot }}) x{{ item.quantity }} = ${{ item.subtotal|floatformat:0 }}
+{% endfor %}
+
+Total: ${{ order.total_amount|floatformat:0 }}
+
+Dirección de envío:
+{{ order.shipping_address }}
+
+Seguimiento: {{ tracking_url }}
+
+¡Gracias por confiar en Zicada!

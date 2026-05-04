@@ -5,15 +5,17 @@ from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse, HttpResponse
 from .cart import Cart
-from .models import Order
 from decimal import Decimal
 import json
 from decimal import Decimal
-from .models import Order
+from .models import Order, OrderItem
 from apps.products.models import ProductVariant
 from django.conf import settings
 from apps.orders.stripe_client import get_stripe
 from .forms import CheckoutOrderForm
+from .email import send_order_confirmation_email
+
+DELIVERY_DASHBOARD_ROUTE ='orders:delivery_dashboard'
 
 @staff_member_required
 def delivery_dashboard(request):
@@ -35,12 +37,12 @@ def take_order(request, order_id):
     order = get_object_or_404(Order, id=order_id)
     if order.status != 'listo':
         messages.error(request, f'El pedido {order.order_number} no está listo para entregar (estado actual: {order.get_status_display()}).')
-        return redirect('orders:delivery_dashboard')
+        return redirect(DELIVERY_DASHBOARD_ROUTE)
     order.assigned_delivery_user = request.user
     order.status = 'en_camino'
     order.save()
     messages.success(request, f'Pedido {order.order_number} asignado correctamente.')
-    return redirect('orders:delivery_dashboard')
+    return redirect(DELIVERY_DASHBOARD_ROUTE)
 
 
 @staff_member_required
@@ -48,7 +50,7 @@ def deliver_order(request, order_id):
     order = get_object_or_404(Order, id=order_id, assigned_delivery_user=request.user)
     order.mark_as_delivered(user=request.user)
     messages.success(request, f'Pedido {order.order_number} entregado y pagado.')
-    return redirect('orders:delivery_dashboard')
+    return redirect(DELIVERY_DASHBOARD_ROUTE)
 
 @require_http_methods(['POST'])
 def cart_add(request):
@@ -152,7 +154,6 @@ def cart_detail(request):
     return render(request, 'orders/cart_detail.html', context)
 
 def checkout(request):
-    # Página de checkout - formulario de datos del cliente y resumen del pedido.
     cart = Cart(request)
     
     if cart.is_empty():
@@ -162,24 +163,20 @@ def checkout(request):
     stock_errors = cart.validate_stock()
     if stock_errors:
         for error in stock_errors:
-            messages.error(
-                request, 
-                f'"{error["name"]}" ({error["size"]}, {error["color"]}): '
-                f'solicitado {error["requested"]}, disponible {error["available"]}'
-            )
+            messages.error(request, f'"{error["name"]}" ({error["size"]}, {error["color"]}): solicitado {error["requested"]}, disponible {error["available"]}')
         return redirect('orders:cart_detail')
     
     if request.method == 'POST':
         form = CheckoutOrderForm(request.POST)
         if form.is_valid():
             cleaned_data = form.cleaned_data
+            
             request.session['checkout_data'] = {
                 'customer_name': cleaned_data['customer_name'],
                 'customer_phone': cleaned_data['customer_phone'],
                 'customer_email': cleaned_data['customer_email'],
                 'shipping_address': cleaned_data['shipping_address'],
                 'delivery_notes': cleaned_data['delivery_notes'],
-                'cart_summary': cart.get_summary(),
             }
             return redirect('orders:create_stripe_checkout_session')
         else:
@@ -187,75 +184,135 @@ def checkout(request):
                 for error in errors:
                     field_label = form.fields[field].label if field in form.fields else field
                     messages.error(request, f'{field_label}: {error}')
-    
     else:
         form = CheckoutOrderForm()
     
     summary = cart.get_summary()
-    summary['shipping_cost'] = float(summary['shipping_cost'])
-    summary['subtotal'] = float(summary['subtotal'])
-    summary['total'] = float(summary['total'])
-    
     context = {
         'form': form,
-        'cart_summary': summary,
-        'shipping_cost': summary['shipping_cost'],
+        'cart_summary': {
+            'items': summary['items'],
+            'subtotal': float(summary['subtotal']),
+            'shipping_cost': float(summary['shipping_cost']),
+            'total': float(summary['total']),
+        },
     }
     return render(request, 'orders/checkout.html', context)
 
 @csrf_exempt
 def stripe_webhook(request):
-    print("Webhook recibido!")
-    print("Headers:", request.headers)
-    print("Body:", request.body.decode('utf-8'))
+    import stripe
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    payload = request.body
+    sig_header = request.META.get('HTTP_STRIPE_SIGNATURE')
+    
+    try:
+        event = stripe.Webhook.construct_event(
+            payload, sig_header, settings.STRIPE_WEBHOOK_KEY
+        )
+    except ValueError:
+        return HttpResponse(status=400)
+    except stripe.error.SignatureVerificationError:
+        return HttpResponse(status=400)
+    
+    if event['type'] == 'checkout.session.completed':
+        session = event['data']['object']
+        session_id = session['id']
+        
+        try:
+            order = Order.objects.get(payment_session_id=session_id)
+            logger.info(f"Webhook recibido para pedido {order.order_number}")
+        except Order.DoesNotExist:
+            logger.error(f"❌ Pedido no encontrado para session_id: {session_id}")
+            return HttpResponse(status=200)
+        
+        if order.is_paid:
+            logger.info(f"Pedido {order.order_number} ya estaba pagado")
+            return HttpResponse(status=200)
+        
+        try:
+            if order.status == 'pendiente':
+                order.confirm(user=None)
+                logger.info(f"Pedido {order.order_number} confirmado y stock reducido")
+            
+            order.is_paid = True
+            order.save(update_fields=['is_paid'])
+            logger.info(f"Pedido {order.order_number} marcado como pagado")
+
+            if order.customer_email:
+                send_order_confirmation_email(order)
+                logger.info(f"Correo de confirmación enviado a {order.customer_email}")
+            else:
+                logger.warning(f"Pedido {order.order_number} no tiene email asociado")
+            
+        except Exception as e:
+            logger.error(f"Error al procesar pedido {order.order_number}: {e}")
+            return HttpResponse(status=500)
+    
     return HttpResponse(status=200)
 
-@require_http_methods(['POST'])
+@require_http_methods(['GET', 'POST'])
 def create_stripe_checkout_session(request):
-    """
-    Crea una sesión de pago en Stripe y redirige al checkout de Stripe.
-    """
+    # Crea una sesión de pago en Stripe y redirige al checkout de Stripe.
     stripe = get_stripe()
     cart = Cart(request)
     
     if cart.is_empty():
-        return JsonResponse({'error': 'Carrito vacío'}, status=400)
+        messages.error(request, 'Tu carrito está vacío.')
+        return redirect('products:catalog')
     
     stock_errors = cart.validate_stock()
     if stock_errors:
-        return JsonResponse({'error': 'Stock insuficiente para algunos productos'}, status=400)
+        for error in stock_errors:
+            messages.error(request, f'"{error["name"]}" ({error["size"]}, {error["color"]}): stock insuficiente')
+        return redirect('orders:cart_detail')
     
-    customer_name = request.POST.get('customer_name', '').strip()
-    customer_phone = request.POST.get('customer_phone', '').strip()
-    customer_email = request.POST.get('customer_email', '').strip()
-    shipping_address = request.POST.get('shipping_address', '').strip()
-    delivery_notes = request.POST.get('delivery_notes', '').strip()
+    checkout_data = request.session.get('checkout_data')
+    if not checkout_data:
+        messages.error(request, 'No se encontraron datos de envío. Por favor, vuelve a intentarlo.')
+        return redirect('orders:checkout')
     
-    if not all([customer_name, customer_phone, shipping_address]):
-        return JsonResponse({'error': 'Faltan datos obligatorios'}, status=400)
+    customer_name = checkout_data.get('customer_name')
+    customer_phone = checkout_data.get('customer_phone')
+    customer_email = checkout_data.get('customer_email')
+    shipping_address = checkout_data.get('shipping_address')
+    delivery_notes = checkout_data.get('delivery_notes', '')
     
-    # Convertir Decimal a float para JSON
-    cart_summary = cart.get_summary()
-    cart_summary['subtotal'] = float(cart_summary['subtotal'])
-    cart_summary['shipping_cost'] = float(cart_summary['shipping_cost'])
-    cart_summary['total'] = float(cart_summary['total'])
+    from .models import Order
     
-    for item in cart_summary['items']:
-        item['price'] = float(item['price'])
+    order = Order(
+        customer_name=customer_name,
+        customer_phone=customer_phone,
+        customer_email=customer_email or None,
+        shipping_address=shipping_address,
+        delivery_notes=delivery_notes,
+        subtotal=cart.get_subtotal(),
+        shipping_cost=cart.get_shipping_cost(),
+        total_amount=cart.get_total(),
+        status='pendiente',
+        is_paid=False,
+    )
+    order.save()
     
-    # Guardar datos del cliente en la sesión
-    request.session['checkout_data'] = {
-        'customer_name': customer_name,
-        'customer_phone': customer_phone,
-        'customer_email': customer_email,
-        'shipping_address': shipping_address,
-        'delivery_notes': delivery_notes,
-        'cart_summary': cart_summary,
-    }
+    for item in cart.get_items():
+        variant = ProductVariant.objects.get(id=item['variant_id'])
+        OrderItem.objects.create(
+            order=order,
+            variant=variant,
+            product_name_snapshot=item['product_name'],
+            size_snapshot=item['size_name'],
+            quantity=item['quantity'],
+            unit_price=Decimal(item['price']),
+            stock_snapshot=variant.stock,
+            subtotal=Decimal(item['price']) * item['quantity']
+        )
     
     try:
-        # Usar SITE_URL con placeholder para el session_id
-        success_url = settings.SITE_URL + '/orders/confirmacion/{CHECKOUT_SESSION_ID}/'
+        from django.urls import reverse
+        success_url = settings.SITE_URL + reverse('orders:order_confirmation', kwargs={'order_number': order.order_number})
+        cancel_url = settings.SITE_URL + reverse('orders:cart_detail')
         
         checkout_session = stripe.checkout.Session.create(
             payment_method_types=['card'],
@@ -272,19 +329,78 @@ def create_stripe_checkout_session(request):
             }],
             mode='payment',
             success_url=success_url,
-            cancel_url=settings.SITE_URL + '/orders/carrito/',
-            client_reference_id=request.session.session_key,
+            cancel_url=cancel_url,
+            client_reference_id=str(order.order_number),
             customer_email=customer_email or None,
             metadata={
+                'order_number': order.order_number,
                 'session_key': request.session.session_key,
             }
         )
         
-        request.session['stripe_session_id'] = checkout_session.id
+        order.payment_session_id = checkout_session.id
+        order.save(update_fields=['payment_session_id'])
+        del request.session['checkout_data']
+        return redirect(checkout_session.url)
         
-        return JsonResponse({'redirect_url': checkout_session.url})
-        
-    except stripe.error.StripeError as e:
-        return JsonResponse({'error': str(e)}, status=400)
     except Exception as e:
-        return JsonResponse({'error': f'Error inesperado: {str(e)}'}, status=400)
+        order.status = 'cancelado'
+        order.cancelled_reason = f'Error al crear sesión de pago: {str(e)}'
+        order.save()
+        messages.error(request, f'Error al procesar el pago: {str(e)}')
+        return redirect('orders:checkout')
+
+
+def order_confirmation(request, order_number):
+    """Página de confirmación de pedido después del pago exitoso."""
+    
+    try:
+        # Buscar por order_number en lugar de session_id
+        order = Order.objects.get(order_number=order_number)
+    except Order.DoesNotExist:
+        messages.error(request, 'Pedido no encontrado.')
+        return redirect('products:catalog')
+    
+    # Verificar si el pedido está pagado, si no, esperar un momento
+    if not order.is_paid:
+        import time
+        # Esperar hasta 5 segundos por el webhook
+        for _ in range(10):
+            if order.is_paid:
+                break
+            time.sleep(0.5)
+            order.refresh_from_db()
+    
+    if not order.is_paid:
+        messages.warning(request, 'Tu pago está siendo procesado. Se actualizará automáticamente en breve.')
+    
+    context = {
+        'order': order,
+        'items': order.items.all(),
+    }
+    return render(request, 'orders/order_confirmation.html', context)
+
+def order_tracking(request, tracking_token):
+    """Vista pública para seguimiento de pedidos"""
+    order = get_object_or_404(Order, tracking_token=tracking_token)
+    
+    status_order = [
+        'pendiente',
+        'confirmado', 
+        'preparando',
+        'listo',
+        'en_camino',
+        'entregado'
+    ]
+    
+    current_step = status_order.index(order.status) if order.status in status_order else 0
+    total_steps = len(status_order) - 1
+
+    context = {
+        'order': order,
+        'items': order.items.all(),
+        'current_step': current_step,
+        'total_steps': total_steps,
+        'status_percentage': (current_step / total_steps) * 100 if total_steps > 0 else 0,
+    }
+    return render(request, 'orders/tracking.html', context)
