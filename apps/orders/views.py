@@ -13,6 +13,9 @@ from apps.products.models import ProductVariant
 from django.conf import settings
 from apps.orders.stripe_client import get_stripe
 from .forms import CheckoutOrderForm
+from .email import send_order_confirmation_email
+
+DELIVERY_DASHBOARD_ROUTE ='orders:delivery_dashboard'
 
 @staff_member_required
 def delivery_dashboard(request):
@@ -34,12 +37,12 @@ def take_order(request, order_id):
     order = get_object_or_404(Order, id=order_id)
     if order.status != 'listo':
         messages.error(request, f'El pedido {order.order_number} no está listo para entregar (estado actual: {order.get_status_display()}).')
-        return redirect('orders:delivery_dashboard')
+        return redirect(DELIVERY_DASHBOARD_ROUTE)
     order.assigned_delivery_user = request.user
     order.status = 'en_camino'
     order.save()
     messages.success(request, f'Pedido {order.order_number} asignado correctamente.')
-    return redirect('orders:delivery_dashboard')
+    return redirect(DELIVERY_DASHBOARD_ROUTE)
 
 
 @staff_member_required
@@ -47,7 +50,7 @@ def deliver_order(request, order_id):
     order = get_object_or_404(Order, id=order_id, assigned_delivery_user=request.user)
     order.mark_as_delivered(user=request.user)
     messages.success(request, f'Pedido {order.order_number} entregado y pagado.')
-    return redirect('orders:delivery_dashboard')
+    return redirect(DELIVERY_DASHBOARD_ROUTE)
 
 @require_http_methods(['POST'])
 def cart_add(request):
@@ -237,6 +240,12 @@ def stripe_webhook(request):
             order.is_paid = True
             order.save(update_fields=['is_paid'])
             logger.info(f"Pedido {order.order_number} marcado como pagado")
+
+            if order.customer_email:
+                send_order_confirmation_email(order)
+                logger.info(f"Correo de confirmación enviado a {order.customer_email}")
+            else:
+                logger.warning(f"Pedido {order.order_number} no tiene email asociado")
             
         except Exception as e:
             logger.error(f"Error al procesar pedido {order.order_number}: {e}")
