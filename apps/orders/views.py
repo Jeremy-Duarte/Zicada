@@ -379,3 +379,28 @@ def order_confirmation(request, order_number):
         'items': order.items.all(),
     }
     return render(request, 'orders/order_confirmation.html', context)
+
+def order_tracking(request, tracking_token):
+    """Vista pública para seguimiento de pedidos"""
+    order = get_object_or_404(Order, tracking_token=tracking_token)
+    
+    status_order = [
+        'pendiente',
+        'confirmado', 
+        'preparando',
+        'listo',
+        'en_camino',
+        'entregado'
+    ]
+    
+    current_step = status_order.index(order.status) if order.status in status_order else 0
+    total_steps = len(status_order) - 1
+
+    context = {
+        'order': order,
+        'items': order.items.all(),
+        'current_step': current_step,
+        'total_steps': total_steps,
+        'status_percentage': (current_step / total_steps) * 100 if total_steps > 0 else 0,
+    }
+    return render(request, 'orders/tracking.html', context)
