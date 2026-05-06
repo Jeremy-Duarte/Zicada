@@ -29,11 +29,11 @@
     {% block extra_css %}{% endblock %}
     {% block extra_head %}{% endblock %}
 </head>
-<body class="bg-white font-['Inter'] antialiased">
+<body class="bg-white font-['Inter'] antialiased flex flex-col min-h-screen">
     
     {% include 'components/header.html' %}
     
-    <main>
+    <main class="flex-grow">
         {% include 'components/breadcrumbs.html' %}
         {% include 'components/messages.html' %}
         
