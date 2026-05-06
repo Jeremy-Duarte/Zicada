@@ -1,0 +1,232 @@
+{% extends "layouts/base.html" %}
+{% load static %}
+
+{% block title %}Seguimiento de pedido #{{ order.order_number }} - Zicada{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-4xl">
+    <!-- Tarjeta principal -->
+    <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
+        
+        <!-- Header con número de pedido -->
+        <div class="bg-gradient-to-r from-zicada-accent to-zicada-primary px-6 py-8 text-white">
+            <div class="flex justify-between items-start flex-wrap gap-4">
+                <div>
+                    <p class="text-sm opacity-90 mb-1">Número de pedido</p>
+                    <h1 class="text-3xl font-mono font-bold">{{ order.order_number }}</h1>
+                    <p class="text-sm opacity-90 mt-2">
+                        Realizado el {{ order.created_at|date:"d/m/Y" }} a las {{ order.created_at|time:"H:i" }}
+                    </p>
+                </div>
+                <div class="bg-white/20 backdrop-blur-sm rounded-xl px-4 py-2 text-center">
+                    <p class="text-xs opacity-90">Estado actual</p>
+                    <p class="text-xl font-bold">
+                        {% if order.status == 'pendiente' %}⏳ Pendiente
+                        {% elif order.status == 'confirmado' %}✅ Confirmado
+                        {% elif order.status == 'preparando' %}🔨 Preparando
+                        {% elif order.status == 'listo' %}📦 Listo para envío
+                        {% elif order.status == 'en_camino' %}🚚 En camino
+                        {% elif order.status == 'entregado' %}🏠 Entregado
+                        {% elif order.status == 'cancelado' %}❌ Cancelado
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Contenido principal -->
+        <div class="p-6">
+            
+            <!-- Barra de progreso (solo si no está cancelado) -->
+            {% if order.status != 'cancelado' %}
+            <div class="mb-8">
+                <div class="flex justify-between mb-2 text-sm text-gray-600">
+                    <span>📝 Confirmado</span>
+                    <span>🔨 Preparando</span>
+                    <span>📦 Listo</span>
+                    <span>🚚 En camino</span>
+                    <span>🏠 Entregado</span>
+                </div>
+                <div class="relative">
+                    <div class="overflow-hidden h-3 text-xs flex rounded-full bg-gray-200">
+                        <div style="width: {{ status_percentage }}%" 
+                             class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-zicada-accent transition-all duration-500">
+                        </div>
+                    </div>
+                    <!-- Marcadores de pasos -->
+                    <div class="absolute top-0 left-0 w-full flex justify-between px-1" style="transform: translateY(-30%);">
+                        {% for i in "12345" %}
+                        <div class="w-5 h-5 rounded-full {% if forloop.counter0 <= current_step %}bg-zicada-accent{% else %}bg-gray-300{% endif %} border-2 border-white shadow"></div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <p class="text-center text-sm text-gray-500 mt-4">
+                    {% if order.status == 'entregado' %}
+                        🎉 ¡Tu pedido ha sido entregado exitosamente!
+                    {% elif order.status == 'en_camino' %}
+                        🚚 Tu pedido está en camino. ¡Pronto estará en tus manos!
+                    {% elif order.status == 'listo' %}
+                        📦 Tu pedido está listo. Pronto lo enviaremos.
+                    {% elif order.status == 'preparando' %}
+                        🔨 Estamos preparando tu pedido con mucho cuidado.
+                    {% elif order.status == 'confirmado' %}
+                        ✅ Tu pedido ha sido confirmado. Comenzaremos a prepararlo pronto.
+                    {% endif %}
+                </p>
+            </div>
+            {% else %}
+            <div class="mb-8 bg-red-50 border border-red-200 rounded-xl p-4 text-center">
+                <p class="text-red-600 font-semibold">❌ Este pedido ha sido cancelado</p>
+                {% if order.cancelled_reason %}
+                <p class="text-sm text-red-500 mt-1">Motivo: {{ order.cancelled_reason }}</p>
+                {% endif %}
+            </div>
+            {% endif %}
+            
+            <!-- Grid de información -->
+            <div class="grid md:grid-cols-2 gap-6 mb-8">
+                <!-- Resumen del pedido -->
+                <div class="bg-gray-50 rounded-xl p-5">
+                    <h3 class="font-bold text-gray-900 mb-3 flex items-center gap-2">
+                        <span>📋</span> Resumen del pedido
+                    </h3>
+                    <div class="space-y-3">
+                        {% for item in items %}
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-700">
+                                {{ item.quantity }}x {{ item.product_name_snapshot }}
+                                <span class="text-gray-400 text-xs">({{ item.size_snapshot }})</span>
+                            </span>
+                            <span class="font-medium text-gray-900">${{ item.subtotal|floatformat:0 }}</span>
+                        </div>
+                        {% endfor %}
+                        <div class="border-t border-gray-200 pt-3 mt-3">
+                            <div class="flex justify-between text-sm">
+                                <span class="text-gray-600">Subtotal</span>
+                                <span>${{ order.subtotal|floatformat:0 }}</span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-gray-600">Envío</span>
+                                <span>${{ order.shipping_cost|floatformat:0 }}</span>
+                            </div>
+                            <div class="flex justify-between font-bold text-lg mt-2 pt-2 border-t border-gray-200">
+                                <span class="text-gray-900">Total pagado</span>
+                                <span class="text-zicada-accent">${{ order.total_amount|floatformat:0 }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Información del cliente -->
+                <div class="bg-gray-50 rounded-xl p-5">
+                    <h3 class="font-bold text-gray-900 mb-3 flex items-center gap-2">
+                        <span>👤</span> Información de entrega
+                    </h3>
+                    <div class="space-y-3 text-sm">
+                        <div>
+                            <p class="text-gray-500 text-xs">Nombre</p>
+                            <p class="font-medium">{{ order.customer_name }}</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-500 text-xs">Teléfono</p>
+                            <p class="font-medium">{{ order.customer_phone }}</p>
+                        </div>
+                        {% if order.customer_email %}
+                        <div>
+                            <p class="text-gray-500 text-xs">Email</p>
+                            <p class="font-medium">{{ order.customer_email }}</p>
+                        </div>
+                        {% endif %}
+                        <div>
+                            <p class="text-gray-500 text-xs">Dirección de envío</p>
+                            <p class="font-medium">{{ order.shipping_address|linebreaksbr }}</p>
+                        </div>
+                        {% if order.delivery_notes %}
+                        <div>
+                            <p class="text-gray-500 text-xs">Notas adicionales</p>
+                            <p class="font-medium text-sm">{{ order.delivery_notes }}</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Timeline detallado (opcional) -->
+            <div class="mb-8">
+                <h3 class="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <span>📅</span> Línea de tiempo
+                </h3>
+                <div class="space-y-3">
+                    <div class="flex gap-3 {% if order.status != 'pendiente' %}opacity-100{% else %}opacity-40{% endif %}">
+                        <div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                            {% if order.status != 'pendiente' %}✅{% else %}⏳{% endif %}
+                        </div>
+                        <div>
+                            <p class="font-medium">Pedido confirmado</p>
+                            <p class="text-sm text-gray-500">
+                                {% if order.status != 'pendiente' %}
+                                    Confirmado el {{ order.updated_at|date:"d/m/Y" }}
+                                {% else %}
+                                    Esperando confirmación de pago
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                    
+                    {% if order.status != 'pendiente' and order.status != 'confirmado' %}
+                    <div class="flex gap-3 opacity-100">
+                        <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">🔨</div>
+                        <div>
+                            <p class="font-medium">En preparación</p>
+                            <p class="text-sm text-gray-500">Estamos preparando tu pedido</p>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if order.status == 'en_camino' or order.status == 'entregado' %}
+                    <div class="flex gap-3 opacity-100">
+                        <div class="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">🚚</div>
+                        <div>
+                            <p class="font-medium">En camino</p>
+                            <p class="text-sm text-gray-500">Tu pedido está en ruta de entrega</p>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if order.status == 'entregado' %}
+                    <div class="flex gap-3 opacity-100">
+                        <div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">🏠</div>
+                        <div>
+                            <p class="font-medium">Entregado</p>
+                            <p class="text-sm text-gray-500">¡Tu pedido ha sido entregado!</p>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Botones de acción -->
+            <div class="flex flex-col sm:flex-row gap-4 pt-4 border-t border-gray-200">
+                <a href="{% url 'products:catalog' %}" 
+                   class="flex-1 bg-zicada-accent text-white py-3 rounded-xl font-semibold hover:bg-opacity-90 transition text-center">
+                    Seguir comprando
+                </a>
+                <a href="{% url 'products:collections_list' %}" 
+                   class="flex-1 border border-zicada-accent text-zicada-accent py-3 rounded-xl font-semibold hover:bg-zicada-accent hover:text-white transition text-center">
+                    Ver colecciones
+                </a>
+            </div>
+            
+            <!-- Mensaje de ayuda -->
+            <div class="mt-6 text-center text-sm text-gray-500">
+                <p>¿Tienes preguntas sobre tu pedido?</p>
+                <p class="mt-1">
+                    Escríbenos a <strong class="text-zicada-accent">info@zicada.com</strong> 
+                    o WhatsApp <strong class="text-zicada-accent">300 123 4567</strong>
+                </p>
+            </div>
+            
+        </div>
+    </div>
+</div>
+{% endblock %}

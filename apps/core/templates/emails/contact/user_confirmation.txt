@@ -1,0 +1,20 @@
+¡Hemos recibido tu mensaje!
+
+Hola {{ name }},
+
+Gracias por contactarnos. Hemos recibido tu mensaje y te responderemos a la brevedad (máximo 24 horas).
+
+RESUMEN DE TU MENSAJE:
+Asunto: {{ subject }}
+Mensaje: {{ message }}
+
+Mientras tanto, te invitamos a:
+- Seguirnos en Instagram y Facebook: @zicada
+- Explorar nuestro catálogo: {{ site_url }}/catalogo/
+- Contactarnos por WhatsApp: 321 4801603
+
+¡Gracias por confiar en Zicada!
+
+---
+La moda que no sigue reglas, solo actitud.
+Zicada

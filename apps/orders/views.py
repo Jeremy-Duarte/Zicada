@@ -124,6 +124,16 @@ def cart_update(request):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
 
+@require_http_methods(['POST'])
+def cart_clear(request):
+    cart = Cart(request)
+    cart.clear()
+    return JsonResponse({
+        'success': True,
+        'total_items': 0,
+        'message': 'Carrito vaciado correctamente'
+    })
+
 def cart_data(request):
     cart = Cart(request)
     summary = cart.get_summary()

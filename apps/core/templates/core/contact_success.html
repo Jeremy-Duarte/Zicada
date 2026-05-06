@@ -1,0 +1,55 @@
+{% extends "layouts/base.html" %}
+{% load static %}
+
+{% block title %}Mensaje enviado - Zicada{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-16 max-w-2xl">
+    <div class="bg-white rounded-2xl shadow-lg p-8 text-center">
+        <!-- Icono de éxito -->
+        <div class="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-green-100 mb-6">
+            <svg class="h-10 w-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+        </div>
+        
+        <h1 class="text-2xl font-bold text-gray-900 mb-2">¡Mensaje enviado!</h1>
+        <p class="text-gray-600 mb-6">Gracias por contactarnos. Te responderemos a la brevedad.</p>
+        
+        <div class="bg-gray-50 rounded-xl p-6 mb-6 text-left">
+            <h3 class="font-semibold text-gray-900 mb-2">¿Qué sigue?</h3>
+            <ul class="space-y-2 text-gray-600 text-sm">
+                <li class="flex items-center gap-2">
+                    <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                    Revisarás tu correo electrónico
+                </li>
+                <li class="flex items-center gap-2">
+                    <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                    Te contactaremos en menos de 24 horas
+                </li>
+                <li class="flex items-center gap-2">
+                    <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                    Puedes seguir explorando nuestros productos
+                </li>
+            </ul>
+        </div>
+        
+        <div class="flex flex-col sm:flex-row gap-4">
+            <a href="{% url 'products:catalog' %}" 
+               class="flex-1 bg-zicada-accent text-white py-3 rounded-xl font-semibold hover:bg-opacity-90 transition text-center">
+                Seguir comprando
+            </a>
+            <a href="{% url 'core:contact' %}" 
+               class="flex-1 border border-zicada-accent text-zicada-accent py-3 rounded-xl font-semibold hover:bg-zicada-accent hover:text-white transition text-center">
+                Volver al contacto
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
