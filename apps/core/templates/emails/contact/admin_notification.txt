@@ -1,0 +1,14 @@
+NUEVO MENSAJE DE CONTACTO - ZICADA
+===================================
+
+Nombre: {{ name }}
+Email: {{ email }}
+Teléfono: {{ phone|default:"No especificado" }}
+Asunto: {{ subject }}
+
+MENSAJE:
+{{ message }}
+
+---
+Fecha: {% now "d/m/Y H:i" %}
+Este mensaje fue enviado desde el formulario de contacto de Zicada.
