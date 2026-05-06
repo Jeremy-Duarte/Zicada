@@ -380,6 +380,11 @@ def order_confirmation(request, order_number):
                 break
             time.sleep(0.5)
             order.refresh_from_db()
+
+        if order.is_paid:
+            cart = Cart(request)
+            if not cart.is_empty():
+                cart.clear()
     
     if not order.is_paid:
         messages.warning(request, 'Tu pago está siendo procesado. Se actualizará automáticamente en breve.')
