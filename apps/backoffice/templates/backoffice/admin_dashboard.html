@@ -3,28 +3,43 @@
 
 {% block title %}Dashboard - Zicada{% endblock %}
 
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+{% endblock %}
+
 {% block content %}
 <div class="space-y-6">
+    <!-- Header -->
     <div class="flex justify-between items-center">
-        <h1 class="text-3xl font-bold text-gray-800">Dashboard</h1>
-        <div class="text-sm text-gray-500">{{ request.user.username }}</div>
-    </div>
-
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-        <div class="bg-white rounded-xl shadow p-5 border-l-4 border-zicada-accent">
-            <div class="flex justify-between items-start">
-                <div>
-                    <p class="text-gray-500 text-sm">Pedidos Pendientes</p>
-                    <p class="text-2xl font-bold text-gray-800">--</p>
-                </div>
-                <i class="fas fa-clock text-gray-400"></i>
-            </div>
+        <h1 class="text-2xl font-bold text-gray-800">Dashboard</h1>
+        <div class="text-sm text-gray-500">
+            {% now "l, d/m/Y" %}
         </div>
     </div>
 
-    <div class="bg-white rounded-xl shadow p-6">
-        <h2 class="text-xl font-semibold mb-4 text-gray-700">Actividad reciente</h2>
-        <p class="text-gray-500 text-center py-12">Próximamente: lista de pedidos, gráficos, etc.</p>
+    <!-- Widgets numéricos (stat_card) -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+        {% include 'backoffice/components/widgets/stat_card.html' with title="Pedidos pendientes" value=stats.pending_orders icon="clock" color="zicada-accent" %}
+        
+        {% include 'backoffice/components/widgets/stat_card.html' with title="Pedidos hoy" value=stats.today_orders icon="calendar-day" color="green-500" %}
+        
+        {% include 'backoffice/components/widgets/stat_card.html' with title="Ingresos del mes" value=stats.month_revenue icon="dollar-sign" color="yellow-500" %}
+        
+        {% include 'backoffice/components/widgets/stat_card.html' with title="Entregadores activos" value=stats.active_deliveries icon="bicycle" color="blue-500" %}
+    </div>
+
+    <!-- Gráficos (chart_card) -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {% include 'backoffice/components/widgets/chart_card.html' with chart_id="sales-chart" title="Ventas de los últimos 7 días" chart_type="line" chart_data=sales_chart_data %}
+        
+        {% include 'backoffice/components/widgets/chart_card.html' with chart_id="orders-status" title="Pedidos por estado" chart_type="donut" chart_data=orders_status_data %}
+    </div>
+
+    <!-- Listas recientes -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {% include 'backoffice/components/widgets/recent_list.html' with title="Pedidos recientes" items=recent_orders view_all_url="backoffice:orders" %}
+        
+        {% include 'backoffice/components/widgets/recent_list.html' with title="Productos con stock bajo" items=low_stock_products view_all_url="backoffice:products" %}
     </div>
 </div>
 {% endblock %}
