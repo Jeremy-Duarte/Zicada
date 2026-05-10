@@ -27,6 +27,7 @@ urlpatterns = [
     path('core/', include('apps.core.urls')),
     path('orders/', include('apps.orders.urls')),
     path('products/', include('apps.products.urls')),
+    path('backoffice/', include('apps.backoffice.urls')),
 ]
 
 if settings.DEBUG:
