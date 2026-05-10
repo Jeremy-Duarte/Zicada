@@ -168,7 +168,7 @@ class StaffLoginView(LoginView):
     def dispatch(self, request, *args, **kwargs):
         if request.user.is_authenticated:
             if request.user.is_staff or getattr(request.user, 'is_delivery', False):
-                return redirect('core:staff_dashboard')
+                return redirect('backoffice:dashboard')
             return redirect('products:catalog')
         return super().dispatch(request, *args, **kwargs)
 
@@ -178,16 +178,3 @@ def staff_logout(request):
     logout(request)
     messages.info(request, 'Sesión cerrada correctamente')
     return redirect('products:catalog')
-
-
-@login_required
-def staff_dashboard(request):
-    user = request.user
-    
-    if user.is_staff:
-        return render(request, 'backoffice/admin_dashboard.html', {'user': user})
-    elif getattr(user, 'is_delivery', False):
-        return render(request, 'backoffice/delivery_dashboard.html', {'user': user})
-    else:
-        messages.error(request, 'No tienes permisos para acceder')
-        return redirect('products:catalog')
