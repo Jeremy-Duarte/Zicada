@@ -1,7 +1,5 @@
-# apps/core/forms.py
 from django import forms
-from django.core.validators import RegexValidator, MinLengthValidator
-
+from django.contrib.auth.forms import AuthenticationForm
 
 class ContactForm(forms.Form):
     name = forms.CharField(
@@ -78,3 +76,26 @@ class ContactForm(forms.Form):
                 raise forms.ValidationError('El número de teléfono debe tener al menos 7 dígitos')
             return digits
         return ''
+    
+
+
+class StaffLoginForm(AuthenticationForm):    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['username'].widget.attrs.update({
+            'class': 'w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-zicada-accent focus:border-transparent transition',
+            'placeholder': 'Ingresa tu usuario',
+            'autofocus': True
+        })
+        self.fields['password'].widget.attrs.update({
+            'class': 'w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-zicada-accent focus:border-transparent transition',
+            'placeholder': 'Ingresa tu contraseña'
+        })
+    
+    def confirm_login_allowed(self, user):
+        if not (user.is_staff or getattr(user, 'is_delivery', False)):
+            raise forms.ValidationError(
+                'No tienes permisos para acceder a esta área.',
+                code='no_permission',
+            )
+        super().confirm_login_allowed(user)

@@ -1,4 +1,7 @@
 from django.shortcuts import render, redirect
+from django.contrib.auth.views import LoginView
+from django.urls import reverse_lazy
+from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.mail import EmailMultiAlternatives
 from django.conf import settings
@@ -6,7 +9,7 @@ from django.template.loader import render_to_string
 from apps.products.models import Product, Collection, Category
 from django.http import JsonResponse
 from django.views.decorators.cache import never_cache
-from .forms import ContactForm
+from .forms import ContactForm, StaffLoginForm
 
 def home(request):
     featured_collections = Collection.objects.filter(
@@ -144,3 +147,47 @@ def newsletter_subscribe(request):
         else:
             messages.error(request, 'Por favor ingresa un correo válido.')
     return HttpResponseRedirect(reverse('home'))
+
+class StaffLoginView(LoginView):
+    template_name = 'core/staff_login.html'
+    authentication_form = StaffLoginForm
+    redirect_authenticated_user = True
+    
+    def get_success_url(self):
+        return reverse_lazy('core:staff_dashboard')
+    
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        messages.success(self.request, f'Bienvenido {self.request.user.username}')
+        return response
+    
+    def form_invalid(self, form):
+        messages.error(self.request, 'Usuario o contraseña incorrectos')
+        return super().form_invalid(form)
+    
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.is_authenticated:
+            if request.user.is_staff or getattr(request.user, 'is_delivery', False):
+                return redirect('core:staff_dashboard')
+            return redirect('products:catalog')
+        return super().dispatch(request, *args, **kwargs)
+
+
+def staff_logout(request):
+    from django.contrib.auth import logout
+    logout(request)
+    messages.info(request, 'Sesión cerrada correctamente')
+    return redirect('products:catalog')
+
+
+@login_required
+def staff_dashboard(request):
+    user = request.user
+    
+    if user.is_staff:
+        return render(request, 'core/admin_dashboard.html', {'user': user})
+    elif getattr(user, 'is_delivery', False):
+        return render(request, 'core/delivery_dashboard.html', {'user': user})
+    else:
+        messages.error(request, 'No tienes permisos para acceder')
+        return redirect('products:catalog')
