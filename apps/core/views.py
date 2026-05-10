@@ -185,9 +185,9 @@ def staff_dashboard(request):
     user = request.user
     
     if user.is_staff:
-        return render(request, 'core/admin_dashboard.html', {'user': user})
+        return render(request, 'backoffice/admin_dashboard.html', {'user': user})
     elif getattr(user, 'is_delivery', False):
-        return render(request, 'core/delivery_dashboard.html', {'user': user})
+        return render(request, 'backoffice/delivery_dashboard.html', {'user': user})
     else:
         messages.error(request, 'No tienes permisos para acceder')
         return redirect('products:catalog')
