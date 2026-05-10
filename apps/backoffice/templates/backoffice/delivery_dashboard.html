@@ -1,0 +1,30 @@
+{% extends "backoffice/layouts/backoffice_base.html" %}
+{% load static %}
+
+{% block title %}Dashboard - Zicada{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex justify-between items-center">
+        <h1 class="text-3xl font-bold text-gray-800">Dashboard</h1>
+        <div class="text-sm text-gray-500">{{ request.user.username }}</div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div class="bg-white rounded-xl shadow p-5 border-l-4 border-zicada-accent">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-gray-500 text-sm">Pedidos Pendientes</p>
+                    <p class="text-2xl font-bold text-gray-800">--</p>
+                </div>
+                <i class="fas fa-clock text-gray-400"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow p-6">
+        <h2 class="text-xl font-semibold mb-4 text-gray-700">Actividad reciente</h2>
+        <p class="text-gray-500 text-center py-12">Próximamente: lista de pedidos, gráficos, etc.</p>
+    </div>
+</div>
+{% endblock %}
