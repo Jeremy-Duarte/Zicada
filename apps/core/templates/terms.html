@@ -1,11 +1,161 @@
-{% extends "base.html" %}l{% extends "layouts/base.html" %}
+{% extends "layouts/base.html" %}
 {% load static %}
 
-{% block title %}Contacto - Zicada{% endblock %}
+{% block title %}Términos y Condiciones - Zicada{% endblock %}
 
 {% block content %}
-<div class="container mx-auto px-4 py-12">
-    <h1 class="text-3xl font-bold mb-6">Contacto</h1>
-    <p class="text-gray-600">Próximamente: Formulario de contacto, WhatsApp, correo y redes sociales.</p>
+<div class="bg-white">
+    <!-- Hero Section -->
+    <div class="bg-gray-900 text-white py-12">
+        <div class="container mx-auto px-4 text-center">
+            <h1 class="text-3xl md:text-4xl font-bold mb-3">Términos y Condiciones</h1>
+            <p class="text-gray-300 max-w-2xl mx-auto">Lee atentamente las condiciones que rigen el uso de nuestro sitio web y servicios</p>
+        </div>
+    </div>
+
+    <div class="container mx-auto px-4 py-12 max-w-4xl">
+        <!-- 1. Aceptación de los términos -->
+        <div class="mb-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-3">1. Aceptación de los términos</h2>
+            <p class="text-gray-600 leading-relaxed">
+                Al acceder y utilizar el sitio web de <strong>Zicada</strong>, aceptas cumplir con estos Términos y Condiciones, 
+                así como con nuestras <a href="{% url 'core:privacy_policy' %}" class="text-zicada-accent hover:underline">Políticas de Privacidad</a> 
+                y <a href="{% url 'core:returns_policy' %}" class="text-zicada-accent hover:underline">Política de Cambios y Devoluciones</a>. 
+                Si no estás de acuerdo con alguno de estos términos, te recomendamos no utilizar nuestro sitio.
+            </p>
+        </div>
+
+        <!-- 2. Información del sitio -->
+        <div class="mb-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-3">2. Información de la empresa</h2>
+            <div class="bg-gray-50 rounded-lg p-5">
+                <p class="text-gray-700"><strong>Nombre comercial:</strong> Zicada</p>
+                <p class="text-gray-700 mt-2"><strong>Correo electrónico:</strong> zicada.lu@gmail.com</p>
+                <p class="text-gray-700 mt-2"><strong>Teléfono de contacto:</strong> 321 4801603</p>
+                <p class="text-gray-700 mt-2"><strong>País de operación:</strong> Colombia</p>
+            </div>
+        </div>
+
+        <!-- 3. Uso del sitio web -->
+        <div class="mb-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-3">3. Uso del sitio web</h2>
+            <p class="text-gray-600 leading-relaxed mb-3">
+                Te comprometes a utilizar nuestro sitio web de manera legal y respetuosa. Queda prohibido:
+            </p>
+            <ul class="space-y-2 text-gray-600 list-disc list-inside ml-4">
+                <li>Realizar compras con información falsa o fraudulenta</li>
+                <li>Intentar acceder a áreas restringidas del sitio sin autorización</li>
+                <li>Utilizar robots, spiders u otros medios automatizados para extraer datos</li>
+                <li>Publicar contenido ofensivo, ilegal o que infrinja derechos de terceros</li>
+            </ul>
+        </div>
+
+        <!-- 4. Productos y precios -->
+        <div class="mb-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-3">4. Productos y precios</h2>
+            <p class="text-gray-600 leading-relaxed mb-3">
+                Todos los precios publicados en nuestro sitio web están expresados en <strong>Pesos Colombianos (COP)</strong> 
+                e incluyen el impuesto al valor agregado (IVA) cuando aplica.
+            </p>
+            <p class="text-gray-600 leading-relaxed">
+                Nos reservamos el derecho de modificar precios, especificaciones y disponibilidad de productos en cualquier momento 
+                y sin previo aviso. Las imágenes de los productos son solo referenciales y pueden variar ligeramente del producto final.
+            </p>
+        </div>
+
+        <!-- 5. Proceso de compra -->
+        <div class="mb-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-3">5. Proceso de compra</h2>
+            <p class="text-gray-600 leading-relaxed mb-3">
+                Al realizar una compra en Zicada, recibirás un correo de confirmación con los detalles de tu pedido. 
+                Este correo no constituye una aceptación automática de la orden. Nos reservamos el derecho de cancelar 
+                cualquier pedido por razones de fuerza mayor, falta de stock o detección de fraude.
+            </p>
+            <p class="text-gray-600 leading-relaxed">
+                Para más información sobre cambios y devoluciones, consulta nuestra 
+                <a href="{% url 'core:returns_policy' %}" class="text-zicada-accent hover:underline">Política de Cambios y Devoluciones</a>.
+            </p>
+        </div>
+
+        <!-- 6. Envíos y entregas -->
+        <div class="mb-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-3">6. Envíos y entregas</h2>
+            <p class="text-gray-600 leading-relaxed">
+                Realizamos envíos a todo el territorio colombiano. Los plazos de entrega varían según la ciudad de destino 
+                y serán informados al momento de la compra. El tiempo máximo de entrega es de <strong>30 días calendario</strong>, 
+                conforme a lo establecido por la Ley 2439 de 2024. Para más detalles, consulta nuestra política de cambios y devoluciones.
+            </p>
+        </div>
+
+        <!-- 7. Propiedad intelectual -->
+        <div class="mb-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-3">7. Propiedad intelectual</h2>
+            <p class="text-gray-600 leading-relaxed">
+                Todos los contenidos de este sitio web, incluyendo pero no limitándose a: diseños, logotipos, imágenes, textos, 
+                gráficos y código fuente, son propiedad de Zicada o de sus respectivos licenciantes. Queda prohibida su reproducción, 
+                distribución o uso sin autorización expresa.
+            </p>
+        </div>
+
+        <!-- 8. Limitación de responsabilidad -->
+        <div class="mb-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-3">8. Limitación de responsabilidad</h2>
+            <p class="text-gray-600 leading-relaxed">
+                Zicada no será responsable por daños indirectos, pérdida de beneficios o cualquier otro perjuicio derivado 
+                del uso o imposibilidad de uso de nuestro sitio web, siempre dentro del marco legal permitido por la ley colombiana.
+            </p>
+        </div>
+
+        <!-- 9. Modificaciones -->
+        <div class="mb-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-3">9. Modificaciones a los términos</h2>
+            <p class="text-gray-600 leading-relaxed">
+                Nos reservamos el derecho de actualizar estos Términos y Condiciones en cualquier momento. 
+                Los cambios serán publicados en esta página con la fecha de actualización correspondiente. 
+                Te recomendamos revisar este documento periódicamente.
+            </p>
+        </div>
+
+        <!-- 10. Ley aplicable -->
+        <div class="mb-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-3">10. Ley aplicable y jurisdicción</h2>
+            <p class="text-gray-600 leading-relaxed">
+                Estos Términos y Condiciones se rigen por las leyes de la <strong>República de Colombia</strong>. 
+                Cualquier controversia derivada del uso de este sitio web será sometida a los tribunales competentes 
+                de la ciudad de Bogotá D.C., Colombia.
+            </p>
+        </div>
+
+        <!-- 11. Contacto -->
+        <div class="mb-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-3">11. Contacto</h2>
+            <p class="text-gray-600 leading-relaxed">
+                Si tienes preguntas sobre estos Términos y Condiciones, puedes contactarnos a través de:
+            </p>
+            <ul class="space-y-2 text-gray-600 list-disc list-inside ml-4 mt-3">
+                <li>Correo electrónico: <a href="mailto:zicada.lu@gmail.com" class="text-zicada-accent hover:underline">zicada.lu@gmail.com</a></li>
+                <li>WhatsApp: <a href="https://wa.me/573214801603" class="text-zicada-accent hover:underline">321 4801603</a></li>
+            </ul>
+        </div>
+
+        <!-- Enlaces a otras políticas -->
+        <div class="bg-gray-100 rounded-xl p-6 text-center mt-8">
+            <h3 class="text-xl font-bold text-gray-800 mb-4">Documentos relacionados</h3>
+            <div class="flex flex-wrap justify-center gap-4">
+                <a href="{% url 'core:privacy_policy' %}" class="bg-white hover:bg-gray-50 text-gray-700 font-semibold px-5 py-2 rounded-lg transition shadow-sm text-sm">
+                    Políticas de Privacidad
+                </a>
+                <a href="{% url 'core:returns_policy' %}" class="bg-white hover:bg-gray-50 text-gray-700 font-semibold px-5 py-2 rounded-lg transition shadow-sm text-sm">
+                    Cambios y Devoluciones
+                </a>
+            </div>
+        </div>
+
+        <!-- Información adicional -->
+        <div class="text-center text-xs text-gray-400 mt-8 pt-6 border-t border-gray-200">
+            <p>Zicada - Todos los derechos reservados - {% now "Y" %}</p>
+            <p class="mt-1">Colombia</p>
+        </div>
+    </div>
 </div>
 {% endblock %}
