@@ -365,28 +365,24 @@ def order_confirmation(request, order_number):
     """Página de confirmación de pedido después del pago exitoso."""
     
     try:
-        # Buscar por order_number en lugar de session_id
         order = Order.objects.get(order_number=order_number)
     except Order.DoesNotExist:
         messages.error(request, 'Pedido no encontrado.')
         return redirect('products:catalog')
     
-    # Verificar si el pedido está pagado, si no, esperar un momento
     if not order.is_paid:
         import time
-        # Esperar hasta 5 segundos por el webhook
-        for _ in range(10):
+        for _ in range(20):
             if order.is_paid:
                 break
             time.sleep(0.5)
             order.refresh_from_db()
-
-        if order.is_paid:
-            cart = Cart(request)
-            if not cart.is_empty():
-                cart.clear()
     
-    if not order.is_paid:
+    if order.is_paid:
+        cart = Cart(request)
+        if not cart.is_empty():
+            cart.clear()
+    else:
         messages.warning(request, 'Tu pago está siendo procesado. Se actualizará automáticamente en breve.')
     
     context = {
