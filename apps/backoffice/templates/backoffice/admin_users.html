@@ -1,0 +1,15 @@
+{% extends "backoffice/layouts/backoffice_base.html" %}
+{% load static %}
+
+{% block title %}Dashboard - Zicada{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex justify-between items-center">
+        <h1 class="text-2xl font-bold text-gray-800">Dashboard de Usuarios</h1>
+        <div class="text-sm text-gray-500">
+            {% now "l, d/m/Y" %}
+        </div>
+    </div>
+</div>
+{% endblock %}
