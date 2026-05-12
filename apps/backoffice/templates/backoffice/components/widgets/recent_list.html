@@ -1,32 +1,63 @@
 {% load static %}
-<div class="bg-white rounded-xl shadow-sm overflow-hidden">
+<div class="bg-white rounded-2xl shadow-sm overflow-hidden">
     <div class="px-5 py-4 border-b border-gray-100 flex justify-between items-center">
         <h3 class="text-gray-800 font-semibold">{{ title|default:"Actividad reciente" }}</h3>
         {% if view_all_url %}
-        <a href="{{ view_all_url }}" class="text-xs text-zicada-accent hover:underline">Ver todos</a>
+        <a href="{{ view_all_url }}" class="text-xs text-zicada-accent hover:underline flex items-center gap-1">
+            <span>Ver todos</span>
+            <i class="fas fa-arrow-right text-xs"></i>
+        </a>
         {% endif %}
     </div>
+    
     <div class="divide-y divide-gray-100">
         {% for item in items %}
-        <div class="px-5 py-3 hover:bg-gray-50 transition flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <div class="w-8 h-8 rounded-full bg-{{ item.icon_bg|default:'gray-100' }} flex items-center justify-center">
-                    <i class="fas fa-{{ item.icon|default:'box' }} text-{{ item.icon_color|default:'zicada-accent' }} text-sm"></i>
+        <a href="{{ item.url|default:'#' }}" class="block px-5 py-3 hover:bg-gray-50 transition group">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-full bg-gradient-to-br from-{{ item.icon_bg|default:'gray-100' }} to-{{ item.icon_bg|default:'gray-200' }} flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
+                        <i class="fas fa-{{ item.icon|default:'box' }} text-{{ item.icon_color|default:'zicada-accent' }} text-base"></i>
+                    </div>
+                    
+                    <div>
+                        <p class="text-sm font-semibold text-gray-800 group-hover:text-zicada-accent transition">
+                            {{ item.title }}
+                        </p>
+                        <p class="text-xs text-gray-400 mt-0.5">{{ item.subtitle|default:"" }}</p>
+                        {% if item.extra_info %}
+                        <p class="text-xs text-gray-400 mt-0.5">{{ item.extra_info }}</p>
+                        {% endif %}
+                    </div>
                 </div>
-                <div>
-                    <p class="text-sm font-medium text-gray-800">{{ item.title }}</p>
-                    <p class="text-xs text-gray-400">{{ item.subtitle|default:"" }}</p>
+                
+                <div class="text-right">
+                    {% if item.value %}
+                    <p class="text-sm font-bold text-gray-800">{{ item.value }}</p>
+                    {% endif %}
+                    {% if item.date %}
+                    <p class="text-xs text-gray-400 mt-0.5">{{ item.date }}</p>
+                    {% endif %}
+                    {% if item.status %}
+                    <span class="inline-block mt-1 px-2 py-0.5 rounded-full text-xs font-medium
+                        {% if item.status == 'pendiente' %}bg-yellow-100 text-yellow-700
+                        {% elif item.status == 'confirmado' %}bg-blue-100 text-blue-700
+                        {% elif item.status == 'preparando' %}bg-purple-100 text-purple-700
+                        {% elif item.status == 'listo' %}bg-indigo-100 text-indigo-700
+                        {% elif item.status == 'en_camino' %}bg-orange-100 text-orange-700
+                        {% elif item.status == 'entregado' %}bg-green-100 text-green-700
+                        {% else %}bg-gray-100 text-gray-700{% endif %}">
+                        {{ item.status_display|default:item.status }}
+                    </span>
+                    {% endif %}
                 </div>
             </div>
-            <div class="text-right">
-                <p class="text-sm font-semibold text-gray-800">{{ item.value|default:"" }}</p>
-                <p class="text-xs text-gray-400">{{ item.date|default:"" }}</p>
-            </div>
-        </div>
+        </a>
         {% empty %}
-        <div class="px-5 py-8 text-center text-gray-400 text-sm">
-            <i class="fas fa-inbox text-2xl mb-2 block"></i>
-            No hay registros recientes
+        <div class="px-5 py-12 text-center text-gray-400 text-sm">
+            <div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3">
+                <i class="fas fa-inbox text-2xl text-gray-300"></i>
+            </div>
+            <p>No hay registros recientes</p>
         </div>
         {% endfor %}
     </div>

@@ -6,15 +6,7 @@ from apps.orders.models import Order, OrderItem
 from apps.products.models import ProductVariant
 from apps.users.models import User
 from django.db.models import Sum
-
-from django.db.models import Sum
-from django.contrib.admin.views.decorators import staff_member_required
-from django.shortcuts import render
-from django.utils import timezone
-from datetime import timedelta
-from apps.orders.models import Order, OrderItem
-from apps.products.models import ProductVariant
-from apps.users.models import User
+from apps.products.models import Product
 
 @staff_member_required
 def admin_dashboard(request):
@@ -115,9 +107,15 @@ def admin_dashboard(request):
             status_names.append(status_labels.get(status_code, status_code))
 
     # ========== PEDIDOS RECIENTES ==========
-    recent_orders_qs = Order.objects.select_related('assigned_delivery_user').order_by('-created_at')[:5]
+    recent_orders_qs = Order.objects.select_related(
+        'assigned_delivery_user'
+    ).order_by('-created_at')[:5]
+
     recent_orders = []
     for order in recent_orders_qs:
+        # Mapeo de estados para mostrar en español
+        status_display = dict(Order.STATUS_CHOICES).get(order.status, order.status)
+        
         recent_orders.append({
             'title': f"Pedido {order.order_number}",
             'subtitle': order.customer_name,
@@ -126,6 +124,9 @@ def admin_dashboard(request):
             'icon': 'box',
             'icon_bg': 'gray-100',
             'icon_color': 'zicada-accent',
+            'url': f"/backoffice/pedidos/{order.id}/",
+            'status': order.status,
+            'status_display': status_display,
         })
 
     # ========== PRODUCTOS CON STOCK BAJO ==========
@@ -134,6 +135,7 @@ def admin_dashboard(request):
         stock__gt=0,
         stock__lte=10
     ).select_related('product', 'size', 'product_color__color')[:5]
+
     low_stock_products = []
     for variant in low_stock_variants:
         low_stock_products.append({
@@ -143,6 +145,8 @@ def admin_dashboard(request):
             'icon': 'exclamation-triangle',
             'icon_bg': 'yellow-100',
             'icon_color': 'yellow-600',
+            'url': f"/backoffice/productos/{variant.product.slug}/",
+            'extra_info': f"SKU: {variant.sku}",
         })
 
     # ========== TOP PRODUCTOS MÁS VENDIDOS ==========
@@ -152,15 +156,26 @@ def admin_dashboard(request):
         total_quantity=Sum('quantity'),
         total_revenue=Sum('subtotal')
     ).order_by('-total_quantity')[:5]
+
     top_products_list = []
-    for product in top_products:
+    for item in top_products:
+        product_name = item['product_name_snapshot']
+        
+        try:
+            product = Product.objects.get(name=product_name, is_active=True)
+            product_url = f"/backoffice/productos/{product.slug}/"
+        except Product.DoesNotExist:
+            product_url = f"/backoffice/productos/?search={product_name|urlencode}"
+        
         top_products_list.append({
-            'title': product['product_name_snapshot'],
-            'subtitle': f"{product['total_quantity']} unidades vendidas",
-            'value': f"${product['total_revenue']:,.0f}",
+            'title': product_name,
+            'subtitle': f"{item['total_quantity']} unidades vendidas",
+            'value': f"${item['total_revenue']:,.0f}",
             'icon': 'chart-line',
             'icon_bg': 'green-100',
             'icon_color': 'green-600',
+            'url': product_url,
+            'extra_info': "Total recaudado",
         })
 
     # Datos para gráficos
