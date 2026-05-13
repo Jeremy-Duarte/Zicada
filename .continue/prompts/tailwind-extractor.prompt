@@ -1,0 +1,18 @@
+---
+name: tailwind-extract
+description: Extract Tailwind classes from HTML into reusable components
+---
+
+Extract Tailwind classes from this HTML:
+
+{{ input }}
+
+Requirements:
+1. Identify class patterns repeated 2+ times
+2. Create @apply directives in /static/css/components.css
+3. Keep responsive classes (sm:, md:, lg:)
+4. Use semantic names (btn-primary, card-product, container-fluid)
+
+Return:
+1. CSS classes to add to components.css
+2. Simplified HTML using new classes

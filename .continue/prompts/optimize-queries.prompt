@@ -1,0 +1,20 @@
+---
+name: optimize-queries
+description: Eliminate N+1 queries in Django
+---
+
+Optimize these Django queries to prevent N+1:
+
+Current code:
+{{ input }}
+
+Apply these techniques:
+- select_related() for ForeignKey, OneToOne fields
+- prefetch_related() for ManyToMany and reverse relations  
+- only() and defer() for specific fields
+- values() or values_list() when full objects not needed
+- annotate() and aggregate() for calculations
+- Use exists() instead of count() > 0
+- Use update() for bulk operations
+
+Return optimized code with comments explaining changes.

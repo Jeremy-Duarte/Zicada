@@ -1,0 +1,19 @@
+---
+name: tests-generate
+description: Generate comprehensive Django tests
+---
+
+Generate unit tests for this code:
+
+Code to test:
+{{ input }}
+
+Requirements:
+- Test normal flow (happy path)
+- Test edge cases (empty, null, invalid)
+- Test error conditions (permissions, validation)
+- Mock external services (payments, maps, database)
+- Use Django TestCase or APITestCase
+- Descriptive test names (test_cannot_create_duplicate_product)
+
+Return complete test file with imports and setup/teardown.

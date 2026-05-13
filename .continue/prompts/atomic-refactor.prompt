@@ -1,0 +1,16 @@
+---
+name: atomic-refactor
+description: Refactor code following KISS and atomic principles
+---
+
+Refactor this code following:
+- Single responsibility per function (max 15 lines)
+- Descriptive names (calculate_total, validate_stock, send_notification)
+- Extract repeated logic to helper functions
+- Add type hints for all parameters and returns
+- KISS: Remove unnecessary complexity
+
+Code:
+{{ input }}
+
+Return ONLY the refactored code.

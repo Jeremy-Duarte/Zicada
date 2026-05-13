@@ -1,0 +1,17 @@
+---
+name: business-review
+description: Review business logic and add user feedback
+---
+
+Review and improve this business logic:
+
+{{ input }}
+
+Zicada requirements:
+- Validate all inputs (never trust client data)
+- Use Django messages.success/error/warning/info
+- Handle edge cases (out of stock, unauthenticated, insufficient funds)
+- Return JSON structure for future AJAX: {status, message, data}
+- Log important actions (stock changes, payments, deliveries)
+
+Return improved code with proper validation and feedback messages.
