@@ -1,0 +1,18 @@
+# .continue/prompts/form-validation.prompt
+---
+name: form-validation
+description: Create or improve Django form validation
+---
+
+Create/improve validation for this form:
+
+{{ input }}
+
+Rules:
+- Validate: required, type, max_length, regex, custom business rules
+- Use clean_field() for single field validation
+- Use clean() for cross-field validation
+- Return user-friendly error messages (Spanish for users)
+- Prevent SQL injection and XSS
+
+Return complete forms.py with all validations.
