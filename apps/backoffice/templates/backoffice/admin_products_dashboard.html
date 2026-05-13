@@ -28,18 +28,7 @@
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {% include 'backoffice/components/widgets/chart_card.html' with chart_id="stock-distribution" title="Distribución de stock" chart_type="donut" chart_data=stock_distribution %}
-        
-        <div class="bg-white rounded-xl shadow-sm p-5 flex items-center justify-center">
-            <div class="text-center">
-                <div class="text-6xl font-bold text-zicada-accent mb-2">{{ stats.total_variantes }}</div>
-                <p class="text-gray-500">Variantes activas</p>
-                <div class="mt-4 text-sm text-gray-400">
-                    <span class="inline-block w-3 h-3 rounded-full bg-green-500 mr-1"></span> {{ stats.con_stock }} con stock |
-                    <span class="inline-block w-3 h-3 rounded-full bg-yellow-500 mr-1 ml-2"></span> {{ stats.stock_bajo }} bajo |
-                    <span class="inline-block w-3 h-3 rounded-full bg-red-500 mr-1 ml-2"></span> {{ stats.agotado }} agotado
-                </div>
-            </div>
-        </div>
+        {% include 'backoffice/components/widgets/stat_card_big.html' with value=stats.total_variantes label="Variantes activas" value_color="zicada-accent" ring_color="zicada-accent" icon="palette" icon_bg="zicada-accent" stats_list=stock_stats_list description="Total de combinaciones talla-color disponibles"%}
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">

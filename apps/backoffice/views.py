@@ -361,6 +361,12 @@ def admin_products(request):
         'labels': ['En stock', 'Stock bajo', 'Agotado'],
     }
     
+    stock_stats_list = [
+        {'label': 'Con stock', 'value': stats['con_stock'], 'color': 'green-500'},
+        {'label': 'Stock bajo', 'value': stats['stock_bajo'], 'color': 'yellow-500'},
+        {'label': 'Agotados', 'value': stats['agotado'], 'color': 'red-500'},
+    ]
+
     context = {
         'section': 'products',
         'stats': stats,
@@ -370,6 +376,7 @@ def admin_products(request):
         'low_stock_products': low_stock_products,
         'top_products': top_products,
         'stock_distribution': stock_distribution,
+        'stock_stats_list': stock_stats_list,
     }
     return render(request, 'backoffice/admin_products_dashboard.html', context)
 
