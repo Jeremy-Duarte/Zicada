@@ -108,6 +108,40 @@ def get_top_products(limit: int = 5) -> List[Dict[str, Any]]:
         })
     return result
 
+def get_product_stats() -> Dict[str, int]:
+    total_variants = ProductVariant.objects.filter(is_active=True).count()
+    variants_with_stock = ProductVariant.objects.filter(is_active=True, stock__gt=0).count()
+    variants_low_stock = ProductVariant.objects.filter(is_active=True, stock__gt=0, stock__lte=10).count()
+    variants_out_stock = ProductVariant.objects.filter(is_active=True, stock=0).count()
+    
+    return {
+        'total': Product.objects.filter(is_active=True).count(),
+        'total_variantes': total_variants,
+        'con_stock': variants_with_stock,
+        'stock_bajo': variants_low_stock,
+        'agotado': variants_out_stock,
+        'sin_stock': variants_out_stock,
+    }
+
+def get_recent_products(limit: int = 5) -> List[Dict[str, Any]]:
+    products = Product.objects.filter(is_active=True).order_by('-created_at')[:limit]
+    result = []
+    for product in products:
+        result.append({
+            'title': product.name,
+            'subtitle': f"${product.price:,.0f} - {product.category.name if product.category else 'Sin categoría'}",
+            'value': f"{product.total_stock()} unidades",
+            'date': product.created_at.strftime('%d/%m/%Y'),
+            'icon': 'tshirt',
+            'icon_bg': 'blue-100',
+            'icon_color': 'blue-600',
+            'url': f"/backoffice/productos/{product.slug}/",
+        })
+    return result
+
+def get_top_selling_products(limit: int = 5) -> List[Dict[str, Any]]:
+    return get_top_products(limit=limit)
+
 @staff_member_required
 def admin_dashboard(request):
     today = timezone.now().date()
@@ -276,8 +310,68 @@ def admin_orders_dashboard(request):
 
 @staff_member_required
 def admin_products(request):
-    context = {'section': 'products'}
-    return render(request, 'backoffice/admin_products.html', context)
+
+    stats = get_product_stats() 
+    recent_products = get_recent_products(limit=5)
+    low_stock_products = get_low_stock_products(limit=5, max_stock=10)
+    top_products = get_top_products(limit=5)
+    
+    products_index = 'products:products_list'
+    urls = {
+        'products_list': reverse(products_index),
+        'total': reverse(products_index) + '?status=todos',
+        'activos': reverse(products_index) + '?status=activos',
+        'inactivos': reverse(products_index) + '?status=inactivos',
+        'stock_bajo': reverse(products_index) + '?stock=bajo',
+        'agotados': reverse(products_index) + '?stock=agotado',
+    }
+    
+    action_buttons = [
+        {
+            'url': reverse(products_index),
+            'icon': 'table-list',
+            'title': 'Gestionar Productos',
+            'description': 'Ver, filtrar y gestionar todos los productos',
+            'gradient_from': 'zicada-accent',
+            'gradient_to': 'zicada-accent/80',
+            'badge': f"{stats['total']} productos"
+        },
+        {
+            'url': '#',
+            'icon': 'plus-circle',
+            'title': 'Crear Producto',
+            'description': 'Agregar un nuevo producto al catálogo',
+            'gradient_from': 'green-500',
+            'gradient_to': 'green-600',
+            'badge': 'Nuevo'
+        },
+        {
+            'url': '#',
+            'icon': 'file-export',
+            'title': 'Exportar Reportes',
+            'description': 'Descargar reportes en Excel o PDF',
+            'gradient_from': 'blue-500',
+            'gradient_to': 'blue-600',
+            'badge': 'Próximamente',
+        },
+    ]
+    
+    stock_distribution = {
+        'series': [stats['con_stock'], stats['stock_bajo'], stats['agotado']],
+        'labels': ['En stock', 'Stock bajo', 'Agotado'],
+    }
+    
+    context = {
+        'section': 'products',
+        'stats': stats,
+        'urls': urls,
+        'action_buttons': action_buttons,
+        'recent_products': recent_products,
+        'low_stock_products': low_stock_products,
+        'top_products': top_products,
+        'stock_distribution': stock_distribution,
+    }
+    return render(request, 'backoffice/admin_products_dashboard.html', context)
 
 @staff_member_required
 def admin_users(request):
