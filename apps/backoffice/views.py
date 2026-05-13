@@ -3,7 +3,7 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.utils import timezone
 from datetime import timedelta
 from typing import List, Dict, Tuple, Any
-from django.db.models import Sum
+from django.db.models import Q, QuerySet, Sum
 from apps.orders.models import Order, OrderItem
 from apps.products.models import ProductVariant, Product
 from apps.users.models import User
@@ -165,10 +165,80 @@ def admin_dashboard(request):
     }
     return render(request, 'backoffice/admin_dashboard.html', context)
 
+def get_order_status_counts() -> Dict[str, int]:
+    status_counts = {}
+    for status_code, status_label in Order.STATUS_CHOICES:
+        status_counts[status_code] = Order.objects.filter(status=status_code).count()
+    return status_counts
+
+def get_daily_order_counts(days: int = 7) -> Tuple[List[str], List[int]]:
+    today = timezone.now().date()
+    categories = []
+    data = []
+    for i in range(days - 1, -1, -1):
+        date = today - timedelta(days=i)
+        categories.append(date.strftime('%d/%m'))
+        count = Order.objects.filter(created_at__date=date).count()
+        data.append(count)
+    return categories, data
+
+def get_orders_by_status_filtered(status: str = None, search: str = None) -> QuerySet:
+    qs = Order.objects.select_related('assigned_delivery_user').order_by('-created_at')
+    if status and status != 'todos':
+        qs = qs.filter(status=status)
+    if search:
+        qs = qs.filter(
+            Q(order_number__icontains=search) |
+            Q(customer_name__icontains=search) |
+            Q(customer_phone__icontains=search)
+        )
+    return qs
+
+def get_delivery_stats(user) -> Dict[str, Any]:
+    if not getattr(user, 'is_delivery', False):
+        return {}
+    
+    assigned_orders = Order.objects.filter(assigned_delivery_user=user)
+    return {
+        'assigned_count': assigned_orders.exclude(status='entregado').count(),
+        'delivered_today': assigned_orders.filter(
+            status='entregado', updated_at__date=timezone.now().date()
+        ).count(),
+        'pending_assignments': Order.objects.filter(
+            status='listo', assigned_delivery_user__isnull=True
+        ).count() if user.is_staff else 0,
+        'my_orders': assigned_orders.order_by('-created_at')[:10],
+    }
+
 @staff_member_required
-def admin_orders(request):
-    context = {'section': 'orders'}
-    return render(request, 'backoffice/admin_orders.html', context)
+def admin_orders_dashboard(request):
+    
+    stats = {
+        'total': Order.objects.count(),
+        'pendiente': Order.objects.filter(status='pendiente').count(),
+        'confirmado': Order.objects.filter(status='confirmado').count(),
+        'preparando': Order.objects.filter(status='preparando').count(),
+        'listo': Order.objects.filter(status='listo').count(),
+        'en_camino': Order.objects.filter(status='en_camino').count(),
+        'entregado': Order.objects.filter(status='entregado').count(),
+        'cancelado': Order.objects.filter(status='cancelado').count(),
+    }
+
+    categories, order_counts = get_daily_order_counts(days=7)
+    
+    recent_orders = Order.objects.select_related('assigned_delivery_user').order_by('-created_at')[:5]
+    
+    context = {
+        'section': 'orders',
+        'stats': stats,
+        'recent_orders': recent_orders,
+        'orders_trend_data': {
+            'series': [{'name': 'Pedidos', 'data': order_counts}],
+            'categories': categories,
+        },
+        'orders_status_data': get_status_chart_data(),
+    }
+    return render(request, 'backoffice/admin_orders_dashboard.html', context)
 
 @staff_member_required
 def admin_products(request):
