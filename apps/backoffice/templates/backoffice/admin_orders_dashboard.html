@@ -33,34 +33,6 @@
         {% include 'backoffice/components/widgets/chart_card.html' with chart_id="orders-status" title="Distribución actual" chart_type="donut" chart_data=orders_status_data %}
     </div>
 
-    <div class="bg-white rounded-xl shadow-sm overflow-hidden">
-        <div class="px-5 py-4 border-b border-gray-100 flex justify-between items-center">
-            <h3 class="text-gray-800 font-semibold">Últimos pedidos</h3>
-            <a href="{% url 'orders:orders_list' %}" class="text-xs text-zicada-accent hover:underline">Ver todos</a>
-        </div>
-        <div class="divide-y divide-gray-100">
-            {% for order in recent_orders %}
-            <a href="{% url 'orders:order_detail' order.pk %}" class="block px-5 py-3 hover:bg-gray-50 transition">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
-                            <i class="fas fa-box text-zicada-accent text-sm"></i>
-                        </div>
-                        <div>
-                            <p class="text-sm font-medium text-gray-800">{{ order.order_number }}</p>
-                            <p class="text-xs text-gray-400">{{ order.customer_name }}</p>
-                        </div>
-                    </div>
-                    <div class="text-right">
-                        <p class="text-sm font-semibold text-gray-800">${{ order.total_amount|floatformat:0 }}</p>
-                        <p class="text-xs text-gray-400">{{ order.created_at|date:"d/m H:i" }}</p>
-                    </div>
-                </div>
-            </a>
-            {% empty %}
-            <div class="px-5 py-8 text-center text-gray-400">No hay pedidos recientes</div>
-            {% endfor %}
-        </div>
-    </div>
+    {% include 'backoffice/components/widgets/recent_items_list.html' with title="Últimos pedidos" items=recent_orders view_all_url=urls.orders_list %}
 </div>
 {% endblock %}

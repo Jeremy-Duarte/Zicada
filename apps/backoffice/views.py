@@ -227,8 +227,6 @@ def admin_orders_dashboard(request):
 
     categories, order_counts = get_daily_order_counts(days=7)
     
-    recent_orders = Order.objects.select_related('assigned_delivery_user').order_by('-created_at')[:5]
-    
     orders_index = 'orders:orders_list'
     urls = {
         'total': reverse(orders_index) + '?status=todos',
@@ -237,7 +235,21 @@ def admin_orders_dashboard(request):
         'en_camino': reverse(orders_index) + '?status=en_camino',
         'entregado': reverse(orders_index) + '?status=entregado',
         'cancelado': reverse(orders_index) + '?status=cancelado',
+        'orders_list': reverse(orders_index),
     }
+
+    recent_orders = []
+    for order in Order.objects.select_related('assigned_delivery_user').order_by('-created_at')[:5]:
+        recent_orders.append({
+            'url': reverse('orders:order_detail', args=[order.pk]),
+            'icon': 'box',
+            'icon_bg': 'gray-100',
+            'icon_color': 'zicada-accent',
+            'title': order.order_number,
+            'subtitle': order.customer_name,
+            'value': f"${order.total_amount:,.0f}",
+            'date': order.created_at.strftime('%d/%m %H:%M'),
+        })
 
     action_buttons = [
         {
