@@ -1,0 +1,38 @@
+{% extends "backoffice/layouts/backoffice_base.html" %}
+{% load static %}
+
+{% block title %}Dashboard de Pedidos - Zicada{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex justify-between items-center">
+        <h1 class="text-2xl font-bold text-gray-800">Dashboard de Pedidos</h1>
+        <div class="text-sm text-gray-500">{% now "l, d/m/Y" %}</div>
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+        {% include 'backoffice/components/widgets/stat_card_link.html' with title="Total Pedidos" value=stats.total url=urls.total icon="shopping-cart" border_color="gray-500" icon_bg="gray-100" icon_color="gray-500" link_text="Ver todos" link_color="zicada-accent" %}
+
+        {% include 'backoffice/components/widgets/stat_card_link.html' with title="Pendientes" value=stats.pendiente url=urls.pendiente icon="clock" border_color="yellow-500" icon_bg="yellow-50" icon_color="yellow-500" link_text="Gestionar" link_color="yellow-600" %}
+
+        {% include 'backoffice/components/widgets/stat_card_link.html' with title="Confirmados" value=stats.confirmado url=urls.confirmado icon="check-circle" border_color="blue-500" icon_bg="blue-50" icon_color="blue-500" link_text="Ver proceso" link_color="blue-600" %}
+
+        {% include 'backoffice/components/widgets/stat_card_link.html' with title="En Camino" value=stats.en_camino url=urls.en_camino icon="truck" border_color="purple-500" icon_bg="purple-50" icon_color="purple-500" link_text="Seguimiento" link_color="purple-600" %}
+
+        {% include 'backoffice/components/widgets/stat_card_link.html' with title="Entregados" value=stats.entregado url=urls.entregado icon="check-double" border_color="green-500" icon_bg="green-50" icon_color="green-500" link_text="Historial" link_color="green-600" %}
+
+        {% include 'backoffice/components/widgets/stat_card_link.html' with title="Cancelados" value=stats.cancelado url=urls.cancelado icon="ban" border_color="red-500" icon_bg="red-50" icon_color="red-500" link_text="Revisar" link_color="red-600" %}
+    </div>
+
+    <div class="flex flex-wrap gap-4 justify-center my-8">
+        {% include 'backoffice/components/widgets/action_buttons_card.html' with buttons=action_buttons %}
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {% include 'backoffice/components/widgets/chart_card.html' with chart_id="orders-trend" title="Tendencia de pedidos (últimos 7 días)" chart_type="line" chart_data=orders_trend_data %}
+        {% include 'backoffice/components/widgets/chart_card.html' with chart_id="orders-status" title="Distribución actual" chart_type="donut" chart_data=orders_status_data %}
+    </div>
+
+    {% include 'backoffice/components/widgets/recent_items_list.html' with title="Últimos pedidos" items=recent_orders view_all_url=urls.orders_list %}
+</div>
+{% endblock %}

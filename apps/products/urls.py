@@ -9,4 +9,7 @@ urlpatterns = [
     path('colecciones/', views.collections_list, name='collections_list'),
     path('colecciones/<slug:slug>/', views.collection_detail, name='collection_detail'),
     path('<slug:slug>/', views.product_detail, name='product_detail'),
+    #Crud Paths
+    path('lista/', views.products_list, name='products_list'),
+    path('<int:pk>/', views.product_detail, name='product_detail'),
 ]

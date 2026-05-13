@@ -1,3 +1,7 @@
 from django.shortcuts import render
 
-# Create your views here.
+def users_list(request):
+    pass #TODO
+
+def user_detail(request):
+    pass #TODO
