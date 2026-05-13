@@ -1,38 +1,85 @@
 {% load static %}
-<div class="bg-white rounded-xl shadow-sm overflow-hidden">
-    <div class="px-5 py-4 border-b border-gray-100 flex justify-between items-center">
-        <h3 class="text-gray-800 font-semibold">{{ title|default:"Items recientes" }}</h3>
+<div class="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition">
+    <div class="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-gradient-to-r from-gray-50 to-white">
+        <div class="flex items-center gap-3">
+            <div class="w-2 h-8 bg-zicada-accent rounded-full"></div>
+            <h3 class="text-xl font-bold text-gray-800">{{ title|default:"Items recientes" }}</h3>
+        </div>
         {% if view_all_url %}
-        <a href="{{ view_all_url }}" class="text-xs text-zicada-accent hover:underline">Ver todos</a>
+        <a href="{{ view_all_url }}" class="text-sm text-zicada-accent hover:text-zicada-accent/80 transition flex items-center gap-2 font-medium">
+            <span>Ver todos</span>
+            <i class="fas fa-arrow-right text-xs"></i>
+        </a>
         {% endif %}
     </div>
+    
     <div class="divide-y divide-gray-100">
         {% for item in items %}
-        <a href="{{ item.url }}" class="block px-5 py-3 hover:bg-gray-50 transition">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 rounded-full bg-{{ item.icon_bg|default:'gray-100' }} flex items-center justify-center">
-                        <i class="fas fa-{{ item.icon|default:'box' }} text-{{ item.icon_color|default:'zicada-accent' }} text-sm"></i>
+        <a href="{{ item.url|default:'#' }}" class="block px-6 py-5 hover:bg-gray-50 transition group">
+            <div class="flex items-start justify-between">
+                <div class="flex items-start gap-5 flex-1">
+                    <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-{{ item.icon_bg|default:'gray-100' }} to-{{ item.icon_bg|default:'gray-200' }} flex items-center justify-center shadow-md group-hover:scale-105 transition-transform">
+                        <i class="fas fa-{{ item.icon|default:'box' }} text-{{ item.icon_color|default:'zicada-accent' }} text-xl"></i>
                     </div>
-                    <div>
-                        <p class="text-sm font-medium text-gray-800">{{ item.title }}</p>
-                        <p class="text-xs text-gray-400">{{ item.subtitle|default:"" }}</p>
+                    
+                    <div class="flex-1">
+                        <p class="text-base font-bold text-gray-800 group-hover:text-zicada-accent transition">
+                            {{ item.title }}
+                        </p>
+                        <p class="text-sm text-gray-500 mt-1">{{ item.subtitle|default:"" }}</p>
+                        {% if item.extra_info %}
+                        <p class="text-xs text-gray-400 mt-1 flex items-center gap-1">
+                            <i class="fas fa-info-circle"></i> {{ item.extra_info }}
+                        </p>
+                        {% endif %}
                     </div>
                 </div>
+                
                 <div class="text-right">
                     {% if item.value %}
-                    <p class="text-sm font-semibold text-gray-800">{{ item.value }}</p>
+                    <p class="text-lg font-bold text-gray-900">{{ item.value }}</p>
                     {% endif %}
+                    
                     {% if item.date %}
-                    <p class="text-xs text-gray-400">{{ item.date }}</p>
+                    <p class="text-xs text-gray-400 mt-1 flex items-center gap-1 justify-end">
+                        <i class="far fa-calendar-alt"></i> {{ item.date }}
+                    </p>
+                    {% endif %}
+                    
+                    {% if item.status %}
+                    <span class="inline-block mt-2 px-3 py-1 rounded-full text-xs font-semibold shadow-sm
+                        {% if item.status == 'pendiente' %}bg-yellow-100 text-yellow-700
+                        {% elif item.status == 'confirmado' %}bg-blue-100 text-blue-700
+                        {% elif item.status == 'preparando' %}bg-purple-100 text-purple-700
+                        {% elif item.status == 'listo' %}bg-indigo-100 text-indigo-700
+                        {% elif item.status == 'en_camino' %}bg-orange-100 text-orange-700
+                        {% elif item.status == 'entregado' %}bg-green-100 text-green-700
+                        {% else %}bg-gray-100 text-gray-700{% endif %}">
+                        <i class="fas fa-{% if item.status == 'entregado' %}check-circle{% elif item.status == 'pendiente' %}clock{% else %}circle{% endif %} text-xs mr-1"></i>
+                        {{ item.status_display|default:item.status }}
+                    </span>
+                    {% endif %}
+                    
+                    {% if item.stock_badge %}
+                    <span class="inline-block mt-2 px-3 py-1 rounded-full text-xs font-bold bg-red-500 text-white shadow-sm">
+                        <i class="fas fa-exclamation-triangle text-xs mr-1"></i> {{ item.stock_badge }}
+                    </span>
+                    {% endif %}
+                    
+                    {% if item.ranking %}
+                    <span class="inline-block mt-2 px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-amber-400 to-amber-500 text-white shadow-sm">
+                        <i class="fas fa-trophy text-xs mr-1"></i> #{{ item.ranking }}
+                    </span>
                     {% endif %}
                 </div>
             </div>
         </a>
         {% empty %}
-        <div class="px-5 py-8 text-center text-gray-400">
-            <i class="fas fa-inbox text-2xl mb-2 block"></i>
-            {{ empty_message|default:"No hay registros recientes" }}
+        <div class="px-6 py-16 text-center text-gray-400">
+            <div class="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-inbox text-3xl text-gray-300"></i>
+            </div>
+            <p class="text-base">{{ empty_message|default:"No hay registros recientes" }}</p>
         </div>
         {% endfor %}
     </div>

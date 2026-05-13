@@ -213,18 +213,10 @@ def get_delivery_stats(user) -> Dict[str, Any]:
 
 @staff_member_required
 def admin_orders_dashboard(request):
-    
-    stats = {
-        'total': Order.objects.count(),
-        'pendiente': Order.objects.filter(status='pendiente').count(),
-        'confirmado': Order.objects.filter(status='confirmado').count(),
-        'preparando': Order.objects.filter(status='preparando').count(),
-        'listo': Order.objects.filter(status='listo').count(),
-        'en_camino': Order.objects.filter(status='en_camino').count(),
-        'entregado': Order.objects.filter(status='entregado').count(),
-        'cancelado': Order.objects.filter(status='cancelado').count(),
-    }
 
+    stats = get_order_status_counts()
+    stats['total'] = sum(stats.values())
+    recent_orders = get_recent_orders(limit=5)
     categories, order_counts = get_daily_order_counts(days=7)
     
     orders_index = 'orders:orders_list'
@@ -238,19 +230,6 @@ def admin_orders_dashboard(request):
         'orders_list': reverse(orders_index),
     }
 
-    recent_orders = []
-    for order in Order.objects.select_related('assigned_delivery_user').order_by('-created_at')[:5]:
-        recent_orders.append({
-            'url': reverse('orders:order_detail', args=[order.pk]),
-            'icon': 'box',
-            'icon_bg': 'gray-100',
-            'icon_color': 'zicada-accent',
-            'title': order.order_number,
-            'subtitle': order.customer_name,
-            'value': f"${order.total_amount:,.0f}",
-            'date': order.created_at.strftime('%d/%m %H:%M'),
-        })
-
     action_buttons = [
         {
             'url': reverse(orders_index),
@@ -259,7 +238,7 @@ def admin_orders_dashboard(request):
             'description': 'Ver, filtrar y gestionar todos los pedidos',
             'gradient_from': 'zicada-accent',
             'gradient_to': 'zicada-accent/80',
-            'badge': f'{stats['total']} activos'
+            'badge': f"{stats['total']} activos"
         },
         {
             'url': '#',
@@ -278,7 +257,6 @@ def admin_orders_dashboard(request):
             'gradient_from': 'blue-500',
             'gradient_to': 'blue-600',
             'badge': 'Próximamente',
-            'onclick': 'alert("Reportes - Próximamente")'
         },
     ]
 
