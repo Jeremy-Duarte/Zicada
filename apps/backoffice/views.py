@@ -245,6 +245,61 @@ def get_delivery_stats(user) -> Dict[str, Any]:
         'my_orders': assigned_orders.order_by('-created_at')[:10],
     }
 
+def get_delivery_stats() -> Dict[str, int]:
+    return {
+        'total': User.objects.filter(is_delivery=True, is_active=True).count(),
+        'activos': User.objects.filter(is_delivery=True, is_active=True).count(),
+        'inactivos': User.objects.filter(is_delivery=True, is_active=False).count(),
+    }
+
+def get_delivery_order_stats() -> Dict[str, int]:
+    return {
+        'listos_para_entregar': Order.objects.filter(status='listo', assigned_delivery_user__isnull=True).count(),
+        'en_camino': Order.objects.filter(status='en_camino').count(),
+        'entregados_hoy': Order.objects.filter(status='entregado', updated_at__date=timezone.now().date()).count(),
+        'pendientes_asignacion': Order.objects.filter(status='listo', assigned_delivery_user__isnull=True).count(),
+    }
+
+def get_recent_deliveries(limit: int = 5) -> List[Dict[str, Any]]:
+    deliveries = Order.objects.filter(
+        status='entregado',
+        assigned_delivery_user__isnull=False
+    ).select_related('assigned_delivery_user').order_by('-updated_at')[:limit]
+    
+    result = []
+    for order in deliveries:
+        result.append({
+            'title': f"Pedido {order.order_number}",
+            'subtitle': f"Entregado por {order.assigned_delivery_user.get_full_name() or order.assigned_delivery_user.username}",
+            'value': f"${order.total_amount:,.0f}",
+            'date': order.updated_at.strftime('%d/%m %H:%M'),
+            'icon': 'check-circle',
+            'icon_bg': 'green-100',
+            'icon_color': 'green-600',
+            'url': f"/backoffice/pedidos/{order.id}/",
+        })
+    return result
+
+def get_active_deliveries_list(limit: int = 5) -> List[Dict[str, Any]]:
+    deliveries = User.objects.filter(is_delivery=True, is_active=True).order_by('-date_joined')[:limit]
+    
+    result = []
+    for delivery in deliveries:
+        assigned_count = Order.objects.filter(assigned_delivery_user=delivery, status='en_camino').count()
+        delivered_count = Order.objects.filter(assigned_delivery_user=delivery, status='entregado').count()
+        
+        result.append({
+            'title': delivery.get_full_name() or delivery.username,
+            'subtitle': delivery.email or 'Sin email',
+            'value': f"{assigned_count} en camino",
+            'date': f"{delivered_count} entregados",
+            'icon': 'user',
+            'icon_bg': 'purple-100',
+            'icon_color': 'purple-600',
+            'url': f"/backoffice/usuarios/{delivery.id}/",
+            'extra_info': delivery.phone if delivery.phone else 'Sin teléfono',
+        })
+    return result
 @staff_member_required
 def admin_orders_dashboard(request):
 
@@ -382,8 +437,82 @@ def admin_products(request):
 
 @staff_member_required
 def admin_users(request):
-    context = {'section': 'users'}
-    return render(request, 'backoffice/admin_users.html', context)
+    
+    delivery_stats = get_delivery_stats()    
+    order_stats = get_delivery_order_stats()    
+    recent_deliveries = get_recent_deliveries(limit=5)
+    active_deliveries = get_active_deliveries_list(limit=5)
+    
+    users_index = 'users:users_list'
+    urls = {
+        'users_list': reverse(users_index),
+        'total': reverse(users_index) + '?status=todos',
+        'activos': reverse(users_index) + '?status=activos',
+        'inactivos': reverse(users_index) + '?status=inactivos',
+        'pedidos_listos': reverse('orders:orders_list') + '?status=listo',
+        'pedidos_camino': reverse('orders:orders_list') + '?status=en_camino',
+    }
+    
+    action_buttons = [
+        {
+            'url': reverse(users_index),
+            'icon': 'users',
+            'title': 'Gestionar Entregadores',
+            'description': 'Ver, filtrar y gestionar todos los entregadores',
+            'gradient_from': 'zicada-accent',
+            'gradient_to': 'zicada-accent/80',
+            'badge': f"{delivery_stats['total']} activos"
+        },
+        {
+            'url': '#',
+            'icon': 'plus-circle',
+            'title': 'Agregar Entregador',
+            'description': 'Registrar un nuevo entregador',
+            'gradient_from': 'green-500',
+            'gradient_to': 'green-600',
+            'badge': 'Nuevo'
+        },
+        {
+            'url': '#',
+            'icon': 'file-export',
+            'title': 'Exportar Reportes',
+            'description': 'Descargar reportes de entregas',
+            'gradient_from': 'blue-500',
+            'gradient_to': 'blue-600',
+            'badge': 'Próximamente',
+        },
+    ]
+    
+    delivery_stats_list = [
+        {'label': 'Activos', 'value': delivery_stats['activos'], 'color': 'green-500'},
+        {'label': 'Inactivos', 'value': delivery_stats['inactivos'], 'color': 'gray-400'},
+    ]
+    
+    categories, order_counts = get_daily_order_counts(days=7)
+    
+    context = {
+        'section': 'users',
+        'stats': {
+            'total_entregadores': delivery_stats['total'],
+            'pedidos_por_entregar': order_stats['listos_para_entregar'],
+            'pedidos_en_camino': order_stats['en_camino'],
+            'entregados_hoy': order_stats['entregados_hoy'],
+        },
+        'urls': urls,
+        'action_buttons': action_buttons,
+        'recent_deliveries': recent_deliveries,
+        'active_deliveries': active_deliveries,
+        'delivery_stats': delivery_stats,
+        'delivery_stats_list': delivery_stats_list,
+        'pedidos_por_entregar': order_stats['listos_para_entregar'],
+        'pedidos_en_camino': order_stats['en_camino'],
+        'orders_trend_data': {
+            'series': [{'name': 'Pedidos', 'data': order_counts}],
+            'categories': categories,
+        },
+        'orders_status_data': get_status_chart_data(),
+    }
+    return render(request, 'backoffice/admin_users_dashboard.html', context)
 
 @staff_member_required
 def admin_config(request):
