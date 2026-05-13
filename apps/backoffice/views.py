@@ -229,7 +229,7 @@ def admin_orders_dashboard(request):
     
     recent_orders = Order.objects.select_related('assigned_delivery_user').order_by('-created_at')[:5]
     
-    orders_index = 'orders:order_list'
+    orders_index = 'orders:orders_list'
     urls = {
         'total': reverse(orders_index) + '?status=todos',
         'pendiente': reverse(orders_index) + '?status=pendiente',
@@ -239,10 +239,42 @@ def admin_orders_dashboard(request):
         'cancelado': reverse(orders_index) + '?status=cancelado',
     }
 
+    action_buttons = [
+        {
+            'url': reverse(orders_index),
+            'icon': 'table-list',
+            'title': 'Gestionar Pedidos',
+            'description': 'Ver, filtrar y gestionar todos los pedidos',
+            'gradient_from': 'zicada-accent',
+            'gradient_to': 'zicada-accent/80',
+            'badge': f'{stats['total']} activos'
+        },
+        {
+            'url': '#',
+            'icon': 'plus-circle',
+            'title': 'Crear Pedido',
+            'description': 'Agregar un nuevo pedido desde el catálogo',
+            'gradient_from': 'green-500',
+            'gradient_to': 'green-600',
+            'badge': 'Nuevo'
+        },
+        {
+            'url': '#',
+            'icon': 'file-export',
+            'title': 'Exportar Reportes',
+            'description': 'Descargar reportes en Excel o PDF',
+            'gradient_from': 'blue-500',
+            'gradient_to': 'blue-600',
+            'badge': 'Próximamente',
+            'onclick': 'alert("Reportes - Próximamente")'
+        },
+    ]
+
     context = {
         'section': 'orders',
         'stats': stats,
         'urls': urls,
+        'action_buttons': action_buttons,
         'recent_orders': recent_orders,
         'orders_trend_data': {
             'series': [{'name': 'Pedidos', 'data': order_counts}],

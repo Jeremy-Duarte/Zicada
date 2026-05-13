@@ -24,19 +24,8 @@
         {% include 'backoffice/components/widgets/stat_card_link.html' with title="Cancelados" value=stats.cancelado url=urls.cancelado icon="ban" border_color="red-500" icon_bg="red-50" icon_color="red-500" link_text="Revisar" link_color="red-600" %}
     </div>
 
-    <div class="flex flex-wrap gap-4">
-        <a href="{% url 'orders:orders_list' %}" 
-           class="bg-zicada-accent hover:bg-opacity-90 text-white px-5 py-2.5 rounded-xl font-semibold transition flex items-center gap-2">
-            <i class="fas fa-table-list"></i> Gestionar todos los pedidos
-        </a>
-        <a href="{% url 'products:catalog' %}" 
-           class="border border-zicada-accent text-zicada-accent hover:bg-zicada-accent hover:text-white px-5 py-2.5 rounded-xl font-semibold transition flex items-center gap-2">
-            <i class="fas fa-plus"></i> Crear nuevo pedido
-        </a>
-        <button onclick="alert('Reportes - Próximamente')" 
-                class="border border-gray-300 text-gray-600 hover:bg-gray-50 px-5 py-2.5 rounded-xl font-semibold transition flex items-center gap-2">
-            <i class="fas fa-chart-bar"></i> Exportar reportes
-        </button>
+    <div class="flex flex-wrap gap-4 justify-center my-8">
+        {% include 'backoffice/components/widgets/action_buttons_card.html' with buttons=action_buttons %}
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
