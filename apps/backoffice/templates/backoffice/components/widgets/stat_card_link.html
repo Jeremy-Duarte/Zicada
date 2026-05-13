@@ -1,0 +1,16 @@
+{% load static %}
+<a href="{{ url }}" 
+   class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-{{ border_color|default:'gray-500' }} hover:shadow-md transition block group">
+    <div class="flex justify-between items-start">
+        <div>
+            <p class="text-gray-500 text-sm font-medium mb-1">{{ title|default:"Estadística" }}</p>
+            <p class="text-3xl font-bold text-gray-800">{{ value|default:"0" }}</p>
+        </div>
+        <div class="w-10 h-10 bg-{{ icon_bg|default:'gray-100' }} rounded-lg flex items-center justify-center group-hover:scale-105 transition">
+            <i class="fas fa-{{ icon|default:'chart-line' }} text-{{ icon_color|default:'gray-500' }} text-lg"></i>
+        </div>
+    </div>
+    <p class="text-xs text-{{ link_color|default:'zicada-accent' }} mt-2 flex items-center gap-1">
+        {{ link_text|default:"Ver todos" }} <i class="fas fa-arrow-right text-xs"></i>
+    </p>
+</a>

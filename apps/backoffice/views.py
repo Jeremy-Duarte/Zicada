@@ -1,5 +1,6 @@
 from django.shortcuts import render
 from django.contrib.admin.views.decorators import staff_member_required
+from django.urls import reverse
 from django.utils import timezone
 from datetime import timedelta
 from typing import List, Dict, Tuple, Any
@@ -228,9 +229,20 @@ def admin_orders_dashboard(request):
     
     recent_orders = Order.objects.select_related('assigned_delivery_user').order_by('-created_at')[:5]
     
+    orders_index = 'orders:order_list'
+    urls = {
+        'total': reverse(orders_index) + '?status=todos',
+        'pendiente': reverse(orders_index) + '?status=pendiente',
+        'confirmado': reverse(orders_index) + '?status=confirmado',
+        'en_camino': reverse(orders_index) + '?status=en_camino',
+        'entregado': reverse(orders_index) + '?status=entregado',
+        'cancelado': reverse(orders_index) + '?status=cancelado',
+    }
+
     context = {
         'section': 'orders',
         'stats': stats,
+        'urls': urls,
         'recent_orders': recent_orders,
         'orders_trend_data': {
             'series': [{'name': 'Pedidos', 'data': order_counts}],

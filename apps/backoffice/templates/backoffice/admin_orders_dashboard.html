@@ -11,101 +11,17 @@
     </div>
 
     <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
-        <a href="{% url 'orders:orders_list' %}?status=todos" 
-           class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-gray-500 hover:shadow-md transition block">
-            <div class="flex justify-between items-start">
-                <div>
-                    <p class="text-gray-500 text-sm font-medium mb-1">Total Pedidos</p>
-                    <p class="text-3xl font-bold text-gray-800">{{ stats.total }}</p>
-                </div>
-                <div class="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                    <i class="fas fa-shopping-cart text-gray-500 text-lg"></i>
-                </div>
-            </div>
-            <p class="text-xs text-zicada-accent mt-2 flex items-center gap-1">
-                Ver todos <i class="fas fa-arrow-right text-xs"></i>
-            </p>
-        </a>
+        {% include 'backoffice/components/widgets/stat_card_link.html' with title="Total Pedidos" value=stats.total url=urls.total icon="shopping-cart" border_color="gray-500" icon_bg="gray-100" icon_color="gray-500" link_text="Ver todos" link_color="zicada-accent" %}
 
-        <a href="{% url 'orders:orders_list' %}?status=pendiente" 
-           class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-yellow-500 hover:shadow-md transition block">
-            <div class="flex justify-between items-start">
-                <div>
-                    <p class="text-gray-500 text-sm font-medium mb-1">Pendientes</p>
-                    <p class="text-3xl font-bold text-gray-800">{{ stats.pendiente }}</p>
-                </div>
-                <div class="w-10 h-10 bg-yellow-50 rounded-lg flex items-center justify-center">
-                    <i class="fas fa-clock text-yellow-500 text-lg"></i>
-                </div>
-            </div>
-            <p class="text-xs text-yellow-600 mt-2 flex items-center gap-1">
-                Gestionar <i class="fas fa-arrow-right text-xs"></i>
-            </p>
-        </a>
+        {% include 'backoffice/components/widgets/stat_card_link.html' with title="Pendientes" value=stats.pendiente url=urls.pendiente icon="clock" border_color="yellow-500" icon_bg="yellow-50" icon_color="yellow-500" link_text="Gestionar" link_color="yellow-600" %}
 
-        <a href="{% url 'orders:orders_list' %}?status=confirmado" 
-           class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-blue-500 hover:shadow-md transition block">
-            <div class="flex justify-between items-start">
-                <div>
-                    <p class="text-gray-500 text-sm font-medium mb-1">Confirmados</p>
-                    <p class="text-3xl font-bold text-gray-800">{{ stats.confirmado }}</p>
-                </div>
-                <div class="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center">
-                    <i class="fas fa-check-circle text-blue-500 text-lg"></i>
-                </div>
-            </div>
-            <p class="text-xs text-blue-600 mt-2 flex items-center gap-1">
-                Ver proceso <i class="fas fa-arrow-right text-xs"></i>
-            </p>
-        </a>
+        {% include 'backoffice/components/widgets/stat_card_link.html' with title="Confirmados" value=stats.confirmado url=urls.confirmado icon="check-circle" border_color="blue-500" icon_bg="blue-50" icon_color="blue-500" link_text="Ver proceso" link_color="blue-600" %}
 
-        <a href="{% url 'orders:orders_list' %}?status=en_camino" 
-           class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-purple-500 hover:shadow-md transition block">
-            <div class="flex justify-between items-start">
-                <div>
-                    <p class="text-gray-500 text-sm font-medium mb-1">En Camino</p>
-                    <p class="text-3xl font-bold text-gray-800">{{ stats.en_camino }}</p>
-                </div>
-                <div class="w-10 h-10 bg-purple-50 rounded-lg flex items-center justify-center">
-                    <i class="fas fa-truck text-purple-500 text-lg"></i>
-                </div>
-            </div>
-            <p class="text-xs text-purple-600 mt-2 flex items-center gap-1">
-                Seguimiento <i class="fas fa-arrow-right text-xs"></i>
-            </p>
-        </a>
+        {% include 'backoffice/components/widgets/stat_card_link.html' with title="En Camino" value=stats.en_camino url=urls.en_camino icon="truck" border_color="purple-500" icon_bg="purple-50" icon_color="purple-500" link_text="Seguimiento" link_color="purple-600" %}
 
-        <a href="{% url 'orders:orders_list' %}?status=entregado" 
-           class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-green-500 hover:shadow-md transition block">
-            <div class="flex justify-between items-start">
-                <div>
-                    <p class="text-gray-500 text-sm font-medium mb-1">Entregados</p>
-                    <p class="text-3xl font-bold text-gray-800">{{ stats.entregado }}</p>
-                </div>
-                <div class="w-10 h-10 bg-green-50 rounded-lg flex items-center justify-center">
-                    <i class="fas fa-check-double text-green-500 text-lg"></i>
-                </div>
-            </div>
-            <p class="text-xs text-green-600 mt-2 flex items-center gap-1">
-                Historial <i class="fas fa-arrow-right text-xs"></i>
-            </p>
-        </a>
+        {% include 'backoffice/components/widgets/stat_card_link.html' with title="Entregados" value=stats.entregado url=urls.entregado icon="check-double" border_color="green-500" icon_bg="green-50" icon_color="green-500" link_text="Historial" link_color="green-600" %}
 
-        <a href="{% url 'orders:orders_list' %}?status=cancelado" 
-           class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-red-500 hover:shadow-md transition block">
-            <div class="flex justify-between items-start">
-                <div>
-                    <p class="text-gray-500 text-sm font-medium mb-1">Cancelados</p>
-                    <p class="text-3xl font-bold text-gray-800">{{ stats.cancelado }}</p>
-                </div>
-                <div class="w-10 h-10 bg-red-50 rounded-lg flex items-center justify-center">
-                    <i class="fas fa-ban text-red-500 text-lg"></i>
-                </div>
-            </div>
-            <p class="text-xs text-red-600 mt-2 flex items-center gap-1">
-                Revisar <i class="fas fa-arrow-right text-xs"></i>
-            </p>
-        </a>
+        {% include 'backoffice/components/widgets/stat_card_link.html' with title="Cancelados" value=stats.cancelado url=urls.cancelado icon="ban" border_color="red-500" icon_bg="red-50" icon_color="red-500" link_text="Revisar" link_color="red-600" %}
     </div>
 
     <div class="flex flex-wrap gap-4">
