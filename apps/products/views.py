@@ -167,3 +167,9 @@ def product_detail(request, slug):
         'related_products': related_products,
     }
     return render(request, 'products/product_detail.html', context)
+
+def products_list(request):
+    pass #TODO
+
+def product_detail(request):
+    pass #TODO
