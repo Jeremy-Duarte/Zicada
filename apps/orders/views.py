@@ -415,3 +415,9 @@ def order_tracking(request, tracking_token):
         'status_percentage': (current_step / total_steps) * 100 if total_steps > 0 else 0,
     }
     return render(request, 'orders/tracking.html', context)
+
+def orders_list(request):
+    pass #TODO
+
+def order_detail(request):
+    pass #TODO
