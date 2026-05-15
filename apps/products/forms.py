@@ -1,12 +1,10 @@
 from django import forms
 from django.core.exceptions import ValidationError
 from django.utils.text import slugify
-from decimal import Decimal
-from models import (
+from .models import (
     Size, Category, Color, Product, ProductVariant, 
     Collection, ProductColor, ProductImage
 )
-from .constants import STOCK_LOW_THRESHOLD
 
 
 # ========== FORMULARIOS PARA CATÁLOGOS ESTÁTICOS ==========
@@ -37,7 +35,7 @@ class SizeUpdateForm(forms.ModelForm):
         fields = ['name', 'sort_order']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control'}),
-            'sort_order': forms.NumberInput(attrs={'class':form-control', 'min': 0}),
+            'sort_order': forms.NumberInput(attrs={'class': 'form-control', 'min': 0}),
         }
     
     def clean_name(self):
@@ -745,7 +743,7 @@ class CollectionCreateForm(forms.ModelForm):
             'name', 'description', 'status', 'start_date', 'end_date',
             'cover_image', 'primary_color', 'secondary_color', 
             'background_color', 'text_color', 'background_image',
-            'title_font', 'products'
+            'title_font', 'products', 'slug'
         ]
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control'}),
@@ -806,7 +804,7 @@ class CollectionUpdateForm(forms.ModelForm):
             'name', 'description', 'status', 'start_date', 'end_date',
             'cover_image', 'primary_color', 'secondary_color', 
             'background_color', 'text_color', 'background_image',
-            'title_font', 'products', 'is_active'
+            'title_font', 'products', 'is_active', 'slug'
         ]
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control'}),

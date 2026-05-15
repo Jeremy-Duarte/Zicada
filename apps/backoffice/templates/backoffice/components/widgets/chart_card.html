@@ -6,96 +6,14 @@
         <a href="{{ action.url }}" class="text-xs text-zicada-accent hover:underline">{{ action.label }}</a>
         {% endif %}
     </div>
-    <div id="{{ chart_id|default:'chart-container' }}" class="w-full h-80"></div>
+    <div class="w-full overflow-x-auto">
+        <div id="{{ chart_id|default:'chart-container' }}" 
+             class="min-w-[300px] w-full mx-auto"
+             style="height: 400px;"
+             data-chart-type="{{ chart_type|default:'line' }}"
+             data-yaxis-label="{{ yaxis_label|default:'COP' }}">
+        </div>
+    </div>
 </div>
 
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        function initChart() {
-            if (typeof ApexCharts !== 'undefined') {
-                // Obtener datos del template
-                const chartData = {{ chart_data|safe }};
-                const chartType = '{{ chart_type|default:"line" }}';
-                
-                let series = [];
-                let categories = [];
-                
-                // Para gráfico de donut (usa 'series' y 'labels')
-                if (chartType === 'donut') {
-                    series = chartData.series || [];
-                    categories = chartData.labels || [];
-                } 
-                // Para gráfico de línea/barra (usa 'series' y 'categories')
-                else {
-                    series = chartData.series || [];
-                    categories = chartData.categories || [];
-                }
-                
-                const options = {
-                    series: series,
-                    chart: {
-                        type: chartType,
-                        height: '100%',
-                        toolbar: { show: true },
-                        zoom: { enabled: false },
-                        fontFamily: 'Inter, sans-serif'
-                    },
-                    title: { text: undefined },
-                    xaxis: {
-                        categories: categories,
-                        labels: { rotate: -45, style: { fontSize: '11px' } }
-                    },
-                    yaxis: { 
-                        title: { text: '{{ yaxis_label|default:"COP" }}' },
-                        labels: {
-                            formatter: function(val) {
-                                return val.toLocaleString('es-CO');
-                            }
-                        }
-                    },
-                    colors: ['#a91600', '#f59e0b', '#10b981', '#3b82f6'],
-                    stroke: { curve: 'smooth', width: 2 },
-                    fill: {
-                        type: 'gradient',
-                        gradient: { shadeIntensity: 0.5, opacityFrom: 0.7, opacityTo: 0.3 }
-                    },
-                    tooltip: { 
-                        theme: 'dark', 
-                        y: { 
-                            formatter: function(val) { 
-                                return val.toLocaleString('es-CO') + ' COP'; 
-                            } 
-                        } 
-                    },
-                    grid: { borderColor: '#f1f5f9' }
-                };
-                
-                // Configuración específica para donut
-                if (chartType === 'donut') {
-                    options.labels = categories;
-                    options.plotOptions = {
-                        donut: {
-                            size: '65%',
-                            labels: {
-                                show: true,
-                                total: {
-                                    show: true,
-                                    label: 'Total',
-                                    formatter: function(w) {
-                                        return w.globals.seriesTotals.reduce((a, b) => a + b, 0);
-                                    }
-                                }
-                            }
-                        }
-                    };
-                }
-                
-                const chart = new ApexCharts(document.querySelector('#{{ chart_id|default:"chart-container" }}'), options);
-                chart.render();
-            } else {
-                setTimeout(initChart, 200);
-            }
-        }
-        initChart();
-    });
-</script>
+{{ chart_data|json_script:chart_id }}

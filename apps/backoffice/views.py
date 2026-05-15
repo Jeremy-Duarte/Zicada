@@ -169,6 +169,57 @@ def admin_dashboard(request):
         sales_data = [0] * 7
     _, daily_rev_data = get_daily_data(days=7, statuses=paid)
 
+    financial_items = [
+        {
+            'label': 'Ticket promedio',
+            'value': f"${avg_order:,.0f}",
+            'icon': 'receipt',
+            'icon_bg': 'zicada-accent/10',
+            'icon_color': 'zicada-accent',
+            'sub_value': 'por transacción',
+        },
+        {
+            'label': 'Items por pedido',
+            'value': f"{avg_items:.1f}",
+            'icon': 'box',
+            'icon_bg': 'blue-50',
+            'icon_color': 'blue-500',
+            'sub_value': 'promedio',
+        },
+        {
+            'label': 'Ingreso diario promedio',
+            'value': f"${week_revenue:,.0f}",
+            'icon': 'chart-line',
+            'icon_bg': 'green-50',
+            'icon_color': 'green-500',
+            'sub_value': 'últimos 7 días',
+        },
+        {
+            'label': 'Total pedidos pagados',
+            'value': total_paid,
+            'icon': 'shopping-cart',
+            'icon_bg': 'purple-50',
+            'icon_color': 'purple-500',
+            'sub_value': 'pedidos completados',
+        },
+        {
+            'label': 'Ingreso hoy',
+            'value': f"${today_revenue:,.0f}",
+            'icon': 'sun',
+            'icon_bg': 'orange-50',
+            'icon_color': 'orange-500',
+            'sub_value': 'acumulado',
+        },
+        {
+            'label': 'Ingreso año',
+            'value': f"${year_revenue:,.0f}",
+            'icon': 'calendar-alt',
+            'icon_bg': 'indigo-50',
+            'icon_color': 'indigo-500',
+            'sub_value': f'{year}',
+        },
+    ]
+
     context = {
         'section': 'dashboard',
         'stats': {
@@ -185,6 +236,7 @@ def admin_dashboard(request):
             'avg_order_value': f"${avg_order:,.0f}",
             'avg_items_per_order': f"{avg_items:.1f}",
         },
+        'financial_items': financial_items,
         'sales_chart_data': {
             'series': [{'name': 'Ventas (COP)', 'data': sales_data}],
             'categories': categories,
