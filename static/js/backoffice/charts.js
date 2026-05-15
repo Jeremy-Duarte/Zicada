@@ -1,12 +1,16 @@
 globalThis.charts = globalThis.charts || {};
 
 // Función helper para validar datos del gráfico
-function hasValidChartData(series) {
+function hasValidChartData(series, chartType) {
     if (!series || series.length === 0) return false;
-    
+
+    if (chartType === 'donut') {
+        return series.some(value => value > 0);
+    }
+
     const firstSeries = series[0];
     if (!firstSeries?.data || firstSeries.data.length === 0) return false;
-    
+
     const allDataIsZero = firstSeries.data.every(value => value === 0);
     return !allDataIsZero;
 }
@@ -121,9 +125,8 @@ function initChart(chartId, chartData, chartType, yaxisLabel = 'COP') {
         series = chartData.series || [];
         categories = chartData.categories || [];
     }
-    
-    // Validar datos
-    if (!hasValidChartData(series)) {
+    console.log(`Chart ${chartId} - Type: ${chartType}`, { series, categories });
+    if (!hasValidChartData(series, chartType)) {
         showNoDataMessage(chartId);
         return;
     }
