@@ -33,24 +33,7 @@
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {% include 'backoffice/components/widgets/chart_card.html' with chart_id="orders-status" title="Pedidos por estado" chart_type="donut" chart_data=orders_status_data %}
-        
-        <div class="bg-white rounded-xl shadow-sm p-5">
-            <h3 class="text-gray-800 font-semibold mb-4">Resumen financiero</h3>
-            <div class="space-y-3">
-                <div class="flex justify-between items-center pb-2 border-b border-gray-100">
-                    <span class="text-gray-600">Ticket promedio</span>
-                    <span class="font-semibold text-gray-800">{{ financial_stats.avg_order_value }}</span>
-                </div>
-                <div class="flex justify-between items-center pb-2 border-b border-gray-100">
-                    <span class="text-gray-600">Items por pedido</span>
-                    <span class="font-semibold text-gray-800">{{ financial_stats.avg_items_per_order }}</span>
-                </div>
-                <div class="flex justify-between items-center pb-2 border-b border-gray-100">
-                    <span class="text-gray-600">Ingreso diario promedio</span>
-                    <span class="font-semibold text-gray-800">{{ financial_stats.week_revenue }}</span>
-                </div>
-            </div>
-        </div>
+        {% include 'backoffice/components/widgets/info_card.html' with title="Resumen financiero" icon="chart-pie" items=financial_items footer_text="Actualizado al día de hoy"%}
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
