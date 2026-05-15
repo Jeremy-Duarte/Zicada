@@ -74,7 +74,6 @@ class UserCreateForm(UserCreationForm):
         phone = self.cleaned_data.get('phone', '').strip()
         
         if phone:
-            # Limpiar el teléfono: solo dígitos
             digits = ''.join(c for c in phone if c.isdigit())
             
             if len(digits) < 7:
@@ -83,11 +82,6 @@ class UserCreateForm(UserCreationForm):
             if len(digits) > 15:
                 raise ValidationError('El teléfono no puede tener más de 15 dígitos.')
             
-            # Verificar unicidad si es necesario
-            if User.objects.filter(phone__icontains=digits).exists():
-                # Solo advertencia, no error (varios usuarios pueden compartir teléfono en algunos casos)
-                pass
-            
             return digits
         
         return phone
@@ -95,21 +89,17 @@ class UserCreateForm(UserCreationForm):
     def clean(self):
         cleaned_data = super().clean()
         
-        # Un superusuario debe ser staff
-        is_superuser = cleaned_data.get('is_superuser')
-        is_staff = cleaned_data.get('is_staff')
-        
-        if is_superuser and not is_staff:
+        # Superusers must be staff (for admin access)
+        if cleaned_data.get('is_superuser') and not cleaned_data.get('is_staff'):
             cleaned_data['is_staff'] = True
-            self.add_error('is_staff', 'Un superusuario debe tener permisos de staff. Se ha activado automáticamente.')
-        
-        # Un entregador no necesita ser staff necesariamente (accede a PWA)
-        # Pero si es staff y entregador, no hay problema
         
         return cleaned_data
     
     def save(self, commit=True):
         user = super().save(commit=False)
+        # Enforce staff for superuser again at save time
+        if user.is_superuser and not user.is_staff:
+            user.is_staff = True
         
         if commit:
             user.save()
@@ -210,16 +200,20 @@ class UserUpdateForm(BaseUserChangeForm):
         is_superuser = cleaned_data.get('is_superuser')
         is_staff = cleaned_data.get('is_staff')
         
-        if is_superuser and not is_staff:
+        if is_superuser:
+            # Staff is implicit; cleaned_data key is informational only.
             cleaned_data['is_staff'] = True
-            self.add_error('is_staff', 'Un superusuario debe tener permisos de staff. Se ha activado automáticamente.')
-        
-        # No permitir desactivar el propio usuario
-        if self.instance and self.instance.pk:
-            # Esto se valida mejor en la vista
-            pass
         
         return cleaned_data
+    
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        if user.is_superuser and not user.is_staff:
+            user.is_staff = True
+        if commit:
+            user.save()
+            self.save_m2m()
+        return user
 
 
 class UserChangePasswordForm(forms.Form):
@@ -433,7 +427,7 @@ class GroupDeleteForm(forms.Form):
     confirm = forms.CharField(
         required=True,
         label='Escribe el nombre del rol para confirmar',
-        widget=forms.TextInput(attrs={'class': form-control', 'placeholder': 'Ej: Editores'})
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Editores'})
     )
     
     def __init__(self, *args, **kwargs):
@@ -502,7 +496,7 @@ class UserProfileForm(forms.ModelForm):
                 raise ValidationError('El teléfono no puede tener más de 15 dígitos.')
             
             # Verificar si otro usuario tiene el mismo teléfono
-            qs = User.objects.filter(phone__icontains=digits)
+            qs = User.objects.filter(phone=digits)
             if self.instance and self.instance.pk:
                 qs = qs.exclude(pk=self.instance.pk)
             

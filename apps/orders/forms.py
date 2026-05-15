@@ -124,23 +124,21 @@ class OrderCreateForm(forms.ModelForm):
         self.fields['is_paid'].help_text = 'Marcar como pagado si el cliente ya pagó (ej: contraentrega, transferencia)'
     
     def clean_customer_phone(self):
-        phone = self.cleaned_data.get('customer_phone')
-        if phone:
-            cleaned_phone = phone.replace(' ', '').replace('-', '').replace('+', '')
-            if len(cleaned_phone) < 7:
-                raise ValidationError('El teléfono debe tener al menos 7 dígitos.')
-            if len(cleaned_phone) > 15:
-                raise ValidationError('El teléfono es demasiado largo (máximo 15 dígitos).')
-        return phone
+        phone = self.cleaned_data.get('customer_phone', '')
+        # Normaliza eliminando todo carácter no numérico (consistente con CheckoutOrderForm)
+        digits = ''.join(c for c in phone if c.isdigit())
+        if len(digits) < 7:
+            raise ValidationError('El teléfono debe tener al menos 7 dígitos.')
+        if len(digits) > 15:
+            raise ValidationError('El teléfono es demasiado largo (máximo 15 dígitos).')
+        return digits
     
     def clean_shipping_cost(self):
         cost = self.cleaned_data.get('shipping_cost', 0)
-        subtotal = getattr(self.instance, 'subtotal', 0)
         if cost < 0:
             raise ValidationError('El costo de envío no puede ser negativo.')
-        if subtotal >= FREE_SHIPPING_THRESHOLD and cost > 0:
-            raise ValidationError(f'El envío es gratis para pedidos superiores a ${FREE_SHIPPING_THRESHOLD:,.0f}')
-        
+        # Para pedidos nuevos (sin subtotal), solo validamos que no sea negativo.
+        # La validación de envío gratis vs subtotal se hace en OrderUpdateForm.
         return cost
 
 
@@ -327,14 +325,6 @@ class OrderChangeStatusForm(forms.Form):
     Útil para botones de acción en el panel de administración.
     """
     
-    STATUS_TRANSITIONS = {
-        'pendiente': ['confirmado', 'cancelado'],
-        'confirmado': ['preparando', 'cancelado'],
-        'preparando': ['listo', 'cancelado'],
-        'listo': ['en_camino', 'cancelado'],
-        'en_camino': ['entregado', 'cancelado'],
-    }
-    
     new_status = forms.ChoiceField(
         choices=[],
         label='Nuevo estado',
@@ -352,8 +342,11 @@ class OrderChangeStatusForm(forms.Form):
         super().__init__(*args, **kwargs)
         
         if self.order:
-            allowed = self.STATUS_TRANSITIONS.get(self.order.status, [])
-            choices = [(status, label) for status, label in Order.STATUS_CHOICES if status in allowed]
+            # Delega en el modelo para mantener una única fuente de verdad
+            choices = [
+                (status, label) for status, label in Order.STATUS_CHOICES
+                if self.order.can_transition_to(status)
+            ]
             self.fields['new_status'].choices = choices
             
             if not choices:
@@ -648,14 +641,19 @@ class OrderItemDeleteForm(forms.Form):
     
     confirm = forms.CharField(
         required=True,
-        label='Escribe el nombre del producto para confirmar la eliminación',
+        label='Escribe "ELIMINAR" para confirmar la eliminación del producto',
         help_text='Esto liberará el stock asociado al producto si el pedido ya estaba confirmado.',
-        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Camiseta Deportiva'})
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ELIMINAR'})
     )
     
     def __init__(self, *args, **kwargs):
         self.order_item = kwargs.pop('order_item', None)
         super().__init__(*args, **kwargs)
+        if self.order_item:
+            self.fields['confirm'].help_text = (
+                f'Estás por eliminar "{self.order_item.product_name_snapshot}" '
+                f'(x{self.order_item.quantity}). Esta acción liberará el stock si el pedido ya estaba confirmado.'
+            )
     
     def clean_confirm(self):
         value = self.cleaned_data.get('confirm', '').strip()
@@ -663,8 +661,8 @@ class OrderItemDeleteForm(forms.Form):
         if not self.order_item:
             raise ValidationError('Item no especificado.')
         
-        if self.order_item.product_name_snapshot.lower() != value.lower():
-            raise ValidationError('El nombre del producto no coincide.')
+        if value.upper() != 'ELIMINAR':
+            raise ValidationError('Debes escribir "ELIMINAR" exactamente para confirmar.')
         
         if self.order_item.order and self.order_item.order.status not in ['pendiente', 'confirmado']:
             raise ValidationError(
