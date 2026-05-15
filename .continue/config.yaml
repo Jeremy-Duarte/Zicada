@@ -28,14 +28,15 @@ models:
     capabilities:
       - tool_use
     defaultCompletionOptions:
-      maxTokens: 32000
+      maxTokens: 6000
       temperature: 0.3
     requestOptions:
       timeout: 120000
       body:
         thinking:
           type: enabled
-        reasoning_effort: high
+          budget_tokens: 1024
+        reasoning_effort: medium
 
   - name: Qwen Coder 7B Local
     provider: ollama
@@ -72,8 +73,8 @@ models:
 agent:
   enabled: true
   model: DeepSeek V4 Pro Reasoner
-  autoRun: true
-  maxSteps: 10
+  autoRun: false
+  maxSteps: 4
 
 tabAutocompleteModel:
   model: Qwen Autocomplete
@@ -94,6 +95,10 @@ rules:
   - Validate all inputs at form or serializer level
   - Use Django messages framework for user feedback
   - Type hints required for all function signatures
+  - Keep agent responses concise, under 800 tokens unless explicitly asked for details.
+
+chatOptions:
+  baseSystemMessage: You are a concise coding assistant. Limit each response to 600 tokens unless explicitly asked for detail. Do not repeat the user's question. Do not output thinking tags in the final answer.
 
 prompts:
   - path: prompts/atomic-refactor.prompt
@@ -105,10 +110,14 @@ prompts:
 
 context:
   - provider: code
-  - provider: file
+    maxLines: 200
   - provider: diff
-  - provider: terminal
+  - provider: file
+    maxFiles: 2
+    maxLinesPerFile: 150
 
 experimental:
   enableTools: true
   enableAgentMode: true
+  contextCompression: true
+  compressionRatio: 0.3
