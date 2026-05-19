@@ -1,0 +1,39 @@
+{% load static %}
+<div class="max-w-md mx-auto">
+    <div class="bg-white rounded-xl shadow-sm p-6 text-center">
+        <div class="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <i class="fas fa-trash-restore text-amber-600 text-2xl"></i>
+        </div>
+        <h2 class="text-xl font-bold text-gray-800 mb-2">¿Restaurar {{ object_name }}?</h2>
+        <p class="text-gray-600 mb-4">
+            ¿Estás seguro de que deseas restaurar <strong>"{{ object_display }}"</strong>?
+        </p>
+        
+        {% if warning %}
+        <div class="bg-yellow-50 text-yellow-700 p-3 rounded-lg text-sm mb-4">
+            <i class="fas fa-exclamation-triangle mr-1"></i> {{ warning }}
+        </div>
+        {% endif %}
+        
+        <div class="bg-gray-50 rounded-lg p-3 text-left text-sm text-gray-500 mb-4">
+            <p class="font-medium text-gray-700 mb-1">Información del elemento:</p>
+            <ul class="space-y-1">
+                {% for key, value in object_info.items %}
+                <li><span class="text-gray-400">{{ key }}:</span> {{ value }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        
+        <form method="post">
+            {% csrf_token %}
+            <div class="flex justify-center gap-3">
+                <a href="{% url cancel_url %}" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition">
+                    Cancelar
+                </a>
+                <button type="submit" class="bg-amber-500 hover:bg-amber-600 text-white px-5 py-2 rounded-lg transition">
+                    <i class="fas fa-trash-restore mr-1"></i> Sí, restaurar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
