@@ -1,7 +1,13 @@
 from django.shortcuts import render, get_object_or_404
+from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
-from .models import Product, ProductVariant, ProductColor, Collection, Category
+from .models import Product, ProductVariant, ProductColor, Collection, Category, Size
 from django.utils import timezone
+from django.urls import reverse_lazy
+from django.views.generic import ListView, CreateView, UpdateView, DeleteView
+from django.contrib.auth.mixins import PermissionRequiredMixin
+from apps.core.crud.mixins import PaginationMixin, FilterMixin
+from .forms import SizeCreateForm, SizeDeleteForm, SizeUpdateForm
 import json
 
 @staff_member_required
@@ -173,3 +179,65 @@ def products_list(request):
 
 def product_detail(request):
     pass #TODO
+
+class SizeListView(PermissionRequiredMixin, PaginationMixin, FilterMixin, ListView):
+    model = Size
+    template_name = 'backoffice/size/size_list.html'
+    context_object_name = 'sizes'
+    permission_required = 'products.view_size'
+    paginate_by = 20
+    
+    filters = [
+        ('name', 'name', 'icontains'),
+        ('sort_order', 'sort_order', 'exact'),
+    ]
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        rows = []
+        for size in context['sizes']:
+            rows.append({
+                'pk': size.pk,
+                'values': [size.name, size.sort_order],
+            })
+        context['rows'] = rows
+        context['headers'] = ['Nombre', 'Orden'] 
+        return context
+
+
+class SizeCreateView(PermissionRequiredMixin, CreateView):
+    model = Size
+    form_class = SizeCreateForm
+    template_name = 'backoffice/size/size_form.html'
+    permission_required = 'products.add_size'
+    success_url = reverse_lazy('products:size_list')
+    
+    def form_valid(self, form):
+        messages.success(self.request, f'Talla "{form.instance.name}" creada exitosamente.')
+        return super().form_valid(form)
+
+
+class SizeUpdateView(PermissionRequiredMixin, UpdateView):
+    model = Size
+    form_class = SizeUpdateForm
+    template_name = 'backoffice/size/size_form.html'
+    permission_required = 'products.change_size'
+    success_url = reverse_lazy('products:size_list')
+    
+    def form_valid(self, form):
+        messages.success(self.request, f'Talla "{form.instance.name}" actualizada exitosamente.')
+        return super().form_valid(form)
+
+
+class SizeDeleteView(PermissionRequiredMixin, DeleteView):
+    model = Size
+    template_name = 'backoffice/size/size_confirm_delete.html'
+    permission_required = 'products.delete_size'
+    success_url = reverse_lazy('products:size_list')
+    
+    def delete(self, request, *args, **kwargs):
+        size = self.get_object()
+        size_name = size.name
+        response = super().delete(request, *args, **kwargs)
+        messages.success(request, f'Talla "{size_name}" eliminada exitosamente.')
+        return response
