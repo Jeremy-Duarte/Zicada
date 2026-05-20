@@ -1,0 +1,26 @@
+{% extends "backoffice/layouts/backoffice_base.html" %} 
+{% load static %} 
+{% block title %}{% if form.instance.pk %}Editar{% else %}Nuevo{% endif %} Producto - Zicada{% endblock %} 
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="bg-white rounded-xl shadow-sm p-6">
+        <h1 class="text-2xl font-bold text-gray-800 mb-6">{% if form.instance.pk %}Editar{% else %}Nuevo{% endif %} Producto</h1>
+        
+        {% include 'backoffice/components/crud/form_fields.html' with form=form cancel_url="products:product_list" submit_label="Guardar" %}
+        
+        {% if form.instance.pk %}
+        <div class="mt-8 pt-6 border-t border-gray-100">
+            <div class="flex gap-4">
+                <a href="{% url 'products:productcolor_create' product.pk %}" class="text-sm text-blue-600 hover:text-blue-800">
+                    <i class="fas fa-palette mr-1"></i> Gestionar colores
+                </a>
+                <span class="text-gray-300">|</span>
+                <a href="{% url 'products:productvariant_create' product.pk %}" class="text-sm text-green-600 hover:text-green-800">
+                    <i class="fas fa-boxes mr-1"></i> Gestionar variantes
+                </a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

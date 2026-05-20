@@ -1,0 +1,21 @@
+{% extends "backoffice/layouts/backoffice_base.html" %} 
+{% load static %} 
+{% block title %}Productos - Zicada{% endblock %} 
+{% block content %}
+<div class="space-y-6">
+    {% include 'backoffice/components/crud/list_header.html' with title="Productos" create_url="products:product_create" create_label="Nuevo Producto" %}
+    
+    <!-- Filtros -->
+    {% include 'backoffice/components/crud/list_filters.html' with filters=filters_config %}
+    
+    <!-- Tabla -->
+    {% include 'backoffice/components/crud/list_table.html' with headers=headers rows=rows show_actions=True edit_url_name="products:product_edit" delete_url_name="products:product_delete" empty_message="No hay productos registrados" page_obj=page_obj %}
+    
+    <!-- Botón papelera -->
+    <div class="text-right">
+        <a href="{% url 'products:product_trashcan' %}" class="text-sm text-gray-400 hover:text-gray-600">
+            <i class="fas fa-trash-alt mr-1"></i> Ver productos eliminados
+        </a>
+    </div>
+</div>
+{% endblock %}

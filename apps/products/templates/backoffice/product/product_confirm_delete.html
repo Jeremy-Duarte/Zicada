@@ -1,0 +1,6 @@
+{% extends "backoffice/layouts/backoffice_base.html" %} 
+{% load static %} 
+{% block title %}Eliminar Producto - Zicada{% endblock %} 
+{% block content %}
+{% include 'backoffice/components/crud/confirm_delete.html' with form=form object_name="Producto" object_display=object_display cancel_url="products:product_list" warning="Esta acción moverá el producto a la papelera. Podrás restaurarlo después." %}
+{% endblock %}
