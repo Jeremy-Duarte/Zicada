@@ -7,7 +7,7 @@ from django.urls import reverse_lazy
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from apps.core.crud.mixins import PaginationMixin, FilterMixin
-from .forms import SizeCreateForm, SizeDeleteForm, SizeUpdateForm
+from .forms import SizeCreateForm, SizeDeleteForm, SizeUpdateForm, CategoryCreateForm, CategoryDeleteForm, CategoryUpdateForm
 import json
 
 @staff_member_required
@@ -255,4 +255,84 @@ class SizeDeleteView(PermissionRequiredMixin, DeleteView):
         size_name = size.name
         size.delete()
         messages.success(request, f'Talla "{size_name}" eliminada exitosamente.')
+        return redirect(self.success_url)
+    
+# apps/products/views.py
+
+class CategoryListView(PermissionRequiredMixin, PaginationMixin, FilterMixin, ListView):
+    model = Category
+    template_name = 'backoffice/category/category_list.html'
+    context_object_name = 'categories'
+    permission_required = 'products.view_category'
+    paginate_by = 20
+    
+    filters = [
+        ('name', 'name', 'icontains'),
+        ('slug', 'slug', 'icontains'),
+        ('sort_order', 'sort_order', 'exact'),
+    ]
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        rows = []
+        for category in context['categories']:
+            rows.append({
+                'pk': category.pk,
+                'values': [category.name, category.slug, category.sort_order],
+            })
+        context['rows'] = rows
+        context['headers'] = ['Nombre', 'Slug', 'Orden']
+        return context
+
+
+class CategoryCreateView(PermissionRequiredMixin, CreateView):
+    model = Category
+    form_class = CategoryCreateForm
+    template_name = 'backoffice/category/category_form.html'
+    permission_required = 'products.add_category'
+    success_url = reverse_lazy('products:category_list')
+    
+    def form_valid(self, form):
+        messages.success(self.request, f'Categoría "{form.instance.name}" creada exitosamente.')
+        return super().form_valid(form)
+
+
+class CategoryUpdateView(PermissionRequiredMixin, UpdateView):
+    model = Category
+    form_class = CategoryUpdateForm
+    template_name = 'backoffice/category/category_form.html'
+    permission_required = 'products.change_category'
+    success_url = reverse_lazy('products:category_list')
+    
+    def form_valid(self, form):
+        messages.success(self.request, f'Categoría "{form.instance.name}" actualizada exitosamente.')
+        return super().form_valid(form)
+
+
+class CategoryDeleteView(PermissionRequiredMixin, DeleteView):
+    model = Category
+    form_class = CategoryDeleteForm
+    template_name = 'backoffice/category/category_confirm_delete.html'
+    permission_required = 'products.delete_category'
+    success_url = reverse_lazy('products:category_list')
+    
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['category'] = self.get_object()
+        return kwargs
+    
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        form = self.get_form()
+        
+        if form.is_valid():
+            return self.delete(request, *args, **kwargs)
+        
+        return self.render_to_response(self.get_context_data(form=form))
+    
+    def delete(self, request, *args, **kwargs):
+        category = self.get_object()
+        category_name = category.name
+        category.delete()
+        messages.success(request, f'Categoría "{category_name}" eliminada exitosamente.')
         return redirect(self.success_url)

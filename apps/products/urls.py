@@ -10,6 +10,10 @@ admin_patterns = [
     path('tallas/crear/', views.SizeCreateView.as_view(), name='size_create'),
     path('tallas/<int:pk>/editar/', views.SizeUpdateView.as_view(), name='size_edit'),
     path('tallas/<int:pk>/eliminar/', views.SizeDeleteView.as_view(), name='size_delete'),
+    path('categorias/', views.CategoryListView.as_view(), name='category_list'),
+    path('categorias/crear/', views.CategoryCreateView.as_view(), name='category_create'),
+    path('categorias/<int:pk>/editar/', views.CategoryUpdateView.as_view(), name='category_edit'),
+    path('categorias/<int:pk>/eliminar/', views.CategoryDeleteView.as_view(), name='category_delete'),
 ]
 
 urlpatterns = [
