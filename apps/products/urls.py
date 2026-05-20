@@ -22,6 +22,12 @@ admin_patterns = [
     path('imagenes/subir/', views.ProductImageCreateView.as_view(), name='productimage_create'),
     path('imagenes/<int:pk>/editar/', views.ProductImageUpdateView.as_view(), name='productimage_edit'),
     path('imagenes/<int:pk>/eliminar/', views.ProductImageDeleteView.as_view(), name='productimage_delete'),
+    path('productos/', views.ProductListView.as_view(), name='product_list'),
+    path('productos/crear/', views.ProductCreateView.as_view(), name='product_create'),
+    path('productos/<int:pk>/editar/', views.ProductUpdateView.as_view(), name='product_edit'),
+    path('productos/<int:pk>/eliminar/', views.ProductDeleteView.as_view(), name='product_delete'),
+    path('productos/<int:pk>/restaurar/', views.ProductRestoreView.as_view(), name='product_restore'),
+    path('productos/papelera/', views.ProductTrashcanView.as_view(), name='product_trashcan'),
 ]
 
 urlpatterns = [

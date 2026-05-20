@@ -4,10 +4,10 @@ from django.contrib.admin.views.decorators import staff_member_required
 from .models import Product, ProductVariant, ProductColor, ProductImage, Collection, Category, Size, Color
 from django.utils import timezone
 from django.urls import reverse_lazy
-from django.views.generic import ListView, CreateView, UpdateView, DeleteView
+from django.views.generic import ListView, CreateView, UpdateView, DeleteView, TemplateView
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from apps.core.crud.mixins import PaginationMixin, FilterMixin
-from .forms import SizeCreateForm, SizeDeleteForm, SizeUpdateForm, CategoryCreateForm, CategoryDeleteForm, CategoryUpdateForm, ColorCreateForm, ColorDeleteForm, ColorUpdateForm, ProductImageCreateForm, ProductImageUpdateForm, ProductImageDeleteForm
+from .forms import SizeCreateForm, SizeDeleteForm, SizeUpdateForm, CategoryCreateForm, CategoryDeleteForm, CategoryUpdateForm, ColorCreateForm, ColorDeleteForm, ColorUpdateForm, ProductImageCreateForm, ProductImageUpdateForm, ProductImageDeleteForm, ProductUpdateForm, ProductDeleteForm, ProductCreateForm, ProductRestoreForm
 from django.utils.safestring import mark_safe
 import json
 
@@ -542,3 +542,216 @@ class ProductImageDeleteView(PermissionRequiredMixin, DeleteView):
         response = super().delete(request, *args, **kwargs)
         messages.success(request, f'Imagen "{image_name}" eliminada exitosamente.')
         return response
+
+class ProductListView(PermissionRequiredMixin, PaginationMixin, FilterMixin, ListView):
+    model = Product
+    template_name = 'backoffice/product/product_list.html'
+    context_object_name = 'products'
+    permission_required = 'products.view_product'
+    paginate_by = 20
+    
+    filters = [
+        ('name', 'name', 'icontains'),
+        ('category', 'category__id', 'exact'),
+        ('product_type', 'product_type', 'exact'),
+        ('is_active', 'is_active', 'exact'),
+    ]
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        rows = []
+        for product in context['products']:
+            featured_image = product.get_featured_image()
+            
+            if featured_image:
+                image_html = mark_safe(
+                    f'<img src="{featured_image.image.url}" class="w-12 h-12 object-cover rounded-lg">'
+                )
+            else:
+                image_html = mark_safe(
+                    '<div class="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400">'
+                    '<i class="fas fa-image"></i>'
+                    '</div>'
+                )
+            
+            product_type_display = dict(Product.PRODUCT_TYPES).get(product.product_type, product.product_type)
+            
+            rows.append({
+                'pk': product.pk,
+                'values': [
+                    image_html,
+                    product.name,
+                    product.category.name if product.category else '—',
+                    f'${product.price:,.0f}',
+                    product_type_display,
+                    mark_safe(
+                        f'<span class="px-2 py-1 text-xs rounded-full {"bg-green-100 text-green-700" if product.is_active else "bg-red-100 text-red-700"}">'
+                        f'{"Activo" if product.is_active else "Inactivo"}'
+                        f'</span>'
+                    ),
+                ],
+            })
+        context['rows'] = rows
+        context['headers'] = ['Imagen', 'Nombre', 'Categoría', 'Precio', 'Tipo', 'Estado']
+        context['categories'] = Category.objects.all()
+        
+        context['product_types'] = Product.PRODUCT_TYPES
+        
+        context['filters_config'] = [
+            {'name': 'name', 'label': 'Nombre', 'type': 'search', 'placeholder': 'Buscar producto...'},
+            {'name': 'category', 'label': 'Categoría', 'type': 'select', 'options': [
+                {'value': cat.id, 'label': cat.name} for cat in Category.objects.all()  # 👈 Sin is_active
+            ]},
+            {'name': 'product_type', 'label': 'Tipo', 'type': 'select', 'options': [
+                {'value': 'fabrica', 'label': 'Producto de fábrica'},
+                {'value': 'coleccion_limitada', 'label': 'Colección limitada'},
+            ]},
+            {'name': 'is_active', 'label': 'Estado', 'type': 'select', 'options': [
+                {'value': 'true', 'label': 'Activo'},
+                {'value': 'false', 'label': 'Inactivo'},
+            ]},
+        ]
+        
+        return context
+
+
+class ProductCreateView(PermissionRequiredMixin, CreateView):
+    model = Product
+    form_class = ProductCreateForm
+    template_name = 'backoffice/product/product_form.html'
+    permission_required = 'products.add_product'
+    success_url = reverse_lazy('products:product_list')
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['cancel_url'] = 'products:product_list'
+        context['is_create'] = True
+        return context
+    
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        messages.success(self.request, f'Producto "{form.instance.name}" creado exitosamente.')
+        return response
+
+
+class ProductUpdateView(PermissionRequiredMixin, UpdateView):
+    model = Product
+    form_class = ProductUpdateForm
+    template_name = 'backoffice/product/product_form.html'
+    permission_required = 'products.change_product'
+    success_url = reverse_lazy('products:product_list')
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['cancel_url'] = 'products:product_list'
+        context['is_update'] = True
+        # Obtener colores y variantes para tabs
+        context['product_colors'] = self.object.product_colors.filter(is_active=True)
+        context['variants'] = self.object.variants.filter(is_active=True)
+        return context
+    
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        messages.success(self.request, f'Producto "{form.instance.name}" actualizado exitosamente.')
+        return response
+
+
+class ProductDeleteView(PermissionRequiredMixin, DeleteView):
+    model = Product
+    form_class = ProductDeleteForm
+    template_name = 'backoffice/product/product_confirm_delete.html'
+    permission_required = 'products.delete_product'
+    success_url = reverse_lazy('products:product_list')
+    
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['product'] = self.get_object()
+        return kwargs
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['object_name'] = 'Producto'
+        context['object_display'] = self.get_object().name
+        context['cancel_url'] = 'products:product_list'
+        return context
+    
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        form = self.get_form()
+        
+        if form.is_valid():
+            return self.delete(request, *args, **kwargs)
+        
+        return self.render_to_response(self.get_context_data(form=form))
+    
+    def delete(self, request, *args, **kwargs):
+        product = self.get_object()
+        product_name = product.name
+        product.soft_delete(user=request.user)
+        messages.success(request, f'Producto "{product_name}" movido a la papelera.')
+        return redirect(self.success_url)
+
+
+class ProductRestoreView(PermissionRequiredMixin, TemplateView):
+    """Vista para restaurar producto desde la papelera"""
+    model = Product
+    form_class = ProductRestoreForm
+    template_name = 'backoffice/product/product_restore.html'
+    permission_required = 'products.change_product'
+    success_url = reverse_lazy('products:product_trashcan')
+    
+    def get_object(self):
+        return get_object_or_404(Product.all_objects, pk=self.kwargs['pk'], is_active=False)
+    
+    def get_form(self):
+        return self.form_class(product=self.get_object(), data=self.request.POST or None)
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        product = self.get_object()
+        context['product'] = product
+        context['form'] = self.get_form()
+        context['cancel_url'] = 'products:product_trashcan'
+        context['object_name'] = 'Producto'
+        context['object_display'] = product.name
+        return context
+    
+    def post(self, request, *args, **kwargs):
+        product = self.get_object()
+        form = self.get_form()
+        
+        if form.is_valid():
+            product.restore(user=request.user)
+            messages.success(request, f'Producto "{product.name}" restaurado exitosamente.')
+            return redirect('products:product_list')
+        
+        return self.render_to_response(self.get_context_data(form=form))
+
+
+class ProductTrashcanView(PermissionRequiredMixin, ListView):
+    """Vista de papelera (productos eliminados)"""
+    model = Product
+    template_name = 'backoffice/product/product_trashcan.html'
+    context_object_name = 'products'
+    permission_required = 'products.view_product'
+    paginate_by = 20
+    
+    def get_queryset(self):
+        return Product.all_objects.filter(is_active=False).order_by('-deleted_at')
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        rows = []
+        for product in context['products']:
+            rows.append({
+                'pk': product.pk,
+                'values': [
+                    product.name,
+                    product.category.name if product.category else '—',
+                    f'${product.price:,.0f}',
+                    product.deleted_at.strftime('%d/%m/%Y %H:%M') if product.deleted_at else '—',
+                ],
+            })
+        context['rows'] = rows
+        context['headers'] = ['Nombre', 'Categoría', 'Precio', 'Eliminado el']
+        return context
