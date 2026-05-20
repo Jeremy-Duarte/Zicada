@@ -1,0 +1,6 @@
+{% extends "backoffice/layouts/backoffice_base.html" %} 
+{% load static %} 
+{% block title %}Eliminar Categoría - Zicada{% endblock %} 
+{% block content %}
+{% include 'backoffice/components/crud/confirm_delete.html' with form=form object_name="Categoría" object_display=category.name cancel_url="products:category_list" %}
+{% endblock %}
