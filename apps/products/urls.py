@@ -14,6 +14,10 @@ admin_patterns = [
     path('categorias/crear/', views.CategoryCreateView.as_view(), name='category_create'),
     path('categorias/<int:pk>/editar/', views.CategoryUpdateView.as_view(), name='category_edit'),
     path('categorias/<int:pk>/eliminar/', views.CategoryDeleteView.as_view(), name='category_delete'),
+    path('colores/', views.ColorListView.as_view(), name='color_list'),
+    path('colores/crear/', views.ColorCreateView.as_view(), name='color_create'),
+    path('colores/<int:pk>/editar/', views.ColorUpdateView.as_view(), name='color_edit'),
+    path('colores/<int:pk>/eliminar/', views.ColorDeleteView.as_view(), name='color_delete'),
 ]
 
 urlpatterns = [

@@ -1,13 +1,14 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
-from .models import Product, ProductVariant, ProductColor, Collection, Category, Size
+from .models import Product, ProductVariant, ProductColor, Collection, Category, Size, Color
 from django.utils import timezone
 from django.urls import reverse_lazy
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from apps.core.crud.mixins import PaginationMixin, FilterMixin
-from .forms import SizeCreateForm, SizeDeleteForm, SizeUpdateForm, CategoryCreateForm, CategoryDeleteForm, CategoryUpdateForm
+from .forms import SizeCreateForm, SizeDeleteForm, SizeUpdateForm, CategoryCreateForm, CategoryDeleteForm, CategoryUpdateForm, ColorCreateForm, ColorDeleteForm, ColorUpdateForm
+from django.utils.safestring import mark_safe
 import json
 
 @staff_member_required
@@ -256,8 +257,7 @@ class SizeDeleteView(PermissionRequiredMixin, DeleteView):
         size.delete()
         messages.success(request, f'Talla "{size_name}" eliminada exitosamente.')
         return redirect(self.success_url)
-    
-# apps/products/views.py
+
 
 class CategoryListView(PermissionRequiredMixin, PaginationMixin, FilterMixin, ListView):
     model = Category
@@ -335,4 +335,109 @@ class CategoryDeleteView(PermissionRequiredMixin, DeleteView):
         category_name = category.name
         category.delete()
         messages.success(request, f'Categoría "{category_name}" eliminada exitosamente.')
+        return redirect(self.success_url)
+    
+class ColorListView(PermissionRequiredMixin, PaginationMixin, FilterMixin, ListView):
+    model = Color
+    template_name = 'backoffice/color/color_list.html'
+    context_object_name = 'colors'
+    permission_required = 'products.view_color'
+    paginate_by = 20
+    
+    filters = [
+        ('name', 'name', 'icontains'),
+        ('code', 'code', 'icontains'),
+        ('sort_order', 'sort_order', 'exact'),
+    ]
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        rows = []
+        for color in context['colors']:
+            rows.append({
+                'pk': color.pk,
+                'values': [
+                    color.name,
+                    mark_safe(
+                        f'<div class="flex items-center gap-2">'
+                        f'<div class="w-6 h-6 rounded-full border" style="background-color: {color.code};"></div>'
+                        f'<span>{color.code}</span>'
+                        f'</div>'
+                    ),
+                    color.sort_order
+                ],
+            })
+        context['rows'] = rows
+        context['headers'] = ['Nombre', 'Código', 'Orden']
+        
+        return context
+
+
+class ColorCreateView(PermissionRequiredMixin, CreateView):
+    model = Color
+    form_class = ColorCreateForm
+    template_name = 'backoffice/color/color_form.html'
+    permission_required = 'products.add_color'
+    success_url = reverse_lazy('products:color_list')
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['cancel_url'] = 'products:color_list'
+        return context
+    
+    def form_valid(self, form):
+        messages.success(self.request, f'Color "{form.instance.name}" creado exitosamente.')
+        return super().form_valid(form)
+
+
+class ColorUpdateView(PermissionRequiredMixin, UpdateView):
+    model = Color
+    form_class = ColorUpdateForm
+    template_name = 'backoffice/color/color_form.html'
+    permission_required = 'products.change_color'
+    success_url = reverse_lazy('products:color_list')
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['cancel_url'] = 'products:color_list'
+        return context
+    
+    def form_valid(self, form):
+        messages.success(self.request, f'Color "{form.instance.name}" actualizado exitosamente.')
+        return super().form_valid(form)
+
+
+class ColorDeleteView(PermissionRequiredMixin, DeleteView):
+    model = Color
+    form_class = ColorDeleteForm
+    template_name = 'backoffice/color/color_confirm_delete.html'
+    permission_required = 'products.delete_color'
+    success_url = reverse_lazy('products:color_list')
+    
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['color'] = self.get_object()
+        return kwargs
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['object_name'] = 'Color'
+        context['object_display'] = self.get_object().name
+        context['cancel_url'] = 'products:color_list'
+        return context
+    
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        form = self.get_form()
+        
+        if form.is_valid():
+            return self.delete(request, *args, **kwargs)
+        
+        return self.render_to_response(self.get_context_data(form=form))
+    
+    def delete(self, request, *args, **kwargs):
+        color = self.get_object()
+        color_name = color.name
+        color.delete()
+        messages.success(request, f'Color "{color_name}" eliminado exitosamente.')
         return redirect(self.success_url)
