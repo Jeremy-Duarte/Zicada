@@ -1,0 +1,6 @@
+{% extends "backoffice/layouts/backoffice_base.html" %} 
+{% load static %} 
+{% block title %}Eliminar Color - Zicada{% endblock %} 
+{% block content %}
+{% include 'backoffice/components/crud/confirm_delete.html' with form=form object_name="Color" object_display=color.name cancel_url="products:color_list" %}
+{% endblock %}
