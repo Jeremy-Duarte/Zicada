@@ -249,6 +249,36 @@ class ColorUpdateForm(forms.ModelForm):
         return code
 
 
+class ColorDeleteForm(forms.Form):
+    """Formulario para eliminar color (con verificación de uso)"""
+    
+    confirm = forms.CharField(
+        required=True,
+        label='Escribe el nombre del color para confirmar',
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Rojo'})
+    )
+    
+    def __init__(self, *args, **kwargs):
+        self.color = kwargs.pop('color', None)
+        super().__init__(*args, **kwargs)
+    
+    def clean_confirm(self):
+        value = self.cleaned_data.get('confirm', '').strip().capitalize()
+        
+        if not self.color:
+            raise ValidationError('Color no especificado.')
+        
+        if self.color.name != value:
+            raise ValidationError('El nombre del color no coincide.')
+        
+        if self.color.product_colors.filter(is_active=True).exists():
+            count = self.color.product_colors.filter(is_active=True).count()
+            raise ValidationError(
+                f'No se puede eliminar el color "{self.color.name}" porque está siendo usado '
+                f'en {count} variante(s) de producto(s).'
+            )
+        
+        return value
 # ========== PRODUCT IMAGE FORMS ==========
 
 class ProductImageCreateForm(forms.ModelForm):
