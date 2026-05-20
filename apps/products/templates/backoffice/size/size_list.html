@@ -1,0 +1,6 @@
+{% extends "backoffice/layouts/backoffice_base.html" %} {% load static %} {% block title %}Tallas - Zicada{% endblock %} {% block content %}
+<div class="space-y-6">
+	{% include 'backoffice/components/crud/list_header.html' with title="Tallas" create_url="products:size_create" %}
+	{% include 'backoffice/components/crud/list_table.html' with headers=headers rows=rows show_actions=True edit_url_name="products:size_edit" delete_url_name="products:size_delete" empty_message="No hay tallas registradas" page_obj=page_obj %}
+</div>
+{% endblock %}

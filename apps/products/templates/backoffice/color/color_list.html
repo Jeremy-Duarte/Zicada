@@ -1,0 +1,9 @@
+{% extends "backoffice/layouts/backoffice_base.html" %} 
+{% load static %} 
+{% block title %}Colores - Zicada{% endblock %} 
+{% block content %}
+<div class="space-y-6">
+    {% include 'backoffice/components/crud/list_header.html' with title="Colores" create_url="products:color_create" %}
+    {% include 'backoffice/components/crud/list_table.html' with headers=headers rows=rows show_actions=True edit_url_name="products:color_edit" delete_url_name="products:color_delete" empty_message="No hay colores registrados" page_obj=page_obj %}
+</div>
+{% endblock %}

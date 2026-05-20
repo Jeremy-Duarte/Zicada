@@ -86,55 +86,33 @@ class SizeDeleteForm(forms.Form):
 # ========== CATEGORY FORMS ==========
 
 class CategoryCreateForm(forms.ModelForm):
-    """Formulario para crear categorías"""
+    """Formulario para crear categorías (slug automático por el modelo)"""
     
     class Meta:
         model = Category
-        fields = ['name', 'slug', 'sort_order']
+        fields = ['name', 'sort_order']
         widgets = {
-            'name': forms.TextInput(attrs={'class': 'form-control'}),
-            'slug': forms.TextInput(attrs={'class': 'form-control'}),
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Camisetas, Hoodies'}),
             'sort_order': forms.NumberInput(attrs={'class': 'form-control', 'min': 0}),
         }
-    
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields['slug'].required = False
     
     def clean_name(self):
         name = self.cleaned_data.get('name', '').strip()
+        
         if Category.objects.filter(name__iexact=name).exists():
             raise ValidationError(f'La categoría "{name}" ya existe.')
+        
         return name
-    
-    def clean_slug(self):
-        slug = self.cleaned_data.get('slug', '').strip()
-        name = self.cleaned_data.get('name', '')
-        
-        if not slug:
-            slug = slugify(name)
-        
-        if Category.objects.filter(slug=slug).exists():
-            raise ValidationError(f'El slug "{slug}" ya está en uso.')
-        
-        return slug
 
 
 class CategoryUpdateForm(forms.ModelForm):
-    """Formulario para actualizar categorías"""
-    
     class Meta:
         model = Category
-        fields = ['name', 'slug', 'sort_order']
+        fields = ['name', 'sort_order']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control'}),
-            'slug': forms.TextInput(attrs={'class': 'form-control'}),
             'sort_order': forms.NumberInput(attrs={'class': 'form-control', 'min': 0}),
         }
-    
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields['slug'].required = False
     
     def clean_name(self):
         name = self.cleaned_data.get('name', '').strip()
@@ -148,22 +126,14 @@ class CategoryUpdateForm(forms.ModelForm):
         
         return name
     
-    def clean_slug(self):
-        slug = self.cleaned_data.get('slug', '').strip()
-        name = self.cleaned_data.get('name', '')
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        instance.slug = slugify(instance.name)
         
-        if not slug:
-            slug = slugify(name)
+        if commit:
+            instance.save()
         
-        qs = Category.objects.filter(slug=slug)
-        
-        if self.instance and self.instance.pk:
-            qs = qs.exclude(pk=self.instance.pk)
-        
-        if qs.exists():
-            raise ValidationError(f'El slug "{slug}" ya está en uso.')
-        
-        return slug
+        return instance
 
 
 class CategoryDeleteForm(forms.Form):
@@ -279,6 +249,36 @@ class ColorUpdateForm(forms.ModelForm):
         return code
 
 
+class ColorDeleteForm(forms.Form):
+    """Formulario para eliminar color (con verificación de uso)"""
+    
+    confirm = forms.CharField(
+        required=True,
+        label='Escribe el nombre del color para confirmar',
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Rojo'})
+    )
+    
+    def __init__(self, *args, **kwargs):
+        self.color = kwargs.pop('color', None)
+        super().__init__(*args, **kwargs)
+    
+    def clean_confirm(self):
+        value = self.cleaned_data.get('confirm', '').strip().capitalize()
+        
+        if not self.color:
+            raise ValidationError('Color no especificado.')
+        
+        if self.color.name != value:
+            raise ValidationError('El nombre del color no coincide.')
+        
+        if self.color.product_colors.filter(is_active=True).exists():
+            count = self.color.product_colors.filter(is_active=True).count()
+            raise ValidationError(
+                f'No se puede eliminar el color "{self.color.name}" porque está siendo usado '
+                f'en {count} variante(s) de producto(s).'
+            )
+        
+        return value
 # ========== PRODUCT IMAGE FORMS ==========
 
 class ProductImageCreateForm(forms.ModelForm):

@@ -1,0 +1,15 @@
+{% extends "backoffice/layouts/backoffice_base.html" %} 
+{% load static %} 
+{% block title %}Eliminar Imagen - Zicada{% endblock %} 
+{% block content %}
+<div class="max-w-md mx-auto">
+    {% include 'backoffice/components/crud/confirm_delete.html' with form=form object_name="Imagen" object_display=object_display cancel_url="products:productimage_list" %}
+    
+    {% if image_preview %}
+    <div class="mt-4 bg-white rounded-xl shadow-sm p-4 text-center">
+        <img src="{{ image_preview }}" class="max-h-48 mx-auto rounded-lg">
+        <p class="text-xs text-gray-400 mt-2">Vista previa de la imagen a eliminar</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

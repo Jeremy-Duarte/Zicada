@@ -1,0 +1,14 @@
+{% load static %}
+<div class="flex justify-between items-center text-sm">
+    <div class="text-gray-500">
+        Mostrando {{ page_obj.start_index }} - {{ page_obj.end_index }} de {{ page_obj.paginator.count }}
+    </div>
+    <div class="flex gap-2">
+        {% if page_obj.has_previous %}
+        <a href="?page={{ page_obj.previous_page_number }}{% if request.GET %}&{{ request.GET.urlencode|cut:'page=' }}{% endif %}" class="px-3 py-1 border rounded-lg hover:bg-gray-50">Anterior</a>
+        {% endif %}
+        {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}{% if request.GET %}&{{ request.GET.urlencode|cut:'page=' }}{% endif %}" class="px-3 py-1 border rounded-lg hover:bg-gray-50">Siguiente</a>
+        {% endif %}
+    </div>
+</div>
