@@ -1,4 +1,4 @@
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from .models import Product, ProductVariant, ProductColor, Collection, Category, Size
@@ -231,13 +231,28 @@ class SizeUpdateView(PermissionRequiredMixin, UpdateView):
 
 class SizeDeleteView(PermissionRequiredMixin, DeleteView):
     model = Size
+    form_class = SizeDeleteForm
     template_name = 'backoffice/size/size_confirm_delete.html'
     permission_required = 'products.delete_size'
     success_url = reverse_lazy('products:size_list')
     
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['size'] = self.get_object()
+        return kwargs
+    
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        form = self.get_form()
+        
+        if form.is_valid():
+            return self.delete(request, *args, **kwargs)
+        
+        return self.render_to_response(self.get_context_data(form=form))
+    
     def delete(self, request, *args, **kwargs):
         size = self.get_object()
         size_name = size.name
-        response = super().delete(request, *args, **kwargs)
+        size.delete()
         messages.success(request, f'Talla "{size_name}" eliminada exitosamente.')
-        return response
+        return redirect(self.success_url)

@@ -2,5 +2,5 @@
 {% load static %} 
 {% block title %}Eliminar Talla - Zicada{% endblock %} 
 {% block content %}
-{% include 'backoffice/components/crud/confirm_delete.html' with object_name="Talla" object_display=size.name cancel_url="products:size_list" %}
+{% include 'backoffice/components/crud/confirm_delete.html' with form=form object_name="Talla" object_display=object_display cancel_url="products:size_list" %}
 {% endblock %}
