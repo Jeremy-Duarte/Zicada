@@ -15,18 +15,24 @@
         </div>
         {% endif %}
         
-        <div class="bg-gray-50 rounded-lg p-3 text-left text-sm text-gray-500 mb-4">
-            <p class="font-medium text-gray-700 mb-1">Información del elemento:</p>
-            <ul class="space-y-1">
-                {% for key, value in object_info.items %}
-                <li><span class="text-gray-400">{{ key }}:</span> {{ value }}</li>
-                {% endfor %}
-            </ul>
-        </div>
-        
         <form method="post">
             {% csrf_token %}
-            <div class="flex justify-center gap-3">
+            
+            {% if form %}
+                {% for field in form %}
+                <div class="mb-4 text-left">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        {{ field }}
+                        <span class="text-sm text-gray-700">{{ field.label }}</span>
+                    </label>
+                    {% if field.errors %}
+                    <p class="text-red-500 text-xs mt-1">{{ field.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            {% endif %}
+            
+            <div class="flex justify-center gap-3 mt-4">
                 <a href="{% url cancel_url %}" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition">
                     Cancelar
                 </a>
