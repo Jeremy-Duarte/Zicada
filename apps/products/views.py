@@ -1,13 +1,13 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
-from .models import Product, ProductVariant, ProductColor, Collection, Category, Size, Color
+from .models import Product, ProductVariant, ProductColor, ProductImage, Collection, Category, Size, Color
 from django.utils import timezone
 from django.urls import reverse_lazy
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from apps.core.crud.mixins import PaginationMixin, FilterMixin
-from .forms import SizeCreateForm, SizeDeleteForm, SizeUpdateForm, CategoryCreateForm, CategoryDeleteForm, CategoryUpdateForm, ColorCreateForm, ColorDeleteForm, ColorUpdateForm
+from .forms import SizeCreateForm, SizeDeleteForm, SizeUpdateForm, CategoryCreateForm, CategoryDeleteForm, CategoryUpdateForm, ColorCreateForm, ColorDeleteForm, ColorUpdateForm, ProductImageCreateForm, ProductImageUpdateForm, ProductImageDeleteForm
 from django.utils.safestring import mark_safe
 import json
 
@@ -441,3 +441,104 @@ class ColorDeleteView(PermissionRequiredMixin, DeleteView):
         color.delete()
         messages.success(request, f'Color "{color_name}" eliminado exitosamente.')
         return redirect(self.success_url)
+
+
+class ProductImageListView(PermissionRequiredMixin, PaginationMixin, FilterMixin, ListView):
+    model = ProductImage
+    template_name = 'backoffice/productimage/productimage_list.html'
+    context_object_name = 'images'
+    permission_required = 'products.view_productimage'
+    paginate_by = 20
+    
+    filters = [
+        ('alt_text', 'alt_text', 'icontains'),
+        ('created_at', 'created_at', 'date'),
+    ]
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        rows = []
+        for img in context['images']:
+            rows.append({
+                'pk': img.pk,
+                'values': [
+                    mark_safe(f'<img src="{img.image.url}" class="w-16 h-16 object-cover rounded-lg">'),
+                    img.alt_text or '—',
+                    img.created_at.strftime('%d/%m/%Y %H:%M'),
+                ],
+            })
+        context['rows'] = rows
+        context['headers'] = ['Imagen', 'Texto alternativo', 'Subida']
+        return context
+
+
+class ProductImageCreateView(PermissionRequiredMixin, CreateView):
+    model = ProductImage
+    form_class = ProductImageCreateForm
+    template_name = 'backoffice/productimage/productimage_form.html'
+    permission_required = 'products.add_productimage'
+    success_url = reverse_lazy('products:productimage_list')
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['cancel_url'] = 'products:productimage_list'
+        return context
+    
+    def form_valid(self, form):
+        messages.success(self.request, f'Imagen "{form.instance.image.name}" subida exitosamente.')
+        return super().form_valid(form)
+
+
+class ProductImageUpdateView(PermissionRequiredMixin, UpdateView):
+    model = ProductImage
+    form_class = ProductImageUpdateForm
+    template_name = 'backoffice/productimage/productimage_form.html'
+    permission_required = 'products.change_productimage'
+    success_url = reverse_lazy('products:productimage_list')
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['cancel_url'] = 'products:productimage_list'
+        context['is_update'] = True
+        return context
+    
+    def form_valid(self, form):
+        messages.success(self.request, 'Texto alternativo de la imagen actualizado exitosamente.')
+        return super().form_valid(form)
+
+
+class ProductImageDeleteView(PermissionRequiredMixin, DeleteView):
+    model = ProductImage
+    form_class = ProductImageDeleteForm
+    template_name = 'backoffice/productimage/productimage_confirm_delete.html'
+    permission_required = 'products.delete_productimage'
+    success_url = reverse_lazy('products:productimage_list')
+    
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['image'] = self.get_object()
+        return kwargs
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['object_name'] = 'Imagen'
+        context['object_display'] = self.get_object().image.name.split('/')[-1]
+        context['cancel_url'] = 'products:productimage_list'
+        context['image_preview'] = self.get_object().image.url
+        return context
+    
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        form = self.get_form()
+        
+        if form.is_valid():
+            return self.delete(request, *args, **kwargs)
+        
+        return self.render_to_response(self.get_context_data(form=form))
+    
+    def delete(self, request, *args, **kwargs):
+        image = self.get_object()
+        image_name = image.image.name.split('/')[-1]
+        response = super().delete(request, *args, **kwargs)
+        messages.success(request, f'Imagen "{image_name}" eliminada exitosamente.')
+        return response
