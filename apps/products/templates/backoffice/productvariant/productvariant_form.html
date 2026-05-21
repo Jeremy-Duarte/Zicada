@@ -1,0 +1,11 @@
+{% extends "backoffice/layouts/backoffice_base.html" %} {% load static %} {% block title %}{{ title|default:"Gestión de Variante" }} - Zicada{% endblock %} {% block content %}
+<div class="max-w-2xl mx-auto">
+    <div class="bg-white rounded-xl shadow-sm p-6">
+        <div class="mb-6 pb-4 border-b border-gray-100">
+            <h1 class="text-2xl font-bold text-gray-800">{{ title|default:"Gestión de Variante" }}</h1>
+            <p class="text-sm text-gray-500 mt-1">Producto: <strong>{{ product.name }}</strong></p>
+        </div>
+        {% include 'backoffice/components/crud/form_fields.html' with form=form cancel_url=cancel_url cancel_args=cancel_args submit_label="Guardar" %}
+    </div>
+</div>
+{% endblock %}

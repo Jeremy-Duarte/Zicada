@@ -1,0 +1,3 @@
+{% extends "backoffice/layouts/backoffice_base.html" %} {% load static %} {% block title %}Eliminar Color del Producto - Zicada{% endblock %} {% block content %}
+{% include 'backoffice/components/crud/confirm_delete.html' with form=form object_name=object_name object_display=object_display cancel_url=cancel_url cancel_args=cancel_args warning="Esta acción eliminará también las variantes asociadas a este color." %}
+{% endblock %}

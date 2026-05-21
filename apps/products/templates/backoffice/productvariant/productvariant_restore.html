@@ -1,0 +1,3 @@
+{% extends "backoffice/layouts/backoffice_base.html" %} {% load static %} {% block title %}Restaurar Variante - Zicada{% endblock %} {% block content %}
+{% include 'backoffice/components/crud/confirm_restore.html' with form=form object_name=object_name object_display=object_display cancel_url=cancel_url cancel_args=cancel_args %}
+{% endblock %}
