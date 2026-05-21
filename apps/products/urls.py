@@ -28,6 +28,14 @@ admin_patterns = [
     path('productos/<int:pk>/eliminar/', views.ProductDeleteView.as_view(), name='product_delete'),
     path('productos/<int:pk>/restaurar/', views.ProductRestoreView.as_view(), name='product_restore'),
     path('productos/papelera/', views.ProductTrashcanView.as_view(), name='product_trashcan'),
+    path('productos/<int:product_pk>/colores/crear/', views.ProductColorCreateView.as_view(), name='productcolor_create'),
+    path('productos/colores/<int:pk>/editar/', views.ProductColorUpdateView.as_view(), name='productcolor_edit'),
+    path('productos/colores/<int:pk>/eliminar/', views.ProductColorDeleteView.as_view(), name='productcolor_delete'),
+    path('productos/<int:product_pk>/variantes/crear/', views.ProductVariantCreateView.as_view(), name='productvariant_create'),
+    path('productos/variantes/<int:pk>/editar/', views.ProductVariantUpdateView.as_view(), name='productvariant_edit'),
+    path('productos/variantes/<int:pk>/eliminar/', views.ProductVariantDeleteView.as_view(), name='productvariant_delete'),
+    path('productos/variantes/<int:pk>/restaurar/', views.ProductVariantRestoreView.as_view(), name='productvariant_restore'),
+    path('productos/<int:product_pk>/variantes/papelera/', views.ProductVariantTrashcanView.as_view(), name='productvariant_trashcan'),
 ]
 
 urlpatterns = [
