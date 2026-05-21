@@ -715,18 +715,17 @@ class ProductVariantRestoreForm(forms.Form):
         if not self.variant:
             raise ValidationError('Variante no especificada.')
         
-        # Verificar si ya existe una variante activa con misma combinación
         if ProductVariant.objects.filter(
             product=self.variant.product,
             product_color=self.variant.product_color,
-            size=self.variant.size
+            size=self.variant.size,
+            is_active=True
         ).exists():
             raise ValidationError(
                 'Ya existe una variante activa con esta combinación de producto, color y talla.'
             )
         
-        confirm = cleaned_data.get('confirm')
-        if not confirm:
+        if not cleaned_data.get('confirm'):
             raise ValidationError('Debes confirmar la restauración.')
         
         return cleaned_data

@@ -14,7 +14,11 @@
     </div>
     {% endfor %}
     <div class="flex justify-end gap-3 pt-4">
+        {% if cancel_args %}
+        <a href="{% url cancel_url cancel_args.0 %}" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition">Cancelar</a>
+        {% else %}
         <a href="{% url cancel_url %}" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition">Cancelar</a>
+        {% endif %}
         <button type="submit" class="bg-zicada-accent hover:bg-opacity-90 text-white px-6 py-2 rounded-lg transition">{{ submit_label|default:"Guardar" }}</button>
     </div>
 </form>

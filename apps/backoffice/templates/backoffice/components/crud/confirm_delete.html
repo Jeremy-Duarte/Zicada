@@ -27,7 +27,11 @@
             {% endif %}
             
             <div class="flex justify-center gap-3">
+                {% if cancel_args %}
+                <a href="{% url cancel_url cancel_args.0 %}" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Cancelar</a>
+                {% else %}
                 <a href="{% url cancel_url %}" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Cancelar</a>
+                {% endif %}
                 <button type="submit" class="bg-red-500 hover:bg-red-600 text-white px-5 py-2 rounded-lg">Sí, eliminar</button>
             </div>
         </form>

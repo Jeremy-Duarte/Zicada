@@ -1,0 +1,3 @@
+{% extends "backoffice/layouts/backoffice_base.html" %} {% load static %} {% block title %}Restaurar Producto - Zicada{% endblock %} {% block content %}
+{% include 'backoffice/components/crud/confirm_restore.html' with form=form object_name="Producto" object_display=product.name cancel_url="products:product_trashcan" warning="Al restaurar el producto, volverá a estar disponible en el catálogo." %}
+{% endblock %}
