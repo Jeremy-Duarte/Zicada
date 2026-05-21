@@ -1,26 +1,115 @@
-{% extends "backoffice/layouts/backoffice_base.html" %} 
-{% load static %} 
-{% block title %}{% if form.instance.pk %}Editar{% else %}Nuevo{% endif %} Producto - Zicada{% endblock %} 
+{% extends "backoffice/layouts/backoffice_base.html" %}
+{% load static %}
+
+{% block title %}{% if form.instance.pk %}Editar{% else %}Nuevo{% endif %} Producto - Zicada{% endblock %}
+
 {% block content %}
-<div class="max-w-4xl mx-auto">
+<div class="space-y-6">
+    <!-- Formulario principal -->
     <div class="bg-white rounded-xl shadow-sm p-6">
         <h1 class="text-2xl font-bold text-gray-800 mb-6">{% if form.instance.pk %}Editar{% else %}Nuevo{% endif %} Producto</h1>
-        
         {% include 'backoffice/components/crud/form_fields.html' with form=form cancel_url="products:product_list" submit_label="Guardar" %}
-        
-        {% if form.instance.pk %}
-        <div class="mt-8 pt-6 border-t border-gray-100">
-            <div class="flex gap-4">
-                <a href="{% url 'products:productcolor_create' product.pk %}" class="text-sm text-blue-600 hover:text-blue-800">
-                    <i class="fas fa-palette mr-1"></i> Gestionar colores
+    </div>
+    
+    {% if form.instance.pk %}
+    <!-- ========== SECCIONES INLINE SOLO PARA EDICIÓN ========== -->
+    
+    <!-- Sección: Colores -->
+    <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+            <h2 class="text-xl font-semibold text-gray-800">
+                <i class="fas fa-palette mr-2 text-zicada-accent"></i> Colores
+            </h2>
+            <a href="{% url 'products:productcolor_create' product.pk %}" class="bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded-lg text-sm transition">
+                <i class="fas fa-plus mr-1"></i> Agregar Color
+            </a>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Color</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Imágenes</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Destacada</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Orden</th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    {% for pc in product_colors %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 text-sm">{{ pc.color.name }}</td>
+                        <td class="px-6 py-4 text-sm">{{ pc.images.count }} imagen(es)</td>
+                        <td class="px-6 py-4 text-sm">{% if pc.featured_image %}✓{% else %}—{% endif %}</td>
+                        <td class="px-6 py-4 text-sm">{{ pc.sort_order }}</td>
+                        <td class="px-6 py-4 text-sm text-right space-x-2">
+                            <a href="{% url 'products:productcolor_edit' pc.pk %}" class="text-blue-600 hover:text-blue-800"><i class="fas fa-edit"></i></a>
+                            <a href="{% url 'products:productcolor_delete' pc.pk %}" class="text-red-600 hover:text-red-800"><i class="fas fa-trash-alt"></i></a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" class="px-6 py-8 text-center text-gray-400">No hay colores asignados</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- Sección: Variantes -->
+    <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+            <h2 class="text-xl font-semibold text-gray-800">
+                <i class="fas fa-boxes mr-2 text-zicada-accent"></i> Variantes
+            </h2>
+            <div class="flex gap-2">
+                <a href="{% url 'products:productvariant_trashcan' product.pk %}" class="text-amber-600 hover:text-amber-800 text-sm transition">
+                    <i class="fas fa-trash-restore mr-1"></i> Papelera
                 </a>
-                <span class="text-gray-300">|</span>
-                <a href="{% url 'products:productvariant_create' product.pk %}" class="text-sm text-green-600 hover:text-green-800">
-                    <i class="fas fa-boxes mr-1"></i> Gestionar variantes
+                <a href="{% url 'products:productvariant_create' product.pk %}" class="bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded-lg text-sm transition">
+                    <i class="fas fa-plus mr-1"></i> Agregar Variante
                 </a>
             </div>
         </div>
-        {% endif %}
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Color</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Talla</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">SKU</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Stock</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    {% for variant in variants %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 text-sm">{{ variant.product_color.color.name }}</td>
+                        <td class="px-6 py-4 text-sm">{{ variant.size.name }}</td>
+                        <td class="px-6 py-4 text-sm font-mono">{{ variant.sku }}</td>
+                        <td class="px-6 py-4 text-sm">{{ variant.stock }}</td>
+                        <td class="px-6 py-4 text-sm">
+                            <span class="px-2 py-1 text-xs rounded-full {% if variant.is_active %}bg-green-100 text-green-700{% else %}bg-red-100 text-red-700{% endif %}">
+                                {% if variant.is_active %}Activo{% else %}Inactivo{% endif %}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 text-sm text-right space-x-2">
+                            <a href="{% url 'products:productvariant_edit' variant.pk %}" class="text-blue-600 hover:text-blue-800"><i class="fas fa-edit"></i></a>
+                            {% if variant.is_active %}
+                            <a href="{% url 'products:productvariant_delete' variant.pk %}" class="text-red-600 hover:text-red-800"><i class="fas fa-trash-alt"></i></a>
+                            {% else %}
+                            <a href="{% url 'products:productvariant_restore' variant.pk %}" class="text-amber-600 hover:text-amber-800"><i class="fas fa-trash-restore"></i></a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="6" class="px-6 py-8 text-center text-gray-400">No hay variantes registradas</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
+    {% endif %}
 </div>
 {% endblock %}
