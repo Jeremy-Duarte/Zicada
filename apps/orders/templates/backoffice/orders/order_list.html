@@ -1,0 +1,34 @@
+{% extends "backoffice/layouts/backoffice_base.html" %} {% load static %} {% block title %}Pedidos - Zicada{% endblock %} {% block content %}
+<div class="space-y-6">
+    {% include 'backoffice/components/crud/list_header.html' with title="Pedidos" create_url="orders:order_create" create_label="Nuevo pedido manual" %}
+    
+    <!-- Filtros -->
+    <div class="bg-white rounded-xl shadow-sm p-4">
+        <form method="get" class="flex flex-wrap gap-4">
+            <select name="status" class="px-3 py-2 border rounded-lg text-sm">
+                <option value="">Todos los estados</option>
+                {% for code, label in status_choices %}
+                <option value="{{ code }}" {% if request.GET.status == code %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+            <input type="text" name="search" placeholder="Buscar por #, cliente o teléfono..." value="{{ request.GET.search|default:'' }}" class="flex-1 px-3 py-2 border rounded-lg text-sm">
+            <button type="submit" class="bg-gray-800 text-white px-4 py-2 rounded-lg text-sm">Filtrar</button>
+            {% if request.GET.status or request.GET.search %}
+            <a href="{% url 'orders:order_list' %}" class="text-gray-500 hover:text-gray-700 px-4 py-2 text-sm">Limpiar</a>
+            {% endif %}
+        </form>
+    </div>
+    
+    <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50"><tr>{% for header in headers %}<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{{ header }}</th>{% endfor %}<th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Acciones</th></tr></thead>
+                <tbody class="divide-y divide-gray-200 bg-white">
+                    {% for row in rows %}<tr class="hover:bg-gray-50 transition">{% for value in row.values %}<td class="px-6 py-4 text-sm text-gray-700">{{ value|default:"—" }}</td>{% endfor %}<td class="px-6 py-4 text-sm text-right space-x-3"><a href="{% url 'orders:order_edit' row.pk %}" class="text-blue-600 hover:text-blue-800" title="Editar"><i class="fas fa-edit"></i></a><a href="{% url 'orders:order_detail' row.pk %}" class="text-gray-600 hover:text-gray-800" title="Ver"><i class="fas fa-eye"></i></a></td></tr>{% empty %}<tr><td colspan="{{ headers|length|add:1 }}" class="px-6 py-12 text-center text-gray-400"><i class="fas fa-inbox text-3xl mb-2 block"></i>No hay pedidos registrados</td></tr>{% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% if page_obj %}<div class="px-6 py-3 border-t border-gray-100">{% include 'backoffice/components/crud/pagination.html' %}</div>{% endif %}
+    </div>
+</div>
+{% endblock %}
