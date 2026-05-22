@@ -1,5 +1,6 @@
 import json
 from decimal import Decimal
+
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
@@ -7,16 +8,21 @@ from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.db import models
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse_lazy
+from django.urls import reverse, reverse_lazy
+from django.utils.safestring import mark_safe
 from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import (
+    require_GET, require_http_methods, require_POST
+)
 from django.views.generic import (
     CreateView, DetailView, FormView, ListView, UpdateView
 )
+
+from apps.core.crud.mixins import AuditMixin, FilterMixin, PaginationMixin
 from apps.orders.stripe_client import get_stripe
 from apps.products.models import ProductVariant
 from apps.users.models import User
-from apps.core.crud.mixins import AuditMixin, FilterMixin, PaginationMixin
+
 from .cart import Cart
 from .email import send_order_confirmation_email
 from .forms import (
@@ -26,66 +32,229 @@ from .forms import (
     OrderUpdateForm
 )
 from .models import Order, OrderItem
-from django.utils.safestring import mark_safe
 
-DELIVERY_DASHBOARD_ROUTE ='orders:delivery_dashboard'
+
+# =============================================================================
+# CONSTANTS
+# =============================================================================
+
+# Route names
+DELIVERY_DASHBOARD_ROUTE = 'orders:delivery_dashboard'
+ORDER_LIST_ROUTE = 'orders:order_list'
+ORDER_DETAIL_ROUTE = 'orders:order_detail'
+ORDER_CONFIRMATION_ROUTE = 'orders:order_confirmation'
+CART_DETAIL_ROUTE = 'orders:cart_detail'
+PRODUCTS_CATALOG_ROUTE = 'products:catalog'
+PRODUCT_EDIT_ROUTE = 'products:product_edit'
+PRODUCT_LIST_ROUTE = 'products:product_list'
+USER_LIST_ROUTE = 'users:user_list'
+USER_DETAIL_ROUTE = 'users:user_detail'
+CHECKOUT_ROUTE = 'orders:checkout'
+CREATE_STRIPE_SESSION_ROUTE = 'orders:create_stripe_checkout_session'
+ORDER_CREATE_ROUTE = 'orders:order_create'
+ORDER_EDIT_ROUTE = 'orders:order_edit'
+
+# Order statuses
+STATUS_PENDING = 'pendiente'
+STATUS_CONFIRMED = 'confirmado'
+STATUS_PREPARING = 'preparando'
+STATUS_READY = 'listo'
+STATUS_ON_THE_WAY = 'en_camino'
+STATUS_DELIVERED = 'entregado'
+STATUS_CANCELLED = 'cancelado'
+
+# Status list for progression tracking
+STATUS_PROGRESSION = [
+    STATUS_PENDING, STATUS_CONFIRMED, STATUS_PREPARING,
+    STATUS_READY, STATUS_ON_THE_WAY, STATUS_DELIVERED
+]
+
+# Status choices for badge rendering
+STATUS_BADGE_MAP = {
+    STATUS_PENDING: ('Pendiente', 'bg-yellow-100 text-yellow-700'),
+    STATUS_CONFIRMED: ('Confirmado', 'bg-blue-100 text-blue-700'),
+    STATUS_PREPARING: ('Preparando', 'bg-purple-100 text-purple-700'),
+    STATUS_READY: ('Listo', 'bg-indigo-100 text-indigo-700'),
+    STATUS_ON_THE_WAY: ('En camino', 'bg-orange-100 text-orange-700'),
+    STATUS_DELIVERED: ('Entregado', 'bg-green-100 text-green-700'),
+}
+STATUS_BADGE_DEFAULT = ('Cancelado', 'bg-red-100 text-red-700')
+
+# Status transition map for UI buttons
+STATUS_TRANSITION_MAP = [
+    (STATUS_CONFIRMED, 'Confirmar pedido'),
+    (STATUS_PREPARING, 'Marcar en preparación'),
+    (STATUS_READY, 'Marcar listo para envío'),
+    (STATUS_DELIVERED, 'Marcar entregado'),
+    (STATUS_CANCELLED, 'Cancelar pedido'),
+]
+
+# Allowed statuses for adding items to orders
+ALLOWED_ADD_ITEMS_STATUSES = [STATUS_PENDING, STATUS_CONFIRMED]
+
+# Webhook retry settings
+WEBHOOK_MAX_RETRIES = 20
+WEBHOOK_RETRY_DELAY = 0.5
+
+# Template paths
+TEMPLATE_DELIVERY_DASHBOARD = 'orders/delivery_dashboard.html'
+TEMPLATE_CART_DETAIL = 'orders/cart_detail.html'
+TEMPLATE_CHECKOUT = 'orders/checkout.html'
+TEMPLATE_ORDER_CONFIRMATION = 'orders/order_confirmation.html'
+TEMPLATE_TRACKING = 'orders/tracking.html'
+
+# Backoffice templates
+TEMPLATE_ORDER_LIST = 'backoffice/orders/order_list.html'
+TEMPLATE_ORDER_FORM = 'backoffice/orders/order_form.html'
+TEMPLATE_ORDER_DETAIL = 'backoffice/orders/order_detail.html'
+TEMPLATE_ORDER_CONFIRM = 'backoffice/orders/order_confirm.html'
+TEMPLATE_ORDER_CANCEL = 'backoffice/orders/order_cancel.html'
+TEMPLATE_ORDER_ASSIGN_DELIVERY = 'backoffice/orders/order_assign_delivery.html'
+TEMPLATE_ORDER_MARK_DELIVERED = 'backoffice/orders/order_mark_delivered.html'
+TEMPLATE_ORDER_ITEM_FORM = 'backoffice/orders/orderitem_form.html'
+TEMPLATE_ORDER_ITEM_CONFIRM_DELETE = 'backoffice/orders/orderitem_confirm_delete.html'
+
+# Error and success messages
+MESSAGE_CART_EMPTY = 'Tu carrito está vacío. Agrega productos antes de continuar.'
+MESSAGE_CART_CLEARED = 'Carrito vaciado correctamente'
+MESSAGE_ORDER_NOT_FOUND = 'Pedido no encontrado.'
+MESSAGE_PAYMENT_PROCESSING = 'Tu pago está siendo procesado. Se actualizará automáticamente en breve.'
+MESSAGE_NO_SHIPPING_DATA = 'No se encontraron datos de envío. Por favor, vuelve a intentarlo.'
+MESSAGE_STOCK_INSUFFICIENT = 'stock insuficiente'
+MESSAGE_EMAIL_SENT = 'Correo de confirmación enviado a {email}'
+MESSAGE_EMAIL_MISSING = 'Pedido {order_number} no tiene email asociado'
+
+# Error message templates
+ERROR_INVALID_DATA = 'Datos inválidos'
+ERROR_INVALID_QUANTITY = 'Cantidad inválida'
+ERROR_VALIDATION_PREFIX = 'Error al crear el pedido. Corrige los errores.'
+ERROR_UPDATE_PREFIX = 'Error al actualizar el pedido.'
+ERROR_CONFIRM_PREFIX = 'Error al confirmar el pedido.'
+ERROR_CANCEL_PREFIX = 'Error al cancelar el pedido.'
+
+# Table headers
+HEADERS_ORDER_LIST = ['Pedido', 'Cliente', 'Total', 'Estado', 'Fecha']
+HEADERS_ORDER_ITEMS = ['Producto', 'Talla', 'Cantidad', 'Precio unit.', 'Subtotal']
+
+# URL query parameters
+QUERY_PARAM_STATUS = '?status={status}'
+QUERY_PARAM_SEARCH = '?search={search}'
+QUERY_PARAM_STOCK = '?stock={stock}'
+QUERY_PARAM_IS_ACTIVE = '?is_active={is_active}'
+QUERY_PARAM_IS_DELIVERY = '?is_delivery={is_delivery}'
+
+# Date format
+DATE_FORMAT_DISPLAY = '%d/%m/%Y %H:%M'
+
+# Context keys
+CONTEXT_SECTION = 'section'
+CONTEXT_ORDER = 'order'
+CONTEXT_ITEMS = 'items'
+CONTEXT_CANCEL_URL = 'cancel_url'
+CONTEXT_CANCEL_ARGS = 'cancel_args'
+CONTEXT_TITLE = 'title'
+CONTEXT_IS_MANUAL = 'is_manual'
+CONTEXT_ROWS = 'rows'
+CONTEXT_HEADERS = 'headers'
+CONTEXT_SHOW_ACTIONS = 'show_actions'
+CONTEXT_EDIT_URL_NAME = 'edit_url_name'
+CONTEXT_STATUS_CHOICES = 'status_choices'
+CONTEXT_TRANSITIONS = 'transitions'
+CONTEXT_DELIVERY_USERS = 'delivery_users'
+CONTEXT_CAN_ASSIGN = 'can_assign'
+CONTEXT_CAN_ADD_ITEMS = 'can_add_items'
+CONTEXT_ITEMS_ROWS = 'items_rows'
+CONTEXT_ITEMS_HEADERS = 'items_headers'
+
+
+# =============================================================================
+# DELIVERY VIEWS (Staff Only)
+# =============================================================================
 
 @staff_member_required
+@require_GET
 def delivery_dashboard(request):
-    pedidos_listos = Order.objects.filter(status='listo')
+    """Dashboard for delivery staff to view available and assigned orders."""
+    pedidos_listos = Order.objects.filter(status=STATUS_READY)
     pedidos_asignados = Order.objects.filter(
         assigned_delivery_user=request.user,
-        status='en_camino'
+        status=STATUS_ON_THE_WAY
     )
-    
+
     context = {
         'pedidos_listos': pedidos_listos,
         'pedidos_asignados': pedidos_asignados,
     }
-    return render(request, 'orders/delivery_dashboard.html', context)
+    return render(request, TEMPLATE_DELIVERY_DASHBOARD, context)
 
 
 @staff_member_required
+@require_POST
 def take_order(request, order_id):
+    """Assign an order to the current delivery user."""
     order = get_object_or_404(Order, id=order_id)
-    if order.status != 'listo':
-        messages.error(request, f'El pedido {order.order_number} no está listo para entregar (estado actual: {order.get_status_display()}).')
+
+    if order.status != STATUS_READY:
+        messages.error(
+            request,
+            f'El pedido {order.order_number} no está listo para entregar '
+            f'(estado actual: {order.get_status_display()}).'
+        )
         return redirect(DELIVERY_DASHBOARD_ROUTE)
+
     order.assigned_delivery_user = request.user
-    order.status = 'en_camino'
-    order.save()
+    order.status = STATUS_ON_THE_WAY
+    order.save(update_fields=['assigned_delivery_user', 'status'])
+
     messages.success(request, f'Pedido {order.order_number} asignado correctamente.')
     return redirect(DELIVERY_DASHBOARD_ROUTE)
 
 
 @staff_member_required
+@require_POST
 def deliver_order(request, order_id):
-    order = get_object_or_404(Order, id=order_id, assigned_delivery_user=request.user)
+    """Mark an order as delivered."""
+    order = get_object_or_404(
+        Order,
+        id=order_id,
+        assigned_delivery_user=request.user
+    )
     order.mark_as_delivered(user=request.user)
     messages.success(request, f'Pedido {order.order_number} entregado y pagado.')
     return redirect(DELIVERY_DASHBOARD_ROUTE)
 
-@require_http_methods(['POST'])
+
+# =============================================================================
+# CART API VIEWS
+# =============================================================================
+
+@require_POST
 def cart_add(request):
+    """Add a product variant to the cart."""
     try:
         data = json.loads(request.body) if request.body else request.POST
         variant_id = data.get('variant_id')
         quantity = int(data.get('quantity', 1))
-    except (json.JSONDecodeError, ValueError, TypeError):
-        return JsonResponse({'error': 'Datos inválidos'}, status=400)
+    except (ValueError, TypeError):
+        return JsonResponse({'error': ERROR_INVALID_DATA}, status=400)
 
     cart = Cart(request)
+
     try:
         cart.add(variant_id, quantity)
-        
+
         variant = ProductVariant.objects.select_related(
             'product', 'product_color__color', 'size'
         ).get(id=variant_id)
-        
-        mensaje = f'{quantity}x {variant.product.name} - {variant.product_color.color.name} - {variant.size.name} agregado al carrito'
-        
+
+        mensaje = (
+            f'{quantity}x {variant.product.name} - '
+            f'{variant.product_color.color.name} - {variant.size.name} '
+            f'agregado al carrito'
+        )
+
         messages.success(request, mensaje)
-        
+
         return JsonResponse({
             'success': True,
             'total_items': cart.get_total_items(),
@@ -95,39 +264,42 @@ def cart_add(request):
         return JsonResponse({'error': str(e)}, status=400)
 
 
-@require_http_methods(['POST'])
+@require_POST
 def cart_remove(request):
+    """Remove a product variant from the cart."""
     try:
         data = json.loads(request.body) if request.body else request.POST
         variant_id = data.get('variant_id')
-    except (json.JSONDecodeError, ValueError, TypeError):
-        return JsonResponse({'error': 'Datos inválidos'}, status=400)
+    except (ValueError, TypeError):
+        return JsonResponse({'error': ERROR_INVALID_DATA}, status=400)
 
     cart = Cart(request)
     cart.remove(variant_id)
+
     return JsonResponse({
         'success': True,
         'total_items': cart.get_total_items(),
     })
 
-@require_http_methods(['POST'])
+
+@require_POST
 def cart_update(request):
+    """Update quantity of a product variant in the cart."""
     try:
         data = json.loads(request.body) if request.body else request.POST
         variant_id = data.get('variant_id')
         quantity = data.get('quantity')
-        
+
         if isinstance(quantity, str):
             quantity = int(quantity)
-        elif isinstance(quantity, int):
-            pass
-        else:
-            return JsonResponse({'error': 'Cantidad inválida'}, status=400)
-            
-    except (json.JSONDecodeError, ValueError, TypeError) as e:
-        return JsonResponse({'error': f'Datos inválidos: {str(e)}'}, status=400)
+        elif not isinstance(quantity, int):
+            return JsonResponse({'error': ERROR_INVALID_QUANTITY}, status=400)
+
+    except (ValueError, TypeError) as e:
+        return JsonResponse({'error': f'{ERROR_INVALID_DATA}: {str(e)}'}, status=400)
 
     cart = Cart(request)
+
     try:
         cart.update_quantity(variant_id, quantity)
         return JsonResponse({
@@ -137,34 +309,47 @@ def cart_update(request):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
 
-@require_http_methods(['POST'])
+
+@require_POST
 def cart_clear(request):
+    """Clear all items from the cart."""
     cart = Cart(request)
     cart.clear()
+
     return JsonResponse({
         'success': True,
         'total_items': 0,
-        'message': 'Carrito vaciado correctamente'
+        'message': MESSAGE_CART_CLEARED
     })
 
+
+@require_GET
 def cart_data(request):
+    """Get current cart data as JSON."""
     cart = Cart(request)
     summary = cart.get_summary()
+
+    # Convert Decimal to float for JSON serialization
     summary['subtotal'] = float(summary['subtotal'])
     summary['shipping_cost'] = float(summary['shipping_cost'])
     summary['total'] = float(summary['total'])
+
     for item in summary['items']:
         item['price'] = float(item['price'])
         item['subtotal'] = float(Decimal(item['price']) * item['quantity'])
+
     return JsonResponse(summary)
 
+
+@require_GET
 def cart_detail(request):
+    """Render cart detail page."""
     cart = Cart(request)
     summary = cart.get_summary()
-    
+
     for item in summary['items']:
         item['total'] = item['price'] * item['quantity']
-    
+
     context = {
         'items': summary['items'],
         'subtotal': summary['subtotal'],
@@ -173,27 +358,38 @@ def cart_detail(request):
         'is_empty': summary['is_empty'],
         'total_items': summary['total_items'],
     }
-    
-    return render(request, 'orders/cart_detail.html', context)
 
+    return render(request, TEMPLATE_CART_DETAIL, context)
+
+
+# =============================================================================
+# CHECKOUT & PAYMENT FLOW
+# =============================================================================
+
+@require_http_methods(['GET', 'POST'])
 def checkout(request):
+    """Checkout page - collects customer information."""
     cart = Cart(request)
-    
+
     if cart.is_empty():
-        messages.warning(request, 'Tu carrito está vacío. Agrega productos antes de continuar.')
-        return redirect('products:catalog')
-    
+        messages.warning(request, MESSAGE_CART_EMPTY)
+        return redirect(PRODUCTS_CATALOG_ROUTE)
+
+    # Validate stock before proceeding
     stock_errors = cart.validate_stock()
     if stock_errors:
         for error in stock_errors:
-            messages.error(request, f'"{error["name"]}" ({error["size"]}, {error["color"]}): solicitado {error["requested"]}, disponible {error["available"]}')
-        return redirect('orders:cart_detail')
-    
+            messages.error(
+                request,
+                f'"{error["name"]}" ({error["size"]}, {error["color"]}): '
+                f'solicitado {error["requested"]}, disponible {error["available"]}'
+            )
+        return redirect(CART_DETAIL_ROUTE)
+
     if request.method == 'POST':
         form = CheckoutOrderForm(request.POST)
         if form.is_valid():
             cleaned_data = form.cleaned_data
-            
             request.session['checkout_data'] = {
                 'customer_name': cleaned_data['customer_name'],
                 'customer_phone': cleaned_data['customer_phone'],
@@ -201,7 +397,7 @@ def checkout(request):
                 'shipping_address': cleaned_data['shipping_address'],
                 'delivery_notes': cleaned_data['delivery_notes'],
             }
-            return redirect('orders:create_stripe_checkout_session')
+            return redirect(CREATE_STRIPE_SESSION_ROUTE)
         else:
             for field, errors in form.errors.items():
                 for error in errors:
@@ -209,7 +405,7 @@ def checkout(request):
                     messages.error(request, f'{field_label}: {error}')
     else:
         form = CheckoutOrderForm()
-    
+
     summary = cart.get_summary()
     context = {
         'form': form,
@@ -220,91 +416,42 @@ def checkout(request):
             'total': float(summary['total']),
         },
     }
-    return render(request, 'orders/checkout.html', context)
+    return render(request, TEMPLATE_CHECKOUT, context)
 
-@csrf_exempt
-def stripe_webhook(request):
-    import stripe
-    import logging
-    logger = logging.getLogger(__name__)
-    
-    payload = request.body
-    sig_header = request.META.get('HTTP_STRIPE_SIGNATURE')
-    
-    try:
-        event = stripe.Webhook.construct_event(
-            payload, sig_header, settings.STRIPE_WEBHOOK_KEY
-        )
-    except ValueError:
-        return HttpResponse(status=400)
-    except stripe.error.SignatureVerificationError:
-        return HttpResponse(status=400)
-    
-    if event['type'] == 'checkout.session.completed':
-        session = event['data']['object']
-        session_id = session['id']
-        
-        try:
-            order = Order.objects.get(payment_session_id=session_id)
-            logger.info(f"Webhook recibido para pedido {order.order_number}")
-        except Order.DoesNotExist:
-            logger.error(f"❌ Pedido no encontrado para session_id: {session_id}")
-            return HttpResponse(status=200)
-        
-        if order.is_paid:
-            logger.info(f"Pedido {order.order_number} ya estaba pagado")
-            return HttpResponse(status=200)
-        
-        try:
-            if order.status == 'pendiente':
-                order.confirm(user=None)
-                logger.info(f"Pedido {order.order_number} confirmado y stock reducido")
-            
-            order.is_paid = True
-            order.save(update_fields=['is_paid'])
-            logger.info(f"Pedido {order.order_number} marcado como pagado")
 
-            if order.customer_email:
-                send_order_confirmation_email(order)
-                logger.info(f"Correo de confirmación enviado a {order.customer_email}")
-            else:
-                logger.warning(f"Pedido {order.order_number} no tiene email asociado")
-            
-        except Exception as e:
-            logger.error(f"Error al procesar pedido {order.order_number}: {e}")
-            return HttpResponse(status=500)
-    
-    return HttpResponse(status=200)
-
-@require_http_methods(['GET', 'POST'])
+@require_POST
 def create_stripe_checkout_session(request):
-    # Crea una sesión de pago en Stripe y redirige al checkout de Stripe.
+    """Create Stripe checkout session and redirect to payment."""
     stripe = get_stripe()
     cart = Cart(request)
-    
+
     if cart.is_empty():
-        messages.error(request, 'Tu carrito está vacío.')
-        return redirect('products:catalog')
-    
+        messages.error(request, MESSAGE_CART_EMPTY)
+        return redirect(PRODUCTS_CATALOG_ROUTE)
+
+    # Validate stock before creating order
     stock_errors = cart.validate_stock()
     if stock_errors:
         for error in stock_errors:
-            messages.error(request, f'"{error["name"]}" ({error["size"]}, {error["color"]}): stock insuficiente')
-        return redirect('orders:cart_detail')
-    
+            messages.error(
+                request,
+                f'"{error["name"]}" ({error["size"]}, {error["color"]}): '
+                f'{MESSAGE_STOCK_INSUFFICIENT}'
+            )
+        return redirect(CART_DETAIL_ROUTE)
+
     checkout_data = request.session.get('checkout_data')
     if not checkout_data:
-        messages.error(request, 'No se encontraron datos de envío. Por favor, vuelve a intentarlo.')
-        return redirect('orders:checkout')
-    
+        messages.error(request, MESSAGE_NO_SHIPPING_DATA)
+        return redirect(CHECKOUT_ROUTE)
+
     customer_name = checkout_data.get('customer_name')
     customer_phone = checkout_data.get('customer_phone')
     customer_email = checkout_data.get('customer_email')
     shipping_address = checkout_data.get('shipping_address')
     delivery_notes = checkout_data.get('delivery_notes', '')
-    
-    from .models import Order
-    
+
+    # Create order
     order = Order(
         customer_name=customer_name,
         customer_phone=customer_phone,
@@ -314,11 +461,12 @@ def create_stripe_checkout_session(request):
         subtotal=cart.get_subtotal(),
         shipping_cost=cart.get_shipping_cost(),
         total_amount=cart.get_total(),
-        status='pendiente',
+        status=STATUS_PENDING,
         is_paid=False,
     )
     order.save()
-    
+
+    # Create order items
     for item in cart.get_items():
         variant = ProductVariant.objects.get(id=item['variant_id'])
         OrderItem.objects.create(
@@ -331,12 +479,14 @@ def create_stripe_checkout_session(request):
             stock_snapshot=variant.stock,
             subtotal=Decimal(item['price']) * item['quantity']
         )
-    
+
     try:
-        from django.urls import reverse
-        success_url = settings.SITE_URL + reverse('orders:order_confirmation', kwargs={'order_number': order.order_number})
-        cancel_url = settings.SITE_URL + reverse('orders:cart_detail')
-        
+        success_url = settings.SITE_URL + reverse(
+            ORDER_CONFIRMATION_ROUTE,
+            kwargs={'order_number': order.order_number}
+        )
+        cancel_url = settings.SITE_URL + reverse(CART_DETAIL_ROUTE)
+
         checkout_session = stripe.checkout.Session.create(
             payment_method_types=['card'],
             line_items=[{
@@ -360,92 +510,157 @@ def create_stripe_checkout_session(request):
                 'session_key': request.session.session_key,
             }
         )
-        
+
         order.payment_session_id = checkout_session.id
         order.save(update_fields=['payment_session_id'])
+
+        # Clean up session data
         del request.session['checkout_data']
+
         return redirect(checkout_session.url)
-        
+
     except Exception as e:
-        order.status = 'cancelado'
+        order.status = STATUS_CANCELLED
         order.cancelled_reason = f'Error al crear sesión de pago: {str(e)}'
-        order.save()
+        order.save(update_fields=['status', 'cancelled_reason'])
+
         messages.error(request, f'Error al procesar el pago: {str(e)}')
-        return redirect('orders:checkout')
+        return redirect(CHECKOUT_ROUTE)
 
 
+@require_GET
 def order_confirmation(request, order_number):
-    """Página de confirmación de pedido después del pago exitoso."""
-    
+    """Order confirmation page after successful payment."""
     try:
         order = Order.objects.get(order_number=order_number)
     except Order.DoesNotExist:
-        messages.error(request, 'Pedido no encontrado.')
-        return redirect('products:catalog')
-    
+        messages.error(request, MESSAGE_ORDER_NOT_FOUND)
+        return redirect(PRODUCTS_CATALOG_ROUTE)
+
+    # Wait for webhook to process if payment is still pending
     if not order.is_paid:
-        import time
-        for _ in range(20):
+        for _ in range(WEBHOOK_MAX_RETRIES):
             if order.is_paid:
                 break
-            time.sleep(0.5)
+            import time
+            time.sleep(WEBHOOK_RETRY_DELAY)
             order.refresh_from_db()
-    
+
     if order.is_paid:
         cart = Cart(request)
         if not cart.is_empty():
             cart.clear()
     else:
-        messages.warning(request, 'Tu pago está siendo procesado. Se actualizará automáticamente en breve.')
-    
+        messages.warning(request, MESSAGE_PAYMENT_PROCESSING)
+
     context = {
-        'order': order,
-        'items': order.items.all(),
+        CONTEXT_ORDER: order,
+        CONTEXT_ITEMS: order.items.all(),
     }
-    return render(request, 'orders/order_confirmation.html', context)
+    return render(request, TEMPLATE_ORDER_CONFIRMATION, context)
 
+
+@require_GET
 def order_tracking(request, tracking_token):
-    """Vista pública para seguimiento de pedidos"""
+    """Public tracking page for orders."""
     order = get_object_or_404(Order, tracking_token=tracking_token)
-    
-    status_order = [
-        'pendiente',
-        'confirmado', 
-        'preparando',
-        'listo',
-        'en_camino',
-        'entregado'
-    ]
-    
-    current_step = status_order.index(order.status) if order.status in status_order else 0
-    total_steps = len(status_order) - 1
+
+    current_step = STATUS_PROGRESSION.index(order.status) if order.status in STATUS_PROGRESSION else 0
+    total_steps = len(STATUS_PROGRESSION) - 1
 
     context = {
-        'order': order,
-        'items': order.items.all(),
+        CONTEXT_ORDER: order,
+        CONTEXT_ITEMS: order.items.all(),
         'current_step': current_step,
         'total_steps': total_steps,
         'status_percentage': (current_step / total_steps) * 100 if total_steps > 0 else 0,
     }
-    return render(request, 'orders/tracking.html', context)
+    return render(request, TEMPLATE_TRACKING, context)
+
+
+# =============================================================================
+# STRIPE WEBHOOK
+# =============================================================================
+
+@require_POST
+def stripe_webhook(request):
+    """Handle Stripe webhook events."""
+    import stripe
+    import logging
+
+    logger = logging.getLogger(__name__)
+
+    payload = request.body
+    sig_header = request.META.get('HTTP_STRIPE_SIGNATURE')
+
+    try:
+        event = stripe.Webhook.construct_event(
+            payload, sig_header, settings.STRIPE_WEBHOOK_KEY
+        )
+    except ValueError:
+        return HttpResponse(status=400)
+    except stripe.error.SignatureVerificationError:
+        return HttpResponse(status=400)
+
+    if event['type'] == 'checkout.session.completed':
+        session = event['data']['object']
+        session_id = session['id']
+
+        try:
+            order = Order.objects.get(payment_session_id=session_id)
+            logger.info(f"Webhook recibido para pedido {order.order_number}")
+        except Order.DoesNotExist:
+            logger.error(f"Pedido no encontrado para session_id: {session_id}")
+            return HttpResponse(status=200)
+
+        if order.is_paid:
+            logger.info(f"Pedido {order.order_number} ya estaba pagado")
+            return HttpResponse(status=200)
+
+        try:
+            if order.status == STATUS_PENDING:
+                order.confirm(user=None)
+
+            order.is_paid = True
+            order.save(update_fields=['is_paid'])
+            logger.info(f"Pedido {order.order_number} marcado como pagado")
+
+            if order.customer_email:
+                send_order_confirmation_email(order)
+                logger.info(MESSAGE_EMAIL_SENT.format(email=order.customer_email))
+            else:
+                logger.warning(MESSAGE_EMAIL_MISSING.format(order_number=order.order_number))
+
+        except Exception as e:
+            logging.exception(f"Error al procesar pedido {order.order_number}: {e}")
+            return HttpResponse(status=500)
+
+    return HttpResponse(status=200)
+
+
+# =============================================================================
+# BACKOFFICE VIEWS (CRUD Operations)
+# =============================================================================
 
 class OrderListView(PermissionRequiredMixin, PaginationMixin, FilterMixin, ListView):
+    """List all orders with filtering and pagination."""
     model = Order
-    template_name = 'backoffice/orders/order_list.html'
+    template_name = TEMPLATE_ORDER_LIST
     context_object_name = 'orders'
     permission_required = 'orders.view_order'
     paginate_by = 20
-    
+
     filters = [
         ('status', 'status', 'exact'),
         ('customer_name', 'customer_name', 'icontains'),
         ('customer_phone', 'customer_phone', 'icontains'),
         ('order_number', 'order_number', 'icontains'),
     ]
-    
+
     def get_queryset(self):
         qs = super().get_queryset().select_related('assigned_delivery_user')
         search = self.request.GET.get('search', '')
+
         if search:
             qs = qs.filter(
                 models.Q(order_number__icontains=search) |
@@ -453,125 +668,125 @@ class OrderListView(PermissionRequiredMixin, PaginationMixin, FilterMixin, ListV
                 models.Q(customer_phone__icontains=search)
             )
         return qs
-    
+
+    def get_status_badge(self, status):
+        """Generate HTML for status badge."""
+        label, color_class = STATUS_BADGE_MAP.get(
+            status,
+            STATUS_BADGE_DEFAULT
+        )
+        return mark_safe(
+            f'<span class="px-2 py-1 text-xs rounded-full {color_class}">{label}</span>'
+        )
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         rows = []
+
         for order in context['orders']:
-            # Badge de estado con colores
-            status_badge = ''
-            if order.status == 'pendiente':
-                status_badge = '<span class="px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-700">Pendiente</span>'
-            elif order.status == 'confirmado':
-                status_badge = '<span class="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-700">Confirmado</span>'
-            elif order.status == 'preparando':
-                status_badge = '<span class="px-2 py-1 text-xs rounded-full bg-purple-100 text-purple-700">Preparando</span>'
-            elif order.status == 'listo':
-                status_badge = '<span class="px-2 py-1 text-xs rounded-full bg-indigo-100 text-indigo-700">Listo</span>'
-            elif order.status == 'en_camino':
-                status_badge = '<span class="px-2 py-1 text-xs rounded-full bg-orange-100 text-orange-700">En camino</span>'
-            elif order.status == 'entregado':
-                status_badge = '<span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-700">Entregado</span>'
-            else:
-                status_badge = '<span class="px-2 py-1 text-xs rounded-full bg-red-100 text-red-700">Cancelado</span>'
-            
             rows.append({
                 'pk': order.pk,
                 'values': [
                     order.order_number,
                     order.customer_name,
                     f"${order.total_amount:,.0f}",
-                    mark_safe(status_badge),
-                    order.created_at.strftime('%d/%m/%Y %H:%M'),
+                    self.get_status_badge(order.status),
+                    order.created_at.strftime(DATE_FORMAT_DISPLAY),
                 ],
             })
-        context['rows'] = rows
-        context['headers'] = ['Pedido', 'Cliente', 'Total', 'Estado', 'Fecha']
-        context['show_actions'] = True
-        context['edit_url_name'] = 'orders:order_edit'
-        context['status_choices'] = Order.STATUS_CHOICES
+
+        context[CONTEXT_ROWS] = rows
+        context[CONTEXT_HEADERS] = HEADERS_ORDER_LIST
+        context[CONTEXT_SHOW_ACTIONS] = True
+        context[CONTEXT_EDIT_URL_NAME] = ORDER_EDIT_ROUTE
+        context[CONTEXT_STATUS_CHOICES] = Order.STATUS_CHOICES
+
         return context
 
 
 class OrderCreateView(PermissionRequiredMixin, CreateView):
+    """Create a new order manually."""
     model = Order
     form_class = OrderCreateForm
-    template_name = 'backoffice/orders/order_form.html'
+    template_name = TEMPLATE_ORDER_FORM
     permission_required = 'orders.add_order'
-    success_url = reverse_lazy('orders:order_list')
-    
+    success_url = reverse_lazy(ORDER_LIST_ROUTE)
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['cancel_url'] = 'orders:order_list'
-        context['title'] = 'Crear pedido manual'
-        context['is_manual'] = True
+        context[CONTEXT_CANCEL_URL] = ORDER_LIST_ROUTE
+        context[CONTEXT_TITLE] = 'Crear pedido manual'
+        context[CONTEXT_IS_MANUAL] = True
         return context
-    
+
     def form_valid(self, form):
         form.instance.created_by = self.request.user
         form.instance.updated_by = self.request.user
         response = super().form_valid(form)
-        messages.success(self.request, f'Pedido {form.instance.order_number} creado exitosamente.')
+        messages.success(
+            self.request,
+            f'Pedido {form.instance.order_number} creado exitosamente.'
+        )
         return response
-    
+
     def form_invalid(self, form):
-        messages.error(self.request, 'Error al crear el pedido. Corrige los errores.')
+        messages.error(self.request, ERROR_VALIDATION_PREFIX)
         return super().form_invalid(form)
 
 
 class OrderUpdateView(PermissionRequiredMixin, UpdateView):
+    """Update an existing order."""
     model = Order
     form_class = OrderUpdateForm
-    template_name = 'backoffice/orders/order_form.html'
+    template_name = TEMPLATE_ORDER_FORM
     permission_required = 'orders.change_order'
-    success_url = reverse_lazy('orders:order_list')
-    
+    success_url = reverse_lazy(ORDER_LIST_ROUTE)
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['cancel_url'] = 'orders:order_list'
-        context['title'] = f'Editar pedido {self.object.order_number}'
+        context[CONTEXT_CANCEL_URL] = ORDER_LIST_ROUTE
+        context[CONTEXT_TITLE] = f'Editar pedido {self.object.order_number}'
         return context
-    
+
     def form_valid(self, form):
         form.instance.updated_by = self.request.user
         response = super().form_valid(form)
-        messages.success(self.request, f'Pedido {form.instance.order_number} actualizado exitosamente.')
+        messages.success(
+            self.request,
+            f'Pedido {form.instance.order_number} actualizado exitosamente.'
+        )
         return response
-    
+
     def form_invalid(self, form):
-        messages.error(self.request, 'Error al actualizar el pedido.')
+        messages.error(self.request, ERROR_UPDATE_PREFIX)
         return super().form_invalid(form)
 
 
 class OrderDetailView(PermissionRequiredMixin, DetailView):
+    """Display order details with actions."""
     model = Order
-    template_name = 'backoffice/orders/order_detail.html'
-    context_object_name = 'order'
+    template_name = TEMPLATE_ORDER_DETAIL
+    context_object_name = CONTEXT_ORDER
     permission_required = 'orders.view_order'
-    
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         order = self.object
-        
-        # Posibles transiciones según estado actual
+
+        # Define possible state transitions
         transitions = []
-        if order.can_transition_to('confirmado'):
-            transitions.append(('confirmado', 'Confirmar pedido'))
-        if order.can_transition_to('preparando'):
-            transitions.append(('preparando', 'Marcar en preparación'))
-        if order.can_transition_to('listo'):
-            transitions.append(('listo', 'Marcar listo para envío'))
-        if order.can_transition_to('entregado'):
-            transitions.append(('entregado', 'Marcar entregado'))
-        if order.can_transition_to('cancelado'):
-            transitions.append(('cancelado', 'Cancelar pedido'))
-        
-        context['transitions'] = transitions
-        context['delivery_users'] = User.objects.filter(is_delivery=True, is_active=True)
-        context['can_assign'] = order.status == 'listo'
-        context['can_add_items'] = order.status in ['pendiente', 'confirmado']
-        
-        # Items del pedido
+        for status, label in STATUS_TRANSITION_MAP:
+            if order.can_transition_to(status):
+                transitions.append((status, label))
+
+        context[CONTEXT_TRANSITIONS] = transitions
+        context[CONTEXT_DELIVERY_USERS] = User.objects.filter(
+            is_delivery=True, is_active=True
+        )
+        context[CONTEXT_CAN_ASSIGN] = order.status == STATUS_READY
+        context[CONTEXT_CAN_ADD_ITEMS] = order.status in ALLOWED_ADD_ITEMS_STATUSES
+
+        # Format order items for table display
         items_rows = []
         for item in order.items.all():
             items_rows.append({
@@ -584,218 +799,236 @@ class OrderDetailView(PermissionRequiredMixin, DetailView):
                     f"${item.subtotal:,.0f}",
                 ],
             })
-        context['items_rows'] = items_rows
-        context['items_headers'] = ['Producto', 'Talla', 'Cantidad', 'Precio unit.', 'Subtotal']
-        
+
+        context[CONTEXT_ITEMS_ROWS] = items_rows
+        context[CONTEXT_ITEMS_HEADERS] = HEADERS_ORDER_ITEMS
+
         return context
 
 
 class OrderConfirmView(PermissionRequiredMixin, FormView):
-    """Vista para confirmar pedido manualmente (reduce stock)"""
+    """Confirm order manually (reduces stock)."""
     form_class = OrderConfirmForm
-    template_name = 'backoffice/orders/order_confirm.html'
+    template_name = TEMPLATE_ORDER_CONFIRM
     permission_required = 'orders.change_order'
-    
+
     def dispatch(self, request, *args, **kwargs):
         self.order = get_object_or_404(Order, pk=kwargs['pk'])
         return super().dispatch(request, *args, **kwargs)
-    
+
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
-        kwargs['order'] = self.order
+        kwargs[CONTEXT_ORDER] = self.order
         return kwargs
-    
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['order'] = self.order
-        context['cancel_url'] = 'orders:order_detail'
-        context['cancel_args'] = [self.order.pk]
+        context[CONTEXT_ORDER] = self.order
+        context[CONTEXT_CANCEL_URL] = ORDER_DETAIL_ROUTE
+        context[CONTEXT_CANCEL_ARGS] = [self.order.pk]
         return context
-    
+
     def form_valid(self, form):
         self.order.confirm(user=self.request.user)
-        messages.success(self.request, f'Pedido {self.order.order_number} confirmado exitosamente.')
-        return redirect('orders:order_detail', pk=self.order.pk)
-    
+        messages.success(
+            self.request,
+            f'Pedido {self.order.order_number} confirmado exitosamente.'
+        )
+        return redirect(ORDER_DETAIL_ROUTE, pk=self.order.pk)
+
     def form_invalid(self, form):
-        messages.error(self.request, 'Error al confirmar el pedido.')
-        return redirect('orders:order_detail', pk=self.order.pk)
+        messages.error(self.request, ERROR_CONFIRM_PREFIX)
+        return redirect(ORDER_DETAIL_ROUTE, pk=self.order.pk)
 
 
 class OrderCancelView(PermissionRequiredMixin, FormView):
-    """Vista para cancelar pedido manualmente"""
+    """Cancel order manually."""
     form_class = OrderCancelForm
-    template_name = 'backoffice/orders/order_cancel.html'
+    template_name = TEMPLATE_ORDER_CANCEL
     permission_required = 'orders.change_order'
-    
+
     def dispatch(self, request, *args, **kwargs):
         self.order = get_object_or_404(Order, pk=kwargs['pk'])
         return super().dispatch(request, *args, **kwargs)
-    
+
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
-        kwargs['order'] = self.order
+        kwargs[CONTEXT_ORDER] = self.order
         return kwargs
-    
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['order'] = self.order
-        context['cancel_url'] = 'orders:order_detail'
-        context['cancel_args'] = [self.order.pk]
+        context[CONTEXT_ORDER] = self.order
+        context[CONTEXT_CANCEL_URL] = ORDER_DETAIL_ROUTE
+        context[CONTEXT_CANCEL_ARGS] = [self.order.pk]
         return context
-    
+
     def form_valid(self, form):
         reason = form.cleaned_data['reason']
         self.order.cancel(reason=reason, user=self.request.user)
-        messages.success(self.request, f'Pedido {self.order.order_number} cancelado exitosamente.')
-        return redirect('orders:order_detail', pk=self.order.pk)
-    
-    def form_invalid(self, form):
-        messages.error(self.request, 'Error al cancelar el pedido.')
-        return redirect('orders:order_detail', pk=self.order.pk)
+        messages.success(
+            self.request,
+            f'Pedido {self.order.order_number} cancelado exitosamente.'
+        )
+        return redirect(ORDER_DETAIL_ROUTE, pk=self.order.pk)
 
 
 class OrderAssignDeliveryView(PermissionRequiredMixin, FormView):
-    """Vista para asignar repartidor a un pedido"""
+    """Assign delivery user to an order."""
     form_class = OrderAssignDeliveryForm
-    template_name = 'backoffice/orders/order_assign_delivery.html'
+    template_name = TEMPLATE_ORDER_ASSIGN_DELIVERY
     permission_required = 'orders.change_order'
-    
+
     def dispatch(self, request, *args, **kwargs):
         self.order = get_object_or_404(Order, pk=kwargs['pk'])
         return super().dispatch(request, *args, **kwargs)
-    
+
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
-        kwargs['order'] = self.order
+        kwargs[CONTEXT_ORDER] = self.order
         return kwargs
-    
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['order'] = self.order
-        context['cancel_url'] = 'orders:order_detail'
-        context['cancel_args'] = [self.order.pk]
+        context[CONTEXT_ORDER] = self.order
+        context[CONTEXT_CANCEL_URL] = ORDER_DETAIL_ROUTE
+        context[CONTEXT_CANCEL_ARGS] = [self.order.pk]
         return context
-    
+
     def form_valid(self, form):
         delivery_user = form.cleaned_data['delivery_user']
         self.order.assign_delivery(delivery_user, user=self.request.user)
-        messages.success(self.request, f'Repartidor asignado al pedido {self.order.order_number}.')
-        return redirect('orders:order_detail', pk=self.order.pk)
+        messages.success(
+            self.request,
+            f'Repartidor asignado al pedido {self.order.order_number}.'
+        )
+        return redirect(ORDER_DETAIL_ROUTE, pk=self.order.pk)
 
 
 class OrderMarkAsDeliveredView(PermissionRequiredMixin, FormView):
-    """Vista para marcar pedido como entregado"""
+    """Mark order as delivered."""
     form_class = OrderMarkAsDeliveredForm
-    template_name = 'backoffice/orders/order_mark_delivered.html'
+    template_name = TEMPLATE_ORDER_MARK_DELIVERED
     permission_required = 'orders.change_order'
-    
+
     def dispatch(self, request, *args, **kwargs):
         self.order = get_object_or_404(Order, pk=kwargs['pk'])
         return super().dispatch(request, *args, **kwargs)
-    
+
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
-        kwargs['order'] = self.order
+        kwargs[CONTEXT_ORDER] = self.order
         return kwargs
-    
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['order'] = self.order
-        context['cancel_url'] = 'orders:order_detail'
-        context['cancel_args'] = [self.order.pk]
+        context[CONTEXT_ORDER] = self.order
+        context[CONTEXT_CANCEL_URL] = ORDER_DETAIL_ROUTE
+        context[CONTEXT_CANCEL_ARGS] = [self.order.pk]
         return context
-    
+
     def form_valid(self, form):
         self.order.mark_as_delivered(user=self.request.user)
-        messages.success(self.request, f'Pedido {self.order.order_number} marcado como entregado.')
-        return redirect('orders:order_detail', pk=self.order.pk)
+        messages.success(
+            self.request,
+            f'Pedido {self.order.order_number} marcado como entregado.'
+        )
+        return redirect(ORDER_DETAIL_ROUTE, pk=self.order.pk)
 
 
 class OrderItemCreateView(PermissionRequiredMixin, CreateView):
-    """Vista para agregar items a un pedido existente"""
+    """Add items to an existing order."""
     model = OrderItem
     form_class = OrderItemCreateForm
-    template_name = 'backoffice/orders/orderitem_form.html'
+    template_name = TEMPLATE_ORDER_ITEM_FORM
     permission_required = 'orders.change_order'
-    
+
     def dispatch(self, request, *args, **kwargs):
         self.order = get_object_or_404(Order, pk=kwargs['order_pk'])
         return super().dispatch(request, *args, **kwargs)
-    
+
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
-        kwargs['order'] = self.order
+        kwargs[CONTEXT_ORDER] = self.order
         return kwargs
-    
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['order'] = self.order
-        context['cancel_url'] = 'orders:order_detail'
-        context['cancel_args'] = [self.order.pk]
+        context[CONTEXT_ORDER] = self.order
+        context[CONTEXT_CANCEL_URL] = ORDER_DETAIL_ROUTE
+        context[CONTEXT_CANCEL_ARGS] = [self.order.pk]
         return context
-    
+
     def form_valid(self, form):
         form.instance.order = self.order
-        response = super().form_valid(form)
-        # Recalcular totales del pedido
-        self.order.save()  # El save recalcula total_amount
-        messages.success(self.request, f'Producto agregado al pedido {self.order.order_number}.')
-        return redirect('orders:order_detail', pk=self.order.pk)
+        self.order.save()  # Recalculate totals
+        messages.success(
+            self.request,
+            f'Producto agregado al pedido {self.order.order_number}.'
+        )
+        return redirect(ORDER_DETAIL_ROUTE, pk=self.order.pk)
 
 
 class OrderItemUpdateView(PermissionRequiredMixin, UpdateView):
+    """Update order item quantity."""
     model = OrderItem
     form_class = OrderItemUpdateForm
-    template_name = 'backoffice/orders/orderitem_form.html'
+    template_name = TEMPLATE_ORDER_ITEM_FORM
     permission_required = 'orders.change_order'
-    
+
     def get_success_url(self):
-        return reverse_lazy('orders:order_detail', kwargs={'pk': self.object.order.pk})
-    
+        return reverse_lazy(ORDER_DETAIL_ROUTE, kwargs={'pk': self.object.order.pk})
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['order'] = self.object.order
-        context['cancel_url'] = 'orders:order_detail'
-        context['cancel_args'] = [self.object.order.pk]
-        context['title'] = 'Editar cantidad'
+        context[CONTEXT_ORDER] = self.object.order
+        context[CONTEXT_CANCEL_URL] = ORDER_DETAIL_ROUTE
+        context[CONTEXT_CANCEL_ARGS] = [self.object.order.pk]
+        context[CONTEXT_TITLE] = 'Editar cantidad'
         return context
-    
+
     def form_valid(self, form):
         response = super().form_valid(form)
-        self.object.order.save()  # Recalcular totales
-        messages.success(self.request, f'Cantidad actualizada en pedido {self.object.order.order_number}.')
+        self.object.order.save()  # Recalculate totals
+        messages.success(
+            self.request,
+            f'Cantidad actualizada en pedido {self.object.order.order_number}.'
+        )
         return response
 
 
 class OrderItemDeleteView(PermissionRequiredMixin, FormView):
-    """Vista para eliminar un item del pedido"""
+    """Delete an item from an order."""
     form_class = OrderItemDeleteForm
-    template_name = 'backoffice/orders/orderitem_confirm_delete.html'
+    template_name = TEMPLATE_ORDER_ITEM_CONFIRM_DELETE
     permission_required = 'orders.change_order'
-    
+
     def dispatch(self, request, *args, **kwargs):
         self.order_item = get_object_or_404(OrderItem, pk=kwargs['pk'])
         return super().dispatch(request, *args, **kwargs)
-    
+
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         kwargs['order_item'] = self.order_item
         return kwargs
-    
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['order'] = self.order_item.order
+        context[CONTEXT_ORDER] = self.order_item.order
         context['order_item'] = self.order_item
-        context['cancel_url'] = 'orders:order_detail'
-        context['cancel_args'] = [self.order_item.order.pk]
+        context[CONTEXT_CANCEL_URL] = ORDER_DETAIL_ROUTE
+        context[CONTEXT_CANCEL_ARGS] = [self.order_item.order.pk]
         return context
-    
+
     def form_valid(self, form):
         order_pk = self.order_item.order.pk
         self.order_item.delete()
-        # Recalcular totales del pedido
+
         order = Order.objects.get(pk=order_pk)
-        order.save()
-        messages.success(self.request, f'Producto eliminado del pedido {order.order_number}.')
-        return redirect('orders:order_detail', pk=order_pk)
+        order.save()  # Recalculate totals
+
+        messages.success(
+            self.request,
+            f'Producto eliminado del pedido {order.order_number}.'
+        )
+        return redirect(ORDER_DETAIL_ROUTE, pk=order_pk)
