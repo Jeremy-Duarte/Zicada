@@ -9,7 +9,7 @@ from django.utils import timezone
 
 from apps.orders.models import Order, OrderItem
 from apps.products.models import Product, ProductVariant, Size, Category, Color, ProductImage
-from apps.users.models import User
+from apps.users.models import User, Group
 
 
 # =============================================================================
@@ -890,6 +890,35 @@ def admin_users(request):
         },
     ]
 
+    quick_access_buttons = [
+        {
+            'url': reverse('users:user_list'),
+            'icon': 'users',
+            'title': 'Usuarios',
+            'bg_from': 'gray-50',
+            'bg_to': 'gray-100',
+            'icon_color': 'gray-600',
+            'badge': f"{delivery_stats['total']}",
+        },
+        {
+            'url': reverse('users:group_list'),
+            'icon': 'key',
+            'title': 'Roles',
+            'bg_from': 'amber-50',
+            'bg_to': 'amber-100',
+            'icon_color': 'amber-600',
+            'badge': f"{Group.objects.count()}",
+        },
+        {
+            'url': reverse('users:user_trashcan'),
+            'icon': 'trash-alt',
+            'title': 'Papelera',
+            'bg_from': 'red-50',
+            'bg_to': 'red-100',
+            'icon_color': 'red-500',
+            'badge': f"{User.objects.filter(is_active=False).count()}",
+        },
+    ]
     delivery_stats_list = [
         {'label': DELIVERY_LABEL_ACTIVE, 'value': delivery_stats['activos'], 'color': DELIVERY_COLOR_ACTIVE},
         {'label': DELIVERY_LABEL_INACTIVE, 'value': delivery_stats['inactivos'], 'color': DELIVERY_COLOR_INACTIVE},
@@ -918,6 +947,7 @@ def admin_users(request):
             'categories': categories,
         },
         CONTEXT_ORDERS_STATUS_DATA: get_status_chart_data(),
+        'quick_access_buttons' : quick_access_buttons,
     }
 
     return render(request, TEMPLATE_ADMIN_USERS_DASHBOARD, context)
