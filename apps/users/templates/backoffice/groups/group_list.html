@@ -1,0 +1,15 @@
+{% extends "backoffice/layouts/backoffice_base.html" %} {% load static %} {% block title %}Roles - Zicada{% endblock %} {% block content %}
+<div class="space-y-6">
+    {% include 'backoffice/components/crud/list_header.html' with title="Roles de usuario" create_url="users:group_create" create_label="Nuevo rol" %}
+    
+    <div class="bg-white rounded-xl shadow-sm p-4">
+        <form method="get" class="flex flex-wrap gap-4">
+            <input type="text" name="search" placeholder="Buscar rol..." value="{{ request.GET.search|default:'' }}" class="flex-1 px-3 py-2 border rounded-lg text-sm">
+            <button type="submit" class="bg-gray-800 text-white px-4 py-2 rounded-lg text-sm">Buscar</button>
+            {% if request.GET.search %}<a href="{% url 'users:group_list' %}" class="text-gray-500 hover:text-gray-700 px-4 py-2 text-sm">Limpiar</a>{% endif %}
+        </form>
+    </div>
+    
+    {% include 'backoffice/components/crud/list_table.html' with headers=headers rows=rows show_actions=True edit_url_name="users:group_edit" delete_url_name="users:group_delete" empty_message="No hay roles registrados" page_obj=page_obj %}
+</div>
+{% endblock %}
