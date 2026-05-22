@@ -4,8 +4,6 @@ from . import views
 app_name = 'products'
 
 admin_patterns = [
-    path('lista/', views.products_list, name='products_list'),
-    path('<int:pk>/', views.product_detail, name='product_detail'),
     path('tallas/', views.SizeListView.as_view(), name='size_list'),
     path('tallas/crear/', views.SizeCreateView.as_view(), name='size_create'),
     path('tallas/<int:pk>/editar/', views.SizeUpdateView.as_view(), name='size_edit'),

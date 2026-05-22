@@ -1,0 +1,98 @@
+{% extends "backoffice/layouts/backoffice_base.html" %} {% load static %} {% block title %}Pedido {{ order.order_number }} - Zicada{% endblock %} {% block content %}
+<div class="space-y-6">
+    <!-- Header con botones de acción -->
+    <div class="flex justify-between items-center">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800">Pedido {{ order.order_number }}</h1>
+            <p class="text-gray-500 text-sm">Creado: {{ order.created_at|date:"d/m/Y H:i" }}</p>
+        </div>
+        <div class="flex gap-2">
+            <a href="{% url 'orders:order_edit' order.pk %}" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm transition">Editar</a>
+            <a href="{% url 'orders:order_list' %}" class="border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-lg text-sm transition">Volver</a>
+        </div>
+    </div>
+    
+    <!-- Tarjetas de información -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="bg-white rounded-xl shadow-sm p-5">
+            <h3 class="font-semibold text-gray-800 mb-3 flex items-center gap-2"><i class="fas fa-user text-zicada-accent"></i>Cliente</h3>
+            <p class="text-gray-700"><strong>Nombre:</strong> {{ order.customer_name }}</p>
+            <p class="text-gray-700"><strong>Teléfono:</strong> {{ order.customer_phone }}</p>
+            {% if order.customer_email %}<p class="text-gray-700"><strong>Email:</strong> {{ order.customer_email }}</p>{% endif %}
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-5">
+            <h3 class="font-semibold text-gray-800 mb-3 flex items-center gap-2"><i class="fas fa-truck text-zicada-accent"></i>Envío</h3>
+            <p class="text-gray-700"><strong>Dirección:</strong> {{ order.shipping_address|linebreaksbr }}</p>
+            {% if order.delivery_notes %}<p class="text-gray-700"><strong>Notas:</strong> {{ order.delivery_notes }}</p>{% endif %}
+            <p class="text-gray-700"><strong>Costo:</strong> ${{ order.shipping_cost|floatformat:0 }}</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-5">
+            <h3 class="font-semibold text-gray-800 mb-3 flex items-center gap-2"><i class="fas fa-chart-line text-zicada-accent"></i>Estado</h3>
+            <p><span class="px-2 py-1 text-xs rounded-full {% if order.status == 'pendiente' %}bg-yellow-100 text-yellow-700{% elif order.status == 'confirmado' %}bg-blue-100 text-blue-700{% elif order.status == 'preparando' %}bg-purple-100 text-purple-700{% elif order.status == 'listo' %}bg-indigo-100 text-indigo-700{% elif order.status == 'en_camino' %}bg-orange-100 text-orange-700{% elif order.status == 'entregado' %}bg-green-100 text-green-700{% else %}bg-red-100 text-red-700{% endif %}">{{ order.get_status_display }}</span></p>
+            <p class="text-gray-700 mt-2"><strong>Pagado:</strong> {% if order.is_paid %}✅ Sí{% else %}❌ No{% endif %}</p>
+            {% if order.assigned_delivery_user %}<p class="text-gray-700"><strong>Repartidor:</strong> {{ order.assigned_delivery_user.get_full_name }}</p>{% endif %}
+        </div>
+    </div>
+    
+    <!-- Items del pedido -->
+    <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div class="px-5 py-4 border-b border-gray-100 flex justify-between items-center">
+            <h3 class="font-semibold text-gray-800">Productos</h3>
+            {% if can_add_items %}
+            <a href="{% url 'orders:orderitem_create' order.pk %}" class="text-sm text-green-600 hover:text-green-800"><i class="fas fa-plus mr-1"></i>Agregar producto</a>
+            {% endif %}
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50"><tr><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Producto</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Talla</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cantidad</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Precio unit.</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Subtotal</th><th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Acciones</th></tr></thead>
+                <tbody class="divide-y divide-gray-200">
+                    {% for item in order.items.all %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 text-sm">{{ item.product_name_snapshot }}</td>
+                        <td class="px-6 py-4 text-sm">{{ item.size_snapshot }}</td>
+                        <td class="px-6 py-4 text-sm">{{ item.quantity }}</td>
+                        <td class="px-6 py-4 text-sm">${{ item.unit_price|floatformat:0 }}</td>
+                        <td class="px-6 py-4 text-sm font-semibold">${{ item.subtotal|floatformat:0 }}</td>
+                        <td class="px-6 py-4 text-sm text-right">
+                            {% if can_add_items %}
+                            <a href="{% url 'orders:orderitem_edit' item.pk %}" class="text-blue-600 hover:text-blue-800 mr-2"><i class="fas fa-edit"></i></a>
+                            <a href="{% url 'orders:orderitem_delete' item.pk %}" class="text-red-600 hover:text-red-800"><i class="fas fa-trash-alt"></i></a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="6" class="px-6 py-8 text-center text-gray-400">No hay productos en este pedido</td></tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot class="bg-gray-50"><tr><td colspan="4" class="px-6 py-3 text-right font-semibold">Subtotal:</td><td class="px-6 py-3 font-bold">${{ order.subtotal|floatformat:0 }}</td><td></td></tr>
+                <tr><td colspan="4" class="px-6 py-3 text-right font-semibold">Envío:</td><td class="px-6 py-3">${{ order.shipping_cost|floatformat:0 }}</td><td></td></tr>
+                <tr class="border-t border-gray-200"><td colspan="4" class="px-6 py-3 text-right font-bold text-lg">Total:</td><td class="px-6 py-3 font-bold text-lg text-zicada-accent">${{ order.total_amount|floatformat:0 }}</td><td></td></tr></tfoot>
+            </table>
+        </div>
+    </div>
+    
+    <!-- Botones de acción según estado -->
+    <div class="flex flex-wrap gap-3 pt-4">
+        {% if order.status == 'pendiente' %}
+        <a href="{% url 'orders:order_confirm' order.pk %}" class="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg transition">✅ Confirmar pedido</a>
+        <a href="{% url 'orders:order_cancel' order.pk %}" class="bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded-lg transition">❌ Cancelar pedido</a>
+        {% endif %}
+        {% if order.status == 'confirmado' %}
+        <a href="{% url 'orders:order_edit' order.pk %}?next=preparando" class="bg-purple-600 hover:bg-purple-700 text-white px-5 py-2 rounded-lg transition">🔨 Marcar en preparación</a>
+        {% endif %}
+        {% if order.status == 'preparando' %}
+        <a href="{% url 'orders:order_edit' order.pk %}?next=listo" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-lg transition">📦 Marcar listo</a>
+        {% endif %}
+        {% if order.status == 'listo' %}
+        <a href="{% url 'orders:order_assign_delivery' order.pk %}" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg transition">🚚 Asignar repartidor</a>
+        {% endif %}
+        {% if order.status == 'en_camino' %}
+        <a href="{% url 'orders:order_mark_delivered' order.pk %}" class="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg transition">🏠 Marcar entregado</a>
+        <a href="{% url 'orders:order_cancel' order.pk %}" class="bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded-lg transition">❌ Cancelar pedido</a>
+        {% endif %}
+        {% if order.status == 'cancelado' and order.cancelled_reason %}
+        <div class="bg-red-50 text-red-700 p-3 rounded-lg text-sm">Motivo de cancelación: {{ order.cancelled_reason }}</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,6 @@
+{% extends "backoffice/layouts/backoffice_base.html" %} {% load static %} {% block title %}Asignar repartidor - Zicada{% endblock %} {% block content %}
+<div class="max-w-md mx-auto">
+    <div class="bg-white rounded-xl shadow-sm p-6"><h1 class="text-xl font-bold text-gray-800 mb-6">Asignar repartidor a pedido {{ order.order_number }}</h1>
+    <form method="post">{% csrf_token %}{% include 'backoffice/components/crud/form_fields.html' with form=form submit_label="Asignar" %}</form></div>
+</div>
+{% endblock %}

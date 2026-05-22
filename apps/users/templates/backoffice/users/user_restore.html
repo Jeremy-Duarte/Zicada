@@ -1,0 +1,3 @@
+{% extends "backoffice/layouts/backoffice_base.html" %} {% load static %} {% block title %}Reactivar usuario - Zicada{% endblock %} {% block content %}
+{% include 'backoffice/components/crud/confirm_restore.html' with form=form object_name="usuario" object_display=user_obj.username cancel_url="users:user_trashcan" %}
+{% endblock %}

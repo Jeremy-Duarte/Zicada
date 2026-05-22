@@ -62,7 +62,7 @@ def get_recent_orders(limit: int = 5) -> List[Dict[str, Any]]:
             'value': f"${order.total_amount:,.0f}",
             'date': order.created_at.strftime('%d/%m %H:%M'),
             'icon': 'box', 'icon_bg': 'gray-100', 'icon_color': 'zicada-accent',
-            'url': f"/backoffice/pedidos/{order.id}/",
+            'url': reverse('orders:order_detail', args=[order.pk]),
             'status': order.status, 'status_display': status_display,
         })
     return result
@@ -79,7 +79,7 @@ def get_low_stock_products(limit: int = 5, max_stock: int = 10) -> List[Dict[str
             'value': f"{v.stock} unidades",
             'icon': 'exclamation-triangle', 'icon_bg': 'yellow-100',
             'icon_color': 'yellow-600',
-            'url': f"/backoffice/productos/{v.product.slug}/",
+            'url': reverse('products:product_edit', args=[v.product.pk]),
             'extra_info': f"SKU: {v.sku}",
         })
     return result
@@ -95,9 +95,9 @@ def get_top_products(limit: int = 5) -> List[Dict[str, Any]]:
         name = item['product_name_snapshot']
         try:
             product = Product.objects.get(name=name, is_active=True)
-            url = f"/backoffice/productos/{product.slug}/"
+            url = reverse('products:product_edit', args=[product.pk])
         except Product.DoesNotExist:
-            url = f"/backoffice/productos/?search={name}"
+            url = reverse('products:product_list') + f'?name={name}'
         result.append({
             'title': name,
             'subtitle': f"{item['total_quantity']} unidades vendidas",
@@ -135,7 +135,7 @@ def get_recent_products(limit: int = 5) -> List[Dict[str, Any]]:
             'icon': 'tshirt',
             'icon_bg': 'blue-100',
             'icon_color': 'blue-600',
-            'url': f"/backoffice/productos/{product.slug}/",
+            'url': reverse('products:product_edit', args=[product.pk]),
         })
     return result
 
@@ -328,7 +328,7 @@ def get_recent_deliveries(limit: int = 5) -> List[Dict[str, Any]]:
             'icon': 'check-circle',
             'icon_bg': 'green-100',
             'icon_color': 'green-600',
-            'url': f"/backoffice/pedidos/{order.id}/",
+            'url': reverse('orders:order_detail', args=[order.pk]),
         })
     return result
 
@@ -348,7 +348,7 @@ def get_active_deliveries_list(limit: int = 5) -> List[Dict[str, Any]]:
             'icon': 'user',
             'icon_bg': 'purple-100',
             'icon_color': 'purple-600',
-            'url': f"/backoffice/usuarios/{delivery.id}/",
+            'url': reverse('users:user_detail', args=[delivery.pk]),
             'extra_info': delivery.phone if delivery.phone else 'Sin teléfono',
         })
     return result
@@ -360,11 +360,13 @@ def admin_orders_dashboard(request):
     recent_orders = get_recent_orders(limit=5)
     categories, order_counts = get_daily_order_counts(days=7)
     
-    orders_index = 'orders:orders_list'
+    orders_index = 'orders:order_list'
     urls = {
-        'total': reverse(orders_index) + '?status=todos',
+        'total': reverse(orders_index),
         'pendiente': reverse(orders_index) + '?status=pendiente',
         'confirmado': reverse(orders_index) + '?status=confirmado',
+        'preparando': reverse(orders_index) + '?status=preparando',
+        'listo': reverse(orders_index) + '?status=listo',
         'en_camino': reverse(orders_index) + '?status=en_camino',
         'entregado': reverse(orders_index) + '?status=entregado',
         'cancelado': reverse(orders_index) + '?status=cancelado',
@@ -373,7 +375,7 @@ def admin_orders_dashboard(request):
 
     action_buttons = [
         {
-            'url': reverse(orders_index),
+            'url': reverse('orders:order_list'),
             'icon': 'table-list',
             'title': 'Gestionar Pedidos',
             'description': 'Ver, filtrar y gestionar todos los pedidos',
@@ -382,7 +384,7 @@ def admin_orders_dashboard(request):
             'badge': f"{stats['total']} activos"
         },
         {
-            'url': '#',
+            'url': reverse('orders:order_create'),
             'icon': 'plus-circle',
             'title': 'Crear Pedido',
             'description': 'Agregar un nuevo pedido desde el catálogo',
@@ -435,7 +437,7 @@ def admin_products(request):
     
     action_buttons = [
         {
-            'url': reverse(products_index),
+            'url': reverse('products:product_list'),
             'icon': 'table-list',
             'title': 'Gestionar Productos',
             'description': 'Ver, filtrar y gestionar todos los productos',
@@ -444,7 +446,7 @@ def admin_products(request):
             'badge': f"{stats['total']} productos"
         },
         {
-            'url': '#',
+            'url': reverse('products:product_create'),
             'icon': 'plus-circle',
             'title': 'Crear Producto',
             'description': 'Agregar un nuevo producto al catálogo',
@@ -495,19 +497,20 @@ def admin_users(request):
     recent_deliveries = get_recent_deliveries(limit=5)
     active_deliveries = get_active_deliveries_list(limit=5)
     
-    users_index = 'users:users_list'
+    users_index = 'users:user_list'
     urls = {
         'users_list': reverse(users_index),
-        'total': reverse(users_index) + '?status=todos',
-        'activos': reverse(users_index) + '?status=activos',
-        'inactivos': reverse(users_index) + '?status=inactivos',
-        'pedidos_listos': reverse('orders:orders_list') + '?status=listo',
-        'pedidos_camino': reverse('orders:orders_list') + '?status=en_camino',
+        'total': reverse(users_index),
+        'activos': reverse(users_index) + '?is_active=true',
+        'inactivos': reverse(users_index) + '?is_active=false',
+        'solo_entregadores': reverse(users_index) + '?is_delivery=true',
+        'pedidos_listos': reverse('orders:order_list') + '?status=listo',
+        'pedidos_camino': reverse('orders:order_list') + '?status=en_camino',
     }
     
     action_buttons = [
         {
-            'url': reverse(users_index),
+            'url': reverse('users:user_list'),
             'icon': 'users',
             'title': 'Gestionar Entregadores',
             'description': 'Ver, filtrar y gestionar todos los entregadores',
@@ -516,7 +519,7 @@ def admin_users(request):
             'badge': f"{delivery_stats['total']} activos"
         },
         {
-            'url': '#',
+            'url': reverse('users:user_create'),
             'icon': 'plus-circle',
             'title': 'Agregar Entregador',
             'description': 'Registrar un nuevo entregador',

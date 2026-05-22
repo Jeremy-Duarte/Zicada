@@ -1,19 +1,32 @@
-from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib.admin.views.decorators import staff_member_required
-from django.contrib import messages
-from django.views.decorators.http import require_http_methods
-from django.views.decorators.csrf import csrf_exempt
-from django.http import JsonResponse, HttpResponse
-from .cart import Cart
-from decimal import Decimal
 import json
 from decimal import Decimal
-from .models import Order, OrderItem
-from apps.products.models import ProductVariant
 from django.conf import settings
+from django.contrib import messages
+from django.contrib.admin.views.decorators import staff_member_required
+from django.contrib.auth.mixins import PermissionRequiredMixin
+from django.db import models
+from django.http import HttpResponse, JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse_lazy
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
+from django.views.generic import (
+    CreateView, DetailView, FormView, ListView, UpdateView
+)
 from apps.orders.stripe_client import get_stripe
-from .forms import CheckoutOrderForm
+from apps.products.models import ProductVariant
+from apps.users.models import User
+from apps.core.crud.mixins import AuditMixin, FilterMixin, PaginationMixin
+from .cart import Cart
 from .email import send_order_confirmation_email
+from .forms import (
+    CheckoutOrderForm, OrderAssignDeliveryForm, OrderCancelForm,
+    OrderConfirmForm, OrderCreateForm, OrderItemCreateForm,
+    OrderItemDeleteForm, OrderItemUpdateForm, OrderMarkAsDeliveredForm,
+    OrderUpdateForm
+)
+from .models import Order, OrderItem
+from django.utils.safestring import mark_safe
 
 DELIVERY_DASHBOARD_ROUTE ='orders:delivery_dashboard'
 
@@ -416,8 +429,373 @@ def order_tracking(request, tracking_token):
     }
     return render(request, 'orders/tracking.html', context)
 
-def orders_list(request):
-    pass #TODO
+class OrderListView(PermissionRequiredMixin, PaginationMixin, FilterMixin, ListView):
+    model = Order
+    template_name = 'backoffice/orders/order_list.html'
+    context_object_name = 'orders'
+    permission_required = 'orders.view_order'
+    paginate_by = 20
+    
+    filters = [
+        ('status', 'status', 'exact'),
+        ('customer_name', 'customer_name', 'icontains'),
+        ('customer_phone', 'customer_phone', 'icontains'),
+        ('order_number', 'order_number', 'icontains'),
+    ]
+    
+    def get_queryset(self):
+        qs = super().get_queryset().select_related('assigned_delivery_user')
+        search = self.request.GET.get('search', '')
+        if search:
+            qs = qs.filter(
+                models.Q(order_number__icontains=search) |
+                models.Q(customer_name__icontains=search) |
+                models.Q(customer_phone__icontains=search)
+            )
+        return qs
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        rows = []
+        for order in context['orders']:
+            # Badge de estado con colores
+            status_badge = ''
+            if order.status == 'pendiente':
+                status_badge = '<span class="px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-700">Pendiente</span>'
+            elif order.status == 'confirmado':
+                status_badge = '<span class="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-700">Confirmado</span>'
+            elif order.status == 'preparando':
+                status_badge = '<span class="px-2 py-1 text-xs rounded-full bg-purple-100 text-purple-700">Preparando</span>'
+            elif order.status == 'listo':
+                status_badge = '<span class="px-2 py-1 text-xs rounded-full bg-indigo-100 text-indigo-700">Listo</span>'
+            elif order.status == 'en_camino':
+                status_badge = '<span class="px-2 py-1 text-xs rounded-full bg-orange-100 text-orange-700">En camino</span>'
+            elif order.status == 'entregado':
+                status_badge = '<span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-700">Entregado</span>'
+            else:
+                status_badge = '<span class="px-2 py-1 text-xs rounded-full bg-red-100 text-red-700">Cancelado</span>'
+            
+            rows.append({
+                'pk': order.pk,
+                'values': [
+                    order.order_number,
+                    order.customer_name,
+                    f"${order.total_amount:,.0f}",
+                    mark_safe(status_badge),
+                    order.created_at.strftime('%d/%m/%Y %H:%M'),
+                ],
+            })
+        context['rows'] = rows
+        context['headers'] = ['Pedido', 'Cliente', 'Total', 'Estado', 'Fecha']
+        context['show_actions'] = True
+        context['edit_url_name'] = 'orders:order_edit'
+        context['status_choices'] = Order.STATUS_CHOICES
+        return context
 
-def order_detail(request):
-    pass #TODO
+
+class OrderCreateView(PermissionRequiredMixin, CreateView):
+    model = Order
+    form_class = OrderCreateForm
+    template_name = 'backoffice/orders/order_form.html'
+    permission_required = 'orders.add_order'
+    success_url = reverse_lazy('orders:order_list')
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['cancel_url'] = 'orders:order_list'
+        context['title'] = 'Crear pedido manual'
+        context['is_manual'] = True
+        return context
+    
+    def form_valid(self, form):
+        form.instance.created_by = self.request.user
+        form.instance.updated_by = self.request.user
+        response = super().form_valid(form)
+        messages.success(self.request, f'Pedido {form.instance.order_number} creado exitosamente.')
+        return response
+    
+    def form_invalid(self, form):
+        messages.error(self.request, 'Error al crear el pedido. Corrige los errores.')
+        return super().form_invalid(form)
+
+
+class OrderUpdateView(PermissionRequiredMixin, UpdateView):
+    model = Order
+    form_class = OrderUpdateForm
+    template_name = 'backoffice/orders/order_form.html'
+    permission_required = 'orders.change_order'
+    success_url = reverse_lazy('orders:order_list')
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['cancel_url'] = 'orders:order_list'
+        context['title'] = f'Editar pedido {self.object.order_number}'
+        return context
+    
+    def form_valid(self, form):
+        form.instance.updated_by = self.request.user
+        response = super().form_valid(form)
+        messages.success(self.request, f'Pedido {form.instance.order_number} actualizado exitosamente.')
+        return response
+    
+    def form_invalid(self, form):
+        messages.error(self.request, 'Error al actualizar el pedido.')
+        return super().form_invalid(form)
+
+
+class OrderDetailView(PermissionRequiredMixin, DetailView):
+    model = Order
+    template_name = 'backoffice/orders/order_detail.html'
+    context_object_name = 'order'
+    permission_required = 'orders.view_order'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        order = self.object
+        
+        # Posibles transiciones según estado actual
+        transitions = []
+        if order.can_transition_to('confirmado'):
+            transitions.append(('confirmado', 'Confirmar pedido'))
+        if order.can_transition_to('preparando'):
+            transitions.append(('preparando', 'Marcar en preparación'))
+        if order.can_transition_to('listo'):
+            transitions.append(('listo', 'Marcar listo para envío'))
+        if order.can_transition_to('entregado'):
+            transitions.append(('entregado', 'Marcar entregado'))
+        if order.can_transition_to('cancelado'):
+            transitions.append(('cancelado', 'Cancelar pedido'))
+        
+        context['transitions'] = transitions
+        context['delivery_users'] = User.objects.filter(is_delivery=True, is_active=True)
+        context['can_assign'] = order.status == 'listo'
+        context['can_add_items'] = order.status in ['pendiente', 'confirmado']
+        
+        # Items del pedido
+        items_rows = []
+        for item in order.items.all():
+            items_rows.append({
+                'pk': item.pk,
+                'values': [
+                    item.product_name_snapshot,
+                    item.size_snapshot,
+                    item.quantity,
+                    f"${item.unit_price:,.0f}",
+                    f"${item.subtotal:,.0f}",
+                ],
+            })
+        context['items_rows'] = items_rows
+        context['items_headers'] = ['Producto', 'Talla', 'Cantidad', 'Precio unit.', 'Subtotal']
+        
+        return context
+
+
+class OrderConfirmView(PermissionRequiredMixin, FormView):
+    """Vista para confirmar pedido manualmente (reduce stock)"""
+    form_class = OrderConfirmForm
+    template_name = 'backoffice/orders/order_confirm.html'
+    permission_required = 'orders.change_order'
+    
+    def dispatch(self, request, *args, **kwargs):
+        self.order = get_object_or_404(Order, pk=kwargs['pk'])
+        return super().dispatch(request, *args, **kwargs)
+    
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['order'] = self.order
+        return kwargs
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['order'] = self.order
+        context['cancel_url'] = 'orders:order_detail'
+        context['cancel_args'] = [self.order.pk]
+        return context
+    
+    def form_valid(self, form):
+        self.order.confirm(user=self.request.user)
+        messages.success(self.request, f'Pedido {self.order.order_number} confirmado exitosamente.')
+        return redirect('orders:order_detail', pk=self.order.pk)
+    
+    def form_invalid(self, form):
+        messages.error(self.request, 'Error al confirmar el pedido.')
+        return redirect('orders:order_detail', pk=self.order.pk)
+
+
+class OrderCancelView(PermissionRequiredMixin, FormView):
+    """Vista para cancelar pedido manualmente"""
+    form_class = OrderCancelForm
+    template_name = 'backoffice/orders/order_cancel.html'
+    permission_required = 'orders.change_order'
+    
+    def dispatch(self, request, *args, **kwargs):
+        self.order = get_object_or_404(Order, pk=kwargs['pk'])
+        return super().dispatch(request, *args, **kwargs)
+    
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['order'] = self.order
+        return kwargs
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['order'] = self.order
+        context['cancel_url'] = 'orders:order_detail'
+        context['cancel_args'] = [self.order.pk]
+        return context
+    
+    def form_valid(self, form):
+        reason = form.cleaned_data['reason']
+        self.order.cancel(reason=reason, user=self.request.user)
+        messages.success(self.request, f'Pedido {self.order.order_number} cancelado exitosamente.')
+        return redirect('orders:order_detail', pk=self.order.pk)
+    
+    def form_invalid(self, form):
+        messages.error(self.request, 'Error al cancelar el pedido.')
+        return redirect('orders:order_detail', pk=self.order.pk)
+
+
+class OrderAssignDeliveryView(PermissionRequiredMixin, FormView):
+    """Vista para asignar repartidor a un pedido"""
+    form_class = OrderAssignDeliveryForm
+    template_name = 'backoffice/orders/order_assign_delivery.html'
+    permission_required = 'orders.change_order'
+    
+    def dispatch(self, request, *args, **kwargs):
+        self.order = get_object_or_404(Order, pk=kwargs['pk'])
+        return super().dispatch(request, *args, **kwargs)
+    
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['order'] = self.order
+        return kwargs
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['order'] = self.order
+        context['cancel_url'] = 'orders:order_detail'
+        context['cancel_args'] = [self.order.pk]
+        return context
+    
+    def form_valid(self, form):
+        delivery_user = form.cleaned_data['delivery_user']
+        self.order.assign_delivery(delivery_user, user=self.request.user)
+        messages.success(self.request, f'Repartidor asignado al pedido {self.order.order_number}.')
+        return redirect('orders:order_detail', pk=self.order.pk)
+
+
+class OrderMarkAsDeliveredView(PermissionRequiredMixin, FormView):
+    """Vista para marcar pedido como entregado"""
+    form_class = OrderMarkAsDeliveredForm
+    template_name = 'backoffice/orders/order_mark_delivered.html'
+    permission_required = 'orders.change_order'
+    
+    def dispatch(self, request, *args, **kwargs):
+        self.order = get_object_or_404(Order, pk=kwargs['pk'])
+        return super().dispatch(request, *args, **kwargs)
+    
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['order'] = self.order
+        return kwargs
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['order'] = self.order
+        context['cancel_url'] = 'orders:order_detail'
+        context['cancel_args'] = [self.order.pk]
+        return context
+    
+    def form_valid(self, form):
+        self.order.mark_as_delivered(user=self.request.user)
+        messages.success(self.request, f'Pedido {self.order.order_number} marcado como entregado.')
+        return redirect('orders:order_detail', pk=self.order.pk)
+
+
+class OrderItemCreateView(PermissionRequiredMixin, CreateView):
+    """Vista para agregar items a un pedido existente"""
+    model = OrderItem
+    form_class = OrderItemCreateForm
+    template_name = 'backoffice/orders/orderitem_form.html'
+    permission_required = 'orders.change_order'
+    
+    def dispatch(self, request, *args, **kwargs):
+        self.order = get_object_or_404(Order, pk=kwargs['order_pk'])
+        return super().dispatch(request, *args, **kwargs)
+    
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['order'] = self.order
+        return kwargs
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['order'] = self.order
+        context['cancel_url'] = 'orders:order_detail'
+        context['cancel_args'] = [self.order.pk]
+        return context
+    
+    def form_valid(self, form):
+        form.instance.order = self.order
+        response = super().form_valid(form)
+        # Recalcular totales del pedido
+        self.order.save()  # El save recalcula total_amount
+        messages.success(self.request, f'Producto agregado al pedido {self.order.order_number}.')
+        return redirect('orders:order_detail', pk=self.order.pk)
+
+
+class OrderItemUpdateView(PermissionRequiredMixin, UpdateView):
+    model = OrderItem
+    form_class = OrderItemUpdateForm
+    template_name = 'backoffice/orders/orderitem_form.html'
+    permission_required = 'orders.change_order'
+    
+    def get_success_url(self):
+        return reverse_lazy('orders:order_detail', kwargs={'pk': self.object.order.pk})
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['order'] = self.object.order
+        context['cancel_url'] = 'orders:order_detail'
+        context['cancel_args'] = [self.object.order.pk]
+        context['title'] = 'Editar cantidad'
+        return context
+    
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        self.object.order.save()  # Recalcular totales
+        messages.success(self.request, f'Cantidad actualizada en pedido {self.object.order.order_number}.')
+        return response
+
+
+class OrderItemDeleteView(PermissionRequiredMixin, FormView):
+    """Vista para eliminar un item del pedido"""
+    form_class = OrderItemDeleteForm
+    template_name = 'backoffice/orders/orderitem_confirm_delete.html'
+    permission_required = 'orders.change_order'
+    
+    def dispatch(self, request, *args, **kwargs):
+        self.order_item = get_object_or_404(OrderItem, pk=kwargs['pk'])
+        return super().dispatch(request, *args, **kwargs)
+    
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['order_item'] = self.order_item
+        return kwargs
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['order'] = self.order_item.order
+        context['order_item'] = self.order_item
+        context['cancel_url'] = 'orders:order_detail'
+        context['cancel_args'] = [self.order_item.order.pk]
+        return context
+    
+    def form_valid(self, form):
+        order_pk = self.order_item.order.pk
+        self.order_item.delete()
+        # Recalcular totales del pedido
+        order = Order.objects.get(pk=order_pk)
+        order.save()
+        messages.success(self.request, f'Producto eliminado del pedido {order.order_number}.')
+        return redirect('orders:order_detail', pk=order_pk)
