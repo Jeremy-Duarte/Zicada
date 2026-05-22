@@ -14,13 +14,6 @@ from django.contrib.auth.models import Group
 
 User = get_user_model()
 
-
-def users_list(request):
-    pass #TODO
-
-def user_detail(request):
-    pass #TODO
-
 class UserListView(PermissionRequiredMixin, PaginationMixin, FilterMixin, ListView):
     model = User
     template_name = 'backoffice/users/user_list.html'

@@ -175,12 +175,6 @@ def product_detail(request, slug):
     }
     return render(request, 'products/product_detail.html', context)
 
-def products_list(request):
-    pass #TODO
-
-def product_detail(request):
-    pass #TODO
-
 class SizeListView(PermissionRequiredMixin, PaginationMixin, FilterMixin, ListView):
     model = Size
     template_name = 'backoffice/size/size_list.html'

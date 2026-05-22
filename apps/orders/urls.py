@@ -33,7 +33,5 @@ urlpatterns = [
     path('create-stripe-session/', views.create_stripe_checkout_session, name='create_stripe_checkout_session'),
     path('stripe/webhook/', views.stripe_webhook, name='stripe_webhook'),
     #Crud Paths
-    path('lista/', views.orders_list, name='orders_list'),
-    path('<int:pk>/', views.order_detail, name='order_detail'),
     path('admin/', include(admin_patterns)),
 ]

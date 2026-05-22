@@ -429,12 +429,6 @@ def order_tracking(request, tracking_token):
     }
     return render(request, 'orders/tracking.html', context)
 
-def orders_list(request):
-    pass #TODO
-
-def order_detail(request):
-    pass #TODO
-
 class OrderListView(PermissionRequiredMixin, PaginationMixin, FilterMixin, ListView):
     model = Order
     template_name = 'backoffice/orders/order_list.html'
