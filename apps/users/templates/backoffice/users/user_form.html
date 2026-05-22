@@ -1,0 +1,11 @@
+{% extends "backoffice/layouts/backoffice_base.html" %} {% load static %} {% block title %}{{ title|default:"Usuario" }} - Zicada{% endblock %} {% block content %}
+<div class="max-w-3xl mx-auto">
+    <div class="bg-white rounded-xl shadow-sm p-6">
+        <h1 class="text-2xl font-bold text-gray-800 mb-6">{{ title|default:"Gestión de usuario" }}</h1>
+        {% include 'backoffice/components/crud/form_fields.html' with form=form cancel_url="users:user_list" submit_label="Guardar" %}
+        {% if show_password_change %}
+        <div class="mt-6 pt-4 border-t border-gray-100"><a href="{% url 'users:user_change_password' object.pk %}" class="text-sm text-blue-600 hover:text-blue-800">Cambiar contraseña</a></div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

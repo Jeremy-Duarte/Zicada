@@ -1,0 +1,3 @@
+{% extends "backoffice/layouts/backoffice_base.html" %} {% load static %} {% block title %}Desactivar usuario - Zicada{% endblock %} {% block content %}
+{% include 'backoffice/components/crud/confirm_delete.html' with form=form object_name="usuario" object_display=user_obj.username cancel_url="users:user_list" warning="Esta acción desactivará la cuenta del usuario. Podrás reactivarla después desde la papelera." %}
+{% endblock %}

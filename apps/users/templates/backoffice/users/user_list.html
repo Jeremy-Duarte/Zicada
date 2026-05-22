@@ -1,0 +1,17 @@
+{% extends "backoffice/layouts/backoffice_base.html" %} {% load static %} {% block title %}Usuarios - Zicada{% endblock %} {% block content %}
+<div class="space-y-6">
+    {% include 'backoffice/components/crud/list_header.html' with title="Usuarios" create_url="users:user_create" create_label="Nuevo usuario" %}
+    
+    <div class="bg-white rounded-xl shadow-sm p-4">
+        <form method="get" class="flex flex-wrap gap-4">
+            <input type="text" name="search" placeholder="Buscar por nombre, email o teléfono..." value="{{ request.GET.search|default:'' }}" class="flex-1 px-3 py-2 border rounded-lg text-sm">
+            <button type="submit" class="bg-gray-800 text-white px-4 py-2 rounded-lg text-sm">Buscar</button>
+            {% if request.GET.search %}<a href="{% url 'users:user_list' %}" class="text-gray-500 hover:text-gray-700 px-4 py-2 text-sm">Limpiar</a>{% endif %}
+        </form>
+    </div>
+    
+    {% include 'backoffice/components/crud/list_table.html' with headers=headers rows=rows show_actions=True edit_url_name="users:user_edit" delete_url_name="users:user_delete" empty_message="No hay usuarios registrados" page_obj=page_obj %}
+    
+    <div class="text-right"><a href="{% url 'users:user_trashcan' %}" class="text-sm text-gray-400 hover:text-gray-600"><i class="fas fa-trash-alt mr-1"></i> Ver usuarios desactivados</a></div>
+</div>
+{% endblock %}
