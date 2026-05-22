@@ -8,8 +8,9 @@ from django.db import models
 from apps.core.crud.mixins import PaginationMixin, FilterMixin
 from .forms import (
     UserCreateForm, UserUpdateForm, UserChangePasswordForm,
-    UserDeleteForm, UserRestoreForm
+    UserDeleteForm, UserRestoreForm, GroupCreateForm, GroupUpdateForm, GroupDeleteForm
 )
+from django.contrib.auth.models import Group
 
 User = get_user_model()
 
@@ -274,3 +275,120 @@ class UserTrashcanView(PermissionRequiredMixin, PaginationMixin, ListView):
         context['rows'] = rows
         context['headers'] = ['Usuario', 'Nombre', 'Email', 'Teléfono', 'Registro']
         return context
+    
+class GroupListView(PermissionRequiredMixin, PaginationMixin, FilterMixin, ListView):
+    model = Group
+    template_name = 'backoffice/groups/group_list.html'
+    context_object_name = 'groups'
+    permission_required = 'users.view_group'
+    paginate_by = 20
+    
+    filters = [
+        ('name', 'name', 'icontains'),
+    ]
+    
+    def get_queryset(self):
+        qs = super().get_queryset()
+        search = self.request.GET.get('search', '')
+        if search:
+            qs = qs.filter(name__icontains=search)
+        return qs
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        rows = []
+        for group in context['groups']:
+            user_count = group.user_set.count()
+            rows.append({
+                'pk': group.pk,
+                'values': [
+                    group.name,
+                    user_count,
+                ],
+            })
+        context['rows'] = rows
+        context['headers'] = ['Nombre del rol', 'Usuarios asignados']
+        return context
+
+
+class GroupCreateView(PermissionRequiredMixin, CreateView):
+    model = Group
+    form_class = GroupCreateForm
+    template_name = 'backoffice/groups/group_form.html'
+    permission_required = 'users.add_group'
+    success_url = reverse_lazy('users:group_list')
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['cancel_url'] = 'users:group_list'
+        context['title'] = 'Crear rol'
+        return context
+    
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        messages.success(self.request, f'Rol "{form.instance.name}" creado exitosamente.')
+        return response
+
+
+class GroupUpdateView(PermissionRequiredMixin, UpdateView):
+    model = Group
+    form_class = GroupUpdateForm
+    template_name = 'backoffice/groups/group_form.html'
+    permission_required = 'users.change_group'
+    success_url = reverse_lazy('users:group_list')
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['cancel_url'] = 'users:group_list'
+        context['title'] = f'Editar rol: {self.object.name}'
+        return context
+    
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        messages.success(self.request, f'Rol "{form.instance.name}" actualizado exitosamente.')
+        return response
+
+
+class GroupDetailView(PermissionRequiredMixin, DetailView):
+    model = Group
+    template_name = 'backoffice/groups/group_detail.html'
+    context_object_name = 'group'
+    permission_required = 'users.view_group'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['cancel_url'] = 'users:group_list'
+        context['users'] = self.object.user_set.all().order_by('username')
+        return context
+
+
+class GroupDeleteView(PermissionRequiredMixin, FormView):
+    form_class = GroupDeleteForm
+    template_name = 'backoffice/groups/group_confirm_delete.html'
+    permission_required = 'users.delete_group'
+    
+    def dispatch(self, request, *args, **kwargs):
+        self.group = get_object_or_404(Group, pk=kwargs['pk'])
+        return super().dispatch(request, *args, **kwargs)
+    
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['group'] = self.group
+        return kwargs
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['group'] = self.group
+        context['user_count'] = self.group.user_set.count()
+        context['cancel_url'] = 'users:group_list'
+        return context
+    
+    def form_valid(self, form):
+        group_name = self.group.name
+        self.group.delete()
+        messages.success(self.request, f'Rol "{group_name}" eliminado exitosamente.')
+        return redirect('users:group_list')
+    
+    def form_invalid(self, form):
+        messages.error(self.request, 'Error al eliminar el rol.')
+        return super().form_invalid(form)
