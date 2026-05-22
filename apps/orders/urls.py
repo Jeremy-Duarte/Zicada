@@ -1,7 +1,21 @@
-from django.urls import path
+from django.urls import path, include
 from . import views
 
 app_name = 'orders'
+
+admin_patterns = [
+    path('lista/', views.OrderListView.as_view(), name='order_list'),
+    path('crear/', views.OrderCreateView.as_view(), name='order_create'),
+    path('<int:pk>/', views.OrderDetailView.as_view(), name='order_detail'),
+    path('<int:pk>/editar/', views.OrderUpdateView.as_view(), name='order_edit'),
+    path('<int:pk>/confirmar/', views.OrderConfirmView.as_view(), name='order_confirm'),
+    path('<int:pk>/cancelar/', views.OrderCancelView.as_view(), name='order_cancel'),
+    path('<int:pk>/asignar-repartidor/', views.OrderAssignDeliveryView.as_view(), name='order_assign_delivery'),
+    path('<int:pk>/marcar-entregado/', views.OrderMarkAsDeliveredView.as_view(), name='order_mark_delivered'),
+    path('<int:order_pk>/items/crear/', views.OrderItemCreateView.as_view(), name='orderitem_create'),
+    path('items/<int:pk>/editar/', views.OrderItemUpdateView.as_view(), name='orderitem_edit'),
+    path('items/<int:pk>/eliminar/', views.OrderItemDeleteView.as_view(), name='orderitem_delete'),
+]
 
 urlpatterns = [
     path('delivery/', views.delivery_dashboard, name='delivery_dashboard'),
@@ -21,4 +35,5 @@ urlpatterns = [
     #Crud Paths
     path('lista/', views.orders_list, name='orders_list'),
     path('<int:pk>/', views.order_detail, name='order_detail'),
+    path('admin/', include(admin_patterns)),
 ]
