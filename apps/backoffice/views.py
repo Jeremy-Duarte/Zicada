@@ -8,7 +8,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from apps.orders.models import Order, OrderItem
-from apps.products.models import Product, ProductVariant
+from apps.products.models import Product, ProductVariant, Size, Category, Color, ProductImage
 from apps.users.models import User
 
 
@@ -765,6 +765,55 @@ def admin_products(request):
         },
     ]
 
+    quick_access_buttons = [
+        {
+            'url': reverse('products:size_list'),
+            'icon': 'ruler',
+            'title': 'Tallas',
+            'bg_from': 'blue-50',
+            'bg_to': 'blue-100',
+            'icon_color': 'blue-600',
+            'badge': f'{Size.objects.count()}',
+        },
+        {
+            'url': reverse('products:category_list'),
+            'icon': 'tags',
+            'title': 'Categorías',
+            'bg_from': 'green-50',
+            'bg_to': 'green-100',
+            'icon_color': 'green-600',
+            'badge': f'{Category.objects.count()}',
+        },
+        {
+            'url': reverse('products:color_list'),
+            'icon': 'palette',
+            'title': 'Colores',
+            'bg_from': 'purple-50',
+            'bg_to': 'purple-100',
+            'icon_color': 'purple-600',
+            'badge': f'{Color.objects.count()}',
+        },
+        {
+            'url': reverse('products:productimage_list'),
+            'icon': 'images',
+            'title': 'Imágenes',
+            'bg_from': 'orange-50',
+            'bg_to': 'orange-100',
+            'icon_color': 'orange-600',
+            'badge': f'{ProductImage.objects.count()}',
+        },
+        {
+            'url': reverse('products:product_list'),
+            'icon': 'box',
+            'title': 'Productos',
+            'bg_from': 'zicada-accent/10',
+            'bg_to': 'zicada-accent/20',
+            'icon_color': 'zicada-accent',
+            'badge': 'Principal',
+        },
+    ]
+
+
     stock_distribution = {
         'series': [stats['con_stock'], stats['stock_bajo'], stats['agotado']],
         'labels': [STOCK_LABEL_IN_STOCK, STOCK_LABEL_LOW_STOCK, STOCK_LABEL_OUT_OF_STOCK],
@@ -786,6 +835,7 @@ def admin_products(request):
         CONTEXT_TOP_PRODUCTS: top_products,
         CONTEXT_STOCK_DISTRIBUTION: stock_distribution,
         CONTEXT_STOCK_STATS_LIST: stock_stats_list,
+        'quick_access_buttons' : quick_access_buttons,
     }
 
     return render(request, TEMPLATE_ADMIN_PRODUCTS_DASHBOARD, context)
