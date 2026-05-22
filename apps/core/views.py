@@ -184,7 +184,7 @@ class StaffLoginView(LoginView):
     redirect_authenticated_user = True
 
     def get_success_url(self):
-        return reverse_lazy('core:staff_dashboard')
+        return reverse_lazy(URL_BACKOFFICE_DASHBOARD)
 
     def form_valid(self, form):
         response = super().form_valid(form)
