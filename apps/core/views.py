@@ -82,7 +82,8 @@ def about(request):
 
 
 def contact(request):
-    return render(request, TEMPLATE_CONTACT)
+    form = ContactForm()
+    return render(request, TEMPLATE_CONTACT, {'form': form})
 
 
 def contact_submit(request):
