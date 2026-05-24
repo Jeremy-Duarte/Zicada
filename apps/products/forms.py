@@ -6,7 +6,7 @@ from .models import (
     Collection, ProductColor, ProductImage
 )
 from apps.core.crud.mixins import FormStyleMixin
-
+from apps.core.crud.widgets import CloudinaryImageSelectWidget, CloudinaryFeaturedImageWidget
 
 # ========== FORMULARIOS PARA CATÁLOGOS ESTÁTICOS ==========
 
@@ -498,8 +498,8 @@ class ProductColorCreateForm(FormStyleMixin, forms.ModelForm):
         fields = ['color', 'images', 'featured_image', 'sort_order']
         widgets = {
             'color': forms.Select(),
-            'images': forms.SelectMultiple(attrs={'size': 5}),
-            'featured_image': forms.Select(),
+            'images': CloudinaryImageSelectWidget(),
+            'featured_image': CloudinaryFeaturedImageWidget(images_widget_name='images'),
             'sort_order': forms.NumberInput(attrs={'min': 0}),
         }
     
@@ -538,8 +538,8 @@ class ProductColorUpdateForm(FormStyleMixin, forms.ModelForm):
         model = ProductColor
         fields = ['images', 'featured_image', 'sort_order', 'is_active']
         widgets = {
-            'images': forms.SelectMultiple(attrs={'size': 5}),
-            'featured_image': forms.Select(),
+            'images': CloudinaryImageSelectWidget(),
+            'featured_image': CloudinaryFeaturedImageWidget(images_widget_name='images'),
             'sort_order': forms.NumberInput(attrs={'min': 0}),
             'is_active': forms.CheckboxInput(),
         }
