@@ -39,7 +39,10 @@
         <div class="px-5 py-4 border-b border-gray-100 flex justify-between items-center">
             <h3 class="font-semibold text-gray-800">Productos</h3>
             {% if can_add_items %}
-            <a href="{% url 'orders:orderitem_create' order.pk %}" class="text-sm text-green-600 hover:text-green-800"><i class="fas fa-plus mr-1"></i>Agregar producto</a>
+            <a href="{% url 'orders:orderitem_create' order.pk %}" 
+            class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition flex items-center gap-2">
+                <i class="fas fa-plus-circle"></i> Agregar producto
+            </a>
             {% endif %}
         </div>
         <div class="overflow-x-auto">
