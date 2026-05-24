@@ -741,6 +741,7 @@ class ProductImageUpdateView(PermissionRequiredMixin, UpdateView):
         return context
     
     def form_valid(self, form):
+        response = super().form_valid(form)
         messages.success(self.request, MSG_PRODUCT_IMAGE_UPDATED)
         return super().form_valid(form)
 
@@ -1033,6 +1034,7 @@ class ProductColorUpdateView(PermissionRequiredMixin, UpdateView):
         return context
     
     def form_valid(self, form):
+        response = super().form_valid(form)
         messages.success(self.request, MSG_PRODUCT_COLOR_UPDATED.format(name=self.object.color.name))
         return redirect(URL_PRODUCT_EDIT, pk=self.object.product.pk)
 
@@ -1132,6 +1134,7 @@ class ProductVariantUpdateView(PermissionRequiredMixin, UpdateView):
         return context
     
     def form_valid(self, form):
+        response = super().form_valid(form)
         messages.success(self.request, MSG_VARIANT_UPDATED)
         return redirect(URL_PRODUCT_EDIT, pk=self.object.product.pk)
 
