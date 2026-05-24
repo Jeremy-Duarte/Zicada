@@ -1,5 +1,10 @@
 from django import forms
 from django.shortcuts import get_object_or_404, redirect
+from django.core.exceptions import ValidationError
+from django.db import transaction
+from django.db.models import F, Max
+import json
+from apps.core.crud.widgets import SortableOrderWidget
 
 class AuditMixin:
     """Maneja campos de auditoría (created_by, updated_by)"""
@@ -132,3 +137,171 @@ class FormSetStyleMixin:
         for form in self.forms:
             if hasattr(form, '_apply_form_styles'):
                 form._apply_form_styles()
+
+class SortableUpdateMixin:
+    """
+    Mixin para formularios de actualización que necesitan ordenamiento drag & drop.
+    No afecta la creación.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._setup_sortable_widget()
+
+    def _setup_sortable_widget(self):
+        """Configura el widget de orden solo para instancias existentes."""
+        if not self.instance or not self.instance.pk:
+            return
+
+        qs = self.get_sortable_queryset()
+        if not qs or not qs.exists():
+            return
+
+        field_name = getattr(self, 'sortable_widget_name', 'order_data')
+        self.fields[field_name] = forms.CharField(
+            required=False,
+            widget=SortableOrderWidget(
+                queryset=qs,
+                item_label=self.get_sortable_label
+            ),
+            label=getattr(self, 'sortable_widget_label', 'Orden')
+        )
+
+    def get_sortable_queryset(self):
+        """Retorna el queryset de elementos a ordenar."""
+        if hasattr(self, 'sortable_queryset'):
+            return self.sortable_queryset(self) if callable(self.sortable_queryset) else self.sortable_queryset
+
+        model = self._meta.model
+        qs = model.objects.all()
+        if hasattr(model, 'is_active'):
+            qs = qs.filter(is_active=True)
+        return qs.order_by(self.get_sortable_order_field())
+
+    def get_sortable_label(self, item):
+        label_attr = getattr(self, 'sortable_label_attr', None)
+        if label_attr:
+            return label_attr(item) if callable(label_attr) else getattr(item, label_attr)
+        return getattr(item, 'name', str(item))
+
+    def get_sortable_order_field(self):
+        return getattr(self, 'sortable_order_field', 'sort_order')
+
+    def get_sortable_filter_kwargs(self):
+        filter_field = getattr(self, 'sortable_filter_field', None)
+        if filter_field and hasattr(self.instance, filter_field):
+            return {filter_field: getattr(self.instance, filter_field)}
+        return {}
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        if commit:
+            instance.save()
+            self.save_m2m()
+
+        field_name = getattr(self, 'sortable_widget_name', 'order_data')
+        order_data = self.cleaned_data.get(field_name)
+        if order_data:
+            self._update_sort_order(order_data, instance)
+
+        return instance
+
+    def _update_sort_order(self, order_data, instance):
+        try:
+            ordered_ids = json.loads(order_data)
+        except json.JSONDecodeError:
+            return
+
+        if not ordered_ids:
+            return
+
+        model = self._meta.model
+        filter_kwargs = self.get_sortable_filter_kwargs()
+        qs = model.objects.filter(**filter_kwargs)
+        if hasattr(model, 'is_active'):
+            qs = qs.filter(is_active=True)
+
+        current_order = list(qs.values_list('pk', flat=True).order_by(self.get_sortable_order_field()))
+
+        if ordered_ids != current_order:
+            order_field = self.get_sortable_order_field()
+            with transaction.atomic():
+                for idx, obj_id in enumerate(ordered_ids):
+                    model.objects.filter(pk=obj_id, **filter_kwargs).update(**{order_field:idx})
+
+class SortableCreateMixin:
+    """
+    Mixin para formularios de creación que necesitan asignar orden automático.
+    Coloca los nuevos elementos al final.
+    """
+
+    def get_next_order(self, filter_kwargs=None):
+        """Obtiene el próximo número de orden disponible."""
+        model = self._meta.model
+        filter_kwargs = filter_kwargs or {}
+        
+        # Si hay un filtro contextual (ej. por producto)
+        if hasattr(self, 'get_sortable_filter_kwargs'):
+            filter_kwargs = self.get_sortable_filter_kwargs()
+        
+        max_order = model.objects.filter(**filter_kwargs).aggregate(
+            max_order=Max('sort_order')
+        )['max_order']
+        return (max_order or -1) + 1
+
+    def save(self, commit=True):
+        """Asigna el orden antes de guardar."""
+        if not self.instance.pk:  # Solo para nuevos objetos
+            filter_kwargs = {}
+            if hasattr(self, 'get_sortable_filter_kwargs'):
+                filter_kwargs = self.get_sortable_filter_kwargs()
+            self.instance.sort_order = self.get_next_order(filter_kwargs)
+        
+        return super().save(commit=commit)
+
+class SortableDeleteMixin:
+    """
+    Mixin para vistas de eliminación que necesitan reordenar los elementos restantes.
+    Asume que la vista tiene `model` o `queryset`.
+    """
+
+    def get_sortable_model(self):
+        """Obtiene el modelo desde la vista."""
+        if hasattr(self, 'model'):
+            return self.model
+        if hasattr(self, 'get_queryset'):
+            return self.get_queryset().model
+        raise AttributeError("SortableDeleteMixin requiere model o get_queryset en la vista")
+
+    def get_sortable_order_field(self):
+        """Nombre del campo de orden (por defecto 'sort_order')."""
+        return getattr(self, 'sortable_order_field', 'sort_order')
+
+    def get_sortable_filter_kwargs(self):
+        """
+        Retorna kwargs para filtrar los elementos a reordenar.
+        Sobrescribe en la vista si es necesario (ej. {'product_id': self.object.product.pk}).
+        """
+        return getattr(self, 'sortable_filter_kwargs', {})
+
+    def reorder_after_delete(self, deleted_order):
+        """Reordena los elementos después de una eliminación."""
+        model = self.get_sortable_model()
+        order_field = self.get_sortable_order_field()
+        filter_kwargs = self.get_sortable_filter_kwargs()
+
+        model.objects.filter(
+            **filter_kwargs,
+            **{f'{order_field}__gt': deleted_order}
+        ).update(**{order_field: F(order_field) - 1})
+
+    def delete(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        order_field = self.get_sortable_order_field()
+        deleted_order = getattr(self.object, order_field, 0)
+
+        response = super().delete(request, *args, **kwargs)
+
+        self.reorder_after_delete(deleted_order)
+
+        return response
