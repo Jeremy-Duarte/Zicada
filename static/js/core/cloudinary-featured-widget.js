@@ -91,19 +91,20 @@
                 return;
             }
             
-            // Construir grid con radio buttons
             const gridItems = [];
+            const selectName = this.hiddenSelect.name;
+            
             images.forEach(img => {
                 const isSelected = this.currentSelectedId === img.id;
                 gridItems.push(`
                     <label class="relative cursor-pointer group" data-image-id="${img.id}">
-                        <input type="radio" name="featured_radio" value="${img.id}" ${isSelected ? 'checked' : ''}
-                               class="absolute opacity-0 w-0 h-0 peer">
+                        <input type="radio" name="${selectName}" value="${img.id}" ${isSelected ? 'checked' : ''}
+                            class="absolute opacity-0 w-0 h-0 peer">
                         <div class="relative rounded-lg overflow-hidden border-2 transition-all 
                                     ${isSelected ? 'border-zicada-accent ring-2 ring-zicada-accent/50' : 'border-gray-200'}
                                     group-hover:border-zicada-accent group-hover:shadow-md">
                             <img src="${img.src}" alt="${img.alt || 'Imagen'}"
-                                 class="w-full h-24 object-cover">
+                                class="w-full h-24 object-cover">
                             <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 peer-checked:opacity-100 transition-opacity">
                                 <i class="fas fa-check-circle text-white text-2xl drop-shadow-md"></i>
                             </div>
@@ -115,12 +116,11 @@
                 `);
             });
             
-            // Botón para subir nueva imagen (opcional)
             const uploadUrl = '/products/admin/imagenes/subir/';
             gridItems.push(`
                 <a href="${uploadUrl}" target="_blank"
-                   class="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg h-24
-                          hover:border-zicada-accent transition group">
+                class="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg h-24
+                        hover:border-zicada-accent transition group">
                     <i class="fas fa-plus text-gray-400 text-xl group-hover:text-zicada-accent"></i>
                     <span class="text-xs text-gray-400 mt-1">Subir</span>
                 </a>
