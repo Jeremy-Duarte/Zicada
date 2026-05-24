@@ -3,13 +3,14 @@ from django.contrib.auth.forms import UserCreationForm, UserChangeForm as BaseUs
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.contrib.auth.models import Group
+from apps.core.crud.mixins import FormStyleMixin
 
 User = get_user_model()
 
 
 # ========== USER FORMS ==========
 
-class UserCreateForm(UserCreationForm):
+class UserCreateForm(FormStyleMixin, UserCreationForm):
     """
     Formulario para crear usuarios desde backoffice.
     Hereda de UserCreationForm de Django para manejar contraseñas.
@@ -30,23 +31,23 @@ class UserCreateForm(UserCreationForm):
             'groups',
         ]
         widgets = {
-            'username': forms.TextInput(attrs={'class': 'form-control'}),
-            'first_name': forms.TextInput(attrs={'class': 'form-control'}),
-            'last_name': forms.TextInput(attrs={'class': 'form-control'}),
-            'email': forms.EmailInput(attrs={'class': 'form-control'}),
-            'phone': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: 3001234567'}),
-            'is_delivery': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-            'is_staff': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-            'is_superuser': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-            'groups': forms.SelectMultiple(attrs={'class': 'form-control', 'size': 5}),
+            'username': forms.TextInput(),
+            'first_name': forms.TextInput(),
+            'last_name': forms.TextInput(),
+            'email': forms.EmailInput(),
+            'phone': forms.TextInput(attrs={'placeholder': 'Ej: 3001234567'}),
+            'is_delivery': forms.CheckboxInput(),
+            'is_active': forms.CheckboxInput(),
+            'is_staff': forms.CheckboxInput(),
+            'is_superuser': forms.CheckboxInput(),
+            'groups': forms.SelectMultiple(attrs={'size': 5}),
         }
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Personalizar widgets de contraseña
-        self.fields['password1'].widget = forms.PasswordInput(attrs={'class': 'form-control'})
-        self.fields['password2'].widget = forms.PasswordInput(attrs={'class': 'form-control'})
+        self.fields['password1'].widget = forms.PasswordInput()
+        self.fields['password2'].widget = forms.PasswordInput()
         self.fields['password1'].label = 'Contraseña'
         self.fields['password2'].label = 'Confirmar contraseña'
         
@@ -108,7 +109,7 @@ class UserCreateForm(UserCreationForm):
         return user
 
 
-class UserUpdateForm(BaseUserChangeForm):
+class UserUpdateForm(FormStyleMixin, BaseUserChangeForm):
     """
     Formulario para actualizar usuarios desde backoffice.
     No maneja cambio de contraseña (eso va en formulario aparte).
@@ -129,16 +130,16 @@ class UserUpdateForm(BaseUserChangeForm):
             'groups',
         ]
         widgets = {
-            'username': forms.TextInput(attrs={'class': 'form-control'}),
-            'first_name': forms.TextInput(attrs={'class': 'form-control'}),
-            'last_name': forms.TextInput(attrs={'class': 'form-control'}),
-            'email': forms.EmailInput(attrs={'class': 'form-control'}),
-            'phone': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: 3001234567'}),
-            'is_delivery': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-            'is_staff': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-            'is_superuser': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-            'groups': forms.SelectMultiple(attrs={'class': 'form-control', 'size': 5}),
+            'username': forms.TextInput(),
+            'first_name': forms.TextInput(),
+            'last_name': forms.TextInput(),
+            'email': forms.EmailInput(),
+            'phone': forms.TextInput(attrs={'placeholder': 'Ej: 3001234567'}),
+            'is_delivery': forms.CheckboxInput(),
+            'is_active': forms.CheckboxInput(),
+            'is_staff': forms.CheckboxInput(),
+            'is_superuser': forms.CheckboxInput(),
+            'groups': forms.SelectMultiple(attrs={'size': 5}),
         }
     
     def __init__(self, *args, **kwargs):
@@ -216,20 +217,20 @@ class UserUpdateForm(BaseUserChangeForm):
         return user
 
 
-class UserChangePasswordForm(forms.Form):
+class UserChangePasswordForm(FormStyleMixin, forms.Form):
     """
     Formulario específico para cambiar contraseña de usuario.
     """
     
     password1 = forms.CharField(
         label='Nueva contraseña',
-        widget=forms.PasswordInput(attrs={'class': 'form-control'}),
+        widget=forms.PasswordInput(),
         required=True,
         min_length=8,
     )
     password2 = forms.CharField(
         label='Confirmar contraseña',
-        widget=forms.PasswordInput(attrs={'class': 'form-control'}),
+        widget=forms.PasswordInput(),
         required=True,
     )
     
@@ -279,7 +280,7 @@ class UserChangePasswordForm(forms.Form):
         return self.user
 
 
-class UserDeleteForm(forms.Form):
+class UserDeleteForm(FormStyleMixin, forms.Form):
     """
     Formulario para desactivar usuario (soft delete equivalente).
     Django no tiene soft delete built-in, usamos is_active=False.
@@ -288,7 +289,7 @@ class UserDeleteForm(forms.Form):
     confirm = forms.CharField(
         required=True,
         label='Escribe el nombre de usuario para confirmar',
-        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: juan.perez'})
+        widget=forms.TextInput(attrs={'placeholder': 'Ej: juan.perez'})
     )
     reassign_content = forms.BooleanField(
         required=False,
@@ -319,7 +320,7 @@ class UserDeleteForm(forms.Form):
         return value
 
 
-class UserRestoreForm(forms.Form):
+class UserRestoreForm(FormStyleMixin, forms.Form):
     """
     Formulario para restaurar usuario (reactivar is_active).
     """
@@ -364,7 +365,7 @@ class UserRestoreForm(forms.Form):
 
 # ========== GROUP (ROLE) FORMS ==========
 
-class GroupCreateForm(forms.ModelForm):
+class GroupCreateForm(FormStyleMixin, forms.ModelForm):
     """
     Formulario para crear grupos/roles.
     """
@@ -373,7 +374,7 @@ class GroupCreateForm(forms.ModelForm):
         model = Group
         fields = ['name']
         widgets = {
-            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'name': forms.TextInput(),
         }
     
     def clean_name(self):
@@ -385,7 +386,7 @@ class GroupCreateForm(forms.ModelForm):
         return name
 
 
-class GroupUpdateForm(forms.ModelForm):
+class GroupUpdateForm(FormStyleMixin, forms.ModelForm):
     """
     Formulario para actualizar grupos/roles.
     """
@@ -394,7 +395,7 @@ class GroupUpdateForm(forms.ModelForm):
         model = Group
         fields = ['name']
         widgets = {
-            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'name': forms.TextInput(),
         }
     
     def __init__(self, *args, **kwargs):
@@ -419,7 +420,7 @@ class GroupUpdateForm(forms.ModelForm):
         return name
 
 
-class GroupDeleteForm(forms.Form):
+class GroupDeleteForm(FormStyleMixin, forms.Form):
     """
     Formulario para eliminar grupos/roles.
     """
@@ -427,7 +428,7 @@ class GroupDeleteForm(forms.Form):
     confirm = forms.CharField(
         required=True,
         label='Escribe el nombre del rol para confirmar',
-        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Editores'})
+        widget=forms.TextInput(attrs={'placeholder': 'Ej: Editores'})
     )
     
     def __init__(self, *args, **kwargs):
@@ -461,7 +462,7 @@ class GroupDeleteForm(forms.Form):
 
 # ========== PROFILE FORMS (para que los usuarios editen su propio perfil) ==========
 
-class UserProfileForm(forms.ModelForm):
+class UserProfileForm(FormStyleMixin, forms.ModelForm):
     """
     Formulario para que los usuarios editen su propio perfil.
     Campos limitados por seguridad.
@@ -471,10 +472,10 @@ class UserProfileForm(forms.ModelForm):
         model = User
         fields = ['first_name', 'last_name', 'email', 'phone']
         widgets = {
-            'first_name': forms.TextInput(attrs={'class': 'form-control'}),
-            'last_name': forms.TextInput(attrs={'class': 'form-control'}),
-            'email': forms.EmailInput(attrs={'class': 'form-control'}),
-            'phone': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: 3001234567'}),
+            'first_name': forms.TextInput(),
+            'last_name': forms.TextInput(),
+            'email': forms.EmailInput(),
+            'phone': forms.TextInput(attrs={'placeholder': 'Ej: 3001234567'}),
         }
     
     def __init__(self, *args, **kwargs):
@@ -521,7 +522,7 @@ class UserProfileForm(forms.ModelForm):
         return email
 
 
-class UserPasswordChangeForm(forms.Form):
+class UserPasswordChangeForm(FormStyleMixin, forms.Form):
     """
     Formulario para que los usuarios cambien su propia contraseña.
     Requiere contraseña actual.
@@ -529,18 +530,18 @@ class UserPasswordChangeForm(forms.Form):
     
     current_password = forms.CharField(
         label='Contraseña actual',
-        widget=forms.PasswordInput(attrs={'class': 'form-control'}),
+        widget=forms.PasswordInput(),
         required=True,
     )
     new_password1 = forms.CharField(
         label='Nueva contraseña',
-        widget=forms.PasswordInput(attrs={'class': 'form-control'}),
+        widget=forms.PasswordInput(),
         required=True,
         min_length=8,
     )
     new_password2 = forms.CharField(
         label='Confirmar nueva contraseña',
-        widget=forms.PasswordInput(attrs={'class': 'form-control'}),
+        widget=forms.PasswordInput(),
         required=True,
     )
     
@@ -598,7 +599,7 @@ class UserPasswordChangeForm(forms.Form):
 
 # ========== DELIVERY USER FORMS (versiones simplificadas para PWA) ==========
 
-class DeliveryUserProfileForm(forms.ModelForm):
+class DeliveryUserProfileForm(FormStyleMixin, forms.ModelForm):
     """
     Formulario simplificado para que los repartidores actualicen su perfil.
     """
@@ -607,7 +608,7 @@ class DeliveryUserProfileForm(forms.ModelForm):
         model = User
         fields = ['phone']
         widgets = {
-            'phone': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: 3001234567'}),
+            'phone': forms.TextInput(attrs={'placeholder': 'Ej: 3001234567'}),
         }
     
     def clean_phone(self):

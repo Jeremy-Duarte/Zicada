@@ -5,19 +5,20 @@ from .models import (
     Size, Category, Color, Product, ProductVariant, 
     Collection, ProductColor, ProductImage
 )
-
+from apps.core.crud.mixins import FormStyleMixin, SortableCreateMixin, SortableUpdateMixin
+from apps.core.crud.widgets import CloudinaryImageSelectWidget, CloudinaryFeaturedImageWidget, SortableOrderWidget
 
 # ========== FORMULARIOS PARA CATÁLOGOS ESTÁTICOS ==========
 
-class SizeCreateForm(forms.ModelForm):
+class SizeCreateForm(FormStyleMixin, SortableCreateMixin ,forms.ModelForm):
     """Formulario para crear tallas"""
     
     class Meta:
         model = Size
         fields = ['name', 'sort_order']
         widgets = {
-            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: XS, S, M, L, XL'}),
-            'sort_order': forms.NumberInput(attrs={'class': 'form-control', 'min': 0}),
+            'name': forms.TextInput(attrs={'placeholder': 'Ej: XS, S, M, L, XL'}),
+            'sort_order': forms.NumberInput(attrs={'min': 0}),
         }
     
     def clean_name(self):
@@ -27,17 +28,25 @@ class SizeCreateForm(forms.ModelForm):
         return name
 
 
-class SizeUpdateForm(forms.ModelForm):
+class SizeUpdateForm(FormStyleMixin, SortableUpdateMixin, forms.ModelForm):
     """Formulario para actualizar tallas"""
-    
     class Meta:
         model = Size
-        fields = ['name', 'sort_order']
+        fields = ['name']
         widgets = {
-            'name': forms.TextInput(attrs={'class': 'form-control'}),
-            'sort_order': forms.NumberInput(attrs={'class': 'form-control', 'min': 0}),
+            'name': forms.TextInput(),
         }
-    
+
+    sortable_queryset = None
+    sortable_label_attr = 'name'
+    sortable_widget_name = 'size_order'
+    sortable_widget_label = 'Orden de tallas'
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.sortable_queryset = Size.objects.filter().order_by('sort_order')
+        self._setup_sortable_widget()
+
     def clean_name(self):
         name = self.cleaned_data.get('name', '').upper().strip()
         qs = Size.objects.filter(name=name)
@@ -51,13 +60,13 @@ class SizeUpdateForm(forms.ModelForm):
         return name
 
 
-class SizeDeleteForm(forms.Form):
+class SizeDeleteForm(FormStyleMixin, forms.Form):
     """Formulario para eliminar talla (con verificación de uso)"""
     
     confirm = forms.CharField(
         required=True,
         label='Escribe el nombre de la talla para confirmar',
-        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: M'})
+        widget=forms.TextInput(attrs={'placeholder': 'Ej: M'})
     )
     
     def __init__(self, *args, **kwargs):
@@ -85,15 +94,14 @@ class SizeDeleteForm(forms.Form):
 
 # ========== CATEGORY FORMS ==========
 
-class CategoryCreateForm(forms.ModelForm):
+class CategoryCreateForm(FormStyleMixin, SortableCreateMixin ,forms.ModelForm):
     """Formulario para crear categorías (slug automático por el modelo)"""
     
     class Meta:
         model = Category
-        fields = ['name', 'sort_order']
+        fields = ['name']
         widgets = {
-            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Camisetas, Hoodies'}),
-            'sort_order': forms.NumberInput(attrs={'class': 'form-control', 'min': 0}),
+            'name': forms.TextInput(attrs={'placeholder': 'Ej: Camisetas, Hoodies'}),
         }
     
     def clean_name(self):
@@ -105,15 +113,24 @@ class CategoryCreateForm(forms.ModelForm):
         return name
 
 
-class CategoryUpdateForm(forms.ModelForm):
+class CategoryUpdateForm(FormStyleMixin, SortableUpdateMixin, forms.ModelForm):
     class Meta:
         model = Category
-        fields = ['name', 'sort_order']
+        fields = ['name']
         widgets = {
-            'name': forms.TextInput(attrs={'class': 'form-control'}),
-            'sort_order': forms.NumberInput(attrs={'class': 'form-control', 'min': 0}),
+            'name': forms.TextInput(),
         }
-    
+
+    sortable_queryset = None
+    sortable_label_attr = 'name'
+    sortable_widget_name = 'category_order'
+    sortable_widget_label = 'Orden de categorías'
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.sortable_queryset = Category.objects.filter().order_by('sort_order')
+        self._setup_sortable_widget()
+
     def clean_name(self):
         name = self.cleaned_data.get('name', '').strip()
         qs = Category.objects.filter(name__iexact=name)
@@ -136,13 +153,13 @@ class CategoryUpdateForm(forms.ModelForm):
         return instance
 
 
-class CategoryDeleteForm(forms.Form):
+class CategoryDeleteForm(FormStyleMixin, forms.Form):
     """Formulario para eliminar categoría (con verificación de productos)"""
     
     confirm = forms.CharField(
         required=True,
         label='Escribe el nombre de la categoría para confirmar',
-        widget=forms.TextInput(attrs={'class': 'form-control'})
+        widget=forms.TextInput()
     )
     
     def __init__(self, *args, **kwargs):
@@ -171,16 +188,15 @@ class CategoryDeleteForm(forms.Form):
 
 # ========== COLOR FORMS (Catálogo) ==========
 
-class ColorCreateForm(forms.ModelForm):
+class ColorCreateForm(FormStyleMixin, SortableCreateMixin ,forms.ModelForm):
     """Formulario para crear colores"""
     
     class Meta:
         model = Color
-        fields = ['name', 'code', 'sort_order']
+        fields = ['name', 'code']
         widgets = {
-            'name': forms.TextInput(attrs={'class': 'form-control'}),
-            'code': forms.TextInput(attrs={'class': 'form-control', 'type': 'color', 'style': 'height: 40px;'}),
-            'sort_order': forms.NumberInput(attrs={'class': 'form-control', 'min': 0}),
+            'name': forms.TextInput(),
+            'code': forms.TextInput(attrs={'type': 'color', 'style': 'height: 40px;'}),
         }
     
     def clean_name(self):
@@ -205,18 +221,25 @@ class ColorCreateForm(forms.ModelForm):
         return code
 
 
-class ColorUpdateForm(forms.ModelForm):
-    """Formulario para actualizar colores"""
-    
+class ColorUpdateForm(FormStyleMixin, SortableUpdateMixin, forms.ModelForm):
     class Meta:
         model = Color
-        fields = ['name', 'code', 'sort_order']
+        fields = ['name', 'code']
         widgets = {
-            'name': forms.TextInput(attrs={'class': 'form-control'}),
-            'code': forms.TextInput(attrs={'class': 'form-control', 'type': 'color', 'style': 'height: 40px;'}),
-            'sort_order': forms.NumberInput(attrs={'class': 'form-control', 'min': 0}),
+            'name': forms.TextInput(),
+            'code': forms.TextInput(attrs={'type': 'color', 'style': 'height: 40px;'}),
         }
-    
+
+    sortable_queryset = None
+    sortable_label_attr = 'name'
+    sortable_widget_name = 'color_order'
+    sortable_widget_label = 'Orden de colores'
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.sortable_queryset = Color.objects.filter().order_by('sort_order')
+        self._setup_sortable_widget()
+
     def clean_name(self):
         name = self.cleaned_data.get('name', '').strip().capitalize()
         qs = Color.objects.filter(name__iexact=name)
@@ -249,13 +272,13 @@ class ColorUpdateForm(forms.ModelForm):
         return code
 
 
-class ColorDeleteForm(forms.Form):
+class ColorDeleteForm(FormStyleMixin, forms.Form):
     """Formulario para eliminar color (con verificación de uso)"""
     
     confirm = forms.CharField(
         required=True,
         label='Escribe el nombre del color para confirmar',
-        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Rojo'})
+        widget=forms.TextInput(attrs={'placeholder': 'Ej: Rojo'})
     )
     
     def __init__(self, *args, **kwargs):
@@ -279,17 +302,19 @@ class ColorDeleteForm(forms.Form):
             )
         
         return value
+
+
 # ========== PRODUCT IMAGE FORMS ==========
 
-class ProductImageCreateForm(forms.ModelForm):
+class ProductImageCreateForm(FormStyleMixin, forms.ModelForm):
     """Formulario para subir imágenes de productos"""
     
     class Meta:
         model = ProductImage
         fields = ['image', 'alt_text']
         widgets = {
-            'image': forms.ClearableFileInput(attrs={'class': 'form-control', 'accept': 'image/*'}),
-            'alt_text': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Descripción de la imagen para SEO'}),
+            'image': forms.ClearableFileInput(attrs={'accept': 'image/*'}),
+            'alt_text': forms.TextInput(attrs={'placeholder': 'Descripción de la imagen para SEO'}),
         }
     
     def clean_image(self):
@@ -309,18 +334,18 @@ class ProductImageCreateForm(forms.ModelForm):
         return image
 
 
-class ProductImageUpdateForm(forms.ModelForm):
+class ProductImageUpdateForm(FormStyleMixin, forms.ModelForm):
     """Formulario para actualizar metadatos de imagen"""
     
     class Meta:
         model = ProductImage
         fields = ['alt_text']
         widgets = {
-            'alt_text': forms.TextInput(attrs={'class': 'form-control'}),
+            'alt_text': forms.TextInput(),
         }
 
 
-class ProductImageDeleteForm(forms.Form):
+class ProductImageDeleteForm(FormStyleMixin, forms.Form):
     """Formulario para eliminar imagen"""
     
     confirm = forms.BooleanField(
@@ -347,18 +372,18 @@ class ProductImageDeleteForm(forms.Form):
 
 # ========== PRODUCT FORMS ==========
 
-class ProductCreateForm(forms.ModelForm):
+class ProductCreateForm(FormStyleMixin, forms.ModelForm):
     """Formulario para crear productos"""
     
     class Meta:
         model = Product
         fields = ['name', 'description', 'price', 'product_type', 'category']
         widgets = {
-            'name': forms.TextInput(attrs={'class': 'form-control'}),
-            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 4}),
-            'price': forms.NumberInput(attrs={'class': 'form-control', 'min': 0, 'step': 100}),
-            'product_type': forms.Select(attrs={'class': 'form-control'}),
-            'category': forms.Select(attrs={'class': 'form-control'}),
+            'name': forms.TextInput(),
+            'description': forms.Textarea(attrs={'rows': 4}),
+            'price': forms.NumberInput(attrs={'min': 0, 'step': 100}),
+            'product_type': forms.Select(),
+            'category': forms.Select(),
         }
     
     def clean_name(self):
@@ -381,19 +406,19 @@ class ProductCreateForm(forms.ModelForm):
         return price
 
 
-class ProductUpdateForm(forms.ModelForm):
+class ProductUpdateForm(FormStyleMixin, forms.ModelForm):
     """Formulario para actualizar productos"""
     
     class Meta:
         model = Product
         fields = ['name', 'description', 'price', 'product_type', 'category', 'is_active']
         widgets = {
-            'name': forms.TextInput(attrs={'class': 'form-control'}),
-            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 4}),
-            'price': forms.NumberInput(attrs={'class': 'form-control', 'min': 0, 'step': 100}),
-            'product_type': forms.Select(attrs={'class': 'form-control'}),
-            'category': forms.Select(attrs={'class': 'form-control'}),
-            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'name': forms.TextInput(),
+            'description': forms.Textarea(attrs={'rows': 4}),
+            'price': forms.NumberInput(attrs={'min': 0, 'step': 100}),
+            'product_type': forms.Select(),
+            'category': forms.Select(),
+            'is_active': forms.CheckboxInput(),
         }
     
     def clean_name(self):
@@ -420,13 +445,13 @@ class ProductUpdateForm(forms.ModelForm):
         return price
 
 
-class ProductDeleteForm(forms.Form):
+class ProductDeleteForm(FormStyleMixin, forms.Form):
     """Formulario para soft-delete de producto"""
     
     confirm = forms.CharField(
         required=True,
         label='Escribe el nombre del producto para confirmar',
-        widget=forms.TextInput(attrs={'class': 'form-control'})
+        widget=forms.TextInput()
     )
     
     def __init__(self, *args, **kwargs):
@@ -456,7 +481,7 @@ class ProductDeleteForm(forms.Form):
         return value
 
 
-class ProductRestoreForm(forms.Form):
+class ProductRestoreForm(FormStyleMixin, forms.Form):
     """Formulario para restaurar producto (soft-delete)"""
     
     confirm = forms.BooleanField(
@@ -487,17 +512,16 @@ class ProductRestoreForm(forms.Form):
 
 # ========== PRODUCT COLOR FORMS ==========
 
-class ProductColorCreateForm(forms.ModelForm):
+class ProductColorCreateForm(FormStyleMixin, SortableCreateMixin ,forms.ModelForm):
     """Formulario para asignar colores a un producto"""
     
     class Meta:
         model = ProductColor
-        fields = ['color', 'images', 'featured_image', 'sort_order']
+        fields = ['color', 'images', 'featured_image']
         widgets = {
-            'color': forms.Select(attrs={'class': 'form-control'}),
-            'images': forms.SelectMultiple(attrs={'class': 'form-control', 'size': 5}),
-            'featured_image': forms.Select(attrs={'class': 'form-control'}),
-            'sort_order': forms.NumberInput(attrs={'class': 'form-control', 'min': 0}),
+            'color': forms.Select(),
+            'images': CloudinaryImageSelectWidget(),
+            'featured_image': CloudinaryFeaturedImageWidget(images_widget_name='images'),
         }
     
     def __init__(self, *args, **kwargs):
@@ -528,45 +552,50 @@ class ProductColorCreateForm(forms.ModelForm):
         return cleaned_data
 
 
-class ProductColorUpdateForm(forms.ModelForm):
-    """Formulario para actualizar colores de producto"""
-    
+class ProductColorUpdateForm(FormStyleMixin, SortableUpdateMixin, forms.ModelForm):
     class Meta:
         model = ProductColor
-        fields = ['images', 'featured_image', 'sort_order', 'is_active']
+        fields = ['images', 'featured_image', 'is_active']
         widgets = {
-            'images': forms.SelectMultiple(attrs={'class': 'form-control', 'size': 5}),
-            'featured_image': forms.Select(attrs={'class': 'form-control'}),
-            'sort_order': forms.NumberInput(attrs={'class': 'form-control', 'min': 0}),
-            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'images': CloudinaryImageSelectWidget(),
+            'featured_image': CloudinaryFeaturedImageWidget(images_widget_name='images'),
+            'is_active': forms.CheckboxInput(),
         }
-    
+
+    sortable_queryset = None
+    sortable_label_attr = lambda self, pc: pc.color.name
+    sortable_filter_field = 'product'
+    sortable_widget_name = 'color_order'
+    sortable_widget_label = 'Orden de colores'
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        
+
         if self.instance and self.instance.pk:
             self.fields['featured_image'].queryset = ProductImage.objects.all()
             self.fields['images'].queryset = ProductImage.objects.all()
-    
+            
+            self.sortable_queryset = ProductColor.objects.filter(
+                product=self.instance.product,
+                is_active=True
+            ).order_by('sort_order').select_related('color')
+            self._setup_sortable_widget()
+
     def clean(self):
         cleaned_data = super().clean()
-        
         featured_image = cleaned_data.get('featured_image')
         images = cleaned_data.get('images', [])
-        
         if featured_image and featured_image not in images:
             raise ValidationError('La imagen destacada debe estar seleccionada en la lista de imágenes.')
-        
         return cleaned_data
 
-
-class ProductColorDeleteForm(forms.Form):
+class ProductColorDeleteForm(FormStyleMixin, forms.Form):
     """Formulario para eliminar color de producto"""
     
     confirm = forms.CharField(
         required=True,
         label='Escribe el nombre del color para confirmar',
-        widget=forms.TextInput(attrs={'class': 'form-control'})
+        widget=forms.TextInput()
     )
     
     def __init__(self, *args, **kwargs):
@@ -595,16 +624,16 @@ class ProductColorDeleteForm(forms.Form):
 
 # ========== PRODUCT VARIANT FORMS ==========
 
-class ProductVariantCreateForm(forms.ModelForm):
+class ProductVariantCreateForm(FormStyleMixin, forms.ModelForm):
     """Formulario para crear variantes de producto"""
     
     class Meta:
         model = ProductVariant
         fields = ['product_color', 'size', 'stock']
         widgets = {
-            'product_color': forms.Select(attrs={'class': 'form-control'}),
-            'size': forms.Select(attrs={'class': 'form-control'}),
-            'stock': forms.NumberInput(attrs={'class': 'form-control', 'min': 0}),
+            'product_color': forms.Select(),
+            'size': forms.Select(),
+            'stock': forms.NumberInput(attrs={'min': 0}),
         }
     
     def __init__(self, *args, **kwargs):
@@ -638,15 +667,15 @@ class ProductVariantCreateForm(forms.ModelForm):
         return cleaned_data
 
 
-class ProductVariantUpdateForm(forms.ModelForm):
+class ProductVariantUpdateForm(FormStyleMixin, forms.ModelForm):
     """Formulario para actualizar variantes"""
     
     class Meta:
         model = ProductVariant
         fields = ['stock', 'is_active']
         widgets = {
-            'stock': forms.NumberInput(attrs={'class': 'form-control', 'min': 0}),
-            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'stock': forms.NumberInput(attrs={'min': 0}),
+            'is_active': forms.CheckboxInput(),
         }
     
     def __init__(self, *args, **kwargs):
@@ -662,13 +691,13 @@ class ProductVariantUpdateForm(forms.ModelForm):
         return new_stock
 
 
-class ProductVariantDeleteForm(forms.Form):
+class ProductVariantDeleteForm(FormStyleMixin, forms.Form):
     """Formulario para soft-delete de variante"""
     
     confirm = forms.CharField(
         required=True,
         label='Escribe "ELIMINAR" para confirmar',
-        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ELIMINAR'})
+        widget=forms.TextInput(attrs={'placeholder': 'ELIMINAR'})
     )
     
     def __init__(self, *args, **kwargs):
@@ -697,7 +726,7 @@ class ProductVariantDeleteForm(forms.Form):
         return value
 
 
-class ProductVariantRestoreForm(forms.Form):
+class ProductVariantRestoreForm(FormStyleMixin, forms.Form):
     """Formulario para restaurar variante"""
     
     confirm = forms.BooleanField(
@@ -733,7 +762,7 @@ class ProductVariantRestoreForm(forms.Form):
 
 # ========== COLLECTION FORMS ==========
 
-class CollectionCreateForm(forms.ModelForm):
+class CollectionCreateForm(FormStyleMixin, forms.ModelForm):
     """Formulario para crear colecciones"""
     
     class Meta:
@@ -745,19 +774,19 @@ class CollectionCreateForm(forms.ModelForm):
             'title_font', 'products', 'slug'
         ]
         widgets = {
-            'name': forms.TextInput(attrs={'class': 'form-control'}),
-            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 4}),
-            'status': forms.Select(attrs={'class': 'form-control'}),
-            'start_date': forms.DateTimeInput(attrs={'class': 'form-control', 'type': 'datetime-local'}),
-            'end_date': forms.DateTimeInput(attrs={'class': 'form-control', 'type': 'datetime-local'}),
-            'cover_image': forms.ClearableFileInput(attrs={'class': 'form-control'}),
-            'primary_color': forms.TextInput(attrs={'class': 'form-control', 'type': 'color', 'style': 'height: 40px;'}),
-            'secondary_color': forms.TextInput(attrs={'class': 'form-control', 'type': 'color', 'style': 'height: 40px;'}),
-            'background_color': forms.TextInput(attrs={'class': 'form-control', 'type': 'color', 'style': 'height: 40px;'}),
-            'text_color': forms.TextInput(attrs={'class': 'form-control', 'type': 'color', 'style': 'height: 40px;'}),
-            'background_image': forms.ClearableFileInput(attrs={'class': 'form-control'}),
-            'title_font': forms.TextInput(attrs={'class': 'form-control', 'placeholder': "'Inter', sans-serif"}),
-            'products': forms.SelectMultiple(attrs={'class': 'form-control', 'size': 10}),
+            'name': forms.TextInput(),
+            'description': forms.Textarea(attrs={'rows': 4}),
+            'status': forms.Select(),
+            'start_date': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
+            'end_date': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
+            'cover_image': forms.ClearableFileInput(),
+            'primary_color': forms.TextInput(attrs={'type': 'color', 'style': 'height: 40px;'}),
+            'secondary_color': forms.TextInput(attrs={'type': 'color', 'style': 'height: 40px;'}),
+            'background_color': forms.TextInput(attrs={'type': 'color', 'style': 'height: 40px;'}),
+            'text_color': forms.TextInput(attrs={'type': 'color', 'style': 'height: 40px;'}),
+            'background_image': forms.ClearableFileInput(),
+            'title_font': forms.TextInput(attrs={"placeholder": "'Inter', sans-serif"}),
+            'products': forms.SelectMultiple(attrs={'size': 10}),
         }
     
     def __init__(self, *args, **kwargs):
@@ -794,7 +823,7 @@ class CollectionCreateForm(forms.ModelForm):
         return cleaned_data
 
 
-class CollectionUpdateForm(forms.ModelForm):
+class CollectionUpdateForm(FormStyleMixin, forms.ModelForm):
     """Formulario para actualizar colecciones"""
     
     class Meta:
@@ -806,20 +835,20 @@ class CollectionUpdateForm(forms.ModelForm):
             'title_font', 'products', 'is_active', 'slug'
         ]
         widgets = {
-            'name': forms.TextInput(attrs={'class': 'form-control'}),
-            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 4}),
-            'status': forms.Select(attrs={'class': 'form-control'}),
-            'start_date': forms.DateTimeInput(attrs={'class': 'form-control', 'type': 'datetime-local'}),
-            'end_date': forms.DateTimeInput(attrs={'class': 'form-control', 'type': 'datetime-local'}),
-            'cover_image': forms.ClearableFileInput(attrs={'class': 'form-control'}),
-            'primary_color': forms.TextInput(attrs={'class': 'form-control', 'type': 'color', 'style': 'height: 40px;'}),
-            'secondary_color': forms.TextInput(attrs={'class': 'form-control', 'type': 'color', 'style': 'height: 40px;'}),
-            'background_color': forms.TextInput(attrs={'class': 'form-control', 'type': 'color', 'style': 'height: 40px;'}),
-            'text_color': forms.TextInput(attrs={'class': 'form-control', 'type': 'color', 'style': 'height: 40px;'}),
-            'background_image': forms.ClearableFileInput(attrs={'class': 'form-control'}),
-            'title_font': forms.TextInput(attrs={'class': 'form-control'}),
-            'products': forms.SelectMultiple(attrs={'class': 'form-control', 'size': 10}),
-            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'name': forms.TextInput(),
+            'description': forms.Textarea(attrs={'rows': 4}),
+            'status': forms.Select(),
+            'start_date': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
+            'end_date': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
+            'cover_image': forms.ClearableFileInput(),
+            'primary_color': forms.TextInput(attrs={'type': 'color', 'style': 'height: 40px;'}),
+            'secondary_color': forms.TextInput(attrs={'type': 'color', 'style': 'height: 40px;'}),
+            'background_color': forms.TextInput(attrs={'type': 'color', 'style': 'height: 40px;'}),
+            'text_color': forms.TextInput(attrs={'type': 'color', 'style': 'height: 40px;'}),
+            'background_image': forms.ClearableFileInput(),
+            'title_font': forms.TextInput(),
+            'products': forms.SelectMultiple(attrs={'size': 10}),
+            'is_active': forms.CheckboxInput(),
         }
     
     def __init__(self, *args, **kwargs):
@@ -875,13 +904,13 @@ class CollectionUpdateForm(forms.ModelForm):
         return cleaned_data
 
 
-class CollectionDeleteForm(forms.Form):
+class CollectionDeleteForm(FormStyleMixin, forms.Form):
     """Formulario para soft-delete de colección"""
     
     confirm = forms.CharField(
         required=True,
         label='Escribe el nombre de la colección para confirmar',
-        widget=forms.TextInput(attrs={'class': 'form-control'})
+        widget=forms.TextInput()
     )
     
     def __init__(self, *args, **kwargs):
@@ -900,7 +929,7 @@ class CollectionDeleteForm(forms.Form):
         return value
 
 
-class CollectionRestoreForm(forms.Form):
+class CollectionRestoreForm(FormStyleMixin, forms.Form):
     """Formulario para restaurar colección"""
     
     confirm = forms.BooleanField(

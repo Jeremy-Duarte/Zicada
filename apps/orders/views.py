@@ -419,7 +419,7 @@ def checkout(request):
     return render(request, TEMPLATE_CHECKOUT, context)
 
 
-@require_POST
+@require_http_methods(['GET', 'POST'])
 def create_stripe_checkout_session(request):
     """Create Stripe checkout session and redirect to payment."""
     stripe = get_stripe()
@@ -583,6 +583,7 @@ def order_tracking(request, tracking_token):
 # =============================================================================
 
 @require_POST
+@csrf_exempt
 def stripe_webhook(request):
     """Handle Stripe webhook events."""
     import stripe

@@ -7,8 +7,9 @@ from .constants import (
     FREE_SHIPPING_THRESHOLD,
     MAX_QUANTITY_PER_ITEM
 )
+from apps.core.crud.mixins import FormStyleMixin
 
-class CheckoutOrderForm(forms.Form):
+class CheckoutOrderForm(FormStyleMixin, forms.Form):
     # Formulario para la creación de un pedido en el checkout.
     
     # Nombre completo
@@ -18,7 +19,6 @@ class CheckoutOrderForm(forms.Form):
         required=True,
         label='Nombre completo',
         widget=forms.TextInput(attrs={
-            'class': 'w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-zicada-accent focus:outline-none transition',
             'placeholder': 'Ej: María Gómez Rodríguez',
             'id': 'customer_name'
         }),
@@ -35,7 +35,6 @@ class CheckoutOrderForm(forms.Form):
         required=True,
         label='Teléfono',
         widget=forms.TextInput(attrs={
-            'class': 'w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-zicada-accent focus:outline-none transition',
             'placeholder': 'Ej: 3001234567',
             'id': 'customer_phone'
         }),
@@ -49,7 +48,6 @@ class CheckoutOrderForm(forms.Form):
         required=False,
         label='Correo electrónico',
         widget=forms.EmailInput(attrs={
-            'class': 'w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-zicada-accent focus:outline-none transition',
             'placeholder': 'Ej: maria@correo.com',
             'id': 'customer_email'
         }),
@@ -64,7 +62,6 @@ class CheckoutOrderForm(forms.Form):
         label='Dirección de envío',
         min_length=5,
         widget=forms.Textarea(attrs={
-            'class': 'w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-zicada-accent focus:outline-none transition resize-none',
             'rows': 3,
             'placeholder': 'Calle, número, barrio, ciudad, referencia',
             'id': 'shipping_address'
@@ -79,7 +76,6 @@ class CheckoutOrderForm(forms.Form):
         required=False,
         label='Notas adicionales',
         widget=forms.Textarea(attrs={
-            'class': 'w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-zicada-accent focus:outline-none transition resize-none',
             'rows': 2,
             'placeholder': 'Ej: Dejar con el portero, llamar antes de llegar...',
             'id': 'delivery_notes'
@@ -95,7 +91,7 @@ class CheckoutOrderForm(forms.Form):
         return digits
 
 
-class OrderCreateForm(forms.ModelForm):
+class OrderCreateForm(FormStyleMixin, forms.ModelForm):
     """
     Formulario para crear pedidos manuales desde backoffice.
     Estos pedidos se crean en estado 'pendiente' y requieren pago o marcado manual.
@@ -113,8 +109,8 @@ class OrderCreateForm(forms.ModelForm):
             'is_paid',
         ]
         widgets = {
-            'shipping_address': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
-            'delivery_notes': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
+            'shipping_address': forms.Textarea(attrs={'rows': 3}),
+            'delivery_notes': forms.Textarea(attrs={'rows': 2}),
         }
     
     def __init__(self, *args, **kwargs):
@@ -142,7 +138,7 @@ class OrderCreateForm(forms.ModelForm):
         return cost
 
 
-class OrderUpdateForm(forms.ModelForm):
+class OrderUpdateForm(FormStyleMixin, forms.ModelForm):
     """
     Formulario para actualizar pedidos existentes desde backoffice.
     Respeta la máquina de estados.
@@ -162,9 +158,9 @@ class OrderUpdateForm(forms.ModelForm):
             'assigned_delivery_user',
         ]
         widgets = {
-            'shipping_address': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
-            'delivery_notes': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
-            'status': forms.Select(attrs={'class': 'form-control'}),
+            'shipping_address': forms.Textarea(attrs={'rows': 3}),
+            'delivery_notes': forms.Textarea(attrs={'rows': 2}),
+            'status': forms.Select(),
         }
     
     def __init__(self, *args, **kwargs):
@@ -227,7 +223,7 @@ class OrderUpdateForm(forms.ModelForm):
         return new_cost
 
 
-class OrderConfirmForm(forms.Form):
+class OrderConfirmForm(FormStyleMixin, forms.Form):
     """
     Formulario específico para confirmar un pedido manualmente (sin Stripe).
     Esto ejecuta la misma lógica que confirm() del modelo + reduce stock.
@@ -275,11 +271,11 @@ class OrderConfirmForm(forms.Form):
         return cleaned_data
 
 
-class OrderCancelForm(forms.Form):
+class OrderCancelForm(FormStyleMixin, forms.Form):
     """Formulario específico para cancelar pedidos (libera stock si estaba confirmado)"""
     
     reason = forms.CharField(
-        widget=forms.Textarea(attrs={'rows': 3, 'placeholder': 'Ej: Cliente solicitó cancelación, producto agotado, error en dirección...', 'class': 'form-control'}),
+        widget=forms.Textarea(attrs={'rows': 3, 'placeholder': 'Ej: Cliente solicitó cancelación, producto agotado, error en dirección...'}),
         label='Motivo de cancelación',
         required=True,
         max_length=500
@@ -319,7 +315,7 @@ class OrderCancelForm(forms.Form):
         return cleaned_data
 
 
-class OrderChangeStatusForm(forms.Form):
+class OrderChangeStatusForm(FormStyleMixin, forms.Form):
     """
     Formulario para cambios rápidos de estado (con validación de transiciones).
     Útil para botones de acción en el panel de administración.
@@ -328,11 +324,11 @@ class OrderChangeStatusForm(forms.Form):
     new_status = forms.ChoiceField(
         choices=[],
         label='Nuevo estado',
-        widget=forms.Select(attrs={'class': 'form-control'})
+        widget=forms.Select()
     )
     notes = forms.CharField(
         required=False,
-        widget=forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
+        widget=forms.Textarea(attrs={'rows': 2}),
         label='Notas (opcional)',
         help_text='Notas internas sobre este cambio de estado'
     )
@@ -368,14 +364,14 @@ class OrderChangeStatusForm(forms.Form):
         return new_status
 
 
-class OrderAssignDeliveryForm(forms.Form):
+class OrderAssignDeliveryForm(FormStyleMixin, forms.Form):
     """Formulario para asignar repartidor desde backoffice"""
     
     delivery_user = forms.ModelChoiceField(
         queryset=None,
         label='Repartidor asignado',
         required=True,
-        widget=forms.Select(attrs={'class': 'form-control'})
+        widget=forms.Select()
     )
     confirm = forms.BooleanField(
         required=True,
@@ -419,7 +415,7 @@ class OrderAssignDeliveryForm(forms.Form):
         return cleaned_data
 
 
-class OrderMarkAsDeliveredForm(forms.Form):
+class OrderMarkAsDeliveredForm(FormStyleMixin, forms.Form):
     """Formulario para marcar pedido como entregado"""
     
     confirm = forms.BooleanField(
@@ -429,7 +425,7 @@ class OrderMarkAsDeliveredForm(forms.Form):
     )
     delivery_evidence = forms.CharField(
         required=False,
-        widget=forms.Textarea(attrs={'rows': 2, 'class': 'form-control', 'placeholder': 'Ej: Recibido por [nombre], firma digital, etc.'}),
+        widget=forms.Textarea(attrs={'rows': 2, 'placeholder': 'Ej: Recibido por [nombre], firma digital, etc.'}),
         label='Evidencia o comentario de entrega',
         help_text='Opcional: información sobre la entrega'
     )
@@ -459,7 +455,8 @@ class OrderMarkAsDeliveredForm(forms.Form):
         
         return cleaned_data
 
-class OrderPaymentForm(forms.Form):
+
+class OrderPaymentForm(FormStyleMixin, forms.Form):
     """
     Formulario para generar un link de pago Stripe para pedidos pendientes.
     Útil para pedidos creados manualmente en backoffice que requieren pago en línea.
@@ -481,7 +478,7 @@ class OrderPaymentForm(forms.Form):
     
     notify_notes = forms.CharField(
         required=False,
-        widget=forms.Textarea(attrs={'rows': 2, 'class': 'form-control', 'placeholder': 'Notas adicionales para el cliente...'}),
+        widget=forms.Textarea(attrs={'rows': 2, 'placeholder': 'Notas adicionales para el cliente...'}),
         label='Notas para el cliente (opcional)',
         help_text='Estas notas se incluirán en el mensaje al cliente.'
     )
@@ -524,15 +521,15 @@ class OrderPaymentForm(forms.Form):
         return cleaned_data
 
 
-class OrderItemCreateForm(forms.ModelForm):
+class OrderItemCreateForm(FormStyleMixin, forms.ModelForm):
     """Formulario para agregar items a un pedido existente"""
     
     class Meta:
         model = OrderItem
         fields = ['variant', 'quantity']
         widgets = {
-            'variant': forms.Select(attrs={'class': 'form-control'}),
-            'quantity': forms.NumberInput(attrs={'class': 'form-control', 'min': 1, 'max': MAX_QUANTITY_PER_ITEM}),
+            'variant': forms.Select(),
+            'quantity': forms.NumberInput(attrs={'min': 1, 'max': MAX_QUANTITY_PER_ITEM}),
         }
     
     def __init__(self, *args, **kwargs):
@@ -590,14 +587,14 @@ class OrderItemCreateForm(forms.ModelForm):
         return instance
 
 
-class OrderItemUpdateForm(forms.ModelForm):
+class OrderItemUpdateForm(FormStyleMixin, forms.ModelForm):
     """Formulario para actualizar cantidad de un item"""
     
     class Meta:
         model = OrderItem
         fields = ['quantity']
         widgets = {
-            'quantity': forms.NumberInput(attrs={'class': 'form-control', 'min': 1, 'max': MAX_QUANTITY_PER_ITEM}),
+            'quantity': forms.NumberInput(attrs={'min': 1, 'max': MAX_QUANTITY_PER_ITEM}),
         }
     
     def __init__(self, *args, **kwargs):
@@ -636,14 +633,14 @@ class OrderItemUpdateForm(forms.ModelForm):
         return cleaned_data
 
 
-class OrderItemDeleteForm(forms.Form):
+class OrderItemDeleteForm(FormStyleMixin, forms.Form):
     """Formulario para eliminar un item del pedido"""
     
     confirm = forms.CharField(
         required=True,
         label='Escribe "ELIMINAR" para confirmar la eliminación del producto',
         help_text='Esto liberará el stock asociado al producto si el pedido ya estaba confirmado.',
-        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ELIMINAR'})
+        widget=forms.TextInput(attrs={'placeholder': 'ELIMINAR'})
     )
     
     def __init__(self, *args, **kwargs):

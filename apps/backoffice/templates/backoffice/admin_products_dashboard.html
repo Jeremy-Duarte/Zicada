@@ -31,6 +31,13 @@
         {% include 'backoffice/components/widgets/stat_card_big.html' with value=stats.total_variantes label="Variantes activas" value_color="zicada-accent" ring_color="zicada-accent" icon="palette" icon_bg="zicada-accent" stats_list=stock_stats_list description="Total de combinaciones talla-color disponibles"%}
     </div>
 
+    <div class="mt-2">
+        <h2 class="text-lg font-semibold text-gray-700 mb-4 flex items-center gap-2">
+            <i class="fas fa-bolt text-zicada-accent"></i> Acceso rápido
+        </h2>
+        {% include 'backoffice/components/widgets/action_buttons_small.html' with buttons=quick_access_buttons %}
+    </div>
+
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {% include 'backoffice/components/widgets/recent_list.html' with title="Productos recientes" items=recent_products view_all_url=urls.products_list %}
         {% include 'backoffice/components/widgets/recent_list.html' with title="Stock bajo" items=low_stock_products view_all_url=urls.stock_bajo %}
