@@ -2,7 +2,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.utils import timezone
-from django.urls import reverse_lazy
+from django.urls import reverse, reverse_lazy
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView, TemplateView, FormView
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.utils.safestring import mark_safe
@@ -853,7 +853,6 @@ class ProductCreateView(PermissionRequiredMixin, CreateView):
     form_class = ProductCreateForm
     template_name = TEMPLATE_PRODUCT_FORM
     permission_required = 'products.add_product'
-    success_url = reverse_lazy(URL_PRODUCT_LIST)
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -861,6 +860,9 @@ class ProductCreateView(PermissionRequiredMixin, CreateView):
         context[CONTEXT_IS_CREATE] = True
         return context
     
+    def get_success_url(self):
+        return reverse(URL_PRODUCT_EDIT, kwargs={'pk': self.object.pk})
+
     def form_valid(self, form):
         response = super().form_valid(form)
         messages.success(self.request, MSG_PRODUCT_CREATED.format(name=form.instance.name))
