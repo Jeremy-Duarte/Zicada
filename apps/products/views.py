@@ -179,10 +179,6 @@ FILTER_IS_ACTIVE = 'is_active'
 # Query Parameters
 QUERY_PARAM_CATEGORY = 'category'
 
-# HTTP Method Names
-HTTP_METHOD_GET = 'GET'
-HTTP_METHOD_POST = 'POST'
-
 # Success Messages
 MSG_SIZE_CREATED = 'Talla "{name}" creada exitosamente.'
 MSG_SIZE_UPDATED = 'Talla "{name}" actualizada exitosamente.'
@@ -949,10 +945,6 @@ class ProductRestoreView(PermissionRequiredMixin, TemplateView):
         context[CONTEXT_OBJECT_DISPLAY] = product.name
         return context
     
-    @require_http_methods([HTTP_METHOD_GET, HTTP_METHOD_POST])
-    def dispatch(self, request, *args, **kwargs):
-        return super().dispatch(request, *args, **kwargs)
-    
     def post(self, request, *args, **kwargs):
         product = self.get_object()
         form = self.get_form()
@@ -1003,10 +995,6 @@ class ProductColorCreateView(PermissionRequiredMixin, CreateView):
     permission_required = 'products.add_productcolor'
     success_url = reverse_lazy(URL_PRODUCT_LIST)
     
-    def dispatch(self, request, *args, **kwargs):
-        self.product = get_object_or_404(Product, pk=kwargs['product_pk'])
-        return super().dispatch(request, *args, **kwargs)
-    
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         kwargs[CONTEXT_PRODUCT] = self.product
@@ -1039,10 +1027,6 @@ class ProductColorUpdateView(PermissionRequiredMixin, UpdateView):
         context[CONTEXT_CANCEL_ARGS] = [self.object.product.pk]
         context[CONTEXT_TITLE] = f'Editar Color - {self.object.color.name}'
         return context
-    
-    @require_http_methods([HTTP_METHOD_GET, HTTP_METHOD_POST])
-    def dispatch(self, request, *args, **kwargs):
-        return super().dispatch(request, *args, **kwargs)
     
     def form_valid(self, form):
         messages.success(self.request, MSG_PRODUCT_COLOR_UPDATED.format(name=self.object.color.name))
@@ -1098,10 +1082,6 @@ class ProductVariantCreateView(PermissionRequiredMixin, CreateView):
     permission_required = 'products.add_productvariant'
     success_url = reverse_lazy(URL_PRODUCT_LIST)
     
-    def dispatch(self, request, *args, **kwargs):
-        self.product = get_object_or_404(Product, pk=kwargs['product_pk'])
-        return super().dispatch(request, *args, **kwargs)
-    
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         kwargs[CONTEXT_PRODUCT] = self.product
@@ -1142,10 +1122,6 @@ class ProductVariantUpdateView(PermissionRequiredMixin, UpdateView):
         context[CONTEXT_CANCEL_ARGS] = [self.object.product.pk]
         context[CONTEXT_TITLE] = f'Editar Variante - {self.object.product_color.color.name} / {self.object.size.name}'
         return context
-    
-    @require_http_methods([HTTP_METHOD_GET, HTTP_METHOD_POST])
-    def dispatch(self, request, *args, **kwargs):
-        return super().dispatch(request, *args, **kwargs)
     
     def form_valid(self, form):
         messages.success(self.request, MSG_VARIANT_UPDATED)
@@ -1195,10 +1171,6 @@ class ProductVariantRestoreView(PermissionRequiredMixin, FormView):
     template_name = TEMPLATE_PRODUCTVARIANT_RESTORE
     permission_required = 'products.change_productvariant'
     
-    def dispatch(self, request, *args, **kwargs):
-        self.variant = get_object_or_404(ProductVariant.all_objects, pk=kwargs['pk'], is_active=False)
-        return super().dispatch(request, *args, **kwargs)
-    
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         kwargs['variant'] = self.variant
@@ -1212,10 +1184,6 @@ class ProductVariantRestoreView(PermissionRequiredMixin, FormView):
         context[CONTEXT_CANCEL_URL] = URL_PRODUCT_EDIT
         context[CONTEXT_CANCEL_ARGS] = [self.variant.product.pk]
         return context
-    
-    @require_http_methods([HTTP_METHOD_GET, HTTP_METHOD_POST])
-    def dispatch(self, request, *args, **kwargs):
-        return super().dispatch(request, *args, **kwargs)
     
     def form_valid(self, form):
         self.variant.restore(user=self.request.user)
@@ -1233,10 +1201,6 @@ class ProductVariantTrashcanView(PermissionRequiredMixin, ListView):
     template_name = TEMPLATE_PRODUCTVARIANT_TRASHCAN
     context_object_name = CONTEXT_VARIANTS
     permission_required = 'products.view_productvariant'
-    
-    def dispatch(self, request, *args, **kwargs):
-        self.product = get_object_or_404(Product, pk=kwargs['product_pk'])
-        return super().dispatch(request, *args, **kwargs)
     
     def get_queryset(self):
         return ProductVariant.all_objects.filter(
