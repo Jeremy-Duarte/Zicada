@@ -1,7 +1,10 @@
+import json
+
 from django import forms
 from django.forms import widgets
 from django.urls import reverse
 from django.utils.safestring import mark_safe
+from django.utils.html import escape
 from apps.products.models import ProductImage
 
 
@@ -151,3 +154,63 @@ class CloudinaryFeaturedImageWidget(widgets.Select):
     
     class Media:
         js = ('js/core/cloudinary-featured-widget.js',)
+
+class SortableOrderWidget(forms.Widget):
+    def __init__(self, queryset=None, item_label=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.queryset = queryset
+        self.item_label = item_label
+
+    def render(self, name, value, attrs=None, renderer=None):
+        # Si no hay queryset, mostrar un mensaje de error
+        if self.queryset is None:
+            return '<p class="text-red-500">Error: No se proporcionaron elementos para ordenar</p>'
+        
+        # Generar el JSON con los IDs en orden
+        ids = [str(item.pk) for item in self.queryset]
+        initial_value = json.dumps(ids)
+        
+        final_attrs = self.build_attrs(attrs, {
+            'name': name,
+            'type': 'hidden',
+            'class': 'sortable-order-input'
+        })
+        attrs_str = ' '.join(f'{k}="{escape(str(v))}"' for k, v in final_attrs.items())
+        input_html = f'<input value=\'{escape(initial_value)}\' {attrs_str}>'
+        sortable_html = self._render_sortable_list()
+
+        return mark_safe(f'''
+            <div class="sortable-order-widget">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Orden</label>
+                {input_html}
+                {sortable_html}
+                <p class="text-xs text-gray-400 mt-2">Arrastra para reordenar</p>
+            </div>
+        ''')
+
+    def _render_sortable_list(self):
+        items_html = []
+        for idx, item in enumerate(self.queryset):
+            label = self._get_item_label(item)
+            label = escape(str(label))
+            items_html.append(f'''
+                <li data-id="{item.pk}" data-order="{idx}"
+                    class="sortable-item flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-move">
+                    <div class="flex items-center gap-3">
+                        <i class="fas fa-grip-vertical"></i>
+                        <span>{label}</span>
+                    </div>
+                    <span class="text-xs">Orden: {idx}</span>
+                </li>
+            ''')
+        return f'<ul class="sortable-list space-y-2">{"" .join(items_html)}</ul>'
+
+    def _get_item_label(self, item):
+        if callable(self.item_label):
+            return self.item_label(item)
+        elif isinstance(self.item_label, str):
+            return getattr(item, self.item_label, str(item))
+        return str(item)
+
+    class Media:
+        js = ('js/core/sortable-widget.js',)
