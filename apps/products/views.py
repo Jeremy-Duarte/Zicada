@@ -995,6 +995,10 @@ class ProductColorCreateView(PermissionRequiredMixin, CreateView):
     permission_required = 'products.add_productcolor'
     success_url = reverse_lazy(URL_PRODUCT_LIST)
     
+    def dispatch(self, request, *args, **kwargs):
+        self.product = get_object_or_404(Product, pk=kwargs['product_pk'])
+        return super().dispatch(request, *args, **kwargs)
+    
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         kwargs[CONTEXT_PRODUCT] = self.product
@@ -1081,6 +1085,10 @@ class ProductVariantCreateView(PermissionRequiredMixin, CreateView):
     template_name = TEMPLATE_PRODUCTVARIANT_FORM
     permission_required = 'products.add_productvariant'
     success_url = reverse_lazy(URL_PRODUCT_LIST)
+    
+    def dispatch(self, request, *args, **kwargs):
+        self.product = get_object_or_404(Product, pk=kwargs['product_pk'])
+        return super().dispatch(request, *args, **kwargs)
     
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
@@ -1170,6 +1178,10 @@ class ProductVariantRestoreView(PermissionRequiredMixin, FormView):
     form_class = ProductVariantRestoreForm
     template_name = TEMPLATE_PRODUCTVARIANT_RESTORE
     permission_required = 'products.change_productvariant'
+
+    def dispatch(self, request, *args, **kwargs):
+        self.variant = get_object_or_404(ProductVariant.all_objects, pk=kwargs['pk'], is_active=False)
+        return super().dispatch(request, *args, **kwargs)
     
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
@@ -1201,6 +1213,10 @@ class ProductVariantTrashcanView(PermissionRequiredMixin, ListView):
     template_name = TEMPLATE_PRODUCTVARIANT_TRASHCAN
     context_object_name = CONTEXT_VARIANTS
     permission_required = 'products.view_productvariant'
+
+    def dispatch(self, request, *args, **kwargs):
+        self.product = get_object_or_404(Product, pk=kwargs['product_pk'])
+        return super().dispatch(request, *args, **kwargs)
     
     def get_queryset(self):
         return ProductVariant.all_objects.filter(
