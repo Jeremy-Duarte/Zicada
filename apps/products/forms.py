@@ -5,12 +5,12 @@ from .models import (
     Size, Category, Color, Product, ProductVariant, 
     Collection, ProductColor, ProductImage
 )
-from apps.core.crud.mixins import FormStyleMixin
-from apps.core.crud.widgets import CloudinaryImageSelectWidget, CloudinaryFeaturedImageWidget
+from apps.core.crud.mixins import FormStyleMixin, SortableCreateMixin, SortableUpdateMixin
+from apps.core.crud.widgets import CloudinaryImageSelectWidget, CloudinaryFeaturedImageWidget, SortableOrderWidget
 
 # ========== FORMULARIOS PARA CATÁLOGOS ESTÁTICOS ==========
 
-class SizeCreateForm(FormStyleMixin, forms.ModelForm):
+class SizeCreateForm(FormStyleMixin, SortableCreateMixin ,forms.ModelForm):
     """Formulario para crear tallas"""
     
     class Meta:
@@ -28,17 +28,25 @@ class SizeCreateForm(FormStyleMixin, forms.ModelForm):
         return name
 
 
-class SizeUpdateForm(FormStyleMixin, forms.ModelForm):
+class SizeUpdateForm(FormStyleMixin, SortableUpdateMixin, forms.ModelForm):
     """Formulario para actualizar tallas"""
-    
     class Meta:
         model = Size
-        fields = ['name', 'sort_order']
+        fields = ['name']
         widgets = {
             'name': forms.TextInput(),
-            'sort_order': forms.NumberInput(attrs={'min': 0}),
         }
-    
+
+    sortable_queryset = None
+    sortable_label_attr = 'name'
+    sortable_widget_name = 'size_order'
+    sortable_widget_label = 'Orden de tallas'
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.sortable_queryset = Size.objects.filter().order_by('sort_order')
+        self._setup_sortable_widget()
+
     def clean_name(self):
         name = self.cleaned_data.get('name', '').upper().strip()
         qs = Size.objects.filter(name=name)
@@ -86,15 +94,14 @@ class SizeDeleteForm(FormStyleMixin, forms.Form):
 
 # ========== CATEGORY FORMS ==========
 
-class CategoryCreateForm(FormStyleMixin, forms.ModelForm):
+class CategoryCreateForm(FormStyleMixin, SortableCreateMixin ,forms.ModelForm):
     """Formulario para crear categorías (slug automático por el modelo)"""
     
     class Meta:
         model = Category
-        fields = ['name', 'sort_order']
+        fields = ['name']
         widgets = {
             'name': forms.TextInput(attrs={'placeholder': 'Ej: Camisetas, Hoodies'}),
-            'sort_order': forms.NumberInput(attrs={'min': 0}),
         }
     
     def clean_name(self):
@@ -106,15 +113,24 @@ class CategoryCreateForm(FormStyleMixin, forms.ModelForm):
         return name
 
 
-class CategoryUpdateForm(FormStyleMixin, forms.ModelForm):
+class CategoryUpdateForm(FormStyleMixin, SortableUpdateMixin, forms.ModelForm):
     class Meta:
         model = Category
-        fields = ['name', 'sort_order']
+        fields = ['name']
         widgets = {
             'name': forms.TextInput(),
-            'sort_order': forms.NumberInput(attrs={'min': 0}),
         }
-    
+
+    sortable_queryset = None
+    sortable_label_attr = 'name'
+    sortable_widget_name = 'category_order'
+    sortable_widget_label = 'Orden de categorías'
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.sortable_queryset = Category.objects.filter().order_by('sort_order')
+        self._setup_sortable_widget()
+
     def clean_name(self):
         name = self.cleaned_data.get('name', '').strip()
         qs = Category.objects.filter(name__iexact=name)
@@ -172,16 +188,15 @@ class CategoryDeleteForm(FormStyleMixin, forms.Form):
 
 # ========== COLOR FORMS (Catálogo) ==========
 
-class ColorCreateForm(FormStyleMixin, forms.ModelForm):
+class ColorCreateForm(FormStyleMixin, SortableCreateMixin ,forms.ModelForm):
     """Formulario para crear colores"""
     
     class Meta:
         model = Color
-        fields = ['name', 'code', 'sort_order']
+        fields = ['name', 'code']
         widgets = {
             'name': forms.TextInput(),
             'code': forms.TextInput(attrs={'type': 'color', 'style': 'height: 40px;'}),
-            'sort_order': forms.NumberInput(attrs={'min': 0}),
         }
     
     def clean_name(self):
@@ -206,18 +221,25 @@ class ColorCreateForm(FormStyleMixin, forms.ModelForm):
         return code
 
 
-class ColorUpdateForm(FormStyleMixin, forms.ModelForm):
-    """Formulario para actualizar colores"""
-    
+class ColorUpdateForm(FormStyleMixin, SortableUpdateMixin, forms.ModelForm):
     class Meta:
         model = Color
-        fields = ['name', 'code', 'sort_order']
+        fields = ['name', 'code']
         widgets = {
             'name': forms.TextInput(),
             'code': forms.TextInput(attrs={'type': 'color', 'style': 'height: 40px;'}),
-            'sort_order': forms.NumberInput(attrs={'min': 0}),
         }
-    
+
+    sortable_queryset = None
+    sortable_label_attr = 'name'
+    sortable_widget_name = 'color_order'
+    sortable_widget_label = 'Orden de colores'
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.sortable_queryset = Color.objects.filter().order_by('sort_order')
+        self._setup_sortable_widget()
+
     def clean_name(self):
         name = self.cleaned_data.get('name', '').strip().capitalize()
         qs = Color.objects.filter(name__iexact=name)
@@ -490,17 +512,16 @@ class ProductRestoreForm(FormStyleMixin, forms.Form):
 
 # ========== PRODUCT COLOR FORMS ==========
 
-class ProductColorCreateForm(FormStyleMixin, forms.ModelForm):
+class ProductColorCreateForm(FormStyleMixin, SortableCreateMixin ,forms.ModelForm):
     """Formulario para asignar colores a un producto"""
     
     class Meta:
         model = ProductColor
-        fields = ['color', 'images', 'featured_image', 'sort_order']
+        fields = ['color', 'images', 'featured_image']
         widgets = {
             'color': forms.Select(),
             'images': CloudinaryImageSelectWidget(),
             'featured_image': CloudinaryFeaturedImageWidget(images_widget_name='images'),
-            'sort_order': forms.NumberInput(attrs={'min': 0}),
         }
     
     def __init__(self, *args, **kwargs):
@@ -531,37 +552,42 @@ class ProductColorCreateForm(FormStyleMixin, forms.ModelForm):
         return cleaned_data
 
 
-class ProductColorUpdateForm(FormStyleMixin, forms.ModelForm):
-    """Formulario para actualizar colores de producto"""
-    
+class ProductColorUpdateForm(FormStyleMixin, SortableUpdateMixin, forms.ModelForm):
     class Meta:
         model = ProductColor
-        fields = ['images', 'featured_image', 'sort_order', 'is_active']
+        fields = ['images', 'featured_image', 'is_active']
         widgets = {
             'images': CloudinaryImageSelectWidget(),
             'featured_image': CloudinaryFeaturedImageWidget(images_widget_name='images'),
-            'sort_order': forms.NumberInput(attrs={'min': 0}),
             'is_active': forms.CheckboxInput(),
         }
-    
+
+    sortable_queryset = None
+    sortable_label_attr = lambda self, pc: pc.color.name
+    sortable_filter_field = 'product'
+    sortable_widget_name = 'color_order'
+    sortable_widget_label = 'Orden de colores'
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        
+
         if self.instance and self.instance.pk:
             self.fields['featured_image'].queryset = ProductImage.objects.all()
             self.fields['images'].queryset = ProductImage.objects.all()
-    
+            
+            self.sortable_queryset = ProductColor.objects.filter(
+                product=self.instance.product,
+                is_active=True
+            ).order_by('sort_order').select_related('color')
+            self._setup_sortable_widget()
+
     def clean(self):
         cleaned_data = super().clean()
-        
         featured_image = cleaned_data.get('featured_image')
         images = cleaned_data.get('images', [])
-        
         if featured_image and featured_image not in images:
             raise ValidationError('La imagen destacada debe estar seleccionada en la lista de imágenes.')
-        
         return cleaned_data
-
 
 class ProductColorDeleteForm(FormStyleMixin, forms.Form):
     """Formulario para eliminar color de producto"""

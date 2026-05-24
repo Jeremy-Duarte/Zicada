@@ -10,7 +10,7 @@ from django.views.decorators.http import require_GET, require_POST, require_http
 from django.views.decorators.csrf import csrf_exempt
 import json
 
-from apps.core.crud.mixins import PaginationMixin, FilterMixin
+from apps.core.crud.mixins import PaginationMixin, FilterMixin, SortableDeleteMixin
 from .models import Product, ProductVariant, ProductColor, ProductImage, Collection, Category, Size, Color
 from .forms import (
     SizeCreateForm, SizeDeleteForm, SizeUpdateForm,
@@ -461,7 +461,7 @@ class SizeUpdateView(PermissionRequiredMixin, UpdateView):
         return super().form_valid(form)
 
 
-class SizeDeleteView(PermissionRequiredMixin, DeleteView):
+class SizeDeleteView(PermissionRequiredMixin, SortableDeleteMixin ,DeleteView):
     model = Size
     form_class = SizeDeleteForm
     template_name = TEMPLATE_SIZE_CONFIRM_DELETE
@@ -642,7 +642,7 @@ class ColorUpdateView(PermissionRequiredMixin, UpdateView):
         return super().form_valid(form)
 
 
-class ColorDeleteView(PermissionRequiredMixin, DeleteView):
+class ColorDeleteView(PermissionRequiredMixin, SortableDeleteMixin ,DeleteView):
     model = Color
     form_class = ColorDeleteForm
     template_name = TEMPLATE_COLOR_CONFIRM_DELETE
@@ -1041,7 +1041,7 @@ class ProductColorUpdateView(PermissionRequiredMixin, UpdateView):
         return redirect(URL_PRODUCT_EDIT, pk=self.object.product.pk)
 
 
-class ProductColorDeleteView(PermissionRequiredMixin, DeleteView):
+class ProductColorDeleteView(PermissionRequiredMixin, SortableDeleteMixin , DeleteView):
     model = ProductColor
     form_class = ProductColorDeleteForm
     template_name = TEMPLATE_PRODUCTCOLOR_CONFIRM_DELETE
