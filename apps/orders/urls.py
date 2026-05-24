@@ -13,6 +13,8 @@ admin_patterns = [
     path('<int:pk>/asignar-repartidor/', views.OrderAssignDeliveryView.as_view(), name='order_assign_delivery'),
     path('<int:pk>/marcar-entregado/', views.OrderMarkAsDeliveredView.as_view(), name='order_mark_delivered'),
     path('<int:order_pk>/items/crear/', views.OrderItemCreateView.as_view(), name='orderitem_create'),
+    path('<int:pk>/marcar-preparando/', views.OrderMarkPreparingView.as_view(), name='order_mark_preparing'),
+    path('<int:pk>/marcar-listo/', views.OrderMarkReadyView.as_view(), name='order_mark_ready'),
     path('items/<int:pk>/editar/', views.OrderItemUpdateView.as_view(), name='orderitem_edit'),
     path('items/<int:pk>/eliminar/', views.OrderItemDeleteView.as_view(), name='orderitem_delete'),
 ]

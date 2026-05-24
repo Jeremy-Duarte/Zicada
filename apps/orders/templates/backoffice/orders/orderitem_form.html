@@ -1,7 +1,22 @@
-{% extends "backoffice/layouts/backoffice_base.html" %} {% load static %} {% block title %}Producto en pedido - Zicada{% endblock %} {% block content %}
-<div class="max-w-md mx-auto">
-    <div class="bg-white rounded-xl shadow-sm p-6"><h1 class="text-xl font-bold text-gray-800 mb-6">{{ title|default:"Producto en pedido" }}</h1>
-    <p class="text-sm text-gray-500 mb-4">Pedido: <strong>{{ order.order_number }}</strong></p>
-    {% include 'backoffice/components/crud/form_fields.html' with form=form cancel_url="orders:order_detail" cancel_args=order.pk submit_label="Guardar" %}</div>
+{% extends "backoffice/layouts/backoffice_base.html" %}
+{% load static %}
+
+{% block title %}Agregar producto al pedido {{ order.order_number }} - Zicada{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <div class="bg-white rounded-xl shadow-sm p-6">
+        <h1 class="text-2xl font-bold text-gray-800 mb-2">
+            Agregar producto al pedido {{ order.order_number }}
+        </h1>
+        <p class="text-gray-500 text-sm mb-6">
+            Selecciona un producto y la cantidad
+        </p>
+        
+        <form method="post">
+            {% csrf_token %}
+            {% include 'backoffice/components/crud/form_fields.html' with form=form cancel_url=cancel_url cancel_args=cancel_args submit_label="Agregar producto" %}
+        </form>
+    </div>
 </div>
 {% endblock %}

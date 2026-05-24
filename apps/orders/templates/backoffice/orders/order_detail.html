@@ -74,24 +74,56 @@
     <!-- Botones de acción según estado -->
     <div class="flex flex-wrap gap-3 pt-4">
         {% if order.status == 'pendiente' %}
-        <a href="{% url 'orders:order_confirm' order.pk %}" class="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg transition">✅ Confirmar pedido</a>
-        <a href="{% url 'orders:order_cancel' order.pk %}" class="bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded-lg transition">❌ Cancelar pedido</a>
+            <a href="{% url 'orders:order_confirm' order.pk %}" 
+            class="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg transition flex items-center gap-2">
+                <i class="fas fa-check-circle"></i> Confirmar pedido
+            </a>
+            <a href="{% url 'orders:order_cancel' order.pk %}" 
+            class="bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded-lg transition flex items-center gap-2">
+                <i class="fas fa-times-circle"></i> Cancelar pedido
+            </a>
         {% endif %}
+
         {% if order.status == 'confirmado' %}
-        <a href="{% url 'orders:order_edit' order.pk %}?next=preparando" class="bg-purple-600 hover:bg-purple-700 text-white px-5 py-2 rounded-lg transition">🔨 Marcar en preparación</a>
+            <form method="post" action="{% url 'orders:order_mark_preparing' order.pk %}" class="inline">
+                {% csrf_token %}
+                <button type="submit" class="bg-purple-600 hover:bg-purple-700 text-white px-5 py-2 rounded-lg transition flex items-center gap-2">
+                    <i class="fas fa-tools"></i> Marcar en preparación
+                </button>
+            </form>
         {% endif %}
+
         {% if order.status == 'preparando' %}
-        <a href="{% url 'orders:order_edit' order.pk %}?next=listo" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-lg transition">📦 Marcar listo</a>
+            <form method="post" action="{% url 'orders:order_mark_ready' order.pk %}" class="inline">
+                {% csrf_token %}
+                <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-lg transition flex items-center gap-2">
+                    <i class="fas fa-box"></i> Marcar listo
+                </button>
+            </form>
         {% endif %}
+
         {% if order.status == 'listo' %}
-        <a href="{% url 'orders:order_assign_delivery' order.pk %}" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg transition">🚚 Asignar repartidor</a>
+            <a href="{% url 'orders:order_assign_delivery' order.pk %}" 
+            class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg transition flex items-center gap-2">
+                <i class="fas fa-truck"></i> Asignar repartidor
+            </a>
         {% endif %}
+
         {% if order.status == 'en_camino' %}
-        <a href="{% url 'orders:order_mark_delivered' order.pk %}" class="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg transition">🏠 Marcar entregado</a>
-        <a href="{% url 'orders:order_cancel' order.pk %}" class="bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded-lg transition">❌ Cancelar pedido</a>
+            <a href="{% url 'orders:order_mark_delivered' order.pk %}" 
+            class="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg transition flex items-center gap-2">
+                <i class="fas fa-home"></i> Marcar entregado
+            </a>
+            <a href="{% url 'orders:order_cancel' order.pk %}" 
+            class="bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded-lg transition flex items-center gap-2">
+                <i class="fas fa-times-circle"></i> Cancelar pedido
+            </a>
         {% endif %}
+
         {% if order.status == 'cancelado' and order.cancelled_reason %}
-        <div class="bg-red-50 text-red-700 p-3 rounded-lg text-sm">Motivo de cancelación: {{ order.cancelled_reason }}</div>
+            <div class="bg-red-50 text-red-700 p-3 rounded-lg text-sm flex items-center gap-2">
+                <i class="fas fa-info-circle"></i> Motivo de cancelación: {{ order.cancelled_reason }}
+            </div>
         {% endif %}
     </div>
 </div>
