@@ -108,26 +108,24 @@ class CloudinaryImageSelectWidget(widgets.SelectMultiple):
 class CloudinaryFeaturedImageWidget(widgets.Select):
     """
     Widget para seleccionar imagen destacada.
-    Muestra SOLO las imágenes seleccionadas en el widget 'images'.
+    Muestra SOLO las imágenes seleccionidas en el widget 'images'.
     Selección única, con radio buttons.
     """
 
     def __init__(self, images_widget_name='images', *args, **kwargs):
-        # images_widget_name: nombre del campo del widget de imágenes múltiplesal que este widget debe suscribirse.
         super().__init__(*args, **kwargs)
         self.images_widget_name = images_widget_name
 
     def render(self, name, value, attrs=None, renderer=None):
         final_attrs = self.build_attrs(attrs, {'name': name, 'class': 'hidden'})
         
-        # Generar el select oculto (sin opciones, JS las llenará)
-        select_html = f'<select {" ".join([f"{k}=\"{v}\"" for k, v in final_attrs.items()])}><option value="">---------</option></select>'
+        select_html = self._render_hidden_select(name, value, final_attrs)
         
-        # Contenedor vacío para el grid (JS lo llenará dinámicamente)
         return mark_safe(f'''
             <div class="cloudinary-featured-widget" 
                  data-widget-name="{name}"
-                 data-images-widget-name="{self.images_widget_name}">
+                 data-images-widget-name="{self.images_widget_name}"
+                 data-initial-value="{value or ''}">
                 {select_html}
                 <div class="featured-images-grid grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 mt-3">
                     <div class="col-span-full text-center py-8 text-gray-400">
@@ -141,6 +139,15 @@ class CloudinaryFeaturedImageWidget(widgets.Select):
                 </p>
             </div>
         ''')
+    
+    def _render_hidden_select(self, name, value, attrs):
+        options = ['<option value="">---------</option>']
+        # Si hay un valor inicial, creamos una opción seleccionada
+        if value:
+            options.append(f'<option value="{value}" selected>{value}</option>')
+        
+        select_attrs = ' '.join([f'{k}="{v}"' for k, v in attrs.items()])
+        return f'<select {select_attrs} multiple>{"" .join(options)}</select>'
     
     class Media:
         js = ('js/core/cloudinary-featured-widget.js',)

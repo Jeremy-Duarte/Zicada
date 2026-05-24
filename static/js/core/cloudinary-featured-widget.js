@@ -9,14 +9,19 @@
             this.gridContainer = widgetElement.querySelector('.featured-images-grid');
             this.imagesWidgetName = widgetElement.dataset.imagesWidgetName;
             this.imagesWidget = null;
-            this.currentSelectedId = null;
+            this.currentSelectedId = widgetElement.dataset.initialValue || '';
             this.radioButtons = [];
             this.init();
         }
 
         init() {
             if (!this.hiddenSelect || !this.gridContainer) return;
-            this.currentSelectedId = this.hiddenSelect.value;
+            console.log('Initial currentSelectedId:', this.currentSelectedId);
+            
+            if (this.currentSelectedId) {
+                this.hiddenSelect.value = this.currentSelectedId;
+            }
+            
             this.findImagesWidget();
             if (this.imagesWidget) {
                 this.attachImageWidgetObserver();
@@ -79,7 +84,7 @@
 
         renderGrid(images) {
             if (!this.gridContainer) return;
-            
+
             if (images.length === 0) {
                 this.gridContainer.innerHTML = `
                     <div class="col-span-full text-center py-8 text-gray-400">
@@ -95,7 +100,9 @@
             const selectName = this.hiddenSelect.name;
             
             images.forEach(img => {
-                const isSelected = this.currentSelectedId === img.id;
+                const isSelected = String(this.currentSelectedId) === String(img.id);
+                console.log(`Image ${img.id}: isSelected = ${isSelected}, currentSelectedId = ${this.currentSelectedId}`);
+                
                 gridItems.push(`
                     <label class="relative cursor-pointer group" data-image-id="${img.id}">
                         <input type="radio" name="${selectName}" value="${img.id}" ${isSelected ? 'checked' : ''}
