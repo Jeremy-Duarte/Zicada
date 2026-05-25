@@ -15,7 +15,7 @@ from .reports.report_forms import ReportForm
 from .reports.financial import FinancialReport
 from .reports.orders import OrdersReport
 from .reports.products import ProductsReport
-#from .reports.delivery import DeliveryReport
+from .reports.delivery import DeliveryReport
 
 # =============================================================================
 # CONSTANTS
@@ -997,7 +997,7 @@ def report_generator(request):
             reports = {
                 'financial': FinancialReport,
                 'products': ProductsReport,
-                #'delivery': DeliveryReport,
+                'delivery': DeliveryReport,
                 'orders': OrdersReport,
             }
             

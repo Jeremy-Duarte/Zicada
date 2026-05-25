@@ -1,11 +1,13 @@
 from datetime import date, timedelta
 from typing import List, Tuple, Dict, Any
-from django.db.models import Count, Sum, Q
+from django.db.models import Max, Min, Sum, Count, Q, F, Avg
 from django.utils import timezone
 from apps.orders.models import Order, OrderItem
 from apps.products.models import Product, ProductVariant, Category, Color, Size
 from apps.users.models import User
+from django.contrib.auth import get_user_model
 
+User = get_user_model()
 
 # =============================================================================
 # CONSTANTES (copiadas localmente para evitar dependencias circulares)
@@ -512,3 +514,170 @@ def get_stock_movement_summary(date_start: date, date_end: date) -> Dict[str, An
         'revenue': float(revenue),
         'avg_price_per_unit': float(revenue / units_sold) if units_sold > 0 else 0,
     }
+
+# =============================================================================
+# DELIVERY METRICS (parametrizadas por rango de fechas)
+# =============================================================================
+
+def get_delivery_stats_in_range(date_start: date, date_end: date) -> Dict[str, Any]:
+    """Get delivery user statistics within date range."""
+    total_deliveries = User.objects.filter(is_delivery=True).count()
+    active_deliveries = User.objects.filter(is_delivery=True, is_active=True).count()
+    inactive_deliveries = User.objects.filter(is_delivery=True, is_active=False).count()
+    
+    # Entregadores que hicieron entregas en el período
+    deliveries_with_activity = Order.objects.filter(
+        status='entregado',
+        assigned_delivery_user__isnull=False,
+        updated_at__date__gte=date_start,
+        updated_at__date__lte=date_end
+    ).values('assigned_delivery_user').distinct().count()
+    
+    return {
+        'total_deliveries': total_deliveries,
+        'active_deliveries': active_deliveries,
+        'inactive_deliveries': inactive_deliveries,
+        'deliveries_with_activity': deliveries_with_activity,
+        'inactive_deliveries_no_activity': active_deliveries - deliveries_with_activity,
+    }
+
+
+def get_delivery_performance_in_range(
+    date_start: date, date_end: date, limit: int = 10
+) -> List[Dict[str, Any]]:
+    """Get delivery performance metrics for each delivery user."""
+    # Obtener entregas por entregador en el período
+    deliveries = Order.objects.filter(
+        status='entregado',
+        assigned_delivery_user__isnull=False,
+        updated_at__date__gte=date_start,
+        updated_at__date__lte=date_end
+    ).values(
+        'assigned_delivery_user__id',
+        'assigned_delivery_user__username',
+        'assigned_delivery_user__first_name',
+        'assigned_delivery_user__last_name',
+        'assigned_delivery_user__phone',
+        'assigned_delivery_user__email',
+    ).annotate(
+        total_deliveries=Count('id'),
+        total_revenue=Sum('total_amount'),
+        avg_order_value=Avg('total_amount'),
+        first_delivery=Min('updated_at'),
+        last_delivery=Max('updated_at'),
+    ).order_by('-total_deliveries')[:limit]
+    
+    result = []
+    for d in deliveries:
+        user_id = d['assigned_delivery_user__id']
+        total_deliveries = d['total_deliveries']
+        total_revenue = float(d['total_revenue'] or 0)
+        
+        # Calcular entregas por día (promedio)
+        if d['first_delivery'] and d['last_delivery']:
+            days_active = (d['last_delivery'].date() - d['first_delivery'].date()).days + 1
+            deliveries_per_day = total_deliveries / days_active if days_active > 0 else total_deliveries
+        else:
+            deliveries_per_day = total_deliveries
+        
+        result.append({
+            'id': user_id,
+            'name': f"{d['assigned_delivery_user__first_name']} {d['assigned_delivery_user__last_name']}".strip() or d['assigned_delivery_user__username'],
+            'username': d['assigned_delivery_user__username'],
+            'phone': d['assigned_delivery_user__phone'] or '—',
+            'email': d['assigned_delivery_user__email'] or '—',
+            'total_deliveries': total_deliveries,
+            'total_revenue': total_revenue,
+            'avg_order_value': f"${d['avg_order_value']:,.0f}" if d['avg_order_value'] else "$0",
+            'deliveries_per_day': round(deliveries_per_day, 1),
+            'first_delivery': d['first_delivery'].strftime('%d/%m/%Y') if d['first_delivery'] else '—',
+            'last_delivery': d['last_delivery'].strftime('%d/%m/%Y') if d['last_delivery'] else '—',
+        })
+    
+    return result
+
+
+def get_daily_deliveries_in_range(
+    date_start: date, date_end: date
+) -> Tuple[List[str], List[int], List[float]]:
+    """Daily deliveries count and revenue within date range."""
+    categories = []
+    delivery_counts = []
+    revenues = []
+    current = date_start
+    
+    while current <= date_end:
+        categories.append(current.strftime('%d/%m'))
+        
+        # Entregas del día
+        daily_deliveries = Order.objects.filter(
+            status='entregado',
+            assigned_delivery_user__isnull=False,
+            updated_at__date=current
+        )
+        delivery_counts.append(daily_deliveries.count())
+        
+        # Ingreso del día
+        daily_revenue = daily_deliveries.aggregate(total=Sum('total_amount'))['total'] or 0
+        revenues.append(float(daily_revenue))
+        
+        current += timedelta(days=1)
+    
+    return categories, delivery_counts, revenues
+
+
+def get_delivery_summary_stats(date_start: date, date_end: date) -> Dict[str, Any]:
+    """Overall delivery summary within date range."""
+    deliveries = Order.objects.filter(
+        status='entregado',
+        assigned_delivery_user__isnull=False,
+        updated_at__date__gte=date_start,
+        updated_at__date__lte=date_end
+    )
+    
+    total_deliveries = deliveries.count()
+    total_revenue = deliveries.aggregate(total=Sum('total_amount'))['total'] or 0
+    unique_deliveries = deliveries.values('assigned_delivery_user').distinct().count()
+    
+    # Promedio por entregador
+    avg_per_delivery = total_revenue / unique_deliveries if unique_deliveries > 0 else 0
+    
+    # Mejor día de entregas
+    best_day = deliveries.values('updated_at__date').annotate(
+        count=Count('id')
+    ).order_by('-count').first()
+    
+    return {
+        'total_deliveries': total_deliveries,
+        'total_revenue': float(total_revenue),
+        'unique_deliveries': unique_deliveries,
+        'avg_revenue_per_delivery': float(avg_per_delivery),
+        'avg_deliveries_per_day': round(total_deliveries / ((date_end - date_start).days + 1), 1),
+        'best_day': best_day['updated_at__date'].strftime('%d/%m/%Y') if best_day else '—',
+        'best_day_count': best_day['count'] if best_day else 0,
+    }
+
+
+def get_delivery_details_list(
+    date_start: date, date_end: date, limit: int = 20
+) -> List[Dict[str, Any]]:
+    """Detailed list of deliveries within date range."""
+    deliveries = Order.objects.filter(
+        status='entregado',
+        assigned_delivery_user__isnull=False,
+        updated_at__date__gte=date_start,
+        updated_at__date__lte=date_end
+    ).select_related('assigned_delivery_user').order_by('-updated_at')[:limit]
+    
+    result = []
+    for order in deliveries:
+        driver = order.assigned_delivery_user
+        result.append({
+            'order_number': order.order_number,
+            'customer_name': order.customer_name,
+            'delivery_date': order.updated_at.strftime('%d/%m/%Y %H:%M'),
+            'delivery_user': driver.get_full_name() or driver.username,
+            'total_amount': float(order.total_amount),
+        })
+    
+    return result
