@@ -1,0 +1,113 @@
+{% extends "backoffice/layouts/base_report.html" %}
+
+{% block content %}
+<!-- Resumen de Entregadores -->
+<div class="summary-box">
+    <div class="summary-item">Total entregadores: <strong>{{ data.total_deliveries_users }}</strong></div>
+    <div class="summary-item">Activos: <strong>{{ data.active_deliveries }}</strong></div>
+    <div class="summary-item">Inactivos: <strong>{{ data.inactive_deliveries }}</strong></div>
+    <div class="summary-item">Con actividad: <strong>{{ data.deliveries_with_activity }}</strong></div>
+    <div class="summary-item">Sin actividad: <strong>{{ data.inactive_deliveries_no_activity }}</strong></div>
+</div>
+
+<!-- Resumen de Entregas -->
+<h2>Resumen de entregas</h2>
+<div class="summary-box">
+    <div class="summary-item">Total entregas: <strong>{{ data.total_deliveries }}</strong></div>
+    <div class="summary-item">Valor total entregado: <strong>{{ data.total_revenue }}</strong></div>
+    <div class="summary-item">Entregadores únicos: <strong>{{ data.unique_deliveries }}</strong></div>
+    <div class="summary-item">Promedio por entregador: <strong>{{ data.avg_revenue_per_delivery }}</strong></div>
+    <div class="summary-item">Promedio entregas/día: <strong>{{ data.avg_deliveries_per_day }}</strong></div>
+    <div class="summary-item">Mejor día: <strong>{{ data.best_day }} ({{ data.best_day_count }} entregas)</strong></div>
+</div>
+
+{% if data.include_tables %}
+<!-- Top Entregadores -->
+<h2>Top 10 entregadores (por número de entregas)</h2>
+<table>
+    <thead>
+        <tr>
+            <th>Entregador</th>
+            <th>Teléfono</th>
+            <th>Email</th>
+            <th>Entregas</th>
+            <th>Valor entregado</th>
+            <th>Promedio x pedido</th>
+            <th>Promedio x día</th>
+            <th>Primera entrega</th>
+            <th>Última entrega</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for d in data.top_deliveries %}
+        <tr>
+            <td>{{ d.name }} ({{ d.username }})</td>
+            <td>{{ d.phone }}</td>
+            <td>{{ d.email }}</td>
+            <td>{{ d.total_deliveries }}</td>
+            <td>${{ d.total_revenue|floatformat:0 }}</td>
+            <td>{{ d.avg_order_value }}</td>
+            <td>{{ d.deliveries_per_day }}</td>
+            <td>{{ d.first_delivery }}</td>
+            <td>{{ d.last_delivery }}</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+<!-- Entregas detalladas (últimas 20) -->
+<h2>Últimas entregas</h2>
+<table>
+    <thead>
+        <tr>
+            <th>Pedido</th>
+            <th>Cliente</th>
+            <th>Entregador</th>
+            <th>Fecha de entrega</th>
+            <th>Valor</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for d in data.delivery_details %}
+        <tr>
+            <td>{{ d.order_number }}</td>
+            <td>{{ d.customer_name }}</td>
+            <td>{{ d.delivery_user }}</td>
+            <td>{{ d.delivery_date }}</td>
+            <td>${{ d.total_amount|floatformat:0 }}</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+
+{% if data.include_charts and data.daily_combined %}
+<!-- Evolución diaria -->
+<h2>Evolución diaria de entregas</h2>
+<table>
+    <thead>
+        <tr>
+            <th>Fecha</th>
+            <th>Entregas realizadas</th>
+            <th>Valor entregado</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for item in data.daily_combined %}
+        <tr>
+            <td>{{ item.date }}</td>
+            <td>{{ item.deliveries }}</td>
+            <td>${{ item.revenue|floatformat:0 }}</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+
+<!-- Mensaje cuando no hay datos -->
+{% if not data.top_deliveries and not data.delivery_details %}
+<div class="text-center text-gray-500" style="padding: 40px;">
+    <p>No hay datos disponibles para el período seleccionado.</p>
+</div>
+{% endif %}
+{% endblock %}

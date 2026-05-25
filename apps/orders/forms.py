@@ -8,6 +8,10 @@ from .constants import (
     MAX_QUANTITY_PER_ITEM
 )
 from apps.core.crud.mixins import FormStyleMixin
+from apps.core.crud.widgets import DeliveryUserRadioWidget
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 class CheckoutOrderForm(FormStyleMixin, forms.Form):
     # Formulario para la creación de un pedido en el checkout.
@@ -371,28 +375,49 @@ class OrderAssignDeliveryForm(FormStyleMixin, forms.Form):
         queryset=None,
         label='Repartidor asignado',
         required=True,
-        widget=forms.Select()
+        widget=DeliveryUserRadioWidget()
     )
     confirm = forms.BooleanField(
         required=True,
         label='Confirmar asignación',
-        help_text='Esto cambiará el estado del pedido a "En camino"'
+        help_text='Esto cambiará el estado del pedido a "En camino"',
+        widget=forms.CheckboxInput(attrs={'class': 'w-4 h-4 text-zicada-accent rounded'})
     )
     
     def __init__(self, *args, **kwargs):
         self.order = kwargs.pop('order', None)
         super().__init__(*args, **kwargs)
         
-        from django.contrib.auth import get_user_model
-        User = get_user_model()
-        
-        # Mostrar solo usuarios marcados como repartidores y activos
         self.fields['delivery_user'].queryset = User.objects.filter(
-            is_delivery=True, is_active=True
-        ).order_by('username')
+            is_delivery=True, 
+            is_active=True
+        ).only('id', 'first_name', 'last_name', 'username', 'phone').order_by('first_name', 'last_name')
+        
+        self.fields['delivery_user'].label_from_instance = lambda u: f"{u.get_full_name()} - {u.phone or 'Sin teléfono'}"
         
         if self.order and self.order.assigned_delivery_user:
             self.fields['delivery_user'].initial = self.order.assigned_delivery_user
+        
+        self.fields['delivery_user'].help_text = "Selecciona el repartidor que realizará la entrega"
+    
+    def clean_delivery_user(self):
+        delivery_user = self.cleaned_data.get('delivery_user')
+        
+        if delivery_user and not delivery_user.is_active:
+            raise ValidationError('Este repartidor no está activo actualmente.')
+        
+        if delivery_user and not delivery_user.is_delivery:
+            raise ValidationError('Este usuario no es un repartidor válido.')
+        
+        return delivery_user
+    
+    def clean_confirm(self):
+        confirm = self.cleaned_data.get('confirm')
+        
+        if not confirm:
+            raise ValidationError('Debes confirmar la asignación del repartidor.')
+        
+        return confirm
     
     def clean(self):
         cleaned_data = super().clean()
@@ -405,12 +430,6 @@ class OrderAssignDeliveryForm(FormStyleMixin, forms.Form):
                 f'Solo se puede asignar repartidor a pedidos en estado "Listo para envío". '
                 f'Estado actual: {self.order.get_status_display()}'
             )
-        
-        delivery_user = cleaned_data.get('delivery_user')
-        confirm = cleaned_data.get('confirm')
-        
-        if delivery_user and not confirm:
-            raise ValidationError('Debes confirmar la asignación.')
         
         return cleaned_data
 

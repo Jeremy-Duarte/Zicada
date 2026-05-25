@@ -36,6 +36,10 @@
         {% include 'backoffice/components/widgets/info_card.html' with title="Resumen financiero" icon="chart-pie" items=financial_items footer_text="Actualizado al día de hoy"%}
     </div>
 
+    <div class="flex flex-wrap gap-4 justify-center my-8">
+        {% include 'backoffice/components/widgets/action_buttons_card.html' with buttons=action_buttons %}
+    </div>
+    
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {% include 'backoffice/components/widgets/recent_list.html' with title="Pedidos recientes" items=recent_orders view_all_url="backoffice:orders" %}
         {% include 'backoffice/components/widgets/recent_list.html' with title="Productos con stock bajo" items=low_stock_products view_all_url="backoffice:products" %}

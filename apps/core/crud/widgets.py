@@ -7,7 +7,6 @@ from django.utils.safestring import mark_safe
 from django.utils.html import escape
 from apps.products.models import ProductImage
 
-
 class CloudinaryImageSelectWidget(widgets.SelectMultiple):
     """
     Widget para seleccionar múltiples imágenes de Cloudinary con vista previa en grid.
@@ -214,3 +213,41 @@ class SortableOrderWidget(forms.Widget):
 
     class Media:
         js = ('js/core/sortable-widget.js',)
+
+class DeliveryUserRadioWidget(forms.RadioSelect):
+    """
+    Widget para seleccionar repartidor con tarjetas visuales.
+    """
+
+    def render(self, name, value, attrs=None, renderer=None):
+        if not self.choices:
+            return '<p class="text-gray-500 text-center py-4">No hay repartidores disponibles</p>'
+        
+        output = ['<div class="space-y-2" id="delivery-list">']
+        
+        for choice_value, choice_label in self.choices:
+            checked = 'checked' if str(choice_value) == str(value) else ''
+            
+            if hasattr(choice_label, 'get_full_name'):
+                full_name = choice_label.get_full_name() or choice_label.username
+                phone = getattr(choice_label, 'phone', '')
+            else:
+                full_name = str(choice_label)
+                phone = ''
+            
+            search_text = f"{full_name} {phone}".lower()
+            
+            output.append(f'''
+                <label class="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition
+                            {'border-zicada-accent bg-zicada-accent/5' if checked else 'border-gray-200'}"
+                        data-search="{search_text}">
+                    <input type="radio" name="{name}" value="{choice_value}" {checked} class="w-4 h-4 text-zicada-accent">
+                    <div class="flex-1">
+                        <div class="font-medium text-gray-800">{full_name}</div>
+                        {f'<div class="text-sm text-gray-500">📞 {phone}</div>' if phone else ''}
+                    </div>
+                </label>
+            ''')
+        
+        output.append('</div>')
+        return mark_safe(''.join(output))

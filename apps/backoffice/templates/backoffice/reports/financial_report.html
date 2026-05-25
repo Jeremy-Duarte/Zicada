@@ -1,0 +1,82 @@
+{% extends "backoffice/layouts/base_report.html" %}
+
+{% block content %}
+<!-- Resumen -->
+<div class="summary-box">
+    <div class="summary-item">Ingresos totales: <strong>{{ data.revenue }}</strong></div>
+    <div class="summary-item">Pedidos totales: <strong>{{ data.orders_count }}</strong></div>
+    <div class="summary-item">Pedidos pagados: <strong>{{ data.paid_orders }}</strong></div>
+    <div class="summary-item">Ticket promedio: <strong>{{ data.avg_order }}</strong></div>
+</div>
+
+<!-- Top Productos (si se incluyen tablas) -->
+{% if data.include_tables and data.top_products %}
+<h2>Top 10 productos más vendidos</h2>
+<table>
+    <thead>
+        <tr>
+            <th>Producto</th>
+            <th>Cantidad</th>
+            <th>Ingreso</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for product in data.top_products %}
+        <tr>
+            <td>{{ product.name }}</td>
+            <td>{{ product.total_quantity }}</td>
+            <td>${{ product.total_revenue|floatformat:0 }}</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+<!-- Distribución de pedidos por estado -->
+<h2>Distribución de pedidos por estado</h2>
+<table>
+    <thead>
+        <tr>
+            <th>Estado</th>
+            <th>Cantidad</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for item in data.status_combined %}
+        <tr>
+            <td>{{ item.label }}</td>
+            <td>{{ item.count }}</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+
+<!-- Evolución diaria (si se incluyen gráficos y hay datos) -->
+{% if data.include_charts and data.daily_combined %}
+<h2>Evolución diaria</h2>
+<table>
+    <thead>
+        <tr>
+            <th>Fecha</th>
+            <th>Ingreso (COP)</th>
+            <th>Pedidos</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for item in data.daily_combined %}
+        <tr>
+            <td>{{ item.date }}</td>
+            <td>${{ item.revenue|floatformat:0 }}</td>
+            <td>{{ item.orders }}</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+
+{% if not data.daily_combined and not data.top_products %}
+<div class="text-center text-gray-500" style="padding: 40px;">
+    <p>No hay datos disponibles para el período seleccionado.</p>
+</div>
+{% endif %}
+{% endblock %}

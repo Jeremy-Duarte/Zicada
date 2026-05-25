@@ -11,6 +11,11 @@ from apps.orders.models import Order, OrderItem
 from apps.products.models import Product, ProductVariant, Size, Category, Color, ProductImage
 from apps.users.models import User, Group
 
+from .reports.report_forms import ReportForm
+from .reports.financial import FinancialReport
+from .reports.orders import OrdersReport
+from .reports.products import ProductsReport
+from .reports.delivery import DeliveryReport
 
 # =============================================================================
 # CONSTANTS
@@ -616,6 +621,20 @@ def admin_dashboard(request):
         },
     ]
 
+    reports_url = reverse('backoffice:report_generator')
+    
+    action_buttons = [
+        {
+            'url': reports_url,
+            'icon': 'file-export',
+            'title': LABEL_EXPORT_REPORTS,
+            'description': 'Generar reportes financieros personalizados',
+            'gradient_from': GRADIENT_BLUE_FROM,
+            'gradient_to': GRADIENT_BLUE_TO,
+            'badge': 'Nuevo'
+        }
+    ]
+
     context = {
         CONTEXT_SECTION: SECTION_DASHBOARD,
         CONTEXT_STATS: {
@@ -645,6 +664,7 @@ def admin_dashboard(request):
         CONTEXT_RECENT_ORDERS: get_recent_orders(),
         CONTEXT_LOW_STOCK_PRODUCTS: get_low_stock_products(),
         CONTEXT_TOP_PRODUCTS: get_top_products(),
+        CONTEXT_ACTION_BUTTONS: action_buttons,
     }
 
     return render(request, TEMPLATE_ADMIN_DASHBOARD, context)
@@ -958,3 +978,32 @@ def admin_config(request):
     """Admin configuration view."""
     context = {CONTEXT_SECTION: SECTION_CONFIG}
     return render(request, TEMPLATE_ADMIN_CONFIG, context)
+
+@staff_member_required
+def report_generator(request):
+    if request.method == 'POST':
+        form = ReportForm(request.POST)
+        if form.is_valid():
+            cleaned = form.cleaned_data
+            report_type = cleaned['report_type']
+            
+            params = {
+                'date_from': cleaned['date_from'].strftime('%Y-%m-%d'),
+                'date_to': cleaned['date_to'].strftime('%Y-%m-%d'),
+                'include_charts': cleaned.get('include_charts', False),
+                'include_tables': cleaned.get('include_tables', True),
+            }
+            
+            reports = {
+                'financial': FinancialReport,
+                'products': ProductsReport,
+                'delivery': DeliveryReport,
+                'orders': OrdersReport,
+            }
+            
+            report = reports[report_type](request, **params)
+            return report.render_pdf()
+    else:
+        form = ReportForm()
+    
+    return render(request, 'backoffice/reports/report_generator.html', {'form': form})
