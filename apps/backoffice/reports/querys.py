@@ -1,6 +1,6 @@
 from datetime import date, timedelta
 from typing import List, Tuple, Dict, Any
-from django.db.models import Sum, Q
+from django.db.models import Count, Sum, Q
 from django.utils import timezone
 from apps.orders.models import Order, OrderItem
 from apps.products.models import ProductVariant, Product
@@ -170,4 +170,166 @@ def get_delivery_order_stats_in_range(
             created_at__date__gte=date_start,
             created_at__date__lte=date_end
         ).count(),
+    }
+
+PAID_STATUSES = ['confirmado', 'preparando', 'listo', 'en_camino', 'entregado']
+ALL_STATUSES = ['pendiente', 'confirmado', 'preparando', 'listo', 'en_camino', 'entregado', 'cancelado']
+
+def sum_order_amount_in_range(
+    date_start: date, date_end: date, statuses: List[str] = None
+) -> float:
+    """Sum of total_amount for orders in date range (solo pagados por defecto)."""
+    if statuses is None:
+        statuses = PAID_STATUSES
+    
+    total = Order.objects.filter(
+        status__in=statuses,
+        created_at__date__gte=date_start,
+        created_at__date__lte=date_end
+    ).aggregate(total=Sum('total_amount'))['total'] or 0
+    
+    return float(total)
+
+
+def get_daily_order_counts_in_range(
+    date_start: date, date_end: date
+) -> Tuple[List[str], List[int]]:
+    """Daily order counts for each day in the range."""
+    categories = []
+    counts = []
+    current = date_start
+    while current <= date_end:
+        categories.append(current.strftime('%d/%m'))
+        count = Order.objects.filter(created_at__date=current).count()
+        counts.append(count)
+        current += timedelta(days=1)
+    return categories, counts
+
+
+def get_daily_revenue_in_range(
+    date_start: date, date_end: date
+) -> Tuple[List[str], List[float]]:
+    """Daily revenue for each day in the range (solo pedidos pagados)."""
+    categories = []
+    revenues = []
+    current = date_start
+    while current <= date_end:
+        categories.append(current.strftime('%d/%m'))
+        daily_total = Order.objects.filter(
+            status__in=PAID_STATUSES,
+            created_at__date=current
+        ).aggregate(total=Sum('total_amount'))['total'] or 0
+        revenues.append(float(daily_total))
+        current += timedelta(days=1)
+    return categories, revenues
+
+
+def get_top_customers_in_range(
+    date_start: date, date_end: date, limit: int = 10
+) -> List[Dict[str, Any]]:
+    """Top customers by total spent and order count."""
+    customers = Order.objects.filter(
+        created_at__date__gte=date_start,
+        created_at__date__lte=date_end,
+        status__in=PAID_STATUSES  # Solo pedidos pagados
+    ).values('customer_name', 'customer_phone', 'customer_email').annotate(
+        total_spent=Sum('total_amount'),
+        order_count=Count('id')
+    ).order_by('-total_spent')[:limit]
+    
+    result = []
+    for c in customers:
+        result.append({
+            'name': c['customer_name'] or 'Cliente anónimo',
+            'phone': c['customer_phone'] or '—',
+            'email': c['customer_email'] or '—',
+            'total_spent': float(c['total_spent']),
+            'order_count': c['order_count'],
+        })
+    return result
+
+
+def get_order_status_distribution_in_range(
+    date_start: date, date_end: date
+) -> Dict[str, Any]:
+    """Order counts by status within date range."""
+    status_labels = {
+        'pendiente': 'Pendientes',
+        'confirmado': 'Confirmados',
+        'preparando': 'Preparando',
+        'listo': 'Listos',
+        'en_camino': 'En camino',
+        'entregado': 'Entregados',
+        'cancelado': 'Cancelados',
+    }
+    
+    # Obtener conteo por estado de una sola consulta
+    status_counts = Order.objects.filter(
+        created_at__date__gte=date_start,
+        created_at__date__lte=date_end
+    ).values('status').annotate(count=Count('id'))
+    
+    # Crear diccionario con todos los estados
+    count_dict = {item['status']: item['count'] for item in status_counts}
+    
+    total = sum(count_dict.values())
+    
+    result = []
+    for code, label in status_labels.items():
+        cnt = count_dict.get(code, 0)
+        result.append({
+            'label': label,
+            'code': code,
+            'count': cnt,
+            'percentage': round(cnt / total * 100, 1) if total > 0 else 0,
+        })
+    
+    return {
+        'items': result,
+        'total': total,
+    }
+
+
+def get_avg_items_per_order_in_range(
+    date_start: date, date_end: date
+) -> float:
+    """Average number of items per order within date range."""
+    total_items = OrderItem.objects.filter(
+        order__created_at__date__gte=date_start,
+        order__created_at__date__lte=date_end,
+        order__status__in=PAID_STATUSES
+    ).aggregate(total=Sum('quantity'))['total'] or 0
+    
+    total_orders = Order.objects.filter(
+        created_at__date__gte=date_start,
+        created_at__date__lte=date_end,
+        status__in=PAID_STATUSES
+    ).count()
+    
+    return total_items / total_orders if total_orders > 0 else 0
+
+
+def get_order_stats_summary(
+    date_start: date, date_end: date
+) -> Dict[str, Any]:
+    """Resumen estadístico de pedidos."""
+    orders = Order.objects.filter(
+        created_at__date__gte=date_start,
+        created_at__date__lte=date_end
+    )
+    
+    total_orders = orders.count()
+    paid_orders = orders.filter(status__in=PAID_STATUSES).count()
+    cancelled_orders = orders.filter(status='cancelado').count()
+    
+    revenue = orders.filter(status__in=PAID_STATUSES).aggregate(
+        total=Sum('total_amount')
+    )['total'] or 0
+    
+    return {
+        'total_orders': total_orders,
+        'paid_orders': paid_orders,
+        'cancelled_orders': cancelled_orders,
+        'revenue': float(revenue),
+        'avg_order_value': float(revenue / paid_orders) if paid_orders > 0 else 0,
     }

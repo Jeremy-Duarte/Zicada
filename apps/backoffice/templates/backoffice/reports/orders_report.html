@@ -1,0 +1,90 @@
+{% extends "backoffice/layouts/base_report.html" %}
+
+{% block content %}
+<!-- Resumen -->
+<div class="summary-box">
+    <div class="summary-item">Total pedidos: <strong>{{ data.total_orders }}</strong></div>
+    <div class="summary-item">Pedidos pagados: <strong>{{ data.paid_orders }}</strong></div>
+    <div class="summary-item">Pedidos cancelados: <strong>{{ data.cancelled_orders }}</strong></div>
+    <div class="summary-item">Ingreso total: <strong>{{ data.revenue }}</strong></div>
+    <div class="summary-item">Valor promedio: <strong>{{ data.avg_order_value }}</strong></div>
+    <div class="summary-item">Items/pedido: <strong>{{ data.avg_items_per_order }}</strong></div>
+</div>
+
+{% if data.include_tables %}
+<!-- Distribución por estado -->
+<h2>Distribución de pedidos por estado</h2>
+<table>
+    <thead>
+        <tr>
+            <th>Estado</th>
+            <th>Cantidad</th>
+            <th>Porcentaje</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for item in data.status_distribution.items %}
+        <tr>
+            <td>{{ item.label }}</td>
+            <td>{{ item.count }}</td>
+            <td>{{ item.percentage }}%</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+<!-- Top clientes -->
+<h2>Top 10 clientes</h2>
+<table>
+    <thead>
+        <tr>
+            <th>Cliente</th>
+            <th>Teléfono</th>
+            <th>Email</th>
+            <th>Pedidos</th>
+            <th>Total gastado</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for customer in data.top_customers %}
+        <tr>
+            <td>{{ customer.name }}</td>
+            <td>{{ customer.phone }}</td>
+            <td>{{ customer.email }}</td>
+            <td>{{ customer.order_count }}</td>
+            <td>${{ customer.total_spent|floatformat:0 }}</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+
+{% if data.include_charts and data.daily_combined %}
+<!-- Evolución diaria -->
+<h2>Evolución diaria</h2>
+<table>
+    <thead>
+        <tr>
+            <th>Fecha</th>
+            <th>Pedidos</th>
+            <th>Ingreso diario</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for item in data.daily_combined %}
+        <tr>
+            <td>{{ item.date }}</td>
+            <td>{{ item.orders }}</td>
+            <td>${{ item.revenue|floatformat:0 }}</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+
+{% if not data.daily_combined and not data.top_customers %}
+<div class="text-center text-gray-500" style="padding: 40px;">
+    <p>No hay datos disponibles para el período seleccionado.</p>
+</div>
+{% endif %}
+{% endblock %}

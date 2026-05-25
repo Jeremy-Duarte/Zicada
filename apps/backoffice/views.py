@@ -11,6 +11,11 @@ from apps.orders.models import Order, OrderItem
 from apps.products.models import Product, ProductVariant, Size, Category, Color, ProductImage
 from apps.users.models import User, Group
 
+from .reports.report_forms import ReportForm
+from .reports.financial import FinancialReport
+from .reports.orders import OrdersReport
+#from .reports.products import ProductsReport
+#from .reports.delivery import DeliveryReport
 
 # =============================================================================
 # CONSTANTS
@@ -976,19 +981,12 @@ def admin_config(request):
 
 @staff_member_required
 def report_generator(request):
-    """
-    Vista para generar reportes financieros personalizados.
-    Permite seleccionar rango de fechas y opciones de contenido.
-    """
-    from .reports.report_forms import ReportForm
-    from .reports.financial import FinancialReport
-    
     if request.method == 'POST':
         form = ReportForm(request.POST)
         if form.is_valid():
             cleaned = form.cleaned_data
+            report_type = cleaned['report_type']
             
-            # Preparar parámetros
             params = {
                 'date_from': cleaned['date_from'].strftime('%Y-%m-%d'),
                 'date_to': cleaned['date_to'].strftime('%Y-%m-%d'),
@@ -996,23 +994,16 @@ def report_generator(request):
                 'include_tables': cleaned.get('include_tables', True),
             }
             
-            # Generar y exportar PDF
-            report = FinancialReport(request, **params)
+            reports = {
+                'financial': FinancialReport,
+                #'products': ProductsReport,
+                #'delivery': DeliveryReport,
+                'orders': OrdersReport,
+            }
+            
+            report = reports[report_type](request, **params)
             return report.render_pdf()
     else:
-        # Cargar valores por defecto (últimos 30 días)
-        from datetime import datetime, timedelta
-        default_from = datetime.now() - timedelta(days=30)
-        initial_data = {
-            'date_from': default_from,
-            'date_to': datetime.now(),
-            'include_charts': True,
-            'include_tables': True,
-        }
-        form = ReportForm(initial=initial_data)
+        form = ReportForm()
     
-    context = {
-        'section': 'reports',
-        'form': form,
-    }
-    return render(request, 'backoffice/reports/report_generator.html', context)
+    return render(request, 'backoffice/reports/report_generator.html', {'form': form})
