@@ -48,10 +48,6 @@
                         {{ field }}
                     {% endif %}
                     
-                    {% if field.help_text and field.field.widget.input_type != 'checkbox' %}
-                    <p class="text-xs text-gray-400 mt-1">{{ field.help_text }}</p>
-                    {% endif %}
-                    
                     {% if field.errors %}
                     <div class="mt-1">
                         {% for error in field.errors %}
@@ -59,19 +55,12 @@
                         {% endfor %}
                     </div>
                     {% endif %}
+                    
+                    {% if field.help_text and field.field.widget.input_type != 'checkbox' %}
+                    <p class="text-xs text-gray-400 mt-1">{{ field.help_text }}</p>
+                    {% endif %}
                 </div>
                 {% endfor %}
-            </div>
-            
-            <!-- Información de validaciones -->
-            <div class="bg-gray-50 rounded-lg p-3 text-xs text-gray-500">
-                <p class="font-semibold mb-1">📅 Restricciones de fechas:</p>
-                <ul class="space-y-0.5 list-disc list-inside">
-                    <li>Máximo: Hoy ({% now "d/m/Y" %})</li>
-                    <li>Mínimo: Hace 1 año ({% now "d/m/Y" as today %}{{ today|date:"d/m/Y"|add:"-365 days" }})</li>
-                    <li>Rango máximo: 365 días</li>
-                    <li>Si no seleccionas fechas, se usan los últimos 30 días</li>
-                </ul>
             </div>
             
             <div class="flex flex-wrap gap-4 justify-center pt-4 border-t">
