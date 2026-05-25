@@ -1,0 +1,148 @@
+{% extends "backoffice/layouts/base_report.html" %}
+
+{% block content %}
+<!-- Resumen General -->
+<div class="summary-box">
+    <div class="summary-item">Total productos: <strong>{{ data.total_products }}</strong></div>
+    <div class="summary-item">Total variantes: <strong>{{ data.total_variants }}</strong></div>
+    <div class="summary-item">Con stock: <strong>{{ data.variants_with_stock }}</strong></div>
+    <div class="summary-item">Stock bajo: <strong>{{ data.variants_low_stock }}</strong></div>
+    <div class="summary-item">Agotados: <strong>{{ data.variants_out_stock }}</strong></div>
+</div>
+
+<!-- Movimiento de Stock -->
+<h2>Movimiento de inventario</h2>
+<div class="summary-box">
+    <div class="summary-item">Unidades vendidas: <strong>{{ data.units_sold }}</strong></div>
+    <div class="summary-item">Ingreso por ventas: <strong>{{ data.stock_revenue }}</strong></div>
+    <div class="summary-item">Precio promedio unitario: <strong>{{ data.avg_price_per_unit }}</strong></div>
+</div>
+
+{% if data.include_tables %}
+<!-- Productos más vendidos -->
+<h2>Top 10 productos más vendidos</h2>
+<table>
+    <thead>
+        <tr>
+            <th>Producto</th>
+            <th>Cantidad vendida</th>
+            <th>Ingreso total</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for product in data.top_products %}
+        <tr>
+            <td>{{ product.name }}</td>
+            <td>{{ product.total_quantity }}</td>
+            <td>${{ product.total_revenue|floatformat:0 }}</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+<!-- Ventas por categoría -->
+<h2>Ventas por categoría</h2>
+<table>
+    <thead>
+        <tr>
+            <th>Categoría</th>
+            <th>Productos</th>
+            <th>Unidades vendidas</th>
+            <th>Ingreso total</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for cat in data.category_stats %}
+        <tr>
+            <td>{{ cat.name }}</td>
+            <td>{{ cat.product_count }}</td>
+            <td>{{ cat.total_quantity }}</td>
+            <td>${{ cat.total_revenue|floatformat:0 }}</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+<!-- Variantes con stock bajo -->
+<h2>Variantes con stock bajo (≤10 unidades)</h2>
+<table>
+    <thead>
+        <tr>
+            <th>Producto</th>
+            <th>Color</th>
+            <th>Talla</th>
+            <th>Stock</th>
+            <th>SKU</th>
+            <th>Precio</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for v in data.low_stock_variants %}
+        <tr>
+            <td>{{ v.product_name }}</td>
+            <td>{{ v.color }}</td>
+            <td>{{ v.size }}</td>
+            <td>{{ v.stock }}</td>
+            <td>{{ v.sku }}</td>
+            <td>${{ v.price|floatformat:0 }}</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+<!-- Variantes agotadas -->
+<h2>Variantes agotadas (stock 0)</h2>
+<table>
+    <thead>
+        <tr>
+            <th>Producto</th>
+            <th>Color</th>
+            <th>Talla</th>
+            <th>SKU</th>
+            <th>Precio</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for v in data.out_of_stock_variants %}
+        <tr>
+            <td>{{ v.product_name }}</td>
+            <td>{{ v.color }}</td>
+            <td>{{ v.size }}</td>
+            <td>{{ v.sku }}</td>
+            <td>${{ v.price|floatformat:0 }}</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+<!-- Productos sin ventas en el período -->
+<h2>Productos sin ventas en el período</h2>
+<table>
+    <thead>
+        <tr>
+            <th>Producto</th>
+            <th>Categoría</th>
+            <th>Precio</th>
+            <th>Stock total</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for p in data.products_without_sales %}
+        <tr>
+            <td>{{ p.name }}</td>
+            <td>{{ p.category }}</td>
+            <td>${{ p.price|floatformat:0 }}</td>
+            <td>{{ p.total_stock }} unidades</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+
+<!-- Mensaje cuando no hay datos -->
+{% if not data.top_products and not data.category_stats %}
+<div class="text-center text-gray-500" style="padding: 40px;">
+    <p>No hay datos disponibles para el período seleccionado.</p>
+</div>
+{% endif %}
+{% endblock %}

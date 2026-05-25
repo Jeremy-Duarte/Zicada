@@ -3,7 +3,7 @@ from typing import List, Tuple, Dict, Any
 from django.db.models import Count, Sum, Q
 from django.utils import timezone
 from apps.orders.models import Order, OrderItem
-from apps.products.models import ProductVariant, Product
+from apps.products.models import Product, ProductVariant, Category, Color, Size
 from apps.users.models import User
 
 
@@ -332,4 +332,183 @@ def get_order_stats_summary(
         'cancelled_orders': cancelled_orders,
         'revenue': float(revenue),
         'avg_order_value': float(revenue / paid_orders) if paid_orders > 0 else 0,
+    }
+
+# =============================================================================
+# PRODUCT METRICS (parametrizadas por rango de fechas)
+# =============================================================================
+
+def get_product_stats_in_range(date_start: date, date_end: date) -> Dict[str, Any]:
+    """Get product statistics within date range."""
+    # Productos activos
+    total_products = Product.objects.filter(is_active=True).count()
+    
+    # Variantes
+    total_variants = ProductVariant.objects.filter(is_active=True).count()
+    variants_with_stock = ProductVariant.objects.filter(is_active=True, stock__gt=0).count()
+    variants_low_stock = ProductVariant.objects.filter(
+        is_active=True, stock__gt=0, stock__lte=10
+    ).count()
+    variants_out_stock = ProductVariant.objects.filter(is_active=True, stock=0).count()
+    
+    # Productos que vendieron en el período
+    products_with_sales = OrderItem.objects.filter(
+        order__created_at__date__gte=date_start,
+        order__created_at__date__lte=date_end,
+        order__status__in=['confirmado', 'preparando', 'listo', 'en_camino', 'entregado']
+    ).values('product_name_snapshot').distinct().count()
+    
+    return {
+        'total_products': total_products,
+        'total_variants': total_variants,
+        'variants_with_stock': variants_with_stock,
+        'variants_low_stock': variants_low_stock,
+        'variants_out_stock': variants_out_stock,
+        'products_with_sales': products_with_sales,
+        'products_without_sales': total_products - products_with_sales,
+    }
+
+
+def get_category_stats_in_range(date_start: date, date_end: date) -> List[Dict[str, Any]]:
+    """Get sales by category within date range."""
+    categories = Category.objects.all()
+    result = []
+    
+    for category in categories:
+        # Productos de esta categoría
+        products = category.products.filter(is_active=True)
+        product_count = products.count()
+        
+        # Ventas de productos de esta categoría
+        sales = OrderItem.objects.filter(
+            order__created_at__date__gte=date_start,
+            order__created_at__date__lte=date_end,
+            order__status__in=['confirmado', 'preparando', 'listo', 'en_camino', 'entregado'],
+            variant__product__category=category
+        ).aggregate(
+            total_quantity=Sum('quantity'),
+            total_revenue=Sum('subtotal')
+        )
+        
+        if product_count > 0 or (sales['total_quantity'] or 0) > 0:
+            result.append({
+                'name': category.name,
+                'product_count': product_count,
+                'total_quantity': sales['total_quantity'] or 0,
+                'total_revenue': float(sales['total_revenue'] or 0),
+            })
+    
+    return sorted(result, key=lambda x: x['total_revenue'], reverse=True)
+
+
+def get_top_selling_products_in_range(
+    date_start: date, date_end: date, limit: int = 10
+) -> List[Dict[str, Any]]:
+    """Best selling products by quantity and revenue."""
+    top = OrderItem.objects.filter(
+        order__created_at__date__gte=date_start,
+        order__created_at__date__lte=date_end,
+        order__status__in=['confirmado', 'preparando', 'listo', 'en_camino', 'entregado']
+    ).values('product_name_snapshot').annotate(
+        total_quantity=Sum('quantity'),
+        total_revenue=Sum('subtotal')
+    ).order_by('-total_revenue')[:limit]
+    
+    result = []
+    for item in top:
+        result.append({
+            'name': item['product_name_snapshot'],
+            'total_quantity': item['total_quantity'],
+            'total_revenue': float(item['total_revenue']),
+        })
+    return result
+
+
+def get_low_stock_variants_in_range(limit: int = 20) -> List[Dict[str, Any]]:
+    """Get variants with low stock (independiente del rango de fechas)."""
+    variants = ProductVariant.objects.filter(
+        is_active=True,
+        stock__gt=0,
+        stock__lte=10
+    ).select_related('product', 'size', 'product_color__color').order_by('stock')[:limit]
+    
+    result = []
+    for v in variants:
+        result.append({
+            'product_name': v.product.name,
+            'color': v.color_name,
+            'size': v.size.name,
+            'stock': v.stock,
+            'sku': v.sku,
+            'price': float(v.product.price),
+        })
+    return result
+
+
+def get_out_of_stock_variants_in_range(limit: int = 20) -> List[Dict[str, Any]]:
+    """Get variants out of stock (independiente del rango de fechas)."""
+    variants = ProductVariant.objects.filter(
+        is_active=True,
+        stock=0
+    ).select_related('product', 'size', 'product_color__color').order_by('product__name')[:limit]
+    
+    result = []
+    for v in variants:
+        result.append({
+            'product_name': v.product.name,
+            'color': v.color_name,
+            'size': v.size.name,
+            'sku': v.sku,
+            'price': float(v.product.price),
+        })
+    return result
+
+
+def get_products_without_sales_in_range(
+    date_start: date, date_end: date, limit: int = 20
+) -> List[Dict[str, Any]]:
+    """Get products that haven't sold in the period."""
+    # Obtener nombres de productos que sí vendieron
+    sold_products = set(OrderItem.objects.filter(
+        order__created_at__date__gte=date_start,
+        order__created_at__date__lte=date_end,
+        order__status__in=['confirmado', 'preparando', 'listo', 'en_camino', 'entregado']
+    ).values_list('product_name_snapshot', flat=True).distinct())
+    
+    # Productos activos que no vendieron
+    products = Product.objects.filter(
+        is_active=True
+    ).exclude(name__in=sold_products).select_related('category')[:limit]
+    
+    result = []
+    for p in products:
+        result.append({
+            'name': p.name,
+            'category': p.category.name if p.category else 'Sin categoría',
+            'price': float(p.price),
+            'total_stock': p.total_stock(),
+        })
+    return result
+
+
+def get_stock_movement_summary(date_start: date, date_end: date) -> Dict[str, Any]:
+    """Summary of stock movement (approximated by sales)."""
+    # Unidades vendidas en el período
+    units_sold = OrderItem.objects.filter(
+        order__created_at__date__gte=date_start,
+        order__created_at__date__lte=date_end,
+        order__status__in=['confirmado', 'preparando', 'listo', 'en_camino', 'entregado']
+    ).aggregate(total=Sum('quantity'))['total'] or 0
+    
+    # Valor de ventas
+    revenue = OrderItem.objects.filter(
+        order__created_at__date__gte=date_start,
+        order__created_at__date__lte=date_end,
+        order__status__in=['confirmado', 'preparando', 'listo', 'en_camino', 'entregado']
+    ).aggregate(total=Sum('subtotal'))['total'] or 0
+    
+    return {
+        'units_sold': units_sold,
+        'revenue': float(revenue),
+        'avg_price_per_unit': float(revenue / units_sold) if units_sold > 0 else 0,
     }
