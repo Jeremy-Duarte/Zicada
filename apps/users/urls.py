@@ -20,4 +20,7 @@ admin_patterns = [
 
 urlpatterns = [
     path('admin/', include(admin_patterns)),
+    path('perfil/', views.UserProfileView.as_view(), name='profile'),
+    path('perfil/editar/', views.UserProfileUpdateView.as_view(), name='profile_edit'),
+    path('perfil/cambiar-password/', views.UserProfilePasswordView.as_view(), name='profile_password'),
 ]
