@@ -23,14 +23,12 @@ User = get_user_model()
 
 # URL Names
 URL_USER_LIST = 'users:user_list'
-URL_USER_DETAIL = 'users:user_detail'
 URL_USER_TRASHCAN = 'users:user_trashcan'
 URL_GROUP_LIST = 'users:group_list'
 
 # Template Paths
 TEMPLATE_USER_LIST = 'backoffice/users/user_list.html'
 TEMPLATE_USER_FORM = 'backoffice/users/user_form.html'
-TEMPLATE_USER_DETAIL = 'backoffice/users/user_detail.html'
 TEMPLATE_USER_CHANGE_PASSWORD = 'backoffice/users/user_change_password.html'
 TEMPLATE_USER_CONFIRM_DELETE = 'backoffice/users/user_confirm_delete.html'
 TEMPLATE_USER_RESTORE = 'backoffice/users/user_restore.html'
@@ -276,18 +274,6 @@ class UserUpdateView(PermissionRequiredMixin, UpdateView):
         return super().form_invalid(form)
 
 
-class UserDetailView(PermissionRequiredMixin, DetailView):
-    model = User
-    template_name = TEMPLATE_USER_DETAIL
-    context_object_name = CONTEXT_USER_OBJ
-    permission_required = 'users.view_user'
-    
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context[CONTEXT_CANCEL_URL] = URL_USER_LIST
-        return context
-
-
 class UserChangePasswordView(PermissionRequiredMixin, FormView):
     form_class = UserChangePasswordForm
     template_name = TEMPLATE_USER_CHANGE_PASSWORD
@@ -305,14 +291,14 @@ class UserChangePasswordView(PermissionRequiredMixin, FormView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context[CONTEXT_USER_OBJ] = self.user
-        context[CONTEXT_CANCEL_URL] = URL_USER_DETAIL
+        context[CONTEXT_CANCEL_URL] = URL_USER_LIST
         context[CONTEXT_CANCEL_ARGS] = [self.user.pk]
         return context
     
     def form_valid(self, form):
         form.save()
         messages.success(self.request, MSG_PASSWORD_CHANGED.format(username=self.user.username))
-        return redirect(URL_USER_DETAIL, pk=self.user.pk)
+        return redirect(URL_USER_LIST, pk=self.user.pk)
     
     def form_invalid(self, form):
         messages.error(self.request, ERROR_PASSWORD_CHANGE)
