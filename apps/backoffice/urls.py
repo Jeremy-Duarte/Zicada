@@ -10,4 +10,5 @@ urlpatterns = [
     path('usuarios/', views.admin_users, name='users'),
     path('configuracion/', views.admin_config, name='config'),
     path('reportes/', views.report_generator, name='report_generator'),
+    path('importar/', views.importers_dashboard, name='importers_dashboard'),
 ]
