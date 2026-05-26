@@ -1,0 +1,63 @@
+{% load static %}
+<div class="max-w-2xl mx-auto">
+    <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div class="px-6 py-4 bg-gray-50 border-b">
+            <h2 class="text-xl font-bold text-gray-800">Resultado de importación</h2>
+        </div>
+        
+        <div class="p-6">
+            <!-- Resumen -->
+            <div class="grid grid-cols-3 gap-4 mb-6">
+                <div class="bg-green-50 rounded-lg p-4 text-center border border-green-200">
+                    <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                        <i class="fas fa-check-circle text-green-600"></i>
+                    </div>
+                    <p class="text-2xl font-bold text-green-700">{{ created|default:0 }}</p>
+                    <p class="text-xs text-green-600">Creados</p>
+                </div>
+                <div class="bg-blue-50 rounded-lg p-4 text-center border border-blue-200">
+                    <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                        <i class="fas fa-sync-alt text-blue-600"></i>
+                    </div>
+                    <p class="text-2xl font-bold text-blue-700">{{ updated|default:0 }}</p>
+                    <p class="text-xs text-blue-600">Actualizados</p>
+                </div>
+                <div class="bg-red-50 rounded-lg p-4 text-center border border-red-200">
+                    <div class="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                        <i class="fas fa-exclamation-triangle text-red-600"></i>
+                    </div>
+                    <p class="text-2xl font-bold text-red-700">{{ errors|length|default:0 }}</p>
+                    <p class="text-xs text-red-600">Errores</p>
+                </div>
+            </div>
+            
+            <!-- Detalle de errores -->
+            {% if errors %}
+            <div class="bg-red-50 rounded-lg p-4 mb-6">
+                <h3 class="font-semibold text-red-800 mb-2 flex items-center gap-2">
+                    <i class="fas fa-list"></i> Detalle de errores
+                </h3>
+                <div class="max-h-60 overflow-y-auto space-y-1">
+                    {% for error in errors %}
+                    <p class="text-sm text-red-600"><i class="fas fa-times-circle mr-1"></i> {{ error }}</p>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Botones de acción -->
+            <div class="flex justify-center gap-3 pt-4 border-t">
+                {% if retry_url %}
+                <a href="{% url retry_url %}" class="bg-zicada-accent hover:bg-opacity-90 text-white px-5 py-2 rounded-lg transition">
+                    <i class="fas fa-upload mr-1"></i> Nueva importación
+                </a>
+                {% endif %}
+                {% if back_url %}
+                <a href="{% url back_url %}" class="border border-gray-300 text-gray-700 hover:bg-gray-50 px-5 py-2 rounded-lg transition">
+                    <i class="fas fa-arrow-left mr-1"></i> Volver
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
