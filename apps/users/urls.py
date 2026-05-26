@@ -6,7 +6,6 @@ app_name = 'users'
 admin_patterns = [
     path('lista/', views.UserListView.as_view(), name='user_list'),
     path('crear/', views.UserCreateView.as_view(), name='user_create'),
-    path('<int:pk>/', views.UserDetailView.as_view(), name='user_detail'),
     path('<int:pk>/editar/', views.UserUpdateView.as_view(), name='user_edit'),
     path('<int:pk>/cambiar-password/', views.UserChangePasswordView.as_view(), name='user_change_password'),
     path('<int:pk>/desactivar/', views.UserDeleteView.as_view(), name='user_delete'),
@@ -21,4 +20,7 @@ admin_patterns = [
 
 urlpatterns = [
     path('admin/', include(admin_patterns)),
+    path('perfil/', views.UserProfileView.as_view(), name='profile'),
+    path('perfil/editar/', views.UserProfileUpdateView.as_view(), name='profile_edit'),
+    path('perfil/cambiar-password/', views.UserProfilePasswordView.as_view(), name='profile_password'),
 ]

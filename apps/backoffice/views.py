@@ -56,8 +56,8 @@ ROUTE_PRODUCT_LIST = 'products:product_list'
 ROUTE_PRODUCT_EDIT = 'products:product_edit'
 ROUTE_PRODUCT_CREATE = 'products:product_create'
 ROUTE_USER_LIST = 'users:user_list'
-ROUTE_USER_DETAIL = 'users:user_detail'
 ROUTE_USER_CREATE = 'users:user_create'
+DASHBOARD_IMPORT_ROUTE = 'backoffice:importers_dashboard'
 
 # URL Query Parameters
 QUERY_STATUS = '?status={}'
@@ -65,6 +65,7 @@ QUERY_NAME = '?name={}'
 QUERY_IS_ACTIVE = '?is_active={}'
 QUERY_IS_DELIVERY = '?is_delivery={}'
 QUERY_STOCK = '?stock={}'
+QUERY_USERNAME = '?username={}'
 
 # Template Paths
 TEMPLATE_ADMIN_DASHBOARD = 'backoffice/admin_dashboard.html'
@@ -511,7 +512,7 @@ def get_active_deliveries_list(limit: int = DEFAULT_LIMIT) -> List[Dict[str, Any
             'icon': ICON_USER,
             'icon_bg': ICON_BG_PURPLE,
             'icon_color': ICON_COLOR_PURPLE,
-            'url': reverse(ROUTE_USER_DETAIL, args=[delivery.pk]),
+            'url': reverse(ROUTE_USER_LIST) + QUERY_USERNAME.format(delivery.username),
             'extra_info': delivery.phone or STRING_SIN_TELEFONO,
         })
 
@@ -775,7 +776,7 @@ def admin_products(request):
             'badge': BADGE_NEW
         },
         {
-            'url': '#',
+            'url': reverse(DASHBOARD_IMPORT_ROUTE),
             'icon': 'file-export',
             'title': LABEL_EXPORT_REPORTS,
             'description': BTN_DESC_EXPORT,
@@ -1007,3 +1008,43 @@ def report_generator(request):
         form = ReportForm()
     
     return render(request, 'backoffice/reports/report_generator.html', {'form': form})
+
+@staff_member_required
+def importers_dashboard(request):
+    """Dashboard de importación de datos."""
+    
+    import_buttons = [
+        {
+            'url': reverse('products:size_import'),
+            'icon': 'ruler',
+            'title': 'Tallas',
+            'bg_from': 'blue-50',
+            'bg_to': 'blue-100',
+            'icon_color': 'blue-600',
+            'badge': 'CSV/Excel'
+        },
+        {
+            'url': "#" """reverse('products:color_import')""",
+            'icon': 'palette',
+            'title': 'Colores',
+            'bg_from': 'purple-50',
+            'bg_to': 'purple-100',
+            'icon_color': 'purple-600',
+            'badge': 'CSV/Excel'
+        },
+        {
+            'url': "#" """reverse('products:category_import')""",
+            'icon': 'tags',
+            'title': 'Categorías',
+            'bg_from': 'green-50',
+            'bg_to': 'green-100',
+            'icon_color': 'green-600',
+            'badge': 'CSV/Excel'
+        },
+    ]
+    
+    context = {
+        'section': 'import',
+        'import_buttons': import_buttons,
+    }
+    return render(request, 'backoffice/importers/importers_dashboard.html', context)

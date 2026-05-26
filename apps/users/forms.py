@@ -622,3 +622,98 @@ class DeliveryUserProfileForm(FormStyleMixin, forms.ModelForm):
             raise ValidationError('El teléfono no puede tener más de 15 dígitos.')
         
         return digits
+    
+# ========== PROFILE FORMS ==========
+
+class UserProfileForm(FormStyleMixin, forms.ModelForm):
+    """Formulario para que los usuarios editen su propio perfil."""
+    
+    class Meta:
+        model = User
+        fields = ['first_name', 'last_name', 'email', 'phone']
+        widgets = {
+            'first_name': forms.TextInput(attrs={'placeholder': 'Nombre'}),
+            'last_name': forms.TextInput(attrs={'placeholder': 'Apellido'}),
+            'email': forms.EmailInput(attrs={'placeholder': 'correo@ejemplo.com'}),
+            'phone': forms.TextInput(attrs={'placeholder': '3001234567'}),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['first_name'].required = False
+        self.fields['last_name'].required = False
+        self.fields['email'].required = False
+    
+    def clean_phone(self):
+        phone = self.cleaned_data.get('phone', '')
+        if phone:
+            digits = ''.join(c for c in phone if c.isdigit())
+            if len(digits) < 7:
+                raise ValidationError('El teléfono debe tener al menos 7 dígitos.')
+            if len(digits) > 15:
+                raise ValidationError('El teléfono no puede tener más de 15 dígitos.')
+            
+            # Verificar que no esté en uso por otro usuario
+            qs = User.objects.filter(phone=digits)
+            if self.instance and self.instance.pk:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise ValidationError('Este número de teléfono ya está registrado por otro usuario.')
+            return digits
+        return ''
+
+
+class UserProfilePasswordForm(FormStyleMixin, forms.Form):
+    """Formulario para cambiar contraseña desde el perfil."""
+    
+    current_password = forms.CharField(
+        label='Contraseña actual',
+        widget=forms.PasswordInput(attrs={'placeholder': 'Ingresa tu contraseña actual'}),
+        required=True
+    )
+    new_password1 = forms.CharField(
+        label='Nueva contraseña',
+        widget=forms.PasswordInput(attrs={'placeholder': 'Nueva contraseña'}),
+        required=True,
+        min_length=8
+    )
+    new_password2 = forms.CharField(
+        label='Confirmar nueva contraseña',
+        widget=forms.PasswordInput(attrs={'placeholder': 'Confirma tu nueva contraseña'}),
+        required=True
+    )
+    
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+    
+    def clean_current_password(self):
+        current_password = self.cleaned_data.get('current_password')
+        if self.user and not self.user.check_password(current_password):
+            raise ValidationError('La contraseña actual es incorrecta.')
+        return current_password
+    
+    def clean_new_password1(self):
+        password = self.cleaned_data.get('new_password1', '')
+        if len(password) < 8:
+            raise ValidationError('La contraseña debe tener al menos 8 caracteres.')
+        if password.isdigit():
+            raise ValidationError('La contraseña no puede ser completamente numérica.')
+        if password.lower() in ['password', '12345678', 'qwerty123']:
+            raise ValidationError('La contraseña es demasiado común.')
+        if self.user and self.user.check_password(password):
+            raise ValidationError('La nueva contraseña no puede ser igual a la actual.')
+        return password
+    
+    def clean_new_password2(self):
+        password1 = self.cleaned_data.get('new_password1')
+        password2 = self.cleaned_data.get('new_password2')
+        if password1 and password2 and password1 != password2:
+            raise ValidationError('Las contraseñas no coinciden.')
+        return password2
+    
+    def save(self):
+        password = self.cleaned_data.get('new_password1')
+        self.user.set_password(password)
+        self.user.save(update_fields=['password'])
+        return self.user

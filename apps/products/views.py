@@ -1233,3 +1233,54 @@ class ProductVariantTrashcanView(PermissionRequiredMixin, ListView):
         context = super().get_context_data(**kwargs)
         context[CONTEXT_PRODUCT] = self.product
         return context
+
+from django.urls import reverse_lazy
+from django.contrib import messages
+from django.shortcuts import redirect, render
+from django.contrib.auth.mixins import PermissionRequiredMixin
+from django.views import View
+from apps.products.importers.size_importer import SizeImporter
+
+
+class SizeImportView(PermissionRequiredMixin, View):
+    permission_required = 'products.add_size'
+    
+    def get(self, request):
+        importer = SizeImporter(request, None)
+        context = {
+            'headers': importer.get_template_headers(),
+            'example_data': importer.get_example_data(),
+            'required_columns': importer.required_columns,
+        }
+        return render(request, 'backoffice/size/size_import.html', context)
+    
+    def post(self, request):
+        file_obj = request.FILES.get('file')
+        update_existing = request.POST.get('update_existing') == 'on'
+        
+        if not file_obj:
+            messages.error(request, 'Por favor selecciona un archivo.')
+            return redirect('products:size_import')
+        
+        importer = SizeImporter(request, file_obj, update_existing=update_existing)
+        results = importer.run()
+        importer.add_messages()
+        
+        request.session['import_results'] = results
+        
+        return render(request, 'backoffice/size/size_import_result.html', {'results': results})
+
+
+def size_template(request):
+    """Descarga plantilla de ejemplo para tallas."""
+    import csv
+    from django.http import HttpResponse
+    
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="plantilla_tallas.csv"'
+    
+    writer = csv.writer(response)
+    writer.writerow(['name'])
+    writer.writerows([['XS'], ['S'], ['M'], ['L'], ['XL']])
+    
+    return response

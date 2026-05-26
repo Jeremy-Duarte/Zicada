@@ -13,6 +13,7 @@ from .forms import (
     UserDeleteForm, UserRestoreForm, GroupCreateForm, GroupUpdateForm, GroupDeleteForm
 )
 from django.contrib.auth.models import Group
+from apps.users.forms import UserProfileForm, UserProfilePasswordForm
 
 User = get_user_model()
 
@@ -23,14 +24,12 @@ User = get_user_model()
 
 # URL Names
 URL_USER_LIST = 'users:user_list'
-URL_USER_DETAIL = 'users:user_detail'
 URL_USER_TRASHCAN = 'users:user_trashcan'
 URL_GROUP_LIST = 'users:group_list'
 
 # Template Paths
 TEMPLATE_USER_LIST = 'backoffice/users/user_list.html'
 TEMPLATE_USER_FORM = 'backoffice/users/user_form.html'
-TEMPLATE_USER_DETAIL = 'backoffice/users/user_detail.html'
 TEMPLATE_USER_CHANGE_PASSWORD = 'backoffice/users/user_change_password.html'
 TEMPLATE_USER_CONFIRM_DELETE = 'backoffice/users/user_confirm_delete.html'
 TEMPLATE_USER_RESTORE = 'backoffice/users/user_restore.html'
@@ -195,6 +194,7 @@ class UserListView(PermissionRequiredMixin, PaginationMixin, FilterMixin, ListVi
     
     def get_queryset(self):
         qs = super().get_queryset()
+        qs = qs.exclude(pk=self.request.user.pk)
         search = self.request.GET.get(QUERY_PARAM_SEARCH, '')
         if search:
             qs = qs.filter(
@@ -276,18 +276,6 @@ class UserUpdateView(PermissionRequiredMixin, UpdateView):
         return super().form_invalid(form)
 
 
-class UserDetailView(PermissionRequiredMixin, DetailView):
-    model = User
-    template_name = TEMPLATE_USER_DETAIL
-    context_object_name = CONTEXT_USER_OBJ
-    permission_required = 'users.view_user'
-    
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context[CONTEXT_CANCEL_URL] = URL_USER_LIST
-        return context
-
-
 class UserChangePasswordView(PermissionRequiredMixin, FormView):
     form_class = UserChangePasswordForm
     template_name = TEMPLATE_USER_CHANGE_PASSWORD
@@ -305,14 +293,14 @@ class UserChangePasswordView(PermissionRequiredMixin, FormView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context[CONTEXT_USER_OBJ] = self.user
-        context[CONTEXT_CANCEL_URL] = URL_USER_DETAIL
+        context[CONTEXT_CANCEL_URL] = URL_USER_LIST
         context[CONTEXT_CANCEL_ARGS] = [self.user.pk]
         return context
     
     def form_valid(self, form):
         form.save()
         messages.success(self.request, MSG_PASSWORD_CHANGED.format(username=self.user.username))
-        return redirect(URL_USER_DETAIL, pk=self.user.pk)
+        return redirect(URL_USER_LIST, pk=self.user.pk)
     
     def form_invalid(self, form):
         messages.error(self.request, ERROR_PASSWORD_CHANGE)
@@ -546,4 +534,65 @@ class GroupDeleteView(PermissionRequiredMixin, FormView):
     
     def form_invalid(self, form):
         messages.error(self.request, ERROR_GROUP_DELETE)
+        return super().form_invalid(form)
+    
+class UserProfileView(DetailView):
+    """Vista para que el usuario vea su propio perfil."""
+    model = User
+    template_name = 'backoffice/profile.html'
+    context_object_name = 'user_obj'
+    
+    def get_object(self):
+        return self.request.user
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['cancel_url'] = 'users:profile'
+        return context
+
+
+class UserProfileUpdateView(UpdateView):
+    """Vista para que el usuario edite su propio perfil."""
+    model = User
+    form_class = UserProfileForm
+    template_name = 'backoffice/profile_edit.html'
+    
+    def get_object(self):
+        return self.request.user
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['cancel_url'] = 'users:profile'
+        return context
+    
+    def form_valid(self, form):
+        messages.success(self.request, 'Tu perfil ha sido actualizado exitosamente.')
+        return redirect('users:profile')
+    
+    def get_success_url(self):
+        return reverse_lazy('users:profile')
+
+
+class UserProfilePasswordView(FormView):
+    """Vista para que el usuario cambie su contraseña."""
+    form_class = UserProfilePasswordForm
+    template_name = 'backoffice/profile_password.html'
+    
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['user'] = self.request.user
+        return kwargs
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['cancel_url'] = 'users:profile'
+        return context
+    
+    def form_valid(self, form):
+        form.save()
+        messages.success(self.request, 'Tu contraseña ha sido actualizada exitosamente.')
+        return redirect('users:profile')
+    
+    def form_invalid(self, form):
+        messages.error(self.request, 'Error al actualizar la contraseña. Verifica los datos.')
         return super().form_invalid(form)

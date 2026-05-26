@@ -10,16 +10,18 @@ from apps.core.crud.widgets import CloudinaryImageSelectWidget, CloudinaryFeatur
 
 # ========== FORMULARIOS PARA CATÁLOGOS ESTÁTICOS ==========
 
-class SizeCreateForm(FormStyleMixin, SortableCreateMixin ,forms.ModelForm):
+class SizeCreateForm(FormStyleMixin, SortableCreateMixin, forms.ModelForm):
     """Formulario para crear tallas"""
     
     class Meta:
         model = Size
-        fields = ['name', 'sort_order']
+        fields = ['name']
         widgets = {
             'name': forms.TextInput(attrs={'placeholder': 'Ej: XS, S, M, L, XL'}),
-            'sort_order': forms.NumberInput(attrs={'min': 0}),
         }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
     
     def clean_name(self):
         name = self.cleaned_data.get('name', '').upper().strip()
