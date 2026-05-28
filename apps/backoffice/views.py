@@ -1033,7 +1033,7 @@ def importers_dashboard(request):
             'badge': 'CSV/Excel'
         },
         {
-            'url': "#" """reverse('products:category_import')""",
+            'url': reverse('products:category_import'),
             'icon': 'tags',
             'title': 'Categorías',
             'bg_from': 'green-50',
