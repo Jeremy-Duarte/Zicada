@@ -189,6 +189,19 @@ class CategoryDeleteForm(FormStyleMixin, forms.Form):
         return value
 
 
+class CategoryImportForm(forms.ModelForm):
+    """Formulario específico para importación de categorías."""
+    
+    class Meta:
+        model = Category
+        fields = ['name']
+    
+    def clean_name(self):
+        name = self.cleaned_data.get('name', '').strip()
+        if Category.objects.filter(name__iexact=name).exists():
+            raise ValidationError(f'La categoría "{name}" ya existe.')
+        return name
+
 # ========== COLOR FORMS (Catálogo) ==========
 
 class ColorCreateForm(FormStyleMixin, SortableCreateMixin ,forms.ModelForm):
