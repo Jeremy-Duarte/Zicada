@@ -1024,7 +1024,7 @@ def importers_dashboard(request):
             'badge': 'CSV/Excel'
         },
         {
-            'url': "#" """reverse('products:color_import')""",
+            'url': reverse('products:color_import'),
             'icon': 'palette',
             'title': 'Colores',
             'bg_from': 'purple-50',
