@@ -7,6 +7,7 @@ from .models import (
 )
 from apps.core.crud.mixins import FormStyleMixin, SortableCreateMixin, SortableUpdateMixin
 from apps.core.crud.widgets import CloudinaryImageSelectWidget, CloudinaryFeaturedImageWidget, SortableOrderWidget
+import re
 
 # ========== FORMULARIOS PARA CATÁLOGOS ESTÁTICOS ==========
 
@@ -212,8 +213,6 @@ class ColorCreateForm(FormStyleMixin, SortableCreateMixin ,forms.ModelForm):
         if not code.startswith('#'):
             code = f'#{code}'
         
-        # Validar formato hexadecimal
-        import re
         if not re.match(r'^#(?:[0-9a-fA-F]{3}){1,2}$', code):
             raise ValidationError('El código debe ser un color hexadecimal válido (ej: #FF0000, #F00)')
         
@@ -306,6 +305,28 @@ class ColorDeleteForm(FormStyleMixin, forms.Form):
         return value
 
 
+class ColorImportForm(forms.ModelForm):
+    
+    class Meta:
+        model = Color
+        fields = ['name', 'code']
+    
+    def clean_name(self):
+        name = self.cleaned_data.get('name', '').capitalize().strip()
+        if Color.objects.filter(name__iexact=name).exists():
+            raise ValidationError(f'El color "{name}" ya existe.')
+        return name
+    
+    def clean_code(self):
+        code = self.cleaned_data.get('code', '').strip()
+        if not code.startswith('#'):
+            code = f'#{code}'
+        if not re.match(r'^#(?:[0-9a-fA-F]{3}){1,2}$', code):
+            raise ValidationError(f'"{code}" no es un código hexadecimal válido.')
+        if Color.objects.filter(code__iexact=code).exists():
+            raise ValidationError(f'El código de color "{code}" ya está en uso.')
+        return code
+    
 # ========== PRODUCT IMAGE FORMS ==========
 
 class ProductImageCreateForm(FormStyleMixin, forms.ModelForm):
