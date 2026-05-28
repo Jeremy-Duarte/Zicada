@@ -4,6 +4,7 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.utils import timezone
 from django.urls import reverse, reverse_lazy
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView, TemplateView, FormView
+from django.views import View
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.utils.safestring import mark_safe
 from django.views.decorators.http import require_GET, require_POST, require_http_methods
@@ -15,13 +16,15 @@ from .models import Product, ProductVariant, ProductColor, ProductImage, Collect
 from .forms import (
     SizeCreateForm, SizeDeleteForm, SizeUpdateForm,
     CategoryCreateForm, CategoryDeleteForm, CategoryUpdateForm,
-    ColorCreateForm, ColorDeleteForm, ColorUpdateForm,
+    ColorCreateForm, ColorDeleteForm, ColorUpdateForm, ColorImportForm,
     ProductImageCreateForm, ProductImageUpdateForm, ProductImageDeleteForm,
     ProductUpdateForm, ProductDeleteForm, ProductCreateForm, ProductRestoreForm,
     ProductColorCreateForm, ProductColorUpdateForm, ProductColorDeleteForm,
-    ProductVariantCreateForm, ProductVariantDeleteForm, ProductVariantRestoreForm, ProductVariantUpdateForm
+    ProductVariantCreateForm, ProductVariantDeleteForm, ProductVariantRestoreForm, ProductVariantUpdateForm,
 )
-
+from apps.products.importers.size_importer import SizeImporter
+from apps.products.importers.color_importer import ColorImporter
+from apps.products.importers.category_importer import CategoryImporter
 
 # =============================================================================
 # CONSTANTS
@@ -1234,14 +1237,6 @@ class ProductVariantTrashcanView(PermissionRequiredMixin, ListView):
         context[CONTEXT_PRODUCT] = self.product
         return context
 
-from django.urls import reverse_lazy
-from django.contrib import messages
-from django.shortcuts import redirect, render
-from django.contrib.auth.mixins import PermissionRequiredMixin
-from django.views import View
-from apps.products.importers.size_importer import SizeImporter
-
-
 class SizeImportView(PermissionRequiredMixin, View):
     permission_required = 'products.add_size'
     
@@ -1282,5 +1277,101 @@ def size_template(request):
     writer = csv.writer(response)
     writer.writerow(['name'])
     writer.writerows([['XS'], ['S'], ['M'], ['L'], ['XL']])
+    
+    return response
+
+class ColorImportView(PermissionRequiredMixin, View):
+    permission_required = 'products.add_color'
+    
+    def get(self, request):
+        importer = ColorImporter(request, None)
+        context = {
+            'headers': importer.get_template_headers(),
+            'example_data': importer.get_example_data(),
+            'required_columns': importer.required_columns,
+        }
+        return render(request, 'backoffice/color/color_import.html', context)
+    
+    def post(self, request):
+        file_obj = request.FILES.get('file')
+        update_existing = request.POST.get('update_existing') == 'on'
+        
+        if not file_obj:
+            messages.error(request, 'Por favor selecciona un archivo.')
+            return redirect('products:color_import')
+        
+        importer = ColorImporter(request, file_obj, update_existing=update_existing)
+        results = importer.run()
+        importer.add_messages()
+        
+        context = {'results': results}
+        return render(request, 'backoffice/color/color_import_result.html', context)
+
+
+def color_template(request):
+    """Descarga plantilla de ejemplo para colores."""
+    import csv
+    from django.http import HttpResponse
+    
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="plantilla_colores.csv"'
+    
+    writer = csv.writer(response)
+    writer.writerow(['name', 'code'])
+    writer.writerows([
+        ['Negro', '#000000'],
+        ['Blanco', '#FFFFFF'],
+        ['Rojo', '#FF0000'],
+        ['Azul', '#0000FF'],
+        ['Verde', '#00FF00'],
+    ])
+    
+    return response
+
+class CategoryImportView(PermissionRequiredMixin, View):
+    permission_required = 'products.add_category'
+    
+    def get(self, request):
+        importer = CategoryImporter(request, None)
+        context = {
+            'headers': importer.get_template_headers(),
+            'example_data': importer.get_example_data(),
+            'required_columns': importer.required_columns,
+        }
+        return render(request, 'backoffice/category/category_import.html', context)
+    
+    def post(self, request):
+        file_obj = request.FILES.get('file')
+        update_existing = request.POST.get('update_existing') == 'on'
+        
+        if not file_obj:
+            messages.error(request, 'Por favor selecciona un archivo.')
+            return redirect('products:category_import')
+        
+        importer = CategoryImporter(request, file_obj, update_existing=update_existing)
+        results = importer.run()
+        importer.add_messages()
+        
+        context = {'results': results}
+        return render(request, 'backoffice/category/category_import_result.html', context)
+
+
+def category_template(request):
+    """Descarga plantilla de ejemplo para categorías."""
+    import csv
+    from django.http import HttpResponse
+    
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="plantilla_categorias.csv"'
+    
+    writer = csv.writer(response)
+    writer.writerow(['name'])
+    writer.writerows([
+        ['Camisetas'],
+        ['Hoodies'],
+        ['Pantalones'],
+        ['Accesorios'],
+        ['Chaquetas'],
+    ])
     
     return response

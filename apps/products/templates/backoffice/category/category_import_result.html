@@ -1,0 +1,8 @@
+{% extends "backoffice/layouts/backoffice_base.html" %}
+{% load static %}
+
+{% block title %}Resultado importación - Zicada{% endblock %}
+
+{% block content %}
+{% include 'backoffice/components/crud/import_result.html' with created=results.created updated=results.updated errors=results.errors retry_url="products:category_import" back_url="backoffice:importers_dashboard"%}
+{% endblock %}

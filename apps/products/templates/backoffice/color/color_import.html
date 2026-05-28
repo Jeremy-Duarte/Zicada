@@ -1,0 +1,8 @@
+{% extends "backoffice/layouts/backoffice_base.html" %}
+{% load static %}
+
+{% block title %}Importar Colores - Zicada{% endblock %}
+
+{% block content %}
+{% include 'backoffice/components/crud/import_form.html' with title="Colores" headers=headers example_data=example_data required_columns=required_columns cancel_url="backoffice:importers_dashboard" download_url="products:color_template"%}
+{% endblock %}
