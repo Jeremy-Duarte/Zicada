@@ -28,41 +28,39 @@
         <div class="absolute inset-0 bg-black opacity-40"></div>
     {% endif %}
 
-    <!-- Contenido -->
-    <div class="relative z-10 container mx-auto px-4
-        {% if hero_config.content_alignment == 'left' %}
-            text-left
-        {% elif hero_config.content_alignment == 'right' %}
-            text-right
-        {% else %}
-            text-center
-        {% endif %}
-    ">
-        <div class="max-w-4xl mx-auto">
-            <!-- TITLE -->
-            <h1 class="tracking-tight"
+    <div class="relative z-10 container mx-auto px-6 md:px-8 h-full flex items-center justify-center">
+        <div class="max-w-4xl w-full mx-auto
+            {% if hero_config.content_alignment == 'left' %}
+                text-left
+            {% elif hero_config.content_alignment == 'right' %}
+                text-right
+            {% else %}
+                text-center
+            {% endif %}
+        ">
+            <h1 class="tracking-tight px-4 md:px-8"
                 style="font-family: {{ hero_config.title_font_family }}; 
-                       font-size: {{ hero_config.title_font_size }}; 
-                       font-weight: {{ hero_config.title_font_weight }}; 
-                       line-height: {{ hero_config.title_line_height }}; 
-                       color: {{ hero_config.title_color }};
-                       margin-bottom: {{ hero_config.title_margin_bottom|default:'1rem' }};">
+                    font-size: {{ hero_config.title_font_size }}; 
+                    font-weight: {{ hero_config.title_font_weight }}; 
+                    line-height: {{ hero_config.title_line_height }}; 
+                    color: {{ hero_config.title_color }};
+                    margin-bottom: {{ hero_config.title_margin_bottom|default:'1.5rem' }};">
                 {{ hero_config.title_text|safe|linebreaksbr }}
             </h1>
 
             <!-- SUBTITLE -->
-            <p class="max-w-2xl mx-auto"
-               style="font-family: {{ hero_config.subtitle_font_family }}; 
-                      font-size: {{ hero_config.subtitle_font_size }}; 
-                      font-weight: {{ hero_config.subtitle_font_weight }}; 
-                      line-height: {{ hero_config.subtitle_line_height }}; 
-                      color: {{ hero_config.subtitle_color }};
-                      margin-bottom: {{ hero_config.subtitle_margin_bottom|default:'2rem' }};">
+            <p class="max-w-2xl mx-auto px-4 md:px-8"
+            style="font-family: {{ hero_config.subtitle_font_family }}; 
+                    font-size: {{ hero_config.subtitle_font_size }}; 
+                    font-weight: {{ hero_config.subtitle_font_weight }}; 
+                    line-height: {{ hero_config.subtitle_line_height }}; 
+                    color: {{ hero_config.subtitle_color }};
+                    margin-bottom: {{ hero_config.subtitle_margin_bottom|default:'2.5rem' }};">
                 {{ hero_config.subtitle_text }}
             </p>
 
             <!-- BUTTON -->
-            <div class="flex flex-col sm:flex-row gap-4
+            <div class="flex flex-col sm:flex-row gap-5 px-4 md:px-8
                 {% if hero_config.content_alignment == 'left' %}
                     justify-start
                 {% elif hero_config.content_alignment == 'right' %}
@@ -72,7 +70,7 @@
                 {% endif %}
             ">
                 <a href="{% url hero_config.button_url %}"
-                   class="bg-zicada-accent hover:bg-red-700 text-white font-semibold px-8 py-3 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg">
+                class="bg-zicada-accent hover:bg-red-700 text-white font-semibold px-10 py-4 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg inline-block">
                     {{ hero_config.button_text }}
                 </a>
             </div>
