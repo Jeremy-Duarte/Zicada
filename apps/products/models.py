@@ -541,6 +541,27 @@ class Collection(BaseAuditModel):
             'custom_css': self.custom_css or '',
         }
     
+    def get_card_config(self):
+        style = self.get_style_config()
+        
+        if self.style_config and 'card_config' in self.style_config:
+            return self.style_config['card_config']
+        
+        return {
+            'background_color': self.background_color or '#ffffff',
+            'text_color': self.text_color or '#1a1a1a',
+            'title_color': self.primary_color or '#c2a575',
+            'price_color': self.primary_color or '#c2a575',
+            'badge_background': self.primary_color or '#c2a575',
+            'badge_text_color': '#ffffff',
+            'border_radius': '0.5rem',
+            'shadow': '0 1px 3px 0 rgba(0,0,0,0.1)',
+            'hover_shadow': '0 20px 25px -5px rgba(0,0,0,0.15)',
+            'hover_scale': 1.05,
+            'show_category': True,
+            'show_stock_badge': True,
+        }
+    
     def _has_individual_styles(self):
         return any([
             self.cover_image,
@@ -606,9 +627,16 @@ class Collection(BaseAuditModel):
     def save(self, *args, **kwargs):
         if not self.slug:
             self.slug = slugify(self.name)
-
+        
+        existing_card_config = None
+        if self.style_config and 'card_config' in self.style_config:
+            existing_card_config = self.style_config['card_config']
+        
         if self._has_individual_styles():
             self.style_config = self.get_style_config()
-
+        
+        if existing_card_config:
+            self.style_config['card_config'] = existing_card_config
+        
         self.full_clean()
         super().save(*args, **kwargs)
