@@ -507,19 +507,115 @@ class CollectionListView(PaginationMixin, FilterMixin, ListView):
         return context
 
 
-@require_GET
-def collection_detail(request, slug):
-    """Display a specific collection with its products."""
-    collection = get_object_or_404(Collection, slug=slug, status=STATUS_PUBLISHED, is_active=True)
-    products = collection.products.filter(is_active=True).prefetch_related(
-        'product_colors', 'product_colors__images', 'variants', 'variants__size'
-    )
+class CollectionDetailView(PaginationMixin, FilterMixin, ListView):
+    model = Product
+    template_name = TEMPLATE_COLLECTION_DETAIL
+    context_object_name = 'products'
+    paginate_by = PAGINATE_BY_DEFAULT
     
-    context = {
-        'collection': collection,
-        CONTEXT_PRODUCTS: products,
-    }
-    return render(request, TEMPLATE_COLLECTION_DETAIL, context)
+    filters = [
+        (QUERY_PARAM_PRODUCT_TYPE, 'product_type', 'exact'),
+    ]
+    
+    def dispatch(self, request, *args, **kwargs):
+        self.collection = get_object_or_404(
+            Collection, 
+            slug=kwargs['slug'], 
+            status=STATUS_PUBLISHED, 
+            is_active=True
+        )
+        return super().dispatch(request, *args, **kwargs)
+    
+    def get_queryset(self):
+        qs = super().get_queryset().filter(is_active=True)
+        qs = qs.filter(collections=self.collection)
+        
+        search = self.request.GET.get(QUERY_PARAM_SEARCH, '')
+        if search:
+            qs = qs.filter(
+                Q(name__icontains=search) |
+                Q(description__icontains=search)
+            )
+        
+        min_price = self.request.GET.get(QUERY_PARAM_MIN_PRICE, '')
+        max_price = self.request.GET.get(QUERY_PARAM_MAX_PRICE, '')
+        
+        if min_price and min_price.isdigit():
+            qs = qs.filter(price__gte=int(min_price))
+        
+        if max_price and max_price.isdigit():
+            qs = qs.filter(price__lte=int(max_price))
+        
+        order_by = self.request.GET.get(QUERY_PARAM_ORDER_BY, ORDER_BY_CREATED_AT)
+        allowed_orders = [
+            'name', '-name', 
+            'created_at', '-created_at',
+            'price', '-price'
+        ]
+        if order_by in allowed_orders:
+            qs = qs.order_by(order_by)
+        else:
+            qs = qs.order_by(ORDER_BY_CREATED_AT)
+        
+        return qs
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        context['collection'] = self.collection
+        context['total_products'] = self.get_queryset().count()
+        
+        price_range = self.collection.products.filter(
+            is_active=True
+        ).aggregate(
+            min_price=Min('price'),
+            max_price=Max('price')
+        )
+        
+        product_types = self.collection.products.filter(
+            is_active=True
+        ).values_list('product_type', flat=True).distinct()
+        
+        context['current_search'] = self.request.GET.get(QUERY_PARAM_SEARCH, '')
+        context['current_min_price'] = self.request.GET.get(QUERY_PARAM_MIN_PRICE, '')
+        context['current_max_price'] = self.request.GET.get(QUERY_PARAM_MAX_PRICE, '')
+        context['current_product_type'] = self.request.GET.get(QUERY_PARAM_PRODUCT_TYPE, '')
+        context['current_order_by'] = self.request.GET.get(QUERY_PARAM_ORDER_BY, ORDER_BY_CREATED_AT)
+        
+        context['min_price_global'] = int(price_range['min_price'] or 0)
+        context['max_price_global'] = int(price_range['max_price'] or 1000000)
+        
+        context['product_types'] = list(product_types)
+        context['product_type_labels'] = {pt: PRODUCT_TYPES_DISPLAY.get(pt, pt) for pt in product_types}
+        
+        context['filter_config'] = {
+            'status': False,
+            'price': True,
+            'product_count': False,
+            'date': False,
+            'product_type': True,
+        }
+        
+        context['order_choices'] = [
+            ('-created_at', 'Más recientes'),
+            ('created_at', 'Más antiguas'),
+            ('name', 'Nombre A-Z'),
+            ('-name', 'Nombre Z-A'),
+            ('-price', 'Precio: mayor a menor'),
+            ('price', 'Precio: menor a mayor'),
+        ]
+        
+        context['has_active_filters'] = any([
+            self.request.GET.get(QUERY_PARAM_SEARCH),
+            self.request.GET.get(QUERY_PARAM_MIN_PRICE),
+            self.request.GET.get(QUERY_PARAM_MAX_PRICE),
+            self.request.GET.get(QUERY_PARAM_PRODUCT_TYPE),
+        ])
+        
+        context['clean_url'] = reverse('products:collection_detail', kwargs={'slug': self.collection.slug})
+        context['now'] = timezone.now()
+        
+        return context
 
 
 @require_GET
