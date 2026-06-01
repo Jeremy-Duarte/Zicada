@@ -245,7 +245,64 @@ class ProductVariantAdmin(admin.ModelAdmin):
         return super().get_queryset(request).select_related('product', 'product_color', 'product_color__color', 'size')
 
 
-class CollectionStyleForm(forms.ModelForm):    
+class CollectionStyleForm(forms.ModelForm):
+    # ========== NUEVOS CAMPOS PARA CONFIGURACIÓN DE TARJETAS ==========
+    card_background_color = forms.CharField(
+        max_length=20, 
+        required=False, 
+        widget=forms.TextInput(attrs={'type': 'color', 'style': 'width: 60px; height: 35px; cursor: pointer;'}),
+        label='Color de fondo de tarjetas',
+        help_text='Color de fondo de las tarjetas de producto'
+    )
+    card_title_color = forms.CharField(
+        max_length=20, 
+        required=False, 
+        widget=forms.TextInput(attrs={'type': 'color', 'style': 'width: 60px; height: 35px; cursor: pointer;'}),
+        label='Color del título',
+        help_text='Color del nombre del producto'
+    )
+    card_price_color = forms.CharField(
+        max_length=20, 
+        required=False, 
+        widget=forms.TextInput(attrs={'type': 'color', 'style': 'width: 60px; height: 35px; cursor: pointer;'}),
+        label='Color del precio',
+        help_text='Color del precio del producto'
+    )
+    card_border_radius = forms.CharField(
+        max_length=20, 
+        required=False, 
+        initial='0.5rem',
+        label='Radio de borde',
+        help_text='Ej: 0.5rem, 1rem, 8px, 12px'
+    )
+    card_shadow = forms.CharField(
+        max_length=200, 
+        required=False, 
+        initial='0 1px 3px 0 rgba(0,0,0,0.1)',
+        label='Sombra de tarjeta',
+        help_text='CSS box-shadow. Ej: 0 10px 15px -3px rgba(0,0,0,0.1)'
+    )
+    card_hover_scale = forms.DecimalField(
+        required=False, 
+        initial=1.05,
+        max_digits=4,
+        decimal_places=2,
+        label='Escala al hover',
+        help_text='Ej: 1.05 (5% más grande), 1.1 (10% más grande)'
+    )
+    card_show_category = forms.BooleanField(
+        required=False, 
+        initial=True,
+        label='Mostrar categoría',
+        help_text='Muestra la categoría del producto en la tarjeta'
+    )
+    card_show_stock_badge = forms.BooleanField(
+        required=False, 
+        initial=True,
+        label='Mostrar badge de stock',
+        help_text='Muestra el estado del stock (disponible, agotado, últimas unidades)'
+    )
+    
     class Meta:
         model = Collection
         fields = '__all__'
@@ -257,6 +314,57 @@ class CollectionStyleForm(forms.ModelForm):
             'custom_css': forms.Textarea(attrs={'rows': 8, 'style': 'font-family: monospace;'}),
             'effects_config': forms.Textarea(attrs={'rows': 6, 'style': 'font-family: monospace;', 'placeholder': '{\n  "hover_effect": "zoom",\n  "animation": "fadeIn"\n}'}),
         }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.style_config:
+            card_config = self.instance.style_config.get('card_config', {})
+            self.fields['card_background_color'].initial = card_config.get('background_color', self.instance.background_color or '#ffffff')
+            self.fields['card_title_color'].initial = card_config.get('title_color', self.instance.primary_color or '#c2a575')
+            self.fields['card_price_color'].initial = card_config.get('price_color', self.instance.primary_color or '#c2a575')
+            self.fields['card_border_radius'].initial = card_config.get('border_radius', '0.5rem')
+            self.fields['card_shadow'].initial = card_config.get('shadow', '0 1px 3px 0 rgba(0,0,0,0.1)')
+            self.fields['card_hover_scale'].initial = card_config.get('hover_scale', 1.05)
+            self.fields['card_show_category'].initial = card_config.get('show_category', True)
+            self.fields['card_show_stock_badge'].initial = card_config.get('show_stock_badge', True)
+    
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        
+        card_config = {
+            'background_color': self.cleaned_data.get('card_background_color') or instance.background_color or '#ffffff',
+            'title_color': self.cleaned_data.get('card_title_color') or instance.primary_color or '#c2a575',
+            'price_color': self.cleaned_data.get('card_price_color') or instance.primary_color or '#c2a575',
+            'badge_background': instance.primary_color or '#c2a575',
+            'badge_text_color': '#ffffff',
+            'border_radius': self.cleaned_data.get('card_border_radius') or '0.5rem',
+            'shadow': self.cleaned_data.get('card_shadow') or '0 1px 3px 0 rgba(0,0,0,0.1)',
+            'hover_scale': float(self.cleaned_data.get('card_hover_scale') or 1.05),
+            'show_category': self.cleaned_data.get('card_show_category', True),
+            'show_stock_badge': self.cleaned_data.get('card_show_stock_badge', True),
+        }
+        
+        style_config = instance.style_config or {}
+        
+        if 'colors' not in style_config:
+            style_config['colors'] = {
+                'primary': instance.primary_color or '#c2a575',
+                'secondary': instance.secondary_color or '#8b5e3c',
+                'background': instance.background_color or '#ffffff',
+                'text': instance.text_color or '#1a1a1a',
+            }
+        if 'typography' not in style_config:
+            style_config['typography'] = {
+                'title_font': instance.title_font or "'Inter', sans-serif",
+            }
+        
+        style_config['card_config'] = card_config
+        
+        instance.style_config = style_config
+        
+        if commit:
+            instance.save()
+        return instance
 
 @admin.register(Collection)
 class CollectionAdmin(admin.ModelAdmin):
@@ -304,12 +412,12 @@ class CollectionAdmin(admin.ModelAdmin):
                 <details>
                     <summary>📝 Configuración JSON para efectos (click para ver ejemplo)</summary>
                     <pre style="background: #f5f5f5; padding: 10px; border-radius: 5px;">
-{
-  "hover_effect": "zoom",      // zoom, glow, slide, none
-  "card_animation": "fadeInUp", // fadeInUp, slideIn, bounce
-  "parallax": true,            // efecto parallax al hacer scroll
-  "particles": false           // partículas flotantes
-}
+    {
+    "hover_effect": "zoom",
+    "card_animation": "fadeInUp",
+    "parallax": true,
+    "particles": false
+    }
                     </pre>
                 </details>
             '''
@@ -318,6 +426,17 @@ class CollectionAdmin(admin.ModelAdmin):
             'fields': ('custom_css',),
             'classes': ('collapse',),
             'description': 'CSS adicional para personalizar aún más la apariencia de esta colección (solo si sabes lo que haces)'
+        }),
+        ('🎴 Configuración de tarjetas de producto', {
+            'fields': (
+                ('card_background_color', 'card_title_color'),
+                ('card_price_color', 'card_border_radius'),
+                ('card_shadow', 'card_hover_scale'),
+                'card_show_category',
+                'card_show_stock_badge',
+            ),
+            'classes': ('wide',),
+            'description': 'Personaliza la apariencia de las tarjetas de producto dentro de esta colección'
         }),
         ('Configuración visual (JSON legado)', {
             'fields': ('style_config',),
