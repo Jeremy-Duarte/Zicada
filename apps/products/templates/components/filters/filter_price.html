@@ -1,0 +1,22 @@
+<div>
+    <label class="block text-sm font-medium text-gray-700 mb-2">💰 Rango de precios</label>
+    <div class="flex gap-3">
+        <input type="number" 
+               name="min_price" 
+               value="{{ min_price }}"
+               placeholder="Min"
+               min="{{ min_global }}"
+               max="{{ max_global }}"
+               class="w-1/2 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-zicada-accent">
+        <input type="number" 
+               name="max_price" 
+               value="{{ max_price }}"
+               placeholder="Max"
+               min="{{ min_global }}"
+               max="{{ max_global }}"
+               class="w-1/2 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-zicada-accent">
+    </div>
+    <div class="mt-2 text-xs text-gray-500">
+        Rango: ${{ min_global|floatformat:0 }} - ${{ max_global|floatformat:0 }}
+    </div>
+</div>

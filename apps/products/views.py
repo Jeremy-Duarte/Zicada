@@ -1,5 +1,6 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
+from django.db.models import Q, Min, Max, Count
 from django.contrib.admin.views.decorators import staff_member_required
 from django.utils import timezone
 from django.urls import reverse, reverse_lazy
@@ -9,6 +10,8 @@ from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.utils.safestring import mark_safe
 from django.views.decorators.http import require_GET, require_POST, require_http_methods
 from django.views.decorators.csrf import csrf_exempt
+from django.utils import timezone
+from datetime import timedelta
 import json
 
 from apps.core.crud.mixins import PaginationMixin, FilterMixin, SortableDeleteMixin
@@ -32,6 +35,8 @@ from apps.products.importers.category_importer import CategoryImporter
 
 # Status Strings
 STATUS_PUBLISHED = 'publicada'
+STATUS_DRAFT = 'borrador'
+STATUS_ARCHIVED = 'archivada'
 STATUS_ACTIVE = 'is_active'
 STATUS_INACTIVE = 'is_active'
 
@@ -54,6 +59,7 @@ ORDER_BY_DELETED_AT = '-deleted_at'
 
 # Pagination
 PAGINATE_BY_DEFAULT = 20
+PAGINATE_BY_COLLECTIONS = 9  # Para la lista de colecciones
 
 # Date Formats
 DATE_FORMAT_DISPLAY = '%d/%m/%Y %H:%M'
@@ -141,6 +147,11 @@ HEADERS_COLOR = [HEADER_NAME, HEADER_CODE, HEADER_ORDER]
 HEADERS_PRODUCT_IMAGE = [HEADER_IMAGE, HEADER_ALT_TEXT, HEADER_UPLOADED]
 HEADERS_PRODUCT = [HEADER_IMAGE, HEADER_NAME, HEADER_CATEGORY, HEADER_PRICE, HEADER_TYPE, HEADER_STATUS]
 HEADERS_PRODUCT_TRASHCAN = [HEADER_NAME, HEADER_CATEGORY, HEADER_PRICE, HEADER_DELETED_AT]
+HEADER_COVER_IMAGE = 'Portada'
+HEADER_PRODUCT_COUNT = 'Productos'
+HEADER_PRICE_RANGE = 'Rango de precios'
+HEADER_DATES = 'Fechas'
+HEADERS_COLLECTION = [HEADER_NAME, HEADER_COVER_IMAGE, HEADER_PRODUCT_COUNT, HEADER_PRICE_RANGE, HEADER_DATES]
 
 # Product Types
 PRODUCT_TYPE_FABRICA = 'fabrica'
@@ -181,6 +192,22 @@ FILTER_IS_ACTIVE = 'is_active'
 
 # Query Parameters
 QUERY_PARAM_CATEGORY = 'category'
+QUERY_PARAM_SEARCH = 'search'
+QUERY_PARAM_STATUS = 'status'
+QUERY_PARAM_MIN_PRICE = 'min_price'
+QUERY_PARAM_MAX_PRICE = 'max_price'
+QUERY_PARAM_PRODUCT_COUNT_MIN = 'product_count_min'
+QUERY_PARAM_PRODUCT_COUNT_MAX = 'product_count_max'
+QUERY_PARAM_DATE_FILTER = 'date_filter'
+QUERY_PARAM_PRODUCT_TYPE = 'product_type'
+QUERY_PARAM_ORDER_BY = 'order_by'
+
+# Date Filter Options
+DATE_FILTER_LAST_MONTH = 'ultimo_mes'
+DATE_FILTER_LAST_QUARTER = 'ultimo_trimestre'
+DATE_FILTER_LAST_SEMESTER = 'ultimo_semestre'
+DATE_FILTER_LAST_YEAR = 'ultimo_ano'
+DATE_FILTER_UPCOMING = 'proximas'
 
 # Success Messages
 MSG_SIZE_CREATED = 'Talla "{name}" creada exitosamente.'
@@ -212,7 +239,6 @@ MSG_VARIANT_UPDATED = 'Variante actualizada correctamente.'
 MSG_VARIANT_DELETED = 'Variante desactivada correctamente.'
 MSG_VARIANT_RESTORED = 'Variante restaurada correctamente.'
 MSG_VARIANT_RESTORE_ERROR = 'Error al restaurar la variante.'
-
 
 # =============================================================================
 # UTILITY FUNCTIONS
@@ -289,19 +315,196 @@ def catalog(request):
     return render(request, TEMPLATE_CATALOG, context)
 
 
-@require_GET
-def collections_list(request):
-    """List all public collections."""
-    collections = Collection.objects.filter(
-        status=STATUS_PUBLISHED,
-        is_active=True
-    ).order_by(ORDER_BY_CREATED_AT)
+class CollectionListView(PaginationMixin, FilterMixin, ListView):
+    """
+    Vista de lista de colecciones con filtros avanzados.
+    """
+    model = Collection
+    template_name = TEMPLATE_COLLECTIONS_LIST
+    context_object_name = 'collections'
+    paginate_by = PAGINATE_BY_COLLECTIONS
     
-    context = {
-        'collections': collections,
-        'now': timezone.now(),
-    }
-    return render(request, TEMPLATE_COLLECTIONS_LIST, context)
+    filters = [
+        (QUERY_PARAM_PRODUCT_TYPE, 'products__product_type', 'exact'),
+    ]
+    
+    def get_queryset(self):
+        # Aplicar filtros simples del FilterMixin
+        qs = super().get_queryset()
+        
+        # Filtros base
+        qs = qs.filter(is_active=True)
+        
+        # 1. Búsqueda por nombre (manual porque es OR entre dos campos)
+        search = self.request.GET.get(QUERY_PARAM_SEARCH, '')
+        if search:
+            qs = qs.filter(
+                Q(name__icontains=search) |
+                Q(description__icontains=search)
+            )
+        
+        # 2. Filtro por estado
+        status_filter = self.request.GET.get(QUERY_PARAM_STATUS, '')
+        if status_filter == 'activas':
+            qs = qs.filter(status=STATUS_PUBLISHED)
+        elif status_filter == 'proximas':
+            qs = qs.filter(status=STATUS_DRAFT)
+        elif status_filter == 'archivadas':
+            qs = qs.filter(status=STATUS_ARCHIVED)
+        
+        # 3. Filtro por rango de precios
+        min_price = self.request.GET.get(QUERY_PARAM_MIN_PRICE, '')
+        max_price = self.request.GET.get(QUERY_PARAM_MAX_PRICE, '')
+        
+        if min_price and min_price.isdigit():
+            qs = qs.filter(products__price__gte=int(min_price)).distinct()
+        
+        if max_price and max_price.isdigit():
+            qs = qs.filter(products__price__lte=int(max_price)).distinct()
+        
+        # 4. Filtro por cantidad de productos
+        product_count_min = self.request.GET.get(QUERY_PARAM_PRODUCT_COUNT_MIN, '')
+        product_count_max = self.request.GET.get(QUERY_PARAM_PRODUCT_COUNT_MAX, '')
+        
+        if product_count_min and product_count_min.isdigit():
+            qs = qs.annotate(product_count=Count('products')).filter(product_count__gte=int(product_count_min))
+        
+        if product_count_max and product_count_max.isdigit():
+            if not product_count_min:
+                qs = qs.annotate(product_count=Count('products'))
+            qs = qs.filter(product_count__lte=int(product_count_max))
+        
+        # 5. Filtro por fecha de lanzamiento
+        date_filter = self.request.GET.get(QUERY_PARAM_DATE_FILTER, '')
+        now = timezone.now()
+        
+        if date_filter == DATE_FILTER_LAST_MONTH:
+            qs = qs.filter(start_date__gte=now - timedelta(days=30))
+        elif date_filter == DATE_FILTER_LAST_QUARTER:
+            qs = qs.filter(start_date__gte=now - timedelta(days=90))
+        elif date_filter == DATE_FILTER_LAST_SEMESTER:
+            qs = qs.filter(start_date__gte=now - timedelta(days=180))
+        elif date_filter == DATE_FILTER_LAST_YEAR:
+            qs = qs.filter(start_date__gte=now - timedelta(days=365))
+        elif date_filter == DATE_FILTER_UPCOMING:
+            qs = qs.filter(start_date__gt=now, status=STATUS_DRAFT)
+        
+        # Ordenamiento
+        order_by = self.request.GET.get(QUERY_PARAM_ORDER_BY, ORDER_BY_CREATED_AT)
+        allowed_orders = ['name', '-name', 'created_at', '-created_at', 'start_date', '-start_date']
+        if order_by in allowed_orders:
+            qs = qs.order_by(order_by)
+        else:
+            qs = qs.order_by(ORDER_BY_CREATED_AT)
+        
+        return qs
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        # Rango de precios global
+        price_range = ProductVariant.objects.filter(
+            is_active=True,
+            product__is_active=True
+        ).aggregate(
+            min_price=Min('product__price'),
+            max_price=Max('product__price')
+        )
+        
+        # Tipos de producto disponibles
+        product_types = Product.objects.filter(
+            is_active=True
+        ).values_list('product_type', flat=True).distinct()
+        
+        # Construir filas para tabla (similar a ColorListView)
+        rows = []
+        for collection in context['collections']:
+            product_count = collection.products.filter(is_active=True).count()
+            price_range_collection = collection.products.filter(
+                is_active=True
+            ).aggregate(
+                min_price=Min('price'),
+                max_price=Max('price')
+            )
+            
+            start_date_str = collection.start_date.strftime('%d/%m/%Y') if collection.start_date else '-'
+            end_date_str = collection.end_date.strftime('%d/%m/%Y') if collection.end_date else '-'
+
+            rows.append({
+                'pk': collection.pk,
+                'values': [
+                    mark_safe(
+                        f'<div class="flex flex-col">'
+                        f'<span class="font-medium">{collection.name}</span>'
+                        f'<span class="text-xs text-gray-500">{collection.get_status_display()}</span>'
+                        f'</div>'
+                    ),
+                    mark_safe(
+                        f'<img src="{collection.cover_image.url}" class="w-12 h-12 object-cover rounded" />'
+                        if collection.cover_image else '<span class="text-gray-400">Sin imagen</span>'
+                    ),
+                    product_count,
+                    f'${price_range_collection["min_price"] or 0:,.0f} - ${price_range_collection["max_price"] or 0:,.0f}',
+                    mark_safe(
+                        f'<div class="text-sm">'
+                        f'<div>Inicio: {start_date_str}</div>'
+                        f'<div>Fin: {end_date_str}</div>'
+                        f'</div>'
+                    ),
+                ]
+            })
+        
+        context.update({
+            'rows': rows,
+            'headers': HEADERS_COLLECTION,
+            'search_value': self.request.GET.get(QUERY_PARAM_SEARCH, ''),
+            'current_status': self.request.GET.get(QUERY_PARAM_STATUS, ''),
+            'current_min_price': self.request.GET.get(QUERY_PARAM_MIN_PRICE, ''),
+            'current_max_price': self.request.GET.get(QUERY_PARAM_MAX_PRICE, ''),
+            'min_price_global': int(price_range['min_price'] or 0),
+            'max_price_global': int(price_range['max_price'] or 1000000),
+            'current_product_count_min': self.request.GET.get(QUERY_PARAM_PRODUCT_COUNT_MIN, ''),
+            'current_product_count_max': self.request.GET.get(QUERY_PARAM_PRODUCT_COUNT_MAX, ''),
+            'current_date_filter': self.request.GET.get(QUERY_PARAM_DATE_FILTER, ''),
+            'current_product_type': self.request.GET.get(QUERY_PARAM_PRODUCT_TYPE, ''),
+            'current_order_by': self.request.GET.get(QUERY_PARAM_ORDER_BY, ORDER_BY_CREATED_AT),
+            'product_types': list(product_types),
+            'product_type_labels': {pt: PRODUCT_TYPES_DISPLAY.get(pt, pt) for pt in product_types},
+            'status_choices': [
+                ('activas', 'Activas'),
+                ('proximas', 'Próximas'),
+                ('archivadas', 'Archivadas'),
+            ],
+            'order_choices': [
+                ('-created_at', 'Más recientes'),
+                ('created_at', 'Más antiguas'),
+                ('name', 'Nombre A-Z'),
+                ('-name', 'Nombre Z-A'),
+                ('-start_date', 'Fecha inicio (reciente)'),
+                ('start_date', 'Fecha inicio (antigua)'),
+            ],
+            'filter_config': {
+                'status': True,
+                'price': True,
+                'product_count': True,
+                'date': True,
+                'product_type': True,
+            },
+            'has_active_filters': any([
+                self.request.GET.get(QUERY_PARAM_SEARCH),
+                self.request.GET.get(QUERY_PARAM_STATUS),
+                self.request.GET.get(QUERY_PARAM_MIN_PRICE),
+                self.request.GET.get(QUERY_PARAM_MAX_PRICE),
+                self.request.GET.get(QUERY_PARAM_PRODUCT_COUNT_MIN),
+                self.request.GET.get(QUERY_PARAM_PRODUCT_COUNT_MAX),
+                self.request.GET.get(QUERY_PARAM_DATE_FILTER),
+                self.request.GET.get(QUERY_PARAM_PRODUCT_TYPE),
+            ]),
+            'clean_url': reverse('products:collections_list'),            
+            'now': timezone.now(),
+        })
+        
+        return context
 
 
 @require_GET

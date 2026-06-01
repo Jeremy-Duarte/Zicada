@@ -11,6 +11,7 @@ from django.template.loader import render_to_string
 from django.urls import reverse, reverse_lazy
 from django.views.decorators.cache import never_cache
 
+from .models import HeroConfig
 from apps.products.models import Product, Collection, Category
 from .forms import ContactForm, StaffLoginForm
 
@@ -45,10 +46,16 @@ URL_BACKOFFICE_DASHBOARD = 'backoffice:dashboard'
 # -------------------------------------------------------------------------
 
 def home(request):
+    try:
+        hero_config = HeroConfig.objects.get(is_active=True)
+    except HeroConfig.DoesNotExist:
+        hero_config = None
+    
     featured_collections = Collection.objects.filter(
         status='publicada',
         is_active=True
     ).order_by('-created_at')[:3]
+    
     latest_products = Product.objects.filter(
         is_active=True
     ).select_related('category').prefetch_related('variants')[:8]
@@ -56,6 +63,7 @@ def home(request):
     categories = Category.objects.all().order_by('sort_order')[:4]
 
     context = {
+        'hero_config': hero_config,
         'featured_collections': featured_collections,
         'latest_products': latest_products,
         'categories': categories,

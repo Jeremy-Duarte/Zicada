@@ -1,15 +1,31 @@
-{% if breadcrumbs %}
-<div class="bg-gray-50 border-b border-gray-200">
-    <div class="container mx-auto px-4 py-2 text-sm text-gray-600">
-        <a href="{% url 'home' %}" class="hover:text-zicada-accent">Inicio</a>
-        {% for crumb in breadcrumbs %}
-        <span class="mx-2">/</span>
-        {% if crumb.url %}
-        <a href="{{ crumb.url }}" class="hover:text-zicada-accent">{{ crumb.name }}</a>
-        {% else %}
-        <span class="text-gray-500">{{ crumb.name }}</span>
-        {% endif %}
-        {% endfor %}
+{% if breadcrumbs and breadcrumbs|length > 0 %}
+<div class="bg-gray-900 border-b border-gray-800">
+    <div class="container mx-auto px-4 py-3">
+        <nav class="flex items-center text-sm">
+            <ol class="flex flex-wrap items-center gap-2">
+                {% for crumb in breadcrumbs %}
+                    {% if not forloop.first %}
+                        <li class="text-gray-600">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                            </svg>
+                        </li>
+                    {% endif %}
+                    
+                    <li>
+                        {% if crumb.url and not forloop.last %}
+                            <a href="{{ crumb.url }}" class="text-gray-400 hover:text-zicada-accent transition duration-200">
+                                {{ crumb.name }}
+                            </a>
+                        {% else %}
+                            <span class="{% if forloop.last %}text-zicada-accent font-medium{% else %}text-gray-500{% endif %}">
+                                {{ crumb.name }}
+                            </span>
+                        {% endif %}
+                    </li>
+                {% endfor %}
+            </ol>
+        </nav>
     </div>
 </div>
 {% endif %}

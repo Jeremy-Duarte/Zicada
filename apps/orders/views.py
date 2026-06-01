@@ -33,6 +33,7 @@ from .forms import (
 )
 from .models import Order, OrderItem
 
+logger = logging.getLogger(__name__)
 
 # =============================================================================
 # CONSTANTS
@@ -186,6 +187,15 @@ def deliver_order(request, order_id):
 # CART API VIEWS
 # =============================================================================
 
+def _get_stock_status(stock):
+    """Helper function to determine stock status."""
+    if stock == 0:
+        return 'out_of_stock'
+    elif stock <= 5:
+        return 'low_stock'
+    return 'available'
+
+
 @require_POST
 def cart_add(request):
     """Add product variant to cart."""
@@ -194,26 +204,56 @@ def cart_add(request):
         variant_id = data.get('variant_id')
         quantity = int(data.get('quantity', 1))
     except (ValueError, TypeError):
-        return JsonResponse({'error': 'Datos inválidos'}, status=400)
+        return JsonResponse({'error': '❌ Datos inválidos'}, status=400)
+
+    if quantity < 1:
+        return JsonResponse({'error': '❌ La cantidad debe ser al menos 1'}, status=400)
+    
+    if quantity > 99:
+        return JsonResponse({'error': '⚠️ No puedes agregar más de 99 unidades del mismo producto'}, status=400)
 
     cart = Cart(request)
 
     try:
-        cart.add(variant_id, quantity)
         variant = ProductVariant.objects.select_related(
             'product', 'product_color__color', 'size'
-        ).get(id=variant_id)
+        ).get(id=variant_id, is_active=True)
+        
+        if not variant.is_active:
+            return JsonResponse({'error': f'❌ "{variant.product.name}" no está disponible actualmente'}, status=400)
+        
+        current_qty = 0
+        if hasattr(cart, 'cart') and isinstance(cart.cart, dict):
+            item_data = cart.cart.get(str(variant_id))
+            if item_data:
+                current_qty = item_data.get('quantity', 0)
+        
+        new_qty = current_qty + quantity
+        
+        if variant.stock == 0:
+            return JsonResponse({
+                'error': f'❌ "{variant.product.name}" - {variant.size.name} / {variant.color_name} está agotado'
+            }, status=400)
+        
+        if new_qty > variant.stock:
+            return JsonResponse({
+                'error': f'⚠️ Stock insuficiente para "{variant.product.name}" ({variant.size.name}, {variant.color_name}). Disponible: {variant.stock}.'
+            }, status=400)
 
-        mensaje = f'{quantity}x {variant.product.name} - {variant.product_color.color.name} - {variant.size.name} agregado al carrito'
-        messages.success(request, mensaje)
+        cart.add(variant_id, quantity)
 
         return JsonResponse({
             'success': True,
             'total_items': cart.get_total_items(),
-            'message': mensaje
         })
+
+    except ProductVariant.DoesNotExist:
+        return JsonResponse({'error': '❌ El producto no existe o no está disponible'}, status=404)
+    except ValidationError as e:
+        return JsonResponse({'error': f'⚠️ {str(e)}'}, status=400)
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=400)
+        logger.exception("Error in cart_add")
+        return JsonResponse({'error': '❌ Error al agregar el producto. Intenta de nuevo'}, status=400)
 
 
 @require_POST
@@ -223,15 +263,28 @@ def cart_remove(request):
         data = json.loads(request.body) if request.body else request.POST
         variant_id = data.get('variant_id')
     except (ValueError, TypeError):
-        return JsonResponse({'error': 'Datos inválidos'}, status=400)
+        return JsonResponse({'error': '❌ Datos inválidos'}, status=400)
 
     cart = Cart(request)
-    cart.remove(variant_id)
 
-    return JsonResponse({
-        'success': True,
-        'total_items': cart.get_total_items(),
-    })
+    try:
+        if not cart.get_item(variant_id):
+            return JsonResponse({'error': '❌ El producto no está en tu carrito'}, status=404)
+        
+        variant = ProductVariant.objects.filter(id=variant_id).first()
+        if variant:
+            logger.info(f"Removing from cart: {variant.product.name} - {variant.size.name}")
+        
+        cart.remove(variant_id)
+        
+        return JsonResponse({
+            'success': True,
+            'total_items': cart.get_total_items(),
+        })
+        
+    except Exception as e:
+        logger.exception("Error in cart_remove")
+        return JsonResponse({'error': '❌ Error al eliminar el producto'}, status=400)
 
 
 @require_POST
@@ -241,35 +294,85 @@ def cart_update(request):
         data = json.loads(request.body) if request.body else request.POST
         variant_id = data.get('variant_id')
         quantity = data.get('quantity')
-
+        
         if isinstance(quantity, str):
             quantity = int(quantity)
         elif not isinstance(quantity, int):
-            return JsonResponse({'error': 'Cantidad inválida'}, status=400)
-    except (ValueError, TypeError) as e:
-        return JsonResponse({'error': f'Datos inválidos: {str(e)}'}, status=400)
+            return JsonResponse({'error': '❌ Cantidad inválida'}, status=400)
+            
+    except (ValueError, TypeError):
+        return JsonResponse({'error': '❌ Datos inválidos'}, status=400)
+
+    if quantity < 0:
+        return JsonResponse({'error': '❌ La cantidad no puede ser negativa'}, status=400)
+    
+    if quantity > 99:
+        return JsonResponse({'error': '⚠️ No puedes tener más de 99 unidades del mismo producto'}, status=400)
 
     cart = Cart(request)
 
+    if quantity == 0:
+        cart.remove(variant_id)
+        return JsonResponse({
+            'success': True, 
+            'total_items': cart.get_total_items()
+        })
+
     try:
+        if not cart.get_item(variant_id):
+            return JsonResponse({'error': '❌ El producto no está en tu carrito'}, status=404)
+        
+        variant = ProductVariant.objects.select_related(
+            'product', 'product_color__color', 'size'
+        ).get(id=variant_id, is_active=True)
+        
+        if quantity > variant.stock:
+            if variant.stock == 0:
+                return JsonResponse({
+                    'error': f'❌ "{variant.product.name}" - {variant.size.name} / {variant.color_name} está agotado. Elimina este producto de tu carrito.'
+                }, status=400)
+            else:
+                return JsonResponse({
+                    'error': f'⚠️ Stock insuficiente para "{variant.product.name}" ({variant.size.name}, {variant.color_name}). Disponible: {variant.stock} unidades.'
+                }, status=400)
+        
         cart.update_quantity(variant_id, quantity)
+        
         return JsonResponse({
             'success': True,
             'total_items': cart.get_total_items(),
         })
+        
+    except ProductVariant.DoesNotExist:
+        cart.remove(variant_id)
+        return JsonResponse({
+            'success': True,
+            'total_items': cart.get_total_items(),
+            'warning': '⚠️ Este producto ya no está disponible. Se eliminó de tu carrito.'
+        })
+    except ValidationError as e:
+        return JsonResponse({'error': f'⚠️ {str(e)}'}, status=400)
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=400)
+        logger.exception("Error in cart_update")
+        return JsonResponse({'error': '❌ Error al actualizar la cantidad'}, status=400)
 
 
 @require_POST
 def cart_clear(request):
     """Clear all items from cart."""
     cart = Cart(request)
+    
+    if cart.is_empty():
+        return JsonResponse({'warning': '🛒 El carrito ya está vacío'})
+
+    item_count = cart.get_total_items()
     cart.clear()
+    
+    logger.info(f"Cart cleared: {item_count} items removed")
+    
     return JsonResponse({
         'success': True,
-        'total_items': 0,
-        'message': MESSAGE_CART_CLEARED
+        'total_items': 0
     })
 
 
@@ -287,6 +390,24 @@ def cart_data(request):
         item['price'] = float(item['price'])
         item['subtotal'] = float(Decimal(item['price']) * item['quantity'])
 
+        try:
+            variant = ProductVariant.objects.select_related(
+                'product', 'product_color__color', 'size'
+            ).get(id=item['variant_id'])
+            
+            item['stock_available'] = variant.stock
+            item['max_quantity'] = min(variant.stock, 99)
+            item['is_low_stock'] = 0 < variant.stock <= 5
+            item['size_name'] = variant.size.name
+            item['color_name'] = variant.color_name
+            item['stock_status'] = _get_stock_status(variant.stock)
+                
+        except ProductVariant.DoesNotExist:
+            item['stock_available'] = 0
+            item['max_quantity'] = 0
+            item['is_low_stock'] = False
+            item['stock_status'] = 'unavailable'
+
     return JsonResponse(summary)
 
 
@@ -298,6 +419,20 @@ def cart_detail(request):
 
     for item in summary['items']:
         item['total'] = item['price'] * item['quantity']
+        
+        try:
+            variant = ProductVariant.objects.select_related(
+                'product', 'product_color__color', 'size'
+            ).get(id=item['variant_id'])
+            
+            item['stock_available'] = variant.stock
+            item['is_low_stock'] = 0 < variant.stock <= 5
+            item['stock_status'] = _get_stock_status(variant.stock)
+            
+        except ProductVariant.DoesNotExist:
+            item['stock_available'] = 0
+            item['is_low_stock'] = False
+            item['stock_status'] = 'unavailable'
 
     context = {
         'items': summary['items'],

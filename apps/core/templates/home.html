@@ -7,55 +7,130 @@
 {% block content %}
 
 <!-- Hero Section -->
-<section class="relative bg-gradient-to-r from-zicada-dark to-gray-900 text-white">
-    <div class="absolute inset-0 bg-black opacity-40"></div>
-    <div class="container mx-auto px-4 py-20 md:py-32 relative z-10">
-        <div class="max-w-2xl">
-            <h1 class="text-4xl md:text-6xl font-bold mb-4 leading-tight">
-                LA MODA SE VA,<br>
-                <span class="text-zicada-accent">TU ESTILO PERMANECE</span>
+{% if hero_config %}
+<section class="relative flex items-center justify-center text-white"
+         style="height: 100vh; 
+                margin-top: -16.666vh;
+                padding-top: 16.666vh;
+                {% if hero_config.background_image and hero_config.background_image.url %}
+                background-image: url('{{ hero_config.background_image.url }}');
+                background-size: cover;
+                background-position: center;
+                background-repeat: no-repeat;
+                {% else %}
+                background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+                {% endif %}">
+
+    <!-- Overlay más suave para fotos oscuras -->
+    {% if hero_config.background_image and hero_config.background_image.url %}
+        <div class="absolute inset-0 bg-black bg-opacity-30"></div>
+    {% else %}
+        <div class="absolute inset-0 bg-black opacity-40"></div>
+    {% endif %}
+
+    <div class="relative z-10 container mx-auto px-6 md:px-8 h-full flex items-center justify-center">
+        <div class="max-w-4xl w-full mx-auto
+            {% if hero_config.content_alignment == 'left' %}
+                text-left
+            {% elif hero_config.content_alignment == 'right' %}
+                text-right
+            {% else %}
+                text-center
+            {% endif %}
+        ">
+            <h1 class="tracking-tight px-4 md:px-8"
+                style="font-family: {{ hero_config.title_font_family }}; 
+                    font-size: {{ hero_config.title_font_size }}; 
+                    font-weight: {{ hero_config.title_font_weight }}; 
+                    line-height: {{ hero_config.title_line_height }}; 
+                    color: {{ hero_config.title_color }};
+                    margin-bottom: {{ hero_config.title_margin_bottom|default:'1.5rem' }};">
+                {{ hero_config.title_text|safe|linebreaksbr }}
             </h1>
-            <p class="text-lg md:text-xl text-gray-200 mb-8">
-                Ropa única y personalizada diseñada para expresar tu individualidad. 
-                Colecciones exclusivas de streetwear hechas en Colombia.
+
+            <!-- SUBTITLE -->
+            <p class="max-w-2xl mx-auto px-4 md:px-8"
+            style="font-family: {{ hero_config.subtitle_font_family }}; 
+                    font-size: {{ hero_config.subtitle_font_size }}; 
+                    font-weight: {{ hero_config.subtitle_font_weight }}; 
+                    line-height: {{ hero_config.subtitle_line_height }}; 
+                    color: {{ hero_config.subtitle_color }};
+                    margin-bottom: {{ hero_config.subtitle_margin_bottom|default:'2.5rem' }};">
+                {{ hero_config.subtitle_text }}
             </p>
-            <div class="flex flex-col sm:flex-row gap-4">
-                <a href="{% url 'products:catalog' %}" class="bg-zicada-accent hover:bg-opacity-90 text-white font-semibold px-8 py-3 rounded-lg transition text-center">
-                    Ver catálogo
-                </a>
-                <a href="{% url 'products:collections_list' %}" class="border border-white hover:bg-white hover:text-zicada-dark text-white font-semibold px-8 py-3 rounded-lg transition text-center">
-                    Explorar colecciones
+
+            <!-- BUTTON -->
+            <div class="flex flex-col sm:flex-row gap-5 px-4 md:px-8
+                {% if hero_config.content_alignment == 'left' %}
+                    justify-start
+                {% elif hero_config.content_alignment == 'right' %}
+                    justify-end
+                {% else %}
+                    justify-center
+                {% endif %}
+            ">
+                <a href="{% url hero_config.button_url %}"
+                class="bg-zicada-accent hover:bg-red-700 text-white font-semibold px-10 py-4 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg inline-block">
+                    {{ hero_config.button_text }}
                 </a>
             </div>
         </div>
     </div>
 </section>
 
+{% else %}
+<!-- Fallback -->
+<section class="relative bg-gradient-to-r from-zicada-dark to-gray-900 text-white"
+         style="height: 100vh; margin-top: -16.666vh; padding-top: 16.666vh;">
+    <div class="absolute inset-0 bg-black opacity-40"></div>
+    <div class="container mx-auto px-4 relative z-10 text-center">
+        <div class="max-w-4xl mx-auto">
+            <h1 class="text-5xl md:text-7xl font-bold mb-4 leading-tight">
+                LA MODA SE VA,<br>
+                <span class="text-zicada-accent">TU ESTILO PERMANECE</span>
+            </h1>
+            <p class="text-xl md:text-2xl text-gray-200 mb-8 max-w-2xl mx-auto">
+                Ropa única y personalizada diseñada para expresar tu individualidad. 
+                Colecciones exclusivas de streetwear hechas en Colombia.
+            </p>
+            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                <a href="{% url 'products:catalog' %}" class="bg-zicada-accent hover:bg-red-700 text-white font-semibold px-8 py-3 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg">
+                    Ver catálogo
+                </a>
+                <a href="{% url 'products:collections_list' %}" class="bg-white/10 backdrop-blur-sm hover:bg-white/20 text-white font-semibold px-8 py-3 rounded-lg transition-all duration-300 border border-white/30">
+                    Explorar colecciones
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+{% endif %}
+
 <!-- Colecciones destacadas -->
 {% if featured_collections %}
-<section class="py-16 bg-gray-50">
+<section class="py-20 bg-black">
     <div class="container mx-auto px-4">
         <div class="text-center mb-12">
-            <h2 class="text-3xl md:text-4xl font-bold text-zicada-dark mb-3">Colecciones destacadas</h2>
-            <p class="text-gray-600 max-w-2xl mx-auto">Descubre nuestras colecciones más recientes, cada una con un estilo único y personalidad propia.</p>
+            <h2 class="text-3xl md:text-4xl font-bold text-white mb-3">Colecciones destacadas</h2>
+            <p class="text-gray-400 max-w-2xl mx-auto">Descubre nuestras colecciones más recientes, cada una con un estilo único y personalidad propia.</p>
         </div>
         
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {% for collection in featured_collections %}
-            <div class="group relative overflow-hidden rounded-xl shadow-lg hover:shadow-xl transition">
+            <div class="group relative overflow-hidden rounded-xl shadow-2xl hover:shadow-zicada-accent/20 transition-all duration-300">
                 <div class="aspect-w-16 aspect-h-9">
                     {% if collection.style_config and collection.style_config.background_image %}
-                        <img src="{{ collection.style_config.background_image }}" alt="{{ collection.name }}" class="w-full h-64 object-cover group-hover:scale-105 transition duration-500">
+                        <img src="{{ collection.style_config.background_image }}" alt="{{ collection.name }}" class="w-full h-64 object-cover group-hover:scale-110 transition duration-500 brightness-75 group-hover:brightness-100">
                     {% else %}
                         <div class="w-full h-64 bg-gradient-to-r from-zicada-primary to-zicada-dark"></div>
                     {% endif %}
                 </div>
-                <div class="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent flex flex-col justify-end p-6">
+                <div class="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent flex flex-col justify-end p-6">
                     <h3 class="text-white text-xl font-bold mb-2">{{ collection.name }}</h3>
-                    <p class="text-gray-200 text-sm mb-3 line-clamp-2">{{ collection.description|truncatewords:15 }}</p>
-                    <a href="{% url 'products:collection_detail' collection.slug %}" class="inline-flex items-center text-zicada-accent font-semibold hover:underline">
+                    <p class="text-gray-300 text-sm mb-3 line-clamp-2">{{ collection.description|truncatewords:15 }}</p>
+                    <a href="{% url 'products:collection_detail' collection.slug %}" class="inline-flex items-center text-zicada-accent font-semibold hover:text-red-400 transition group">
                         Ver colección
-                        <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-4 h-4 ml-1 transform group-hover:translate-x-1 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
                         </svg>
                     </a>
@@ -64,8 +139,8 @@
             {% endfor %}
         </div>
         
-        <div class="text-center mt-10">
-            <a href="{% url 'products:collections_list' %}" class="inline-block border border-zicada-accent text-zicada-accent hover:bg-zicada-accent hover:text-white px-6 py-2 rounded-lg transition">
+        <div class="text-center mt-12">
+            <a href="{% url 'products:collections_list' %}" class="inline-block border border-zicada-accent text-zicada-accent hover:bg-zicada-accent hover:text-white px-8 py-3 rounded-lg transition-all duration-300">
                 Ver todas las colecciones
             </a>
         </div>
@@ -74,11 +149,11 @@
 {% endif %}
 
 <!-- Productos más recientes -->
-<section class="py-16">
+<section class="py-20 bg-gray-950">
     <div class="container mx-auto px-4">
         <div class="text-center mb-12">
-            <h2 class="text-3xl md:text-4xl font-bold text-zicada-dark mb-3">Últimos productos</h2>
-            <p class="text-gray-600 max-w-2xl mx-auto">Las últimas prendas que se han unido a nuestro catálogo. Encuentra tu próximo favorito.</p>
+            <h2 class="text-3xl md:text-4xl font-bold text-white mb-3">Últimos productos</h2>
+            <p class="text-gray-400 max-w-2xl mx-auto">Las últimas prendas que se han unido a nuestro catálogo. Encuentra tu próximo favorito.</p>
         </div>
         
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -89,8 +164,8 @@
             {% endfor %}
         </div>
         
-        <div class="text-center mt-10">
-            <a href="{% url 'products:catalog' %}" class="inline-block bg-zicada-dark hover:bg-opacity-90 text-white px-8 py-3 rounded-lg transition">
+        <div class="text-center mt-12">
+            <a href="{% url 'products:catalog' %}" class="inline-block bg-zicada-accent hover:bg-red-700 text-white font-semibold px-8 py-3 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg">
                 Ver todo el catálogo
             </a>
         </div>
@@ -99,21 +174,21 @@
 
 <!-- Categorías destacadas -->
 {% if categories %}
-<section class="py-16 bg-gray-50">
+<section class="py-20 bg-black">
     <div class="container mx-auto px-4">
         <div class="text-center mb-12">
-            <h2 class="text-3xl md:text-4xl font-bold text-zicada-dark mb-3">Explora por categoría</h2>
-            <p class="text-gray-600 max-w-2xl mx-auto">Encuentra lo que buscas según el tipo de prenda que necesitas.</p>
+            <h2 class="text-3xl md:text-4xl font-bold text-white mb-3">Explora por categoría</h2>
+            <p class="text-gray-400 max-w-2xl mx-auto">Encuentra lo que buscas según el tipo de prenda que necesitas.</p>
         </div>
         
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
             {% for category in categories %}
-            <a href="{% url 'products:catalog' %}?category={{ category.slug }}" class="group block bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition">
+            <a href="{% url 'products:catalog' %}?category={{ category.slug }}" class="group block bg-gray-900 rounded-xl overflow-hidden hover:shadow-xl hover:shadow-zicada-accent/20 transition-all duration-300">
                 <div class="h-32 bg-gradient-to-r from-zicada-primary to-zicada-dark flex items-center justify-center">
-                    <span class="text-white text-xl font-bold">{{ category.name }}</span>
+                    <span class="text-white text-xl font-bold group-hover:scale-110 transition">{{ category.name }}</span>
                 </div>
-                <div class="p-3 text-center">
-                    <span class="text-sm text-gray-600 group-hover:text-zicada-accent">{{ category.products.count }} productos</span>
+                <div class="p-4 text-center bg-gray-900">
+                    <span class="text-sm text-gray-400 group-hover:text-zicada-accent transition">{{ category.products.count }} productos</span>
                 </div>
             </a>
             {% endfor %}
@@ -122,33 +197,16 @@
 </section>
 {% endif %}
 
-<!-- Sección de personalización (valor agregado) -->
-<section class="py-16 bg-zicada-dark text-white">
+<!-- Sección de personalización -->
+<section class="py-20 bg-gradient-to-r from-zicada-dark to-black text-white">
     <div class="container mx-auto px-4 text-center">
         <h2 class="text-3xl md:text-4xl font-bold mb-4">¿Buscas algo único?</h2>
         <p class="text-gray-300 max-w-2xl mx-auto mb-8">
             En Zicada cada prenda es especial. Contáctanos para consultar por personalizaciones o tallas especiales.
         </p>
-        <a href="{% url 'core:contact' %}" class="inline-block bg-zicada-accent hover:bg-opacity-90 text-white font-semibold px-8 py-3 rounded-lg transition">
+        <a href="{% url 'core:contact' %}" class="inline-block bg-white/10 backdrop-blur-sm hover:bg-white/20 text-white font-semibold px-8 py-3 rounded-lg transition-all duration-300 border border-white/30">
             Contáctanos
         </a>
-    </div>
-</section>
-
-<!-- Newsletter (opcional, si quieres captar correos) -->
-<section class="py-16 bg-gray-100">
-    <div class="container mx-auto px-4 text-center">
-        <h2 class="text-2xl md:text-3xl font-bold text-zicada-dark mb-3">Suscríbete a nuestro newsletter</h2>
-        <p class="text-gray-600 max-w-2xl mx-auto mb-6">
-            Recibe información sobre nuevas colecciones, lanzamientos exclusivos y ofertas especiales.
-        </p>
-        <form method="POST" action="{% url 'core:newsletter_subscribe' %}" class="max-w-md mx-auto flex flex-col sm:flex-row gap-3">
-            {% csrf_token %}
-            <input type="email" name="email" placeholder="Tu correo electrónico" required class="flex-1 px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:border-zicada-accent">
-            <button type="submit" class="bg-zicada-accent hover:bg-opacity-90 text-white font-semibold px-6 py-2 rounded-lg transition">
-                Suscribirme
-            </button>
-        </form>
     </div>
 </section>
 

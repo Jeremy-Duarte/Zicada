@@ -1,36 +1,105 @@
-class CartModal {
-    modal = null;
+class CartSidebar {
+    sidebar = null;
     backdrop = null;
-    modalBody = null;
-    modalFooter = null;
+    body = null;
+    footer = null;
     cartCountSpan = null;
     currentCartData = null;
+    toastTimeout = null;
 
     constructor() {
         this.init();
     }
 
     init() {
-        this.modal = document.getElementById('cart-modal');
-        this.backdrop = document.getElementById('modal-backdrop');
-        
-        if (!this.modal) return;
+        this.sidebar = document.getElementById('cart-sidebar');
+        if (!this.sidebar) return;
 
-        this.modalBody = document.getElementById('cart-modal-body');
-        this.modalFooter = document.getElementById('cart-modal-footer');
+        this.backdrop = document.getElementById('cart-backdrop');
+        this.body = document.getElementById('cart-sidebar-body');
+        this.footer = document.getElementById('cart-sidebar-footer');
         this.cartCountSpan = document.getElementById('cart-count');
         
-        this.attachGlobalEvents();
-        
-        if (typeof this.modal.showModal === 'function') {
-            this.modal.showModal = () => this.open();
-            this.modal.close = () => this.close();
-        }
+        this.attachEvents();
     }
 
-    attachGlobalEvents() {
+    // Sistema de notificaciones toast
+    showToast(message, type = 'success') {
+        const container = document.getElementById('cart-toast-container');
+        if (!container) return;
+
+        const colors = {
+            success: 'bg-green-500',
+            error: 'bg-red-500',
+            warning: 'bg-amber-500',
+            info: 'bg-blue-500'
+        };
+
+        const icons = {
+            success: `
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+            `,
+            error: `
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            `,
+            warning: `
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+            `,
+            info: `
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            `
+        };
+
+        const toast = document.createElement('div');
+        toast.className = `pointer-events-auto ${colors[type]} text-white rounded-lg shadow-lg p-3 flex items-center gap-3 transform transition-all duration-300 translate-x-full opacity-0`;
+        toast.innerHTML = `
+            <div class="flex-shrink-0">${icons[type]}</div>
+            <div class="flex-1 text-sm font-medium">${message}</div>
+            <button class="toast-close flex-shrink-0 hover:opacity-75 transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        `;
+
+        container.appendChild(toast);
+
+        // Animación de entrada
+        setTimeout(() => {
+            toast.classList.remove('translate-x-full', 'opacity-0');
+            toast.classList.add('translate-x-0', 'opacity-100');
+        }, 10);
+
+        // Botón cerrar
+        const closeBtn = toast.querySelector('.toast-close');
+        closeBtn.addEventListener('click', () => this.removeToast(toast));
+
+        // Auto-cerrar después de 3 segundos
+        const timeoutId = setTimeout(() => this.removeToast(toast), 3000);
+        
+        // Guardar timeout para limpiar si es necesario
+        toast.dataset.timeoutId = timeoutId;
+    }
+
+    removeToast(toast) {
+        if (toast.dataset.timeoutId) {
+            clearTimeout(Number.parseInt(toast.dataset.timeoutId, 10));
+        }
+        toast.classList.add('translate-x-full', 'opacity-0');
+        setTimeout(() => toast.remove(), 300);
+    }
+
+    attachEvents() {
         const cartIcon = document.getElementById('cart-icon');
-        const closeBtn = document.getElementById('close-modal');
+        const closeBtn = document.getElementById('close-sidebar');
 
         if (cartIcon) {
             cartIcon.addEventListener('click', (e) => {
@@ -38,43 +107,58 @@ class CartModal {
                 this.open();
             });
         }
-
-        if (closeBtn) {
-            closeBtn.addEventListener('click', () => this.close());
-        }
-
-        if (this.backdrop) {
-            this.backdrop.addEventListener('click', () => this.close());
-        }
+        if (closeBtn) closeBtn.addEventListener('click', () => this.close());
+        if (this.backdrop) this.backdrop.addEventListener('click', () => this.close());
 
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && this.modal && !this.modal.classList.contains('hidden')) {
+            if (e.key === 'Escape' && this.sidebar && !this.sidebar.classList.contains('hidden')) {
                 this.close();
             }
         });
     }
 
     open() {
-        this.modal.classList.remove('hidden');
-        if (this.backdrop) this.backdrop.classList.remove('hidden');
+        if (!this.sidebar) return;
+        this.sidebar.classList.remove('hidden');
+        
+        setTimeout(() => {
+            const content = document.getElementById('cart-sidebar-content');
+            if (content) content.classList.remove('translate-x-full');
+        }, 10);
+        
+        if (this.backdrop) {
+            this.backdrop.classList.remove('bg-opacity-0');
+            this.backdrop.classList.add('bg-opacity-50');
+        }
+        
         document.body.style.overflow = 'hidden';
-        
-        this.modal.focus();
-        
         this.loadCartData();
     }
 
     close() {
-        this.modal.classList.add('hidden');
-        if (this.backdrop) this.backdrop.classList.add('hidden');
-        document.body.style.overflow = '';
-        
-        const cartIcon = document.getElementById('cart-icon');
-        if (cartIcon) cartIcon.focus();
+        const content = document.getElementById('cart-sidebar-content');
+        if (content) {
+            content.classList.add('translate-x-full');
+            setTimeout(() => {
+                if (this.sidebar) this.sidebar.classList.add('hidden');
+                if (this.backdrop) {
+                    this.backdrop.classList.remove('bg-opacity-50');
+                    this.backdrop.classList.add('bg-opacity-0');
+                }
+                document.body.style.overflow = '';
+            }, 300);
+        } else {
+            if (this.sidebar) this.sidebar.classList.add('hidden');
+            if (this.backdrop) {
+                this.backdrop.classList.remove('bg-opacity-50');
+                this.backdrop.classList.add('bg-opacity-0');
+            }
+            document.body.style.overflow = '';
+        }
     }
 
     loadCartData() {
-        const url = this.modal.dataset.cartUrl || '/orders/carrito/datos/';
+        const url = this.sidebar.dataset.cartUrl || '/orders/carrito/datos/';
         
         fetch(url)
             .then(response => response.json())
@@ -84,16 +168,14 @@ class CartModal {
             })
             .catch(error => {
                 console.error('Error al cargar carrito:', error);
-                if (this.modalBody) {
-                    this.modalBody.innerHTML = `
+                if (this.body) {
+                    this.body.innerHTML = `
                         <div class="text-center py-8 text-red-600">
                             Error al cargar el carrito. Intente de nuevo.
                         </div>
                     `;
                 }
-                if (this.modalFooter) {
-                    this.modalFooter.innerHTML = '';
-                }
+                if (this.footer) this.footer.innerHTML = '';
             });
     }
 
@@ -105,10 +187,12 @@ class CartModal {
             return;
         }
 
-        // Actualizar contador global
         if (this.cartCountSpan && total_items !== undefined) {
             this.cartCountSpan.innerText = total_items;
         }
+        
+        const sidebarCount = document.getElementById('cart-sidebar-count');
+        if (sidebarCount) sidebarCount.innerText = total_items;
 
         this.renderItems(items);
         this.renderFooter(subtotal, shipping_cost, total);
@@ -116,8 +200,8 @@ class CartModal {
     }
 
     renderEmptyCart() {
-        if (this.modalBody) {
-            this.modalBody.innerHTML = `
+        if (this.body) {
+            this.body.innerHTML = `
                 <div class="text-center py-12">
                     <svg class="mx-auto h-20 w-20 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.5 6M17 13l1.5 6M9 21h6M6 21h.01M18 21h.01" />
@@ -130,21 +214,15 @@ class CartModal {
                 </div>
             `;
         }
-        
-        if (this.modalFooter) {
-            this.modalFooter.innerHTML = '';
-        }
+        if (this.footer) this.footer.innerHTML = '';
 
         const continueBtn = document.getElementById('continue-shopping-empty');
-        if (continueBtn) {
-            continueBtn.addEventListener('click', () => this.close());
-        }
+        if (continueBtn) continueBtn.addEventListener('click', () => this.close());
     }
 
     renderItems(items) {
-        if (!this.modalBody) return;
-
-        this.modalBody.innerHTML = items.map(item => `
+        if (!this.body) return;
+        this.body.innerHTML = items.map(item => `
             <div class="cart-item flex gap-4 mb-4 pb-4 border-b border-gray-100 last:border-0 hover:bg-gray-50 transition rounded-lg p-2 -mx-2" data-variant-id="${item.variant_id}">
                 <img src="${item.image || this.getPlaceholderImage()}" 
                      alt="${this.escapeHtml(item.product_name)}" 
@@ -174,7 +252,7 @@ class CartModal {
     }
 
     renderFooter(subtotal, shipping_cost, total) {
-        if (!this.modalFooter) return;
+        if (!this.footer) return;
 
         const subtotalFormatted = subtotal.toLocaleString('es-CO');
         const shippingFormatted = shipping_cost.toLocaleString('es-CO');
@@ -183,19 +261,9 @@ class CartModal {
         const remainingForFree = 150000 - subtotal;
         
         let shippingMessage = '';
+        
         if (subtotal > 0) {
-            if (!isFreeShipping) {
-                shippingMessage = `
-                    <div class="bg-amber-50 rounded-lg p-3 text-sm">
-                        <p class="text-amber-700 flex items-center gap-2">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            Faltan $${remainingForFree.toLocaleString('es-CO')} para envío gratis
-                        </p>
-                    </div>
-                `;
-            } else if (isFreeShipping) {
+            if (isFreeShipping) {
                 shippingMessage = `
                     <div class="bg-green-50 rounded-lg p-3 text-sm">
                         <p class="text-green-700 flex items-center gap-2">
@@ -206,12 +274,23 @@ class CartModal {
                         </p>
                     </div>
                 `;
+            } else {
+                shippingMessage = `
+                    <div class="bg-amber-50 rounded-lg p-3 text-sm">
+                        <p class="text-amber-700 flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Faltan $${remainingForFree.toLocaleString('es-CO')} para envío gratis
+                        </p>
+                    </div>
+                `;
             }
         }
         
         const shippingText = isFreeShipping ? 'GRATIS' : `$${shippingFormatted}`;
 
-        this.modalFooter.innerHTML = `
+        this.footer.innerHTML = `
             <div class="space-y-3">
                 ${shippingMessage}
                 
@@ -239,28 +318,23 @@ class CartModal {
                         Ver carrito completo
                     </button>
                 </div>
-                <button id="close-modal-footer-btn" class="w-full border border-gray-300 text-gray-600 py-2 rounded-lg font-medium hover:bg-gray-50 transition text-sm">
+                <button id="close-sidebar-footer-btn" class="w-full border border-gray-300 text-gray-600 py-2 rounded-lg font-medium hover:bg-gray-50 transition text-sm">
                     Seguir comprando
                 </button>
             </div>
         `;
 
-        // Eventos del footer
         const clearCartBtn = document.getElementById('clear-cart-btn');
         const gotoCartBtn = document.getElementById('goto-cart-btn');
-        const closeFooterBtn = document.getElementById('close-modal-footer-btn');
+        const closeFooterBtn = document.getElementById('close-sidebar-footer-btn');
 
-        if (clearCartBtn) {
-            clearCartBtn.addEventListener('click', () => this.clearCart());
-        }
+        if (clearCartBtn) clearCartBtn.addEventListener('click', () => this.clearCart());
         if (gotoCartBtn) {
             gotoCartBtn.addEventListener('click', () => {
-                globalThis.location.href = this.modal.dataset.cartDetailUrl || '/orders/carrito/';
+                globalThis.location.href = this.sidebar.dataset.cartDetailUrl || '/orders/carrito/';
             });
         }
-        if (closeFooterBtn) {
-            closeFooterBtn.addEventListener('click', () => this.close());
-        }
+        if (closeFooterBtn) closeFooterBtn.addEventListener('click', () => this.close());
     }
 
     attachItemEvents() {
@@ -280,24 +354,24 @@ class CartModal {
 
     getVariantIdFromButton(btn) {
         const itemDiv = btn.closest('[data-variant-id]');
-        return itemDiv ? Number.parseInt(itemDiv.dataset.variantId) : null;
+        return itemDiv ? Number.parseInt(itemDiv.dataset.variantId, 10) : null;
     }
 
-    handleIncrement(e) {
+    handleIncrement = (e) => {
         e.preventDefault();
         const variantId = this.getVariantIdFromButton(e.currentTarget);
         if (!variantId) return;
         this.updateItemQuantity(variantId, 'increase');
     }
 
-    handleDecrement(e) {
+    handleDecrement = (e) => {
         e.preventDefault();
         const variantId = this.getVariantIdFromButton(e.currentTarget);
         if (!variantId) return;
         this.updateItemQuantity(variantId, 'decrease');
     }
 
-    handleRemove(e) {
+    handleRemove = (e) => {
         e.preventDefault();
         const variantId = this.getVariantIdFromButton(e.currentTarget);
         if (!variantId) return;
@@ -313,25 +387,25 @@ class CartModal {
             if (!itemDiv) return;
             const qtySpan = itemDiv.querySelector('.qty-value');
             if (!qtySpan) return;
-            let currentQty = Number.parseInt(qtySpan.innerText);
-            url = this.modal.dataset.cartUpdateUrl || '/orders/carrito/actualizar/';
+            const currentQty = Number.parseInt(qtySpan.innerText, 10);
+            url = this.sidebar.dataset.cartUpdateUrl || '/orders/carrito/actualizar/';
             body = { variant_id: variantId, quantity: currentQty + 1 };
         } else if (action === 'decrease') {
             const itemDiv = document.querySelector(`[data-variant-id="${variantId}"]`);
             if (!itemDiv) return;
             const qtySpan = itemDiv.querySelector('.qty-value');
             if (!qtySpan) return;
-            let currentQty = Number.parseInt(qtySpan.innerText);
+            const currentQty = Number.parseInt(qtySpan.innerText, 10);
             if (currentQty <= 1) {
                 action = 'remove';
             } else {
-                url = this.modal.dataset.cartUpdateUrl || '/orders/carrito/actualizar/';
+                url = this.sidebar.dataset.cartUpdateUrl || '/orders/carrito/actualizar/';
                 body = { variant_id: variantId, quantity: currentQty - 1 };
             }
         }
         
         if (action === 'remove') {
-            url = this.modal.dataset.cartRemoveUrl || '/orders/carrito/eliminar/';
+            url = this.sidebar.dataset.cartRemoveUrl || '/orders/carrito/eliminar/';
             body = { variant_id: variantId };
         }
 
@@ -349,58 +423,120 @@ class CartModal {
                 if (data.total_items !== undefined && this.cartCountSpan) {
                     this.cartCountSpan.innerText = data.total_items;
                 }
+                // Mostrar notificación de éxito
+                if (data.message) {
+                    this.showToast(data.message, 'success');
+                } else if (action === 'increase') {
+                    this.showToast('Producto actualizado correctamente', 'success');
+                } else if (action === 'decrease') {
+                    this.showToast('Cantidad actualizada', 'success');
+                } else if (action === 'remove') {
+                    this.showToast('Producto eliminado del carrito', 'success');
+                }
                 this.loadCartData();
             } else {
-                alert(data.error || 'Error al actualizar');
+                // Mostrar error en toast en lugar de alert
+                this.showToast(data.error || 'Error al actualizar el carrito', 'error');
                 this.loadCartData();
             }
         })
         .catch(error => {
             console.error('Error:', error);
+            this.showToast('Error de conexión al servidor', 'error');
             this.loadCartData();
         });
     }
 
     clearCart() {
-        if (!confirm('¿Estás seguro de que deseas vaciar todo tu carrito?')) {
-            return;
-        }
+        // Reemplazar confirm nativo por un diálogo personalizado
+        this.showConfirmDialog(
+            '¿Vaciar carrito?',
+            'Todos los productos serán eliminados. ¿Estás seguro?',
+            () => {
+                const url = this.sidebar.dataset.cartClearUrl || '/orders/carrito/vaciar/';
+                
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': this.getCookie('csrftoken')
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        if (this.cartCountSpan) this.cartCountSpan.innerText = '0';
+                        this.showToast(data.message || 'Carrito vaciado correctamente', 'success');
+                        this.loadCartData();
+                    } else {
+                        this.showToast(data.error || 'Error al vaciar el carrito', 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    this.showToast('Error al vaciar el carrito', 'error');
+                });
+            }
+        );
+    }
 
-        const url = this.modal.dataset.cartClearUrl || '/orders/carrito/vaciar/';
-        
-        fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': this.getCookie('csrftoken')
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                if (this.cartCountSpan) {
-                    this.cartCountSpan.innerText = '0';
-                }
-                this.loadCartData();
-            } else {
-                alert(data.error || 'Error al vaciar el carrito');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Error al vaciar el carrito');
+    // Diálogo de confirmación personalizado (sin alert nativo)
+    showConfirmDialog(title, message, onConfirm) {
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50';
+        modal.innerHTML = `
+            <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full mx-4 transform transition-all">
+                <div class="p-6">
+                    <h3 class="text-lg font-bold text-gray-900 mb-2">${title}</h3>
+                    <p class="text-gray-600 mb-6">${message}</p>
+                    <div class="flex gap-3">
+                        <button id="confirm-cancel" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition">
+                            Cancelar
+                        </button>
+                        <button id="confirm-ok" class="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition">
+                            Vaciar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        const cancelBtn = modal.querySelector('#confirm-cancel');
+        const confirmBtn = modal.querySelector('#confirm-ok');
+
+        const closeModal = () => modal.remove();
+
+        cancelBtn.addEventListener('click', closeModal);
+        confirmBtn.addEventListener('click', () => {
+            closeModal();
+            onConfirm();
         });
+
+        // Cerrar con ESC
+        const escHandler = (e) => {
+            if (e.key === 'Escape') {
+                closeModal();
+                document.removeEventListener('keydown', escHandler);
+            }
+        };
+        document.addEventListener('keydown', escHandler);
     }
 
     getCookie(name) {
-        if (!document.cookie || document.cookie === '') return null;
-        
-        const cookie = document.cookie.split(';')
-            .find(c => c.trim().startsWith(name + '='));
-        
-        if (!cookie) return null;
-        
-        return decodeURIComponent(cookie.trim().substring(name.length + 1));
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (const cookie of cookies) {
+                const trimmedCookie = cookie.trim();
+                if (trimmedCookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(trimmedCookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
     }
 
     getPlaceholderImage() {
@@ -409,16 +545,15 @@ class CartModal {
 
     escapeHtml(str) {
         if (!str) return '';
-        return str.replaceAll(/[&<>]/g, function(m) {
-            if (m === '&') return '&amp;';
-            if (m === '<') return '&lt;';
-            if (m === '>') return '&gt;';
-            return m;
+        return str.replace(/[&<>]/g, (match) => {
+            if (match === '&') return '&amp;';
+            if (match === '<') return '&lt;';
+            if (match === '>') return '&gt;';
+            return match;
         });
     }
 }
 
-// Inicializar cuando el DOM esté listo
 document.addEventListener('DOMContentLoaded', () => {
-    globalThis.cartModal = new CartModal();
+    globalThis.cartSidebar = new CartSidebar();
 });
