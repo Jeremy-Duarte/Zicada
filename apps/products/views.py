@@ -508,21 +508,6 @@ class CollectionListView(PaginationMixin, FilterMixin, ListView):
 
 
 @require_GET
-def collections_list(request):
-    """List all public collections."""
-    collections = Collection.objects.filter(
-        status=STATUS_PUBLISHED,
-        is_active=True
-    ).order_by(ORDER_BY_CREATED_AT)
-    
-    context = {
-        'collections': collections,
-        'now': timezone.now(),
-    }
-    return render(request, TEMPLATE_COLLECTIONS_LIST, context)
-
-
-@require_GET
 def collection_detail(request, slug):
     """Display a specific collection with its products."""
     collection = get_object_or_404(Collection, slug=slug, status=STATUS_PUBLISHED, is_active=True)
