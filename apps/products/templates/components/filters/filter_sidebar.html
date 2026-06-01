@@ -1,0 +1,43 @@
+{% load static %}
+
+<div class="bg-gray-900 rounded-xl p-4">
+    <div class="flex justify-between items-center mb-4">
+        <h3 class="font-bold text-lg text-white">Filtros</h3>
+        {% if has_active_filters %}
+        <a href="{{ clean_url }}" class="text-sm text-zicada-accent hover:underline">Limpiar todo</a>
+        {% endif %}
+    </div>
+    
+    <form method="GET" class="space-y-4" id="filter-form">
+        {% include 'components/filters/filter_search.html' with value=search_value %}
+        
+        {% if filter_config.status %}
+            {% include 'components/filters/filter_status.html' with current=current_status choices=status_choices %}
+        {% endif %}
+        
+        {% if filter_config.price %}
+            {% include 'components/filters/filter_price.html' with min=current_min_price max=current_max_price min_global=min_price_global max_global=max_price_global %}
+        {% endif %}
+        
+        {% if filter_config.product_count %}
+            {% include 'components/filters/filter_product_count.html' with min=current_product_count_min max=current_product_count_max %}
+        {% endif %}
+        
+        {% if filter_config.date %}
+            {% include 'components/filters/filter_date.html' with current=current_date_filter %}
+        {% endif %}
+        
+        {% if filter_config.product_type %}
+            {% include 'components/filters/filter_product_type.html' with current=current_product_type types=product_types %}
+        {% endif %}
+        
+        {% include 'components/filters/filter_order.html' with current=current_order_by choices=order_choices %}
+        
+        <div class="flex gap-3 pt-4">
+            <button type="submit" class="flex-1 bg-zicada-accent hover:bg-red-700 text-white px-4 py-2 rounded-lg transition text-sm">Aplicar</button>
+            {% if has_active_filters %}
+            <a href="{{ clean_url }}" class="flex-1 border border-gray-700 bg-gray-800 text-white hover:bg-gray-700 px-4 py-2 rounded-lg transition text-center text-sm">Limpiar</a>
+            {% endif %}
+        </div>
+    </form>
+</div>
