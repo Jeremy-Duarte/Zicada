@@ -190,12 +190,19 @@ class HeroConfig(models.Model):
         default='100vh',
         verbose_name='Altura de la sección (ej: 100vh, 90vh, 700px)'
     )
+
+    order = models.PositiveIntegerField(
+        default=0,
+        verbose_name='Orden',
+        help_text='Orden de aparición en el carrusel'
+    )
     
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
+        ordering = ['order']
         verbose_name = 'Configuración del Hero'
         verbose_name_plural = 'Configuraciones del Hero'
     
@@ -203,7 +210,4 @@ class HeroConfig(models.Model):
         return f"Hero: {self.title_text}"
     
     def save(self, *args, **kwargs):
-        # Solo un registro activo
-        if self.is_active:
-            HeroConfig.objects.filter(is_active=True).exclude(pk=self.pk).update(is_active=False)
         super().save(*args, **kwargs)

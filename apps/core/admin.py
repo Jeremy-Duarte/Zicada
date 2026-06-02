@@ -3,6 +3,9 @@ from .models import HeroConfig
 
 class HeroConfigAdmin(admin.ModelAdmin):
     fieldsets = (
+        ('Configuración del Slide', {
+            'fields': ('is_active', 'order')
+        }),
         ('Fondo', {
             'fields': ('background_image', 'overlay_opacity')
         }),
@@ -20,10 +23,12 @@ class HeroConfigAdmin(admin.ModelAdmin):
             'fields': ('button_text', 'button_url', 'button_style')
         }),
         ('Diseño', {
-            'fields': ('content_alignment', 'section_height', 'is_active')
+            'fields': ('content_alignment', 'section_height')
         }),
     )
     
-    list_display = ('title_text', 'is_active', 'updated_at')
+    list_display = ('title_text', 'order', 'is_active', 'updated_at')
+    list_editable = ('order', 'is_active')
+    list_filter = ('is_active',)
 
 admin.site.register(HeroConfig, HeroConfigAdmin)
