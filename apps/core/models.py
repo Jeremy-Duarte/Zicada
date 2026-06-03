@@ -78,7 +78,7 @@ class BaseAuditModel(models.Model):
         
         self.save(update_fields=fields)
 
-class HeroConfig(models.Model):
+class HeroConfig(BaseAuditModel):
     """
     Configuración de la sección principal (hero) del landing page.
     Solo debe existir un registro activo.
@@ -196,11 +196,7 @@ class HeroConfig(models.Model):
         verbose_name='Orden',
         help_text='Orden de aparición en el carrusel'
     )
-    
-    is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
         ordering = ['order']
         verbose_name = 'Configuración del Hero'
