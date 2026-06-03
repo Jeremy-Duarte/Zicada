@@ -295,24 +295,89 @@ def stock_dashboard(request):
     return render(request, TEMPLATE_STOCK_DASHBOARD, context)
 
 
-@require_GET
-def catalog(request):
-    """Public product catalog view."""
-    products = Product.objects.filter(is_active=True).select_related('category').prefetch_related(
-        'product_colors', 'product_colors__images', 'variants', 'variants__size'
-    )
-    categories = Category.objects.all().order_by(ORDER_BY_SORT_ORDER)
+class ProductCatalogView(PaginationMixin, FilterMixin, ListView):
+    model = Product
+    template_name = TEMPLATE_CATALOG
+    context_object_name = 'products'
+    paginate_by = PAGINATE_BY_DEFAULT
     
-    category_slug = request.GET.get(QUERY_PARAM_CATEGORY)
-    if category_slug:
-        products = products.filter(category__slug=category_slug)
+    filters = [
+        (QUERY_PARAM_CATEGORY, 'category__slug', 'exact'),
+        (QUERY_PARAM_PRODUCT_TYPE, 'product_type', 'exact'),
+    ]
     
-    context = {
-        CONTEXT_PRODUCTS: products,
-        'categories': categories,
-        'current_category': category_slug,
-    }
-    return render(request, TEMPLATE_CATALOG, context)
+    def get_queryset(self):
+        qs = super().get_queryset().filter(is_active=True)
+        
+        qs = qs.select_related('category').prefetch_related(
+            'product_colors', 'product_colors__images', 'variants', 'variants__size'
+        )
+        
+        # Búsqueda por nombre o descripción
+        search = self.request.GET.get(QUERY_PARAM_SEARCH, '')
+        if search:
+            qs = qs.filter(
+                Q(name__icontains=search) |
+                Q(description__icontains=search)
+            )
+        
+        # Filtro por rango de precios
+        min_price = self.request.GET.get(QUERY_PARAM_MIN_PRICE, '')
+        max_price = self.request.GET.get(QUERY_PARAM_MAX_PRICE, '')
+        
+        if min_price and min_price.isdigit():
+            qs = qs.filter(price__gte=int(min_price))
+        
+        if max_price and max_price.isdigit():
+            qs = qs.filter(price__lte=int(max_price))
+        
+        # Ordenamiento
+        order_by = self.request.GET.get(QUERY_PARAM_ORDER_BY, ORDER_BY_CREATED_AT)
+        allowed_orders = [
+            'name', '-name',
+            'created_at', '-created_at',
+            'price', '-price'
+        ]
+        if order_by in allowed_orders:
+            qs = qs.order_by(order_by)
+        else:
+            qs = qs.order_by(ORDER_BY_CREATED_AT)
+        
+        return qs
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        categories = Category.objects.all().order_by(ORDER_BY_SORT_ORDER)
+        
+        price_range = Product.objects.filter(is_active=True).aggregate(
+            min_price=Min('price'), max_price=Max('price')
+        )
+        
+        # Tipos de producto disponibles (sin duplicados)
+        product_types = list(set(
+            Product.objects.filter(is_active=True).values_list('product_type', flat=True)
+        ))
+        # Filtrar valores vacíos
+        product_types = [pt for pt in product_types if pt]
+        
+        context['categories'] = categories
+        context['current_category'] = self.request.GET.get(QUERY_PARAM_CATEGORY, '')
+        context['current_search'] = self.request.GET.get(QUERY_PARAM_SEARCH, '')
+        context['current_min_price'] = self.request.GET.get(QUERY_PARAM_MIN_PRICE, '')
+        context['current_max_price'] = self.request.GET.get(QUERY_PARAM_MAX_PRICE, '')
+        context['current_product_type'] = self.request.GET.get(QUERY_PARAM_PRODUCT_TYPE, '')
+        context['current_order_by'] = self.request.GET.get(QUERY_PARAM_ORDER_BY, ORDER_BY_CREATED_AT)
+        context['min_price_global'] = int(price_range['min_price'] or 0)
+        context['max_price_global'] = int(price_range['max_price'] or 1000000)
+        context['product_types'] = product_types
+        context['product_type_labels'] = {pt: PRODUCT_TYPES_DISPLAY.get(pt, pt) for pt in product_types}
+        context['filter_config'] = {'status': False, 'price': True, 'product_count': False, 'date': False, 'product_type': True}
+        context['order_choices'] = [('-created_at', 'Más recientes'), ('created_at', 'Más antiguas'), ('name', 'Nombre A-Z'), ('-name', 'Nombre Z-A'), ('-price', 'Precio: mayor a menor'), ('price', 'Precio: menor a mayor')]
+        context['has_active_filters'] = any([self.request.GET.get(QUERY_PARAM_SEARCH), self.request.GET.get(QUERY_PARAM_CATEGORY), self.request.GET.get(QUERY_PARAM_MIN_PRICE), self.request.GET.get(QUERY_PARAM_MAX_PRICE), self.request.GET.get(QUERY_PARAM_PRODUCT_TYPE)])
+        context['clean_url'] = reverse('products:catalog')
+        
+        return context
 
 
 class CollectionListView(PaginationMixin, FilterMixin, ListView):
