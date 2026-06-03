@@ -1,0 +1,8 @@
+{% extends "backoffice/layouts/backoffice_base.html" %}
+{% load static %}
+
+{% block title %}Eliminar Slide - Zicada{% endblock %}
+
+{% block content %}
+{% include 'backoffice/components/crud/confirm_delete.html' with form=form object_name=object_name object_display=object_display cancel_url="core:hero_list" warning="Esta acción moverá el slide a la papelera. Podrás restaurarlo después." %}
+{% endblock %}

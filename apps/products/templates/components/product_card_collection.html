@@ -1,8 +1,14 @@
 {% load static %}
 
-<div class="group bg-white rounded-xl overflow-hidden shadow-md hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
+{% with config=card_config|default:'{}' %}
+<div class="product-card group rounded-xl overflow-hidden transition-all duration-300 hover:scale-{{ config.hover_scale|default:'105' }} hover:shadow-2xl transform hover:-translate-y-1"
+     style="
+         background-color: {{ config.background_color }};
+         border-radius: {{ config.border_radius|default:'0.5rem' }};
+         box-shadow: {{ config.shadow|default:'0 1px 3px 0 rgba(0,0,0,0.1)' }};
+     ">
     <a href="{% url 'products:product_detail' product.slug %}" class="block">
-        <div class="relative overflow-hidden">
+        <div class="relative overflow-hidden rounded-t-lg">
             {% with product.get_featured_image as featured_image %}
                 {% if featured_image %}
                     <img src="{{ featured_image.image.url }}" 
@@ -15,23 +21,16 @@
                 {% endif %}
             {% endwith %}
             
-            <!-- Badge de categoría (esquina superior izquierda) -->
             <div class="absolute top-2 left-2 z-10">
                 <span class="inline-block px-2 py-1 rounded-md text-xs font-semibold bg-black/50 backdrop-blur-sm text-white">
                     {{ product.category.name }}
                 </span>
             </div>
             
-            <!-- Badge de colección (esquina superior derecha) -->
             {% if product.collection_name %}
                 <div class="absolute top-2 right-2 group/badge">
-                    <span class="inline-block px-3 py-1.5 rounded-full text-xs font-semibold shadow-md
-                        {% if 'limitada' in product.collection_name|lower %}
-                            bg-gradient-to-r from-purple-600 to-pink-600 text-white
-                        {% else %}
-                            bg-zicada-accent text-white
-                        {% endif %}
-                    ">
+                    <span class="inline-block px-3 py-1.5 rounded-full text-xs font-semibold shadow-md"
+                         style="background-color: {{ config.badge_background|default:'#a91600' }}; color: {{ config.badge_text_color|default:'#ffffff' }};">
                         {{ product.collection_name }}
                     </span>
                     {% if 'limitada' in product.collection_name|lower %}
@@ -41,35 +40,22 @@
                     {% endif %}
                 </div>
             {% endif %}
-            
-            <!-- Badge de descuento (opcional, si tienes campo descuento) -->
-            {% if product.discount_percentage %}
-            <div class="absolute bottom-2 left-2 z-10">
-                <span class="inline-block px-2 py-1 rounded-md text-xs font-bold bg-red-500 text-white animate-pulse">
-                    -{{ product.discount_percentage }}%
-                </span>
-            </div>
-            {% endif %}
         </div>
         
         <div class="p-4">
-            <!-- Nombre del producto -->
-            <h3 class="font-bold text-lg mb-1 line-clamp-1 group-hover:text-zicada-accent transition-colors">
+            <h3 class="font-bold text-lg mb-1 line-clamp-1 transition-colors duration-200 hover:opacity-80"
+                style="color: {{ config.title_color }};">
                 {{ product.name }}
             </h3>
             
-            <!-- Precio con diseño mejorado -->
-            <div class="flex items-baseline gap-2 mb-2">
-                {% if product.discount_price %}
-                    <span class="text-xl font-bold text-zicada-accent">${{ product.discount_price|floatformat:0 }}</span>
-                    <span class="text-sm text-gray-400 line-through">${{ product.price|floatformat:0 }}</span>
-                {% else %}
-                    <span class="text-xl font-bold text-zicada-dark">${{ product.price|floatformat:0 }}</span>
-                {% endif %}
-            </div>
-            
-            <!-- Stock badge mejorado -->
-            <div class="flex justify-end">
+            <div class="flex justify-between items-center mt-3">
+                <span class="text-xl font-bold"
+                      style="color: {{ config.price_color }};">
+                    ${{ product.price|floatformat:0 }}
+                </span>
+                
+                {% if config.show_stock_badge != False %}
+                <span class="text-sm">
                 {% with product.total_stock as stock %}
                     {% if stock == 0 %}
                         <span class="inline-flex items-center gap-1 bg-red-100 text-red-700 px-2 py-0.5 rounded-full text-xs font-semibold">
@@ -101,14 +87,18 @@
                         </span>
                     {% endif %}
                 {% endwith %}
+                </span>
+                {% endif %}
             </div>
         </div>
         
-        <!-- Overlay de acción al hover (mejora UX) -->
-        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center pointer-events-none">
-            <span class="bg-white text-zicada-dark px-4 py-2 rounded-full text-sm font-semibold transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
+        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center pointer-events-none"
+             style="border-radius: {{ config.border_radius|default:'0.5rem' }};">
+            <span class="px-4 py-2 rounded-full text-sm font-semibold transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300"
+                  style="background-color: {{ config.price_color }}; color: {{ config.text_color }};">
                 Ver detalles
             </span>
         </div>
     </a>
 </div>
+{% endwith %}

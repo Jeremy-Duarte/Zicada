@@ -1,11 +1,11 @@
 {% if breadcrumbs and breadcrumbs|length > 0 %}
-<div class="bg-gray-900 border-b border-gray-800">
+<div class="bg-zicada-dark border-b border-gray-800">
     <div class="container mx-auto px-4 py-3">
         <nav class="flex items-center text-sm">
             <ol class="flex flex-wrap items-center gap-2">
                 {% for crumb in breadcrumbs %}
                     {% if not forloop.first %}
-                        <li class="text-gray-600">
+                        <li class="text-gray-500">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
                             </svg>
@@ -18,7 +18,7 @@
                                 {{ crumb.name }}
                             </a>
                         {% else %}
-                            <span class="{% if forloop.last %}text-zicada-accent font-medium{% else %}text-gray-500{% endif %}">
+                            <span class="{% if forloop.last %}text-zicada-accent font-medium{% else %}text-gray-400{% endif %}">
                                 {{ crumb.name }}
                             </span>
                         {% endif %}

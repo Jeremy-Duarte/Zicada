@@ -1,0 +1,8 @@
+{% extends "backoffice/layouts/backoffice_base.html" %}
+{% load static %}
+
+{% block title %}Restaurar Slide - Zicada{% endblock %}
+
+{% block content %}
+{% include 'backoffice/components/crud/confirm_restore.html' with form=form object_name=object_name object_display=object_display cancel_url="core:hero_trashcan" warning="Al restaurar el slide, volverá a estar disponible en el carrusel." %}
+{% endblock %}

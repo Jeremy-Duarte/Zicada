@@ -1,0 +1,91 @@
+{% extends "backoffice/layouts/backoffice_base.html" %}
+{% load static %}
+
+{% block title %}Slides del Hero - Zicada{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    {% include 'backoffice/components/crud/list_header.html' with title="Slides del Hero" create_url="core:hero_create" create_label="Nuevo Slide" %}
+    
+    <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Título</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Orden</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Imagen</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for slide in hero_slides %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4">
+                            <div class="text-sm font-medium text-gray-900">{{ slide.title_text }}</div>
+                            <div class="text-xs text-gray-500">{{ slide.subtitle_text|truncatechars:40 }}</div>
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-500">{{ slide.order }}</td>
+                        <td class="px-6 py-4">
+                            {% if slide.background_image %}
+                            <img src="{{ slide.background_image.url }}" class="w-12 h-12 object-cover rounded-lg shadow-sm">
+                            {% else %}
+                            <div class="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400">
+                                <i class="fas fa-image"></i>
+                            </div>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="px-2 py-1 text-xs rounded-full {% if slide.is_active %}bg-green-100 text-green-700{% else %}bg-red-100 text-red-700{% endif %}">
+                                {% if slide.is_active %}Activo{% else %}Inactivo{% endif %}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 text-right space-x-2">
+                            <a href="{% url 'core:hero_edit' slide.pk %}" class="text-blue-600 hover:text-blue-800"><i class="fas fa-edit"></i></a>
+                            <a href="{% url 'core:hero_delete' slide.pk %}" class="text-red-600 hover:text-red-800"><i class="fas fa-trash-alt"></i></a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="px-6 py-12 text-center text-gray-400">
+                            <i class="fas fa-images text-3xl mb-2 block"></i>
+                            No hay slides registrados
+                            <div class="mt-2">
+                                <a href="{% url 'core:hero_create' %}" class="text-zicada-accent hover:underline">Crear primer slide</a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- Paginación -->
+    {% if is_paginated %}
+    <div class="flex justify-center mt-6">
+        <nav class="flex gap-2">
+            {% if page_obj.has_previous %}
+            <a href="?page=1" class="px-3 py-1 rounded border border-gray-300 hover:bg-gray-50">&laquo;</a>
+            <a href="?page={{ page_obj.previous_page_number }}" class="px-3 py-1 rounded border border-gray-300 hover:bg-gray-50">&lsaquo;</a>
+            {% endif %}
+            
+            <span class="px-3 py-1 rounded bg-zicada-accent text-white">{{ page_obj.number }}</span>
+            
+            {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}" class="px-3 py-1 rounded border border-gray-300 hover:bg-gray-50">&rsaquo;</a>
+            <a href="?page={{ page_obj.paginator.num_pages }}" class="px-3 py-1 rounded border border-gray-300 hover:bg-gray-50">&raquo;</a>
+            {% endif %}
+        </nav>
+    </div>
+    {% endif %}
+    
+    <!-- Botón papelera -->
+    <div class="text-right">
+        <a href="{% url 'core:hero_trashcan' %}" class="text-sm text-gray-400 hover:text-gray-600">
+            <i class="fas fa-trash-alt mr-1"></i> Ver slides eliminados
+        </a>
+    </div>
+</div>
+{% endblock %}

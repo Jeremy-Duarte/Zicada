@@ -4,7 +4,7 @@
 {% block title %}Nosotros - Zicada{% endblock %}
 
 {% block content %}
-<div class="bg-black">
+<div class="bg-white">
     <!-- Hero Section -->
     <div class="relative bg-gray-950 text-white">
         <div class="absolute inset-0">
@@ -22,18 +22,18 @@
         <div class="flex flex-col md:flex-row gap-12 items-center">
             <div class="md:w-1/2">
                 <div class="rounded-2xl overflow-hidden shadow-2xl h-80 md:h-96">
-                    <img class="w-full h-full object-cover brightness-90 hover:brightness-100 transition duration-500" src="{% static 'img/zicada-bg-2.jpeg' %}" alt="Zicada misión">
+                    <img class="w-full h-full object-cover brightness-95 hover:brightness-100 transition duration-500" src="{% static 'img/zicada-bg-2.jpeg' %}" alt="Zicada misión">
                 </div>
             </div>
             <div class="md:w-1/2">
                 <div class="border-l-4 border-zicada-accent pl-6">
-                    <h2 class="text-2xl md:text-3xl font-bold text-white mb-4">Nuestra Misión</h2>
-                    <p class="text-gray-200 leading-relaxed mb-4">
+                    <h2 class="text-2xl md:text-3xl font-bold text-gray-900 mb-4">Nuestra Misión</h2>
+                    <p class="text-gray-700 leading-relaxed mb-4">
                         Diseñar y comercializar prendas streetwear que reflejen identidad, actitud y autenticidad, 
                         dirigidas a personas que no siguen reglas establecidas y utilizan la moda como una forma 
                         de expresión personal.
                     </p>
-                    <p class="text-gray-300 leading-relaxed">
+                    <p class="text-gray-600 leading-relaxed">
                         En ZICADA buscamos crear diseños originales que trasciendan las tendencias, generando conexión 
                         con nuestros clientes a través de propuestas visuales con carácter, calidad en cada detalle 
                         y una experiencia de marca coherente con su estilo de vida.
@@ -44,22 +44,22 @@
     </div>
 
     <!-- Visión -->
-    <div class="bg-gray-950">
+    <div class="bg-gray-50">
         <div class="container mx-auto px-4 py-16 md:py-24">
             <div class="flex flex-col md:flex-row-reverse gap-12 items-center">
                 <div class="md:w-1/2">
                     <div class="rounded-2xl overflow-hidden shadow-2xl h-80 md:h-96">
-                        <img class="w-full h-full object-cover brightness-90 hover:brightness-100 transition duration-500" src="{% static 'img/zicada-bg-1.jpeg' %}" alt="Zicada visión">
+                        <img class="w-full h-full object-cover brightness-95 hover:brightness-100 transition duration-500" src="{% static 'img/zicada-bg-1.jpeg' %}" alt="Zicada visión">
                     </div>
                 </div>
                 <div class="md:w-1/2">
                     <div class="border-l-4 border-zicada-accent pl-6">
-                        <h2 class="text-2xl md:text-3xl font-bold text-white mb-4">Nuestra Visión</h2>
-                        <p class="text-gray-200 leading-relaxed mb-4">
+                        <h2 class="text-2xl md:text-3xl font-bold text-gray-900 mb-4">Nuestra Visión</h2>
+                        <p class="text-gray-700 leading-relaxed mb-4">
                             Posicionar a ZICADA como una marca reconocida a nivel nacional, con proyección internacional, 
                             por su autenticidad, versatilidad y capacidad de adaptarse a diferentes estilos sin perder su esencia.
                         </p>
-                        <p class="text-gray-300 leading-relaxed">
+                        <p class="text-gray-600 leading-relaxed">
                             Aspiramos a construir una comunidad que se identifique con el estilo personal y la forma en que 
                             proyecta su imagen a través de la ropa, consolidando nuestra presencia en el mercado a través 
                             de propuestas innovadoras, crecimiento digital y una identidad de marca sólida y diferenciadora.
@@ -73,45 +73,45 @@
     <!-- Valores -->
     <div class="container mx-auto px-4 py-16 md:py-24">
         <div class="text-center mb-12">
-            <h2 class="text-2xl md:text-3xl font-bold text-white mb-2">Nuestros Valores</h2>
+            <h2 class="text-2xl md:text-3xl font-bold text-gray-900 mb-2">Nuestros Valores</h2>
             <div class="w-20 h-1 bg-zicada-accent mx-auto"></div>
         </div>
         <div class="grid md:grid-cols-3 gap-8">
-            <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 text-center hover:shadow-xl hover:shadow-zicada-accent/10 transition-all duration-300">
-                <div class="w-16 h-16 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div class="bg-gray-50 border border-gray-200 rounded-xl p-6 text-center hover:shadow-xl hover:shadow-zicada-accent/10 transition-all duration-300">
+                <div class="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-md">
                     <svg class="w-8 h-8 text-zicada-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                     </svg>
                 </div>
-                <h3 class="text-xl font-bold text-white mb-2">Autenticidad</h3>
-                <p class="text-gray-300 text-sm">Diseños originales que reflejan tu verdadera esencia, sin seguir modas pasajeras.</p>
+                <h3 class="text-xl font-bold text-gray-900 mb-2">Autenticidad</h3>
+                <p class="text-gray-600 text-sm">Diseños originales que reflejan tu verdadera esencia, sin seguir modas pasajeras.</p>
             </div>
-            <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 text-center hover:shadow-xl hover:shadow-zicada-accent/10 transition-all duration-300">
-                <div class="w-16 h-16 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div class="bg-gray-50 border border-gray-200 rounded-xl p-6 text-center hover:shadow-xl hover:shadow-zicada-accent/10 transition-all duration-300">
+                <div class="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-md">
                     <svg class="w-8 h-8 text-zicada-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
                     </svg>
                 </div>
-                <h3 class="text-xl font-bold text-white mb-2">Actitud</h3>
-                <p class="text-gray-300 text-sm">Prendas con carácter para quienes se atreven a ser diferentes y romper reglas.</p>
+                <h3 class="text-xl font-bold text-gray-900 mb-2">Actitud</h3>
+                <p class="text-gray-600 text-sm">Prendas con carácter para quienes se atreven a ser diferentes y romper reglas.</p>
             </div>
-            <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 text-center hover:shadow-xl hover:shadow-zicada-accent/10 transition-all duration-300">
-                <div class="w-16 h-16 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div class="bg-gray-50 border border-gray-200 rounded-xl p-6 text-center hover:shadow-xl hover:shadow-zicada-accent/10 transition-all duration-300">
+                <div class="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-md">
                     <svg class="w-8 h-8 text-zicada-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2v16z" />
                     </svg>
                 </div>
-                <h3 class="text-xl font-bold text-white mb-2">Calidad</h3>
-                <p class="text-gray-300 text-sm">Cada detalle importa. Materiales y acabados que marcan la diferencia.</p>
+                <h3 class="text-xl font-bold text-gray-900 mb-2">Calidad</h3>
+                <p class="text-gray-600 text-sm">Cada detalle importa. Materiales y acabados que marcan la diferencia.</p>
             </div>
         </div>
     </div>
 
     <!-- CTA -->
-    <div class="bg-gradient-to-r from-gray-950 to-black border-t border-gray-800">
+    <div class="bg-gradient-to-r from-gray-100 to-white border-t border-gray-200">
         <div class="container mx-auto px-4 py-20 text-center">
-            <h2 class="text-2xl md:text-3xl font-bold text-white mb-4">¿Listo para expresar tu estilo?</h2>
-            <p class="text-gray-300 mb-8 max-w-xl mx-auto">Únete a nuestra comunidad y descubre prendas que hablan por ti.</p>
+            <h2 class="text-2xl md:text-3xl font-bold text-gray-900 mb-4">¿Listo para expresar tu estilo?</h2>
+            <p class="text-gray-600 mb-8 max-w-xl mx-auto">Únete a nuestra comunidad y descubre prendas que hablan por ti.</p>
             <a href="{% url 'products:catalog' %}" class="inline-block bg-zicada-accent hover:bg-red-700 text-white font-semibold px-10 py-4 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg">
                 Ver colecciones
             </a>

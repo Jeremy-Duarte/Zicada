@@ -142,3 +142,7 @@ def breadcrumbs(request):
         breadcrumbs = []
     
     return {'breadcrumbs': breadcrumbs}
+
+def is_home(request):
+    """Detecta si estamos en la página de inicio."""
+    return {'is_home': request.path == '/'}

@@ -11,5 +11,11 @@
             {% now "l, d/m/Y" %}
         </div>
     </div>
+    <div class="mt-2">
+        <h2 class="text-lg font-semibold text-gray-700 mb-4 flex items-center gap-2">
+            <i class="fas fa-bolt text-zicada-accent"></i> Acceso rápido
+        </h2>
+        {% include 'backoffice/components/widgets/action_buttons_small.html' with buttons=quick_access_buttons %}
+    </div>
 </div>
 {% endblock %}

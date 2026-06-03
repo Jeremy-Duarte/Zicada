@@ -6,14 +6,29 @@ from django.contrib.auth import logout
 from django.contrib.auth.views import LoginView
 from django.core.mail import EmailMultiAlternatives
 from django.http import JsonResponse, HttpResponseRedirect
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.template.loader import render_to_string
 from django.urls import reverse, reverse_lazy
 from django.views.decorators.cache import never_cache
+from django.views.generic import CreateView, UpdateView, DeleteView, ListView, TemplateView
+from django.contrib.auth.mixins import PermissionRequiredMixin
 
 from .models import HeroConfig
 from apps.products.models import Product, Collection, Category
-from .forms import ContactForm, StaffLoginForm
+from .forms import ContactForm, StaffLoginForm, HeroConfigCreateForm, HeroConfigUpdateForm, HeroConfigDeleteForm, HeroConfigRestoreForm
+from apps.products.views import (
+    PAGINATE_BY_DEFAULT,
+    CONTEXT_CANCEL_URL,
+    CONTEXT_OBJECT_NAME,
+    CONTEXT_OBJECT_DISPLAY,
+    CONTEXT_IS_CREATE,
+    CONTEXT_IS_UPDATE,
+    ORDER_BY_DELETED_AT,
+    ORDER_BY_CREATED_AT,
+    PRODUCT_TYPE_FABRICA,
+    PRODUCT_TYPE_COLECCION_LIMITADA,
+    PRODUCT_TYPES_DISPLAY,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -46,24 +61,18 @@ URL_BACKOFFICE_DASHBOARD = 'backoffice:dashboard'
 # -------------------------------------------------------------------------
 
 def home(request):
-    try:
-        hero_config = HeroConfig.objects.get(is_active=True)
-    except HeroConfig.DoesNotExist:
-        hero_config = None
-    
+    hero_slides = HeroConfig.objects.filter(is_active=True).order_by('order')
     featured_collections = Collection.objects.filter(
         status='publicada',
         is_active=True
     ).order_by('-created_at')[:3]
-    
     latest_products = Product.objects.filter(
         is_active=True
     ).select_related('category').prefetch_related('variants')[:8]
-
     categories = Category.objects.all().order_by('sort_order')[:4]
 
     context = {
-        'hero_config': hero_config,
+        'hero_slides': hero_slides,
         'featured_collections': featured_collections,
         'latest_products': latest_products,
         'categories': categories,
@@ -216,3 +225,197 @@ def staff_logout(request):
     logout(request)
     messages.info(request, 'Sesión cerrada correctamente')
     return redirect(URL_PRODUCTS_CATALOG)
+
+# Template Paths
+TEMPLATE_HERO_FORM = 'backoffice/hero/hero_form.html'
+TEMPLATE_HERO_LIST = 'backoffice/hero/hero_list.html'
+TEMPLATE_HERO_CONFIRM_DELETE = 'backoffice/hero/hero_confirm_delete.html'
+TEMPLATE_HERO_RESTORE = 'backoffice/hero/hero_restore.html'
+TEMPLATE_HERO_TRASHCAN = 'backoffice/hero/hero_trashcan.html'
+
+# URL Names
+URL_HERO_LIST = 'core:hero_list'
+URL_HERO_TRASHCAN = 'core:hero_trashcan'
+
+# Messages
+MSG_HERO_CREATED = 'Slide "{title}" creado exitosamente.'
+MSG_HERO_UPDATED = 'Slide "{title}" actualizado exitosamente.'
+MSG_HERO_DELETED = 'Slide "{title}" movido a la papelera.'
+MSG_HERO_RESTORED = 'Slide "{title}" restaurado exitosamente.'
+
+# Headers
+HEADERS_HERO = ['Título', 'Orden', 'Estado']
+
+# Order By
+ORDER_BY_DELETED_AT = '-deleted_at'
+
+class HeroConfigListView(PermissionRequiredMixin, ListView):
+    """Lista de slides activos del hero (carrusel)"""
+    model = HeroConfig
+    template_name = TEMPLATE_HERO_LIST
+    context_object_name = 'hero_slides'
+    permission_required = 'core.view_heroconfig'
+    paginate_by = PAGINATE_BY_DEFAULT
+    
+    def get_queryset(self):
+        return HeroConfig.objects.filter(is_active=True).order_by('order')
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        rows = []
+        for slide in context['hero_slides']:
+            rows.append({
+                'pk': slide.pk,
+                'values': [
+                    slide.title_text,
+                    slide.order,
+                    '<span class="px-2 py-1 text-xs rounded-full {}">{}</span>'.format(
+                        'bg-green-100 text-green-700' if slide.is_active else 'bg-red-100 text-red-700',
+                        'Activo' if slide.is_active else 'Inactivo'
+                    ),
+                ],
+            })
+        context['rows'] = rows
+        context['headers'] = HEADERS_HERO
+        return context
+
+
+class HeroConfigCreateView(PermissionRequiredMixin, CreateView):
+    """Crear nuevo slide para el hero"""
+    model = HeroConfig
+    form_class = HeroConfigCreateForm
+    template_name = TEMPLATE_HERO_FORM
+    permission_required = 'core.add_heroconfig'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context[CONTEXT_CANCEL_URL] = URL_HERO_LIST
+        context[CONTEXT_IS_CREATE] = True
+        return context
+    
+    def get_success_url(self):
+        return reverse(URL_HERO_LIST)
+    
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        messages.success(self.request, MSG_HERO_CREATED.format(title=form.instance.title_text))
+        return response
+
+
+class HeroConfigUpdateView(PermissionRequiredMixin, UpdateView):
+    """Editar slide del hero"""
+    model = HeroConfig
+    form_class = HeroConfigUpdateForm
+    template_name = TEMPLATE_HERO_FORM
+    permission_required = 'core.change_heroconfig'
+    success_url = reverse_lazy(URL_HERO_LIST)
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context[CONTEXT_CANCEL_URL] = URL_HERO_LIST
+        context[CONTEXT_IS_UPDATE] = True
+        return context
+    
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        messages.success(self.request, MSG_HERO_UPDATED.format(title=form.instance.title_text))
+        return response
+
+
+class HeroConfigDeleteView(PermissionRequiredMixin, DeleteView):
+    """Soft-delete slide del hero (mover a papelera)"""
+    model = HeroConfig
+    form_class = HeroConfigDeleteForm
+    template_name = TEMPLATE_HERO_CONFIRM_DELETE
+    permission_required = 'core.delete_heroconfig'
+    success_url = reverse_lazy(URL_HERO_LIST)
+    
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['slide'] = self.get_object()
+        return kwargs
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context[CONTEXT_OBJECT_NAME] = 'Slide del Hero'
+        context[CONTEXT_OBJECT_DISPLAY] = self.get_object().title_text
+        context[CONTEXT_CANCEL_URL] = URL_HERO_LIST
+        return context
+    
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        form = self.get_form()
+        if form.is_valid():
+            return self.delete(request, *args, **kwargs)
+        return self.render_to_response(self.get_context_data(form=form))
+    
+    def delete(self, request, *args, **kwargs):
+        slide = self.get_object()
+        slide_title = slide.title_text
+        slide.soft_delete(user=request.user)  # Usar soft_delete
+        messages.success(request, MSG_HERO_DELETED.format(title=slide_title))
+        return redirect(self.success_url)
+
+
+class HeroConfigRestoreView(PermissionRequiredMixin, TemplateView):
+    """Restaurar slide eliminado"""
+    model = HeroConfig
+    form_class = HeroConfigRestoreForm
+    template_name = TEMPLATE_HERO_RESTORE
+    permission_required = 'core.change_heroconfig'
+    success_url = reverse_lazy(URL_HERO_LIST)
+    
+    def get_object(self):
+        return get_object_or_404(HeroConfig.all_objects, pk=self.kwargs['pk'])  # Usar all_objects
+    
+    def get_form(self):
+        return self.form_class(slide=self.get_object(), data=self.request.POST or None)
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        slide = self.get_object()
+        context['slide'] = slide
+        context['form'] = self.get_form()
+        context[CONTEXT_CANCEL_URL] = URL_HERO_TRASHCAN
+        context[CONTEXT_OBJECT_NAME] = 'Slide del Hero'
+        context[CONTEXT_OBJECT_DISPLAY] = slide.title_text
+        return context
+    
+    def post(self, request, *args, **kwargs):
+        slide = self.get_object()
+        form = self.get_form()
+        if form.is_valid():
+            slide.restore(user=request.user)  # Usar restore
+            messages.success(request, MSG_HERO_RESTORED.format(title=slide.title_text))
+            return redirect(URL_HERO_LIST)
+        return self.render_to_response(self.get_context_data(form=form))
+
+
+class HeroConfigTrashcanView(PermissionRequiredMixin, ListView):
+    """Lista de slides eliminados (papelera)"""
+    model = HeroConfig
+    template_name = TEMPLATE_HERO_TRASHCAN
+    context_object_name = 'hero_slides'
+    permission_required = 'core.view_heroconfig'
+    paginate_by = PAGINATE_BY_DEFAULT
+    
+    def get_queryset(self):
+        # Usar all_objects para ver también los eliminados
+        return HeroConfig.all_objects.filter(is_active=False).order_by('-deleted_at')
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        rows = []
+        for slide in context['hero_slides']:
+            rows.append({
+                'pk': slide.pk,
+                'values': [
+                    slide.title_text,
+                    slide.subtitle_text[:50] if slide.subtitle_text else '-',
+                    slide.order,
+                    slide.deleted_at.strftime('%d/%m/%Y %H:%M') if slide.deleted_at else '-',
+                ],
+            })
+        context['rows'] = rows
+        context['headers'] = ['Título', 'Subtítulo', 'Orden', 'Eliminado el']
+        return context

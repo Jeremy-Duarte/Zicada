@@ -2,11 +2,12 @@
 {% load static %}
 {% block title %}Colecciones - Zicada{% endblock %}
 {% block content %}
-<div class="bg-black min-h-screen">
+<div class="bg-white min-h-screen">
     <div class="w-full px-4 sm:px-6 lg:px-8 py-12">
         <div class="text-center mb-16">
-            <h1 class="text-4xl md:text-5xl font-bold text-white mb-4">Colecciones</h1>
-            <p class="text-gray-400 max-w-2xl mx-auto">Descubre nuestras colecciones exclusivas. Cada una con su propia identidad, diseñada para inspirarte y ayudarte a encontrar tu estilo único.</p>
+            <h1 class="text-4xl md:text-5xl font-bold text-gray-900 mb-4">Colecciones</h1>
+            <div class="w-20 h-1 bg-zicada-accent mx-auto my-4 rounded-full"></div>
+            <p class="text-gray-600 max-w-2xl mx-auto">Descubre nuestras colecciones exclusivas. Cada una con su propia identidad, diseñada para inspirarte y ayudarte a encontrar tu estilo único.</p>
         </div>
         <div class="flex flex-col lg:flex-row lg:gap-8">
             <div class="lg:w-64 lg:sticky lg:top-24 lg:self-start lg:flex-shrink-0">
@@ -22,36 +23,36 @@
                         <img src="{% static 'img/collection-placeholder.png' %}" alt="{{ collection.name }}" class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110">
                         {% endif %}
                         {% if collection.status == 'publicada' %}
-                        <div class="absolute top-4 right-4 z-10 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide backdrop-blur-sm bg-green-500/90 text-white">🔥 Activa</div>
+                        <div class="absolute top-4 right-4 z-10 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide backdrop-blur-sm bg-green-500/90 text-white">Activa</div>
                         {% elif collection.start_date and collection.start_date > now %}
-                        <div class="absolute top-4 right-4 z-10 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide backdrop-blur-sm bg-amber-500/90 text-white">⏰ Próximamente</div>
+                        <div class="absolute top-4 right-4 z-10 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide backdrop-blur-sm bg-amber-500/90 text-white">Próximamente</div>
                         {% elif collection.status == 'archivada' %}
-                        <div class="absolute top-4 right-4 z-10 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide backdrop-blur-sm bg-gray-500/90 text-white">📅 Finalizada</div>
+                        <div class="absolute top-4 right-4 z-10 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide backdrop-blur-sm bg-gray-500/90 text-white">Finalizada</div>
                         {% endif %}
-                        <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/20 transition-all duration-500 group-hover:from-black/90 group-hover:via-black/30"></div>
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-black/20 transition-all duration-500 group-hover:from-black/80 group-hover:via-black/30"></div>
                         <div class="absolute bottom-0 left-0 right-0 p-8 text-white z-10">
                             <h3 class="text-2xl font-bold mb-2 transition-transform duration-300 group-hover:translate-y-0" style="font-family: {{ collection.title_font|default:"'Inter', sans-serif" }};">{{ collection.name }}</h3>
-                            <p class="text-sm text-gray-300 opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 delay-75 line-clamp-2">{{ collection.description|truncatewords:15 }}</p>
+                            <p class="text-sm text-gray-200 opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 delay-75 line-clamp-2">{{ collection.description|truncatewords:15 }}</p>
                             <a href="{% url 'products:collection_detail' collection.slug %}" class="inline-block mt-3 px-5 py-2 rounded-full text-sm font-semibold opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 delay-150 hover:scale-105" style="background-color: var(--card-primary, #c2a575); color: white;">Explorar →</a>
                         </div>
                     </div>
                     {% empty %}
                     <div class="text-center py-12 col-span-full">
-                        <p class="text-gray-400">No hay colecciones disponibles por el momento.</p>
-                        <p class="text-gray-500 text-sm mt-2">¡Vuelve pronto para descubrir nuestras próximas colecciones!</p>
+                        <p class="text-gray-500">No hay colecciones disponibles por el momento.</p>
+                        <p class="text-gray-400 text-sm mt-2">¡Vuelve pronto para descubrir nuestras próximas colecciones!</p>
                     </div>
                     {% endfor %}
                 </div>
                 {% if is_paginated %}
                 <div class="flex justify-center mt-16 gap-3">
                     {% if page_obj.has_previous %}
-                    <a href="?page=1{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="px-4 py-2 rounded-lg border border-gray-700 bg-gray-900 text-white hover:bg-gray-800 transition">« Primera</a>
-                    <a href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="px-4 py-2 rounded-lg border border-gray-700 bg-gray-900 text-white hover:bg-gray-800 transition">Anterior</a>
+                    <a href="?page=1{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition">« Primera</a>
+                    <a href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition">Anterior</a>
                     {% endif %}
                     <span class="px-4 py-2 rounded-lg bg-zicada-accent text-white">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
                     {% if page_obj.has_next %}
-                    <a href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="px-4 py-2 rounded-lg border border-gray-700 bg-gray-900 text-white hover:bg-gray-800 transition">Siguiente</a>
-                    <a href="?page={{ page_obj.paginator.num_pages }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="px-4 py-2 rounded-lg border border-gray-700 bg-gray-900 text-white hover:bg-gray-800 transition">Última »</a>
+                    <a href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition">Siguiente</a>
+                    <a href="?page={{ page_obj.paginator.num_pages }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition">Última »</a>
                     {% endif %}
                 </div>
                 {% endif %}

@@ -1,11 +1,11 @@
 <div>
-    <label class="block text-sm font-medium text-gray-700 mb-2">📅 Fecha de lanzamiento</label>
-    <select name="date_filter" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-zicada-accent">
+    <label class="block text-zicada-light text-sm font-medium mb-2">📅 Fecha de lanzamiento</label>
+    <select name="date_filter" class="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-zicada-accent focus:ring-1 focus:ring-zicada-accent text-gray-900">
         <option value="">Todas</option>
-        <option value="ultimo_mes" {% if current_date_filter == 'ultimo_mes' %}selected{% endif %}>Último mes</option>
-        <option value="ultimo_trimestre" {% if current_date_filter == 'ultimo_trimestre' %}selected{% endif %}>Último trimestre</option>
-        <option value="ultimo_semestre" {% if current_date_filter == 'ultimo_semestre' %}selected{% endif %}>Último semestre</option>
-        <option value="ultimo_ano" {% if current_date_filter == 'ultimo_ano' %}selected{% endif %}>Último año</option>
-        <option value="proximas" {% if current_date_filter == 'proximas' %}selected{% endif %}>Próximas a lanzar</option>
+        <option value="ultimo_mes" {% if current == 'ultimo_mes' %}selected{% endif %}>Último mes</option>
+        <option value="ultimo_trimestre" {% if current == 'ultimo_trimestre' %}selected{% endif %}>Último trimestre</option>
+        <option value="ultimo_semestre" {% if current == 'ultimo_semestre' %}selected{% endif %}>Último semestre</option>
+        <option value="ultimo_ano" {% if current == 'ultimo_ano' %}selected{% endif %}>Último año</option>
+        <option value="proximas" {% if current == 'proximas' %}selected{% endif %}>Próximas a lanzar</option>
     </select>
 </div>

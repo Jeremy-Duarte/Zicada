@@ -977,7 +977,27 @@ def admin_users(request):
 @staff_member_required
 def admin_config(request):
     """Admin configuration view."""
-    context = {CONTEXT_SECTION: SECTION_CONFIG}
+    quick_access_buttons = [
+        {
+            'url': reverse('core:hero_list'),
+            'icon': 'images',
+            'title': 'Slides del Hero',
+            'bg_from': 'purple-50',
+            'bg_to': 'purple-100',
+            'icon_color': 'purple-600',
+            'badge': '+',
+        },
+        {
+            'url': reverse('core:hero_trashcan'),
+            'icon': 'trash-alt',
+            'title': 'Papelera',
+            'bg_from': 'red-50',
+            'bg_to': 'red-100',
+            'icon_color': 'red-500',
+            'badge': '🗑',
+        },
+    ]
+    context = {CONTEXT_SECTION: SECTION_CONFIG, 'quick_access_buttons' : quick_access_buttons}
     return render(request, TEMPLATE_ADMIN_CONFIG, context)
 
 @staff_member_required
