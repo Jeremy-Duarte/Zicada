@@ -1,17 +1,7 @@
 <div>
-    <label class="block text-sm font-medium text-white mb-2">📦 Cantidad de productos</label>
+    <label class="block text-zicada-light text-sm font-medium mb-2">📦 Cantidad de productos</label>
     <div class="flex gap-3">
-        <input type="number" 
-               name="product_count_min" 
-               value="{{ min_count }}"
-               placeholder="Min"
-               min="0"
-               class="w-1/2 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-zicada-accent">
-        <input type="number" 
-               name="product_count_max" 
-               value="{{ max_count }}"
-               placeholder="Max"
-               min="0"
-               class="w-1/2 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-zicada-accent">
+        <input type="number" name="product_count_min" value="{{ min }}" placeholder="Min" min="0" class="w-1/2 px-3 py-2 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-zicada-accent focus:ring-1 focus:ring-zicada-accent text-gray-900 placeholder-gray-400">
+        <input type="number" name="product_count_max" value="{{ max }}" placeholder="Max" min="0" class="w-1/2 px-3 py-2 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-zicada-accent focus:ring-1 focus:ring-zicada-accent text-gray-900 placeholder-gray-400">
     </div>
 </div>
