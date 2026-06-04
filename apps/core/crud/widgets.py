@@ -154,6 +154,50 @@ class CloudinaryFeaturedImageWidget(widgets.Select):
     class Media:
         js = ('js/core/cloudinary-featured-widget.js',)
 
+class CloudinarySingleImageWidget(forms.ClearableFileInput):
+    """
+    Widget para seleccionar una sola imagen con vista previa.
+    """
+
+    def render(self, name, value, attrs=None, renderer=None):
+        input_html = super().render(name, value, attrs, renderer)
+        
+        preview_html = ''
+        if value and hasattr(value, 'url'):
+            preview_html = f'''
+                <div class="mt-3 relative inline-block">
+                    <img src="{value.url}" class="w-32 h-32 object-cover rounded-lg shadow-md border-2 border-green-500">
+                    <span class="absolute -top-2 -right-2 bg-green-500 text-white text-xs rounded-full px-1.5 py-0.5">
+                        <i class="fas fa-check"></i>
+                    </span>
+                    <p class="text-xs text-gray-500 mt-2">Imagen actual</p>
+                </div>
+            '''
+        else:
+            preview_html = '''
+                <div class="mt-3 text-center text-gray-400">
+                    <i class="fas fa-image text-3xl mb-1 block"></i>
+                    <p class="text-xs">Sin imagen seleccionada</p>
+                </div>
+            '''
+        
+        return mark_safe(f'''
+            <div class="cloudinary-single-image-widget">
+                <div class="flex flex-col">
+                    {input_html}
+                    <div class="single-image-preview">
+                        {preview_html}
+                    </div>
+                    <p class="text-xs text-gray-400 mt-2">
+                        <i class="fas fa-info-circle"></i> Sube una imagen (recomendado: 1920x1080px)
+                    </p>
+                </div>
+            </div>
+        ''')
+
+    class Media:
+        js = ('js/widgets/cloudinary-single-image.js',)
+
 class SortableOrderWidget(forms.Widget):
     def __init__(self, queryset=None, item_label=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
