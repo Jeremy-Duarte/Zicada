@@ -73,7 +73,7 @@
                         {% if slide.content_alignment == 'left' %}justify-start
                         {% elif slide.content_alignment == 'right' %}justify-end
                         {% else %}justify-center{% endif %}">
-                        <a href="{% url slide.button_url %}"
+                        <a href="{{ slide.button_url }}"
                            class="{{ slide.button_style|default:'bg-white hover:bg-red-700 text-black' }} px-10 py-4 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg inline-block">
                             {{ slide.button_text }}
                         </a>

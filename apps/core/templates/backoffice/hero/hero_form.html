@@ -4,10 +4,463 @@
 {% block title %}{% if form.instance.pk %}Editar{% else %}Nuevo{% endif %} Slide - Zicada{% endblock %}
 
 {% block content %}
-<div class="bg-white rounded-xl shadow-sm p-6">
-    <h1 class="text-2xl font-bold text-gray-800 mb-6">
-        {% if form.instance.pk %}Editar{% else %}Nuevo{% endif %} Slide del Hero
-    </h1>
-    {% include 'backoffice/components/crud/form_fields.html' with form=form cancel_url="core:hero_list" submit_label="Guardar" %}
+{% if form.errors %}
+<div class="bg-red-100 text-red-700 p-4 rounded mb-4 border-l-4 border-red-500">
+    <strong class="block mb-2">⚠️ Por favor corrige los siguientes errores:</strong>
+    <ul class="list-disc list-inside space-y-1">
+    {% for field, errors in form.errors.items %}
+        <li><strong>{{ field|capfirst }}:</strong> {{ errors|join:", " }}</li>
+    {% endfor %}
+    </ul>
 </div>
+{% endif %}
+
+{% if messages %}
+<div class="space-y-2 mb-4">
+    {% for message in messages %}
+    <div class="p-3 rounded-lg {% if message.tags == 'success' %}bg-green-100 text-green-700 border-l-4 border-green-500{% elif message.tags == 'error' %}bg-red-100 text-red-700 border-l-4 border-red-500{% else %}bg-blue-100 text-blue-700 border-l-4 border-blue-500{% endif %}">
+        {{ message }}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="space-y-6">
+    <div class="bg-white rounded-xl shadow-sm p-6">
+        <h1 class="text-2xl font-bold text-gray-800 mb-6">
+            {% if form.instance.pk %}Editar{% else %}Nuevo{% endif %} Slide del Hero
+        </h1>
+
+        <form id="hero-form" method="post" enctype="multipart/form-data" class="space-y-8" novalidate>
+            {% csrf_token %}
+
+            <!-- Configuración General -->
+            <div class="border-b border-gray-200 pb-4">
+                <h2 class="text-lg font-semibold text-gray-800">Configuración General</h2>
+                <p class="text-sm text-gray-500">Imagen de fondo y opacidad del overlay</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Imagen de fondo</label>
+                    {{ form.background_image }}
+                    <p class="text-xs text-gray-400 mt-1">Formatos: JPG, PNG, WebP. Tamaño recomendado: 1920x1080px</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Opacidad del overlay (0-1)</label>
+                    {{ form.overlay_opacity }}
+                    <input type="range" id="overlay-opacity-slider" min="0" max="1" step="0.1" value="{{ form.overlay_opacity.value|default:0.3 }}" class="w-full mt-2 accent-zicada-accent">
+                    <p class="text-xs text-gray-400 mt-1">0 = transparente, 1 = negro total. Recomendado: 0.3</p>
+                    <div class="mt-2 p-2 bg-gray-100 rounded-lg">
+                        <p class="text-xs text-gray-500 mb-1">Vista previa del overlay sobre la imagen:</p>
+                        <div class="relative w-full h-24 rounded overflow-hidden border">
+                            <div id="overlay-preview-bg" class="absolute inset-0 bg-cover bg-center" style="background-image: {% if background_image_url %}url('{{ background_image_url }}'){% else %}linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 100%){% endif %};"></div>
+                            <div id="overlay-preview-overlay" class="absolute inset-0 bg-black bg-opacity-30"></div>
+                            <div class="absolute inset-0 flex items-center justify-center text-white text-xs font-semibold z-10">Overlay</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Contenido -->
+            <div class="border-b border-gray-200 pb-4">
+                <h2 class="text-lg font-semibold text-gray-800">Contenido</h2>
+                <p class="text-sm text-gray-500">Textos, botón y comportamiento</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Título <span class="text-red-500">*</span></label>
+                    {{ form.title_text }}
+                    <p class="text-xs text-gray-400 mt-1">Máximo 200 caracteres</p>
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Subtítulo</label>
+                    {{ form.subtitle_text }}
+                    <p class="text-xs text-gray-400 mt-1">Máximo 300 caracteres</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Texto del botón <span class="text-red-500">*</span></label>
+                    {{ form.button_text }}
+                    <p class="text-xs text-gray-400 mt-1">Máximo 50 caracteres</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Destino del botón <span class="text-red-500">*</span></label>
+                    {{ form.button_url }}
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Alineación</label>
+                    <div class="flex gap-4">
+                        {% for radio in form.content_alignment %}
+                        <label class="flex items-center gap-2">{{ radio.tag }}<span class="text-sm">{{ radio.choice_label }}</span></label>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Altura de la sección</label>
+                    {{ form.section_height }}
+                    <p class="text-xs text-gray-400 mt-1">10% a 100% de la pantalla</p>
+                </div>
+                {% if form.instance.pk %}
+                <div>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        {{ form.is_active }}
+                        <span class="text-sm font-medium text-gray-700">Slide activo</span>
+                    </label>
+                    <p class="text-xs text-gray-400 mt-1">Los slides inactivos no se muestran en el carrusel</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Selector de color de fondo para las previews (SOLO PARA PROBAR) -->
+            <div class="border-b border-gray-200 pb-4">
+                <h2 class="text-lg font-semibold text-gray-800">Color de fondo para probar contraste</h2>
+                <p class="text-sm text-gray-500">Este color solo afecta a las previews de abajo, no al slide final</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Color de fondo de prueba</label>
+                    <div class="flex items-center gap-3">
+                        <input type="color" id="preview-bg-color" value="#f5f5f5" class="w-16 h-10 p-1 rounded border">
+                        <span id="preview-bg-color-value" class="text-sm text-gray-600">#f5f5f5</span>
+                    </div>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-400 mt-6">Usa este selector para ver cómo se ven tus textos en diferentes fondos</p>
+                </div>
+            </div>
+
+            <!-- Estilos del Título -->
+            <div class="border-b border-gray-200 pb-4">
+                <h2 class="text-lg font-semibold text-gray-800">Estilos del Título</h2>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div><label class="block text-sm font-medium text-gray-700 mb-2">Fuente</label>{{ form.title_font_family }}</div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-2">Tamaño</label>{{ form.title_font_size }}</div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-2">Peso</label>{{ form.title_font_weight }}</div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-2">Altura de línea</label>{{ form.title_line_height }}</div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Color del texto (final)</label>
+                    <div class="flex items-center gap-3">
+                        {{ form.title_color }}
+                        <div id="title-color-preview" class="w-8 h-8 rounded border shadow" style="background-color: {{ form.title_color.value|default:'#ffffff' }};"></div>
+                    </div>
+                </div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-2">Margen inferior</label>{{ form.title_margin_bottom }}</div>
+            </div>
+            
+            <div class="p-3 bg-gray-50 rounded-lg">
+                <p class="text-sm font-medium text-gray-700 mb-2">Vista previa del título (fondo de prueba):</p>
+                <div id="title-preview-container" class="p-4 rounded-lg transition-all duration-200" style="background-color: #f5f5f5;">
+                    <span id="title-preview-text" style="font-family: 'Inter', sans-serif; font-size: 1.5rem; font-weight: 600; line-height: 1.4; color: #ffffff;">
+                        {{ form.title_text.value|default:'ZICADA' }}
+                    </span>
+                </div>
+                <p class="text-xs text-gray-400 mt-2">El color del texto es el que configuraste arriba, el fondo es solo para probar</p>
+            </div>
+
+            <!-- Estilos del Subtítulo -->
+            <div class="border-b border-gray-200 pb-4">
+                <h2 class="text-lg font-semibold text-gray-800">Estilos del Subtítulo</h2>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div><label class="block text-sm font-medium text-gray-700 mb-2">Fuente</label>{{ form.subtitle_font_family }}</div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-2">Tamaño</label>{{ form.subtitle_font_size }}</div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-2">Peso</label>{{ form.subtitle_font_weight }}</div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-2">Altura de línea</label>{{ form.subtitle_line_height }}</div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Color del texto (final)</label>
+                    <div class="flex items-center gap-3">
+                        {{ form.subtitle_color }}
+                        <div id="subtitle-color-preview" class="w-8 h-8 rounded border shadow" style="background-color: {{ form.subtitle_color.value|default:'#e5e5e5' }};"></div>
+                    </div>
+                </div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-2">Margen inferior</label>{{ form.subtitle_margin_bottom }}</div>
+            </div>
+            
+            <div class="p-3 bg-gray-50 rounded-lg">
+                <p class="text-sm font-medium text-gray-700 mb-2">Vista previa del subtítulo (fondo de prueba):</p>
+                <div id="subtitle-preview-container" class="p-4 rounded-lg transition-all duration-200" style="background-color: #f5f5f5;">
+                    <span id="subtitle-preview-text" style="font-family: 'Inter', sans-serif; font-size: 1rem; font-weight: 400; line-height: 1.4; color: #666;">
+                        {{ form.subtitle_text.value|default:'LA MODA SE VA, TU ESTILO PERMANECE' }}
+                    </span>
+                </div>
+                <p class="text-xs text-gray-400 mt-2">El color del texto es el que configuraste arriba, el fondo es solo para probar</p>
+            </div>
+
+            <!-- Estilos del Botón -->
+            <div class="border-b border-gray-200 pb-4">
+                <h2 class="text-lg font-semibold text-gray-800">Estilos del Botón</h2>
+                <p class="text-sm text-gray-500">Personaliza la apariencia del botón</p>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div><label class="block text-sm font-medium text-gray-700 mb-2">Color de fondo</label>{{ form.button_bg_color }}</div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-2">Color al pasar el mouse</label>{{ form.button_hover_color }}</div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-2">Color del texto</label>{{ form.button_text_color }}</div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-2">Bordes</label>{{ form.button_border_radius }}</div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-2">Tamaño</label>{{ form.button_size }}</div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-2">Sombra</label>{{ form.button_shadow }}</div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-2">Ancho</label>{{ form.button_width }}</div>
+            </div>
+            
+            <div class="p-4 bg-gray-50 rounded-lg">
+                <p class="text-sm text-gray-600 mb-3">Vista previa del botón:</p>
+                <div id="button-preview-container" class="flex justify-center">
+                    <button id="button-preview" class="bg-zicada-accent hover:bg-red-700 text-white rounded-lg px-8 py-3 text-lg shadow-lg inline-block font-semibold transition-all duration-300 transform hover:scale-105">
+                        {{ form.button_text.value|default:'Explorar Catálogo' }}
+                    </button>
+                </div>
+            </div>
+
+            <!-- Orden de slides -->
+            <div class="border-b border-gray-200 pb-4">
+                <h2 class="text-lg font-semibold text-gray-800">Orden de los slides</h2>
+                <p class="text-sm text-gray-500">Arrastra los slides para cambiar su orden en el carrusel</p>
+            </div>
+            <div>{{ form.hero_order }}</div>
+
+            <!-- BOTONES DE ACCIÓN DENTRO DEL FORMULARIO -->
+            <div class="flex justify-end gap-3 pt-4 border-t border-gray-200">
+                <a href="{% url 'core:hero_list' %}" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition">Cancelar</a>
+                <button type="submit" class="px-6 py-2 bg-zicada-accent hover:bg-red-700 text-white rounded-lg font-semibold transition">
+                    <i class="fas fa-save mr-1"></i> Guardar
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Vista previa en vivo del slide completo -->
+    <div class="bg-white rounded-xl shadow-sm p-6">
+        <h2 class="text-lg font-semibold text-gray-800 mb-4">Vista previa final (como se verá en el carrusel)</h2>
+        <div id="live-preview" class="relative rounded-xl overflow-hidden border border-gray-200" style="height: 400px;">
+            <div id="preview-bg" class="absolute inset-0 bg-cover bg-center" style="background-image: {% if background_image_url %}url('{{ background_image_url }}'){% else %}linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 100%){% endif %};"></div>
+            <div id="preview-overlay" class="absolute inset-0 bg-black bg-opacity-30"></div>
+            <div class="relative z-10 w-full h-full flex items-center justify-center px-6">
+                <div id="preview-content" class="max-w-4xl w-full text-center">
+                    <h1 id="preview-title" class="tracking-tight" style="font-family: 'Inter', sans-serif; font-size: 4rem; font-weight: 800; line-height: 1.2; margin-bottom: 1.5rem; color: #ffffff;">ZICADA</h1>
+                    <p id="preview-subtitle" style="font-family: 'Inter', sans-serif; font-size: 1.25rem; font-weight: 400; line-height: 1.5; margin-bottom: 2.5rem; color: #e5e5e5;">LA MODA SE VA, TU ESTILO PERMANECE</p>
+                    <div id="preview-button-wrapper" class="flex justify-center">
+                        <button id="preview-button" class="bg-zicada-accent hover:bg-red-700 text-white rounded-lg px-8 py-3 text-lg shadow-lg inline-block font-semibold transition-all duration-300 transform hover:scale-105">Explorar Catálogo</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <p class="text-xs text-gray-400 mt-3 text-center">Los cambios se actualizan automáticamente</p>
+    </div>
+</div>
+
+<script>
+    const opacityInput = document.querySelector('#id_overlay_opacity');
+    const opacitySlider = document.getElementById('overlay-opacity-slider');
+    if (opacityInput && opacitySlider) {
+        opacitySlider.addEventListener('input', function() { opacityInput.value = this.value; updatePreview(); });
+        opacityInput.addEventListener('input', function() { opacitySlider.value = this.value; updatePreview(); });
+    }
+
+    function getOpacityClass(opacity) {
+        if (opacity >= 0.9) return 'bg-opacity-90';
+        if (opacity >= 0.8) return 'bg-opacity-80';
+        if (opacity >= 0.7) return 'bg-opacity-70';
+        if (opacity >= 0.6) return 'bg-opacity-60';
+        if (opacity >= 0.5) return 'bg-opacity-50';
+        if (opacity >= 0.4) return 'bg-opacity-40';
+        if (opacity >= 0.3) return 'bg-opacity-30';
+        if (opacity >= 0.2) return 'bg-opacity-20';
+        if (opacity >= 0.1) return 'bg-opacity-10';
+        return 'bg-opacity-0';
+    }
+
+    function updateOverlayPreview() {
+        const opacity = parseFloat(document.querySelector('#id_overlay_opacity')?.value) || 0.3;
+        const overlayDiv = document.getElementById('overlay-preview-overlay');
+        if (overlayDiv) {
+            overlayDiv.classList.remove('bg-opacity-0', 'bg-opacity-10', 'bg-opacity-20', 'bg-opacity-30', 'bg-opacity-40', 'bg-opacity-50', 'bg-opacity-60', 'bg-opacity-70', 'bg-opacity-80', 'bg-opacity-90');
+            overlayDiv.classList.add(getOpacityClass(opacity));
+        }
+    }
+
+    function updateTitlePreview() {
+        const bgColor = document.getElementById('preview-bg-color')?.value || '#f5f5f5';
+        const textColor = document.querySelector('#id_title_color')?.value || '#ffffff';
+        const titleText = document.querySelector('#id_title_text')?.value || 'ZICADA';
+        const titleFontFamily = document.querySelector('#id_title_font_family')?.value || "'Inter', sans-serif";
+        const titleFontSize = document.querySelector('#id_title_font_size')?.value || '1.5rem';
+        const titleFontWeight = document.querySelector('#id_title_font_weight')?.value || '600';
+        const titleLineHeight = document.querySelector('#id_title_line_height')?.value || '1.4';
+        const titleMarginBottom = document.querySelector('#id_title_margin_bottom')?.value || '0';
+        const titlePreviewDiv = document.getElementById('title-preview-container');
+        const titleTextSpan = document.getElementById('title-preview-text');
+        if (titlePreviewDiv) titlePreviewDiv.style.backgroundColor = bgColor;
+        if (titleTextSpan) {
+            titleTextSpan.style.fontFamily = titleFontFamily;
+            titleTextSpan.style.fontSize = titleFontSize;
+            titleTextSpan.style.fontWeight = titleFontWeight;
+            titleTextSpan.style.lineHeight = titleLineHeight;
+            titleTextSpan.style.color = textColor;
+            titleTextSpan.style.marginBottom = titleMarginBottom;
+            titleTextSpan.textContent = titleText;
+        }
+    }
+
+    function updateSubtitlePreview() {
+        const bgColor = document.getElementById('preview-bg-color')?.value || '#f5f5f5';
+        const textColor = document.querySelector('#id_subtitle_color')?.value || '#666';
+        const subtitleText = document.querySelector('#id_subtitle_text')?.value || 'LA MODA SE VA, TU ESTILO PERMANECE';
+        const subtitleFontFamily = document.querySelector('#id_subtitle_font_family')?.value || "'Inter', sans-serif";
+        const subtitleFontSize = document.querySelector('#id_subtitle_font_size')?.value || '1rem';
+        const subtitleFontWeight = document.querySelector('#id_subtitle_font_weight')?.value || '400';
+        const subtitleLineHeight = document.querySelector('#id_subtitle_line_height')?.value || '1.4';
+        const subtitleMarginBottom = document.querySelector('#id_subtitle_margin_bottom')?.value || '0';
+        const subtitlePreviewDiv = document.getElementById('subtitle-preview-container');
+        const subtitleTextSpan = document.getElementById('subtitle-preview-text');
+        if (subtitlePreviewDiv) subtitlePreviewDiv.style.backgroundColor = bgColor;
+        if (subtitleTextSpan) {
+            subtitleTextSpan.style.fontFamily = subtitleFontFamily;
+            subtitleTextSpan.style.fontSize = subtitleFontSize;
+            subtitleTextSpan.style.fontWeight = subtitleFontWeight;
+            subtitleTextSpan.style.lineHeight = subtitleLineHeight;
+            subtitleTextSpan.style.color = textColor;
+            subtitleTextSpan.style.marginBottom = subtitleMarginBottom;
+            subtitleTextSpan.textContent = subtitleText;
+        }
+    }
+
+    function updatePreview() {
+        const title = document.querySelector('#id_title_text')?.value || 'ZICADA';
+        const titleEl = document.getElementById('preview-title');
+        if (titleEl) {
+            titleEl.textContent = title;
+            titleEl.style.fontFamily = document.querySelector('#id_title_font_family')?.value || "'Inter', sans-serif";
+            titleEl.style.fontSize = document.querySelector('#id_title_font_size')?.value || '4rem';
+            titleEl.style.fontWeight = document.querySelector('#id_title_font_weight')?.value || '800';
+            titleEl.style.lineHeight = document.querySelector('#id_title_line_height')?.value || '1.2';
+            titleEl.style.color = document.querySelector('#id_title_color')?.value || '#ffffff';
+            titleEl.style.marginBottom = document.querySelector('#id_title_margin_bottom')?.value || '1.5rem';
+        }
+
+        const subtitle = document.querySelector('#id_subtitle_text')?.value || '';
+        const subtitleEl = document.getElementById('preview-subtitle');
+        if (subtitleEl) {
+            subtitleEl.textContent = subtitle;
+            subtitleEl.style.fontFamily = document.querySelector('#id_subtitle_font_family')?.value || "'Inter', sans-serif";
+            subtitleEl.style.fontSize = document.querySelector('#id_subtitle_font_size')?.value || '1.25rem';
+            subtitleEl.style.fontWeight = document.querySelector('#id_subtitle_font_weight')?.value || '400';
+            subtitleEl.style.lineHeight = document.querySelector('#id_subtitle_line_height')?.value || '1.5';
+            subtitleEl.style.color = document.querySelector('#id_subtitle_color')?.value || '#e5e5e5';
+            subtitleEl.style.marginBottom = document.querySelector('#id_subtitle_margin_bottom')?.value || '2.5rem';
+        }
+
+        const opacity = parseFloat(document.querySelector('#id_overlay_opacity')?.value) || 0.3;
+        const overlayDiv = document.getElementById('preview-overlay');
+        if (overlayDiv) {
+            overlayDiv.classList.remove('bg-opacity-0', 'bg-opacity-10', 'bg-opacity-20', 'bg-opacity-30', 'bg-opacity-40', 'bg-opacity-50', 'bg-opacity-60', 'bg-opacity-70', 'bg-opacity-80', 'bg-opacity-90');
+            overlayDiv.classList.add(getOpacityClass(opacity));
+        }
+
+        const alignment = document.querySelector('input[name="content_alignment"]:checked')?.value || 'center';
+        const contentDiv = document.getElementById('preview-content');
+        const buttonWrapper = document.getElementById('preview-button-wrapper');
+        if (contentDiv) {
+            contentDiv.classList.remove('text-left', 'text-center', 'text-right');
+            contentDiv.classList.add(`text-${alignment}`);
+        }
+        if (buttonWrapper) {
+            buttonWrapper.classList.remove('justify-start', 'justify-center', 'justify-end');
+            if (alignment === 'left') buttonWrapper.classList.add('justify-start');
+            else if (alignment === 'right') buttonWrapper.classList.add('justify-end');
+            else buttonWrapper.classList.add('justify-center');
+        }
+
+        const fileInput = document.querySelector('#id_background_image');
+        const currentImage = '{{ background_image_url|default:"" }}';
+        const previewBg = document.getElementById('preview-bg');
+        const overlayPreviewBg = document.getElementById('overlay-preview-bg');
+        
+        if (fileInput && fileInput.files && fileInput.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                if (previewBg) previewBg.style.backgroundImage = `url(${e.target.result})`;
+                if (overlayPreviewBg) overlayPreviewBg.style.backgroundImage = `url(${e.target.result})`;
+            };
+            reader.readAsDataURL(fileInput.files[0]);
+        } else if (currentImage) {
+            if (previewBg) previewBg.style.backgroundImage = `url(${currentImage})`;
+            if (overlayPreviewBg) overlayPreviewBg.style.backgroundImage = `url(${currentImage})`;
+        }
+
+        const sectionHeight = document.querySelector('#id_section_height')?.value || '100vh';
+        const previewContainer = document.getElementById('live-preview');
+        if (previewContainer) {
+            previewContainer.style.height = sectionHeight;
+            previewContainer.style.minHeight = '400px';
+        }
+
+        const titleColorPreview = document.getElementById('title-color-preview');
+        const subtitleColorPreview = document.getElementById('subtitle-color-preview');
+        if (titleColorPreview) titleColorPreview.style.backgroundColor = document.querySelector('#id_title_color')?.value;
+        if (subtitleColorPreview) subtitleColorPreview.style.backgroundColor = document.querySelector('#id_subtitle_color')?.value;
+
+        updateTitlePreview();
+        updateSubtitlePreview();
+        updateButtonPreview();
+        updateOverlayPreview();
+    }
+
+    function updateButtonPreview() {
+        const bg = document.querySelector('#id_button_bg_color')?.value || 'bg-zicada-accent';
+        const hover = document.querySelector('#id_button_hover_color')?.value || 'hover:bg-red-700';
+        const text = document.querySelector('#id_button_text_color')?.value || 'text-white';
+        const rounded = document.querySelector('#id_button_border_radius')?.value || 'rounded-lg';
+        const size = document.querySelector('#id_button_size')?.value || 'px-8 py-3 text-lg';
+        const shadow = document.querySelector('#id_button_shadow')?.value || 'shadow-lg';
+        const width = document.querySelector('#id_button_width')?.value || 'inline-block';
+        const buttonText = document.querySelector('#id_button_text')?.value || 'Explorar Catálogo';
+
+        const previewBtn = document.getElementById('preview-button');
+        if (previewBtn) {
+            previewBtn.className = `${bg} ${hover} ${text} ${rounded} ${size} ${shadow} ${width} font-semibold transition-all duration-300 transform hover:scale-105 inline-block text-center`;
+            previewBtn.textContent = buttonText;
+        }
+
+        const previewBtnLive = document.getElementById('button-preview');
+        if (previewBtnLive) {
+            previewBtnLive.className = `${bg} ${hover} ${text} ${rounded} ${size} ${shadow} ${width} font-semibold transition-all duration-300 transform hover:scale-105 inline-block text-center`;
+            previewBtnLive.textContent = buttonText;
+        }
+    }
+
+    const form = document.getElementById('hero-form');
+    if (form) {
+        form.querySelectorAll('input, select, textarea').forEach(el => {
+            el.addEventListener('input', updatePreview);
+            el.addEventListener('change', updatePreview);
+        });
+    }
+
+    const titleColorInput = document.querySelector('#id_title_color');
+    if (titleColorInput) titleColorInput.addEventListener('input', updateTitlePreview);
+
+    const subtitleColorInput = document.querySelector('#id_subtitle_color');
+    if (subtitleColorInput) subtitleColorInput.addEventListener('input', updateSubtitlePreview);
+
+    const previewBgColor = document.getElementById('preview-bg-color');
+    if (previewBgColor) {
+        previewBgColor.addEventListener('input', function() {
+            document.getElementById('preview-bg-color-value').textContent = this.value;
+            updateTitlePreview();
+            updateSubtitlePreview();
+        });
+    }
+
+    document.querySelectorAll('input[name="content_alignment"]').forEach(radio => {
+        radio.addEventListener('change', updatePreview);
+    });
+
+    document.addEventListener('DOMContentLoaded', function() {
+        updatePreview();
+        updateButtonPreview();
+        updateOverlayPreview();
+        updateTitlePreview();
+        updateSubtitlePreview();
+    });
+</script>
 {% endblock %}
