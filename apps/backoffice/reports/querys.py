@@ -1,5 +1,5 @@
-from datetime import date, timedelta
-from typing import List, Tuple, Dict, Any
+from datetime import date, datetime, timedelta
+from typing import List, Optional, Tuple, Dict, Any
 from django.db.models import Max, Min, Sum, Count, Q, F, Avg
 from django.utils import timezone
 from apps.orders.models import Order, OrderItem
@@ -377,7 +377,7 @@ def get_product_stats_in_range(date_start: date, date_end: date) -> Dict[str, An
 
 def get_category_stats_in_range(date_start: date, date_end: date) -> List[Dict[str, Any]]:
     """Get sales by category within date range """
-    
+
     categories_data = Category.objects.annotate(
         product_count=Count('products', filter=Q(products__is_active=True))
     ).values('id', 'name', 'product_count')
@@ -557,12 +557,15 @@ def get_delivery_stats_in_range(date_start: date, date_end: date) -> Dict[str, A
     }
 
 
-def get_delivery_performance_in_range(
+# =============================================================================
+# Delivery Performance - Funciones Auxiliares
+# =============================================================================
+
+def _fetch_delivery_performance_data(
     date_start: date, date_end: date, limit: int = 10
 ) -> List[Dict[str, Any]]:
-    """Get delivery performance metrics for each delivery user."""
-    # Obtener entregas por entregador en el período
-    deliveries = Order.objects.filter(
+    """Consulta principal: obtiene entregas agregadas por entregador."""
+    return list(Order.objects.filter(
         status='entregado',
         assigned_delivery_user__isnull=False,
         updated_at__date__gte=date_start,
@@ -580,36 +583,68 @@ def get_delivery_performance_in_range(
         avg_order_value=Avg('total_amount'),
         first_delivery=Min('updated_at'),
         last_delivery=Max('updated_at'),
-    ).order_by('-total_deliveries')[:limit]
+    ).order_by('-total_deliveries')[:limit])
+
+
+def _calculate_deliveries_per_day(
+    first_delivery: Optional[datetime],
+    last_delivery: Optional[datetime],
+    total_deliveries: int
+) -> float:
+    """Calcula el promedio de entregas por día."""
+    if not first_delivery or not last_delivery:
+        return float(total_deliveries)
     
-    result = []
-    for d in deliveries:
-        user_id = d['assigned_delivery_user__id']
-        total_deliveries = d['total_deliveries']
-        total_revenue = float(d['total_revenue'] or 0)
-        
-        # Calcular entregas por día (promedio)
-        if d['first_delivery'] and d['last_delivery']:
-            days_active = (d['last_delivery'].date() - d['first_delivery'].date()).days + 1
-            deliveries_per_day = total_deliveries / days_active if days_active > 0 else total_deliveries
-        else:
-            deliveries_per_day = total_deliveries
-        
-        result.append({
-            'id': user_id,
-            'name': f"{d['assigned_delivery_user__first_name']} {d['assigned_delivery_user__last_name']}".strip() or d['assigned_delivery_user__username'],
-            'username': d['assigned_delivery_user__username'],
-            'phone': d['assigned_delivery_user__phone'] or '—',
-            'email': d['assigned_delivery_user__email'] or '—',
-            'total_deliveries': total_deliveries,
-            'total_revenue': total_revenue,
-            'avg_order_value': f"${d['avg_order_value']:,.0f}" if d['avg_order_value'] else "$0",
-            'deliveries_per_day': round(deliveries_per_day, 1),
-            'first_delivery': d['first_delivery'].strftime(DATE_FORMAT_DAY_MONTH_YEAR) if d['first_delivery'] else '—',
-            'last_delivery': d['last_delivery'].strftime(DATE_FORMAT_DAY_MONTH_YEAR) if d['last_delivery'] else '—',
-        })
+    days_active = (last_delivery.date() - first_delivery.date()).days + 1
+    if days_active <= 0:
+        return float(total_deliveries)
     
-    return result
+    return total_deliveries / days_active
+
+
+def _build_delivery_user_name(d: Dict[str, Any]) -> str:
+    """Construye el nombre completo del entregador."""
+    first_name = d.get('assigned_delivery_user__first_name', '')
+    last_name = d.get('assigned_delivery_user__last_name', '')
+    username = d.get('assigned_delivery_user__username', '')
+    
+    full_name = f"{first_name} {last_name}".strip()
+    return full_name or username
+
+
+def _build_delivery_performance_item(d: Dict[str, Any]) -> Dict[str, Any]:
+    """Construye el diccionario de resultado para un entregador."""
+    total_deliveries = d['total_deliveries']
+    total_revenue = float(d['total_revenue'] or 0)
+    first_delivery = d.get('first_delivery')
+    last_delivery = d.get('last_delivery')
+    
+    deliveries_per_day = _calculate_deliveries_per_day(
+        first_delivery, last_delivery, total_deliveries
+    )
+    
+    return {
+        'id': d['assigned_delivery_user__id'],
+        'name': _build_delivery_user_name(d),
+        'username': d['assigned_delivery_user__username'],
+        'phone': d['assigned_delivery_user__phone'] or '—',
+        'email': d['assigned_delivery_user__email'] or '—',
+        'total_deliveries': total_deliveries,
+        'total_revenue': total_revenue,
+        'avg_order_value': f"${d['avg_order_value']:,.0f}" if d['avg_order_value'] else "$0",
+        'deliveries_per_day': round(deliveries_per_day, 1),
+        'first_delivery': first_delivery.strftime(DATE_FORMAT_DAY_MONTH_YEAR) if first_delivery else '—',
+        'last_delivery': last_delivery.strftime(DATE_FORMAT_DAY_MONTH_YEAR) if last_delivery else '—',
+    }
+
+
+def get_delivery_performance_in_range(
+    date_start: date, date_end: date, limit: int = 10
+) -> List[Dict[str, Any]]:
+    """Get delivery performance metrics for each delivery user."""
+    deliveries_data = _fetch_delivery_performance_data(date_start, date_end, limit)
+    return [_build_delivery_performance_item(d) for d in deliveries_data]
+
 
 
 def get_daily_deliveries_in_range(
