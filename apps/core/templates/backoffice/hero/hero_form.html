@@ -41,12 +41,12 @@
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Imagen de fondo</label>
+                    <label for="{{ form.background_image.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">Imagen de fondo</label>
                     {{ form.background_image }}
                     <p class="text-xs text-gray-400 mt-1">Formatos: JPG, PNG, WebP. Tamaño recomendado: 1920x1080px</p>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Opacidad del overlay (0-1)</label>
+                    <label for="{{ form.overlay_opacity.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">Opacidad del overlay (0-1)</label>
                     {{ form.overlay_opacity }}
                     <input type="range" id="overlay-opacity-slider" min="0" max="1" step="0.1" value="{{ form.overlay_opacity.value|default:0.3 }}" class="w-full mt-2 accent-zicada-accent">
                     <p class="text-xs text-gray-400 mt-1">0 = transparente, 1 = negro total. Recomendado: 0.3</p>
@@ -68,40 +68,40 @@
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="md:col-span-2">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Título <span class="text-red-500">*</span></label>
+                    <label for="{{ form.title_text.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">Título <span class="text-red-500">*</span></label>
                     {{ form.title_text }}
                     <p class="text-xs text-gray-400 mt-1">Máximo 200 caracteres</p>
                 </div>
                 <div class="md:col-span-2">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Subtítulo</label>
+                    <label for="{{ form.subtitle_text.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">Subtítulo</label>
                     {{ form.subtitle_text }}
                     <p class="text-xs text-gray-400 mt-1">Máximo 300 caracteres</p>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Texto del botón <span class="text-red-500">*</span></label>
+                    <label for="{{ form.button_text.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">Texto del botón <span class="text-red-500">*</span></label>
                     {{ form.button_text }}
                     <p class="text-xs text-gray-400 mt-1">Máximo 50 caracteres</p>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Destino del botón <span class="text-red-500">*</span></label>
+                    <label for="{{ form.button_url.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">Destino del botón <span class="text-red-500">*</span></label>
                     {{ form.button_url }}
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Alineación</label>
+                    <label for="{{ form.content_alignment.0.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">Alineación</label>
                     <div class="flex gap-4">
                         {% for radio in form.content_alignment %}
-                        <label class="flex items-center gap-2">{{ radio.tag }}<span class="text-sm">{{ radio.choice_label }}</span></label>
+                        <label for="{{ radio.id_for_label }}" class="flex items-center gap-2">{{ radio.tag }}<span class="text-sm">{{ radio.choice_label }}</span></label>
                         {% endfor %}
                     </div>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Altura de la sección</label>
+                    <label for="{{ form.section_height.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">Altura de la sección</label>
                     {{ form.section_height }}
                     <p class="text-xs text-gray-400 mt-1">10% a 100% de la pantalla</p>
                 </div>
                 {% if form.instance.pk %}
                 <div>
-                    <label class="flex items-center gap-2 cursor-pointer">
+                    <label for="{{ form.is_active.id_for_label }}" class="flex items-center gap-2 cursor-pointer">
                         {{ form.is_active }}
                         <span class="text-sm font-medium text-gray-700">Slide activo</span>
                     </label>
@@ -117,7 +117,7 @@
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Color de fondo de prueba</label>
+                    <label for="preview-bg-color" class="block text-sm font-medium text-gray-700 mb-2">Color de fondo de prueba</label>
                     <div class="flex items-center gap-3">
                         <input type="color" id="preview-bg-color" value="#f5f5f5" class="w-16 h-10 p-1 rounded border">
                         <span id="preview-bg-color-value" class="text-sm text-gray-600">#f5f5f5</span>
@@ -133,18 +133,33 @@
                 <h2 class="text-lg font-semibold text-gray-800">Estilos del Título</h2>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div><label class="block text-sm font-medium text-gray-700 mb-2">Fuente</label>{{ form.title_font_family }}</div>
-                <div><label class="block text-sm font-medium text-gray-700 mb-2">Tamaño</label>{{ form.title_font_size }}</div>
-                <div><label class="block text-sm font-medium text-gray-700 mb-2">Peso</label>{{ form.title_font_weight }}</div>
-                <div><label class="block text-sm font-medium text-gray-700 mb-2">Altura de línea</label>{{ form.title_line_height }}</div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Color del texto (final)</label>
+                    <label for="{{ form.title_font_family.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">Fuente</label>
+                    {{ form.title_font_family }}
+                </div>
+                <div>
+                    <label for="{{ form.title_font_size.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">Tamaño</label>
+                    {{ form.title_font_size }}
+                </div>
+                <div>
+                    <label for="{{ form.title_font_weight.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">Peso</label>
+                    {{ form.title_font_weight }}
+                </div>
+                <div>
+                    <label for="{{ form.title_line_height.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">Altura de línea</label>
+                    {{ form.title_line_height }}
+                </div>
+                <div>
+                    <label for="{{ form.title_color.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">Color del texto (final)</label>
                     <div class="flex items-center gap-3">
                         {{ form.title_color }}
                         <div id="title-color-preview" class="w-8 h-8 rounded border shadow" style="background-color: {{ form.title_color.value|default:'#ffffff' }};"></div>
                     </div>
                 </div>
-                <div><label class="block text-sm font-medium text-gray-700 mb-2">Margen inferior</label>{{ form.title_margin_bottom }}</div>
+                <div>
+                    <label for="{{ form.title_margin_bottom.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">Margen inferior</label>
+                    {{ form.title_margin_bottom }}
+                </div>
             </div>
             
             <div class="p-3 bg-gray-50 rounded-lg">
@@ -162,18 +177,33 @@
                 <h2 class="text-lg font-semibold text-gray-800">Estilos del Subtítulo</h2>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div><label class="block text-sm font-medium text-gray-700 mb-2">Fuente</label>{{ form.subtitle_font_family }}</div>
-                <div><label class="block text-sm font-medium text-gray-700 mb-2">Tamaño</label>{{ form.subtitle_font_size }}</div>
-                <div><label class="block text-sm font-medium text-gray-700 mb-2">Peso</label>{{ form.subtitle_font_weight }}</div>
-                <div><label class="block text-sm font-medium text-gray-700 mb-2">Altura de línea</label>{{ form.subtitle_line_height }}</div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Color del texto (final)</label>
+                    <label for="{{ form.subtitle_font_family.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">Fuente</label>
+                    {{ form.subtitle_font_family }}
+                </div>
+                <div>
+                    <label for="{{ form.subtitle_font_size.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">Tamaño</label>
+                    {{ form.subtitle_font_size }}
+                </div>
+                <div>
+                    <label for="{{ form.subtitle_font_weight.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">Peso</label>
+                    {{ form.subtitle_font_weight }}
+                </div>
+                <div>
+                    <label for="{{ form.subtitle_line_height.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">Altura de línea</label>
+                    {{ form.subtitle_line_height }}
+                </div>
+                <div>
+                    <label for="{{ form.subtitle_color.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">Color del texto (final)</label>
                     <div class="flex items-center gap-3">
                         {{ form.subtitle_color }}
                         <div id="subtitle-color-preview" class="w-8 h-8 rounded border shadow" style="background-color: {{ form.subtitle_color.value|default:'#e5e5e5' }};"></div>
                     </div>
                 </div>
-                <div><label class="block text-sm font-medium text-gray-700 mb-2">Margen inferior</label>{{ form.subtitle_margin_bottom }}</div>
+                <div>
+                    <label for="{{ form.subtitle_margin_bottom.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">Margen inferior</label>
+                    {{ form.subtitle_margin_bottom }}
+                </div>
             </div>
             
             <div class="p-3 bg-gray-50 rounded-lg">
@@ -193,13 +223,34 @@
             </div>
             
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div><label class="block text-sm font-medium text-gray-700 mb-2">Color de fondo</label>{{ form.button_bg_color }}</div>
-                <div><label class="block text-sm font-medium text-gray-700 mb-2">Color al pasar el mouse</label>{{ form.button_hover_color }}</div>
-                <div><label class="block text-sm font-medium text-gray-700 mb-2">Color del texto</label>{{ form.button_text_color }}</div>
-                <div><label class="block text-sm font-medium text-gray-700 mb-2">Bordes</label>{{ form.button_border_radius }}</div>
-                <div><label class="block text-sm font-medium text-gray-700 mb-2">Tamaño</label>{{ form.button_size }}</div>
-                <div><label class="block text-sm font-medium text-gray-700 mb-2">Sombra</label>{{ form.button_shadow }}</div>
-                <div><label class="block text-sm font-medium text-gray-700 mb-2">Ancho</label>{{ form.button_width }}</div>
+                <div>
+                    <label for="{{ form.button_bg_color.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">Color de fondo</label>
+                    {{ form.button_bg_color }}
+                </div>
+                <div>
+                    <label for="{{ form.button_hover_color.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">Color al pasar el mouse</label>
+                    {{ form.button_hover_color }}
+                </div>
+                <div>
+                    <label for="{{ form.button_text_color.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">Color del texto</label>
+                    {{ form.button_text_color }}
+                </div>
+                <div>
+                    <label for="{{ form.button_border_radius.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">Bordes</label>
+                    {{ form.button_border_radius }}
+                </div>
+                <div>
+                    <label for="{{ form.button_size.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">Tamaño</label>
+                    {{ form.button_size }}
+                </div>
+                <div>
+                    <label for="{{ form.button_shadow.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">Sombra</label>
+                    {{ form.button_shadow }}
+                </div>
+                <div>
+                    <label for="{{ form.button_width.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">Ancho</label>
+                    {{ form.button_width }}
+                </div>
             </div>
             
             <div class="p-4 bg-gray-50 rounded-lg">
@@ -247,220 +298,7 @@
         <p class="text-xs text-gray-400 mt-3 text-center">Los cambios se actualizan automáticamente</p>
     </div>
 </div>
-
-<script>
-    const opacityInput = document.querySelector('#id_overlay_opacity');
-    const opacitySlider = document.getElementById('overlay-opacity-slider');
-    if (opacityInput && opacitySlider) {
-        opacitySlider.addEventListener('input', function() { opacityInput.value = this.value; updatePreview(); });
-        opacityInput.addEventListener('input', function() { opacitySlider.value = this.value; updatePreview(); });
-    }
-
-    function getOpacityClass(opacity) {
-        if (opacity >= 0.9) return 'bg-opacity-90';
-        if (opacity >= 0.8) return 'bg-opacity-80';
-        if (opacity >= 0.7) return 'bg-opacity-70';
-        if (opacity >= 0.6) return 'bg-opacity-60';
-        if (opacity >= 0.5) return 'bg-opacity-50';
-        if (opacity >= 0.4) return 'bg-opacity-40';
-        if (opacity >= 0.3) return 'bg-opacity-30';
-        if (opacity >= 0.2) return 'bg-opacity-20';
-        if (opacity >= 0.1) return 'bg-opacity-10';
-        return 'bg-opacity-0';
-    }
-
-    function updateOverlayPreview() {
-        const opacity = parseFloat(document.querySelector('#id_overlay_opacity')?.value) || 0.3;
-        const overlayDiv = document.getElementById('overlay-preview-overlay');
-        if (overlayDiv) {
-            overlayDiv.classList.remove('bg-opacity-0', 'bg-opacity-10', 'bg-opacity-20', 'bg-opacity-30', 'bg-opacity-40', 'bg-opacity-50', 'bg-opacity-60', 'bg-opacity-70', 'bg-opacity-80', 'bg-opacity-90');
-            overlayDiv.classList.add(getOpacityClass(opacity));
-        }
-    }
-
-    function updateTitlePreview() {
-        const bgColor = document.getElementById('preview-bg-color')?.value || '#f5f5f5';
-        const textColor = document.querySelector('#id_title_color')?.value || '#ffffff';
-        const titleText = document.querySelector('#id_title_text')?.value || 'ZICADA';
-        const titleFontFamily = document.querySelector('#id_title_font_family')?.value || "'Inter', sans-serif";
-        const titleFontSize = document.querySelector('#id_title_font_size')?.value || '1.5rem';
-        const titleFontWeight = document.querySelector('#id_title_font_weight')?.value || '600';
-        const titleLineHeight = document.querySelector('#id_title_line_height')?.value || '1.4';
-        const titleMarginBottom = document.querySelector('#id_title_margin_bottom')?.value || '0';
-        const titlePreviewDiv = document.getElementById('title-preview-container');
-        const titleTextSpan = document.getElementById('title-preview-text');
-        if (titlePreviewDiv) titlePreviewDiv.style.backgroundColor = bgColor;
-        if (titleTextSpan) {
-            titleTextSpan.style.fontFamily = titleFontFamily;
-            titleTextSpan.style.fontSize = titleFontSize;
-            titleTextSpan.style.fontWeight = titleFontWeight;
-            titleTextSpan.style.lineHeight = titleLineHeight;
-            titleTextSpan.style.color = textColor;
-            titleTextSpan.style.marginBottom = titleMarginBottom;
-            titleTextSpan.textContent = titleText;
-        }
-    }
-
-    function updateSubtitlePreview() {
-        const bgColor = document.getElementById('preview-bg-color')?.value || '#f5f5f5';
-        const textColor = document.querySelector('#id_subtitle_color')?.value || '#666';
-        const subtitleText = document.querySelector('#id_subtitle_text')?.value || 'LA MODA SE VA, TU ESTILO PERMANECE';
-        const subtitleFontFamily = document.querySelector('#id_subtitle_font_family')?.value || "'Inter', sans-serif";
-        const subtitleFontSize = document.querySelector('#id_subtitle_font_size')?.value || '1rem';
-        const subtitleFontWeight = document.querySelector('#id_subtitle_font_weight')?.value || '400';
-        const subtitleLineHeight = document.querySelector('#id_subtitle_line_height')?.value || '1.4';
-        const subtitleMarginBottom = document.querySelector('#id_subtitle_margin_bottom')?.value || '0';
-        const subtitlePreviewDiv = document.getElementById('subtitle-preview-container');
-        const subtitleTextSpan = document.getElementById('subtitle-preview-text');
-        if (subtitlePreviewDiv) subtitlePreviewDiv.style.backgroundColor = bgColor;
-        if (subtitleTextSpan) {
-            subtitleTextSpan.style.fontFamily = subtitleFontFamily;
-            subtitleTextSpan.style.fontSize = subtitleFontSize;
-            subtitleTextSpan.style.fontWeight = subtitleFontWeight;
-            subtitleTextSpan.style.lineHeight = subtitleLineHeight;
-            subtitleTextSpan.style.color = textColor;
-            subtitleTextSpan.style.marginBottom = subtitleMarginBottom;
-            subtitleTextSpan.textContent = subtitleText;
-        }
-    }
-
-    function updatePreview() {
-        const title = document.querySelector('#id_title_text')?.value || 'ZICADA';
-        const titleEl = document.getElementById('preview-title');
-        if (titleEl) {
-            titleEl.textContent = title;
-            titleEl.style.fontFamily = document.querySelector('#id_title_font_family')?.value || "'Inter', sans-serif";
-            titleEl.style.fontSize = document.querySelector('#id_title_font_size')?.value || '4rem';
-            titleEl.style.fontWeight = document.querySelector('#id_title_font_weight')?.value || '800';
-            titleEl.style.lineHeight = document.querySelector('#id_title_line_height')?.value || '1.2';
-            titleEl.style.color = document.querySelector('#id_title_color')?.value || '#ffffff';
-            titleEl.style.marginBottom = document.querySelector('#id_title_margin_bottom')?.value || '1.5rem';
-        }
-
-        const subtitle = document.querySelector('#id_subtitle_text')?.value || '';
-        const subtitleEl = document.getElementById('preview-subtitle');
-        if (subtitleEl) {
-            subtitleEl.textContent = subtitle;
-            subtitleEl.style.fontFamily = document.querySelector('#id_subtitle_font_family')?.value || "'Inter', sans-serif";
-            subtitleEl.style.fontSize = document.querySelector('#id_subtitle_font_size')?.value || '1.25rem';
-            subtitleEl.style.fontWeight = document.querySelector('#id_subtitle_font_weight')?.value || '400';
-            subtitleEl.style.lineHeight = document.querySelector('#id_subtitle_line_height')?.value || '1.5';
-            subtitleEl.style.color = document.querySelector('#id_subtitle_color')?.value || '#e5e5e5';
-            subtitleEl.style.marginBottom = document.querySelector('#id_subtitle_margin_bottom')?.value || '2.5rem';
-        }
-
-        const opacity = parseFloat(document.querySelector('#id_overlay_opacity')?.value) || 0.3;
-        const overlayDiv = document.getElementById('preview-overlay');
-        if (overlayDiv) {
-            overlayDiv.classList.remove('bg-opacity-0', 'bg-opacity-10', 'bg-opacity-20', 'bg-opacity-30', 'bg-opacity-40', 'bg-opacity-50', 'bg-opacity-60', 'bg-opacity-70', 'bg-opacity-80', 'bg-opacity-90');
-            overlayDiv.classList.add(getOpacityClass(opacity));
-        }
-
-        const alignment = document.querySelector('input[name="content_alignment"]:checked')?.value || 'center';
-        const contentDiv = document.getElementById('preview-content');
-        const buttonWrapper = document.getElementById('preview-button-wrapper');
-        if (contentDiv) {
-            contentDiv.classList.remove('text-left', 'text-center', 'text-right');
-            contentDiv.classList.add(`text-${alignment}`);
-        }
-        if (buttonWrapper) {
-            buttonWrapper.classList.remove('justify-start', 'justify-center', 'justify-end');
-            if (alignment === 'left') buttonWrapper.classList.add('justify-start');
-            else if (alignment === 'right') buttonWrapper.classList.add('justify-end');
-            else buttonWrapper.classList.add('justify-center');
-        }
-
-        const fileInput = document.querySelector('#id_background_image');
-        const currentImage = '{{ background_image_url|default:"" }}';
-        const previewBg = document.getElementById('preview-bg');
-        const overlayPreviewBg = document.getElementById('overlay-preview-bg');
-        
-        if (fileInput && fileInput.files && fileInput.files[0]) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                if (previewBg) previewBg.style.backgroundImage = `url(${e.target.result})`;
-                if (overlayPreviewBg) overlayPreviewBg.style.backgroundImage = `url(${e.target.result})`;
-            };
-            reader.readAsDataURL(fileInput.files[0]);
-        } else if (currentImage) {
-            if (previewBg) previewBg.style.backgroundImage = `url(${currentImage})`;
-            if (overlayPreviewBg) overlayPreviewBg.style.backgroundImage = `url(${currentImage})`;
-        }
-
-        const sectionHeight = document.querySelector('#id_section_height')?.value || '100vh';
-        const previewContainer = document.getElementById('live-preview');
-        if (previewContainer) {
-            previewContainer.style.height = sectionHeight;
-            previewContainer.style.minHeight = '400px';
-        }
-
-        const titleColorPreview = document.getElementById('title-color-preview');
-        const subtitleColorPreview = document.getElementById('subtitle-color-preview');
-        if (titleColorPreview) titleColorPreview.style.backgroundColor = document.querySelector('#id_title_color')?.value;
-        if (subtitleColorPreview) subtitleColorPreview.style.backgroundColor = document.querySelector('#id_subtitle_color')?.value;
-
-        updateTitlePreview();
-        updateSubtitlePreview();
-        updateButtonPreview();
-        updateOverlayPreview();
-    }
-
-    function updateButtonPreview() {
-        const bg = document.querySelector('#id_button_bg_color')?.value || 'bg-zicada-accent';
-        const hover = document.querySelector('#id_button_hover_color')?.value || 'hover:bg-red-700';
-        const text = document.querySelector('#id_button_text_color')?.value || 'text-white';
-        const rounded = document.querySelector('#id_button_border_radius')?.value || 'rounded-lg';
-        const size = document.querySelector('#id_button_size')?.value || 'px-8 py-3 text-lg';
-        const shadow = document.querySelector('#id_button_shadow')?.value || 'shadow-lg';
-        const width = document.querySelector('#id_button_width')?.value || 'inline-block';
-        const buttonText = document.querySelector('#id_button_text')?.value || 'Explorar Catálogo';
-
-        const previewBtn = document.getElementById('preview-button');
-        if (previewBtn) {
-            previewBtn.className = `${bg} ${hover} ${text} ${rounded} ${size} ${shadow} ${width} font-semibold transition-all duration-300 transform hover:scale-105 inline-block text-center`;
-            previewBtn.textContent = buttonText;
-        }
-
-        const previewBtnLive = document.getElementById('button-preview');
-        if (previewBtnLive) {
-            previewBtnLive.className = `${bg} ${hover} ${text} ${rounded} ${size} ${shadow} ${width} font-semibold transition-all duration-300 transform hover:scale-105 inline-block text-center`;
-            previewBtnLive.textContent = buttonText;
-        }
-    }
-
-    const form = document.getElementById('hero-form');
-    if (form) {
-        form.querySelectorAll('input, select, textarea').forEach(el => {
-            el.addEventListener('input', updatePreview);
-            el.addEventListener('change', updatePreview);
-        });
-    }
-
-    const titleColorInput = document.querySelector('#id_title_color');
-    if (titleColorInput) titleColorInput.addEventListener('input', updateTitlePreview);
-
-    const subtitleColorInput = document.querySelector('#id_subtitle_color');
-    if (subtitleColorInput) subtitleColorInput.addEventListener('input', updateSubtitlePreview);
-
-    const previewBgColor = document.getElementById('preview-bg-color');
-    if (previewBgColor) {
-        previewBgColor.addEventListener('input', function() {
-            document.getElementById('preview-bg-color-value').textContent = this.value;
-            updateTitlePreview();
-            updateSubtitlePreview();
-        });
-    }
-
-    document.querySelectorAll('input[name="content_alignment"]').forEach(radio => {
-        radio.addEventListener('change', updatePreview);
-    });
-
-    document.addEventListener('DOMContentLoaded', function() {
-        updatePreview();
-        updateButtonPreview();
-        updateOverlayPreview();
-        updateTitlePreview();
-        updateSubtitlePreview();
-    });
-</script>
+{% endblock %}
+{% block extra_js %}
+<script src="{% static 'js/core/hero-form.js' %}" defer></script>
 {% endblock %}
