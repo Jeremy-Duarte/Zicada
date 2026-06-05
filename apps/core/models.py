@@ -191,14 +191,14 @@ class HeroConfig(BaseAuditModel):
         verbose_name='Altura de la sección (ej: 100vh, 90vh, 700px)'
     )
 
-    order = models.PositiveIntegerField(
+    sort_order = models.PositiveIntegerField(
         default=0,
         verbose_name='Orden',
         help_text='Orden de aparición en el carrusel'
     )
 
     class Meta:
-        ordering = ['order']
+        ordering = ['sort_order']
         verbose_name = 'Configuración del Hero'
         verbose_name_plural = 'Configuraciones del Hero'
     

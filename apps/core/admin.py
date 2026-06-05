@@ -8,8 +8,8 @@ from .forms import HeroConfigCreateForm, HeroConfigUpdateForm, HeroConfigDeleteF
 class HeroConfigAdmin(admin.ModelAdmin):
     form = HeroConfigUpdateForm
     add_form = HeroConfigCreateForm
-    list_display = ('title_preview', 'order', 'is_active', 'background_preview', 'updated_at')
-    list_editable = ('order', 'is_active')
+    list_display = ('title_preview', 'sort_order', 'is_active', 'background_preview', 'updated_at')
+    list_editable = ('sort_order', 'is_active')
     list_filter = ('is_active',)
     search_fields = ('title_text', 'subtitle_text')
     

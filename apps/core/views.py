@@ -61,7 +61,7 @@ URL_BACKOFFICE_DASHBOARD = 'backoffice:dashboard'
 # -------------------------------------------------------------------------
 
 def home(request):
-    hero_slides = HeroConfig.objects.filter(is_active=True).order_by('order')
+    hero_slides = HeroConfig.objects.filter(is_active=True).order_by('sort_order')
     featured_collections = Collection.objects.filter(
         status='publicada',
         is_active=True
@@ -250,7 +250,6 @@ HEADERS_HERO = ['Título', 'Orden', 'Estado']
 ORDER_BY_DELETED_AT = '-deleted_at'
 
 class HeroConfigListView(PermissionRequiredMixin, ListView):
-    """Lista de slides activos del hero (carrusel)"""
     model = HeroConfig
     template_name = TEMPLATE_HERO_LIST
     context_object_name = 'hero_slides'
@@ -258,7 +257,7 @@ class HeroConfigListView(PermissionRequiredMixin, ListView):
     paginate_by = PAGINATE_BY_DEFAULT
     
     def get_queryset(self):
-        return HeroConfig.objects.filter(is_active=True).order_by('order')
+        return HeroConfig.objects.filter(is_active=True).order_by('sort_order')
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -268,7 +267,7 @@ class HeroConfigListView(PermissionRequiredMixin, ListView):
                 'pk': slide.pk,
                 'values': [
                     slide.title_text,
-                    slide.order,
+                    slide.sort_order,
                     '<span class="px-2 py-1 text-xs rounded-full {}">{}</span>'.format(
                         'bg-green-100 text-green-700' if slide.is_active else 'bg-red-100 text-red-700',
                         'Activo' if slide.is_active else 'Inactivo'
@@ -281,7 +280,6 @@ class HeroConfigListView(PermissionRequiredMixin, ListView):
 
 
 class HeroConfigCreateView(PermissionRequiredMixin, CreateView):
-    """Crear nuevo slide para el hero"""
     model = HeroConfig
     form_class = HeroConfigCreateForm
     template_name = TEMPLATE_HERO_FORM
@@ -291,6 +289,7 @@ class HeroConfigCreateView(PermissionRequiredMixin, CreateView):
         context = super().get_context_data(**kwargs)
         context[CONTEXT_CANCEL_URL] = URL_HERO_LIST
         context[CONTEXT_IS_CREATE] = True
+        context['background_image_url'] = ''
         return context
     
     def get_success_url(self):
@@ -303,24 +302,28 @@ class HeroConfigCreateView(PermissionRequiredMixin, CreateView):
 
 
 class HeroConfigUpdateView(PermissionRequiredMixin, UpdateView):
-    """Editar slide del hero"""
     model = HeroConfig
     form_class = HeroConfigUpdateForm
     template_name = TEMPLATE_HERO_FORM
     permission_required = 'core.change_heroconfig'
-    success_url = reverse_lazy(URL_HERO_LIST)
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context[CONTEXT_CANCEL_URL] = URL_HERO_LIST
         context[CONTEXT_IS_UPDATE] = True
+        if self.object and self.object.background_image and self.object.background_image.url:
+            context['background_image_url'] = self.object.background_image.url
+        else:
+            context['background_image_url'] = ''
         return context
+    
+    def get_success_url(self):
+        return reverse_lazy(URL_HERO_LIST)
     
     def form_valid(self, form):
         response = super().form_valid(form)
         messages.success(self.request, MSG_HERO_UPDATED.format(title=form.instance.title_text))
         return response
-
 
 class HeroConfigDeleteView(PermissionRequiredMixin, DeleteView):
     """Soft-delete slide del hero (mover a papelera)"""
