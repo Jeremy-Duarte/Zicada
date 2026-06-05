@@ -59,66 +59,6 @@
     </div>
 </div>
 
-<script>
-(function() {
-    // Toggle filters on mobile
-    const toggleBtn = document.getElementById('toggle-filters-btn');
-    const filtersContent = document.getElementById('filters-content');
-    
-    if (toggleBtn && filtersContent) {
-        // Check if filters were previously hidden
-        const isHidden = localStorage.getItem('filters_hidden') === 'true';
-        if (isHidden && window.innerWidth < 1024) {
-            filtersContent.classList.add('hidden');
-        }
-        
-        toggleBtn.addEventListener('click', function() {
-            filtersContent.classList.toggle('hidden');
-            const nowHidden = filtersContent.classList.contains('hidden');
-            localStorage.setItem('filters_hidden', nowHidden);
-            
-            // Rotate arrow
-            const arrow = toggleBtn.querySelector('svg:last-child');
-            if (arrow) {
-                arrow.style.transform = nowHidden ? 'rotate(0deg)' : 'rotate(180deg)';
-            }
-        });
-        
-        // Set initial arrow rotation
-        const arrow = toggleBtn.querySelector('svg:last-child');
-        if (arrow) {
-            arrow.style.transform = filtersContent.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(180deg)';
-        }
-    }
-    
-    // Persist filter values in localStorage
-    const form = document.getElementById('filter-form');
-    const persistKey = form?.dataset.persistKey;
-    
-    if (form && persistKey) {
-        // Load saved values
-        const savedValues = localStorage.getItem(persistKey);
-        if (savedValues) {
-            try {
-                const values = JSON.parse(savedValues);
-                for (const [name, value] of Object.entries(values)) {
-                    const input = form.querySelector(`[name="${name}"]`);
-                    if (input && value) {
-                        input.value = value;
-                    }
-                }
-            } catch(e) {}
-        }
-        
-        // Save values on submit
-        form.addEventListener('submit', function() {
-            const formData = new FormData(form);
-            const values = {};
-            for (const [key, value] of formData.entries()) {
-                if (value) values[key] = value;
-            }
-            localStorage.setItem(persistKey, JSON.stringify(values));
-        });
-    }
-})();
-</script>
+{% block extra_js %}
+<script src="{% static 'js/core/filter-sidebar.js' %}" defer></script>
+{% endblock %}

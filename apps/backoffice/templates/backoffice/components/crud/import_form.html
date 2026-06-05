@@ -13,9 +13,9 @@
             {% csrf_token %}
             
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Archivo</label>
-                <input type="file" name="file" accept=".csv,.xlsx,.xls" required
-                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-zicada-accent focus:border-zicada-accent transition">
+                <label for="file-input" class="block text-sm font-medium text-gray-700 mb-1">Archivo</label>
+                <input type="file" name="file" id="file-input" accept=".csv,.xlsx,.xls" required
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-zicada-accent focus:border-zicada-accent transition">
                 <p class="text-xs text-gray-400 mt-1">Formatos soportados: CSV, Excel (.xlsx, .xls)</p>
             </div>
             

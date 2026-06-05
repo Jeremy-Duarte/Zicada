@@ -14,9 +14,9 @@
         <form method="get" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {% for filter in filters %}
             <div>
-                <label class="block text-xs font-medium text-gray-500 mb-1">{{ filter.label }}</label>
+                <label for="filter-{{ filter.name }}" class="block text-xs font-medium text-gray-500 mb-1">{{ filter.label }}</label>
                 {% if filter.type == 'select' %}
-                <select name="{{ filter.name }}" class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-zicada-accent">
+                <select name="{{ filter.name }}" id="filter-{{ filter.name }}" class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-zicada-accent">
                     <option value="">Todos</option>
                     {% for option in filter.options %}
                     <option value="{{ option.value }}" {% if request.GET.name == option.value|stringformat:'s' %}selected{% endif %}>
