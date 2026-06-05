@@ -17,6 +17,10 @@ PAID_STATUSES = ['confirmado', 'preparando', 'listo', 'en_camino', 'entregado']
 STATUS_READY = 'listo'
 STATUS_ON_THE_WAY = 'en_camino'
 STATUS_DELIVERED = 'entregado'
+DATE_FORMAT_DAY_MONTH = '%d/%m'
+DATE_FORMAT_DAY_MONTH_HOUR = '%d/%m %H:%M'
+DATE_FORMAT_DAY_MONTH_YEAR = '%d/%m/%Y'
+DATE_FORMAT_DAY_MONTH_YEAR_HOUR_MINUTES = '%d/%m/%Y %H:%M'
 
 
 # =============================================================================
@@ -44,7 +48,7 @@ def get_daily_data_in_range(
     data = []
     current = date_start
     while current <= date_end:
-        categories.append(current.strftime('%d/%m'))
+        categories.append(current.strftime(DATE_FORMAT_DAY_MONTH))
         daily_total = sum_order_amount_in_range(current, current, statuses)
         data.append(daily_total)
         current += timedelta(days=1)
@@ -59,7 +63,7 @@ def get_daily_order_counts_in_range(
     counts = []
     current = date_start
     while current <= date_end:
-        categories.append(current.strftime('%d/%m'))
+        categories.append(current.strftime(DATE_FORMAT_DAY_MONTH))
         count = Order.objects.filter(created_at__date=current).count()
         counts.append(count)
         current += timedelta(days=1)
@@ -107,7 +111,7 @@ def get_recent_orders_in_range(
             'title': f"Pedido {order.order_number}",
             'subtitle': order.customer_name,
             'value': f"${order.total_amount:,.0f}",
-            'date': order.created_at.strftime('%d/%m %H:%M'),
+            'date': order.created_at.strftime(DATE_FORMAT_DAY_MONTH_HOUR),
             'status': order.status,
             'status_display': dict(Order.STATUS_CHOICES).get(order.status, order.status),
         })
@@ -201,7 +205,7 @@ def get_daily_order_counts_in_range(
     counts = []
     current = date_start
     while current <= date_end:
-        categories.append(current.strftime('%d/%m'))
+        categories.append(current.strftime(DATE_FORMAT_DAY_MONTH))
         count = Order.objects.filter(created_at__date=current).count()
         counts.append(count)
         current += timedelta(days=1)
@@ -216,7 +220,7 @@ def get_daily_revenue_in_range(
     revenues = []
     current = date_start
     while current <= date_end:
-        categories.append(current.strftime('%d/%m'))
+        categories.append(current.strftime(DATE_FORMAT_DAY_MONTH))
         daily_total = Order.objects.filter(
             status__in=PAID_STATUSES,
             created_at__date=current
@@ -590,8 +594,8 @@ def get_delivery_performance_in_range(
             'total_revenue': total_revenue,
             'avg_order_value': f"${d['avg_order_value']:,.0f}" if d['avg_order_value'] else "$0",
             'deliveries_per_day': round(deliveries_per_day, 1),
-            'first_delivery': d['first_delivery'].strftime('%d/%m/%Y') if d['first_delivery'] else '—',
-            'last_delivery': d['last_delivery'].strftime('%d/%m/%Y') if d['last_delivery'] else '—',
+            'first_delivery': d['first_delivery'].strftime(DATE_FORMAT_DAY_MONTH_YEAR) if d['first_delivery'] else '—',
+            'last_delivery': d['last_delivery'].strftime(DATE_FORMAT_DAY_MONTH_YEAR) if d['last_delivery'] else '—',
         })
     
     return result
@@ -607,7 +611,7 @@ def get_daily_deliveries_in_range(
     current = date_start
     
     while current <= date_end:
-        categories.append(current.strftime('%d/%m'))
+        categories.append(current.strftime(DATE_FORMAT_DAY_MONTH))
         
         # Entregas del día
         daily_deliveries = Order.objects.filter(
@@ -653,7 +657,7 @@ def get_delivery_summary_stats(date_start: date, date_end: date) -> Dict[str, An
         'unique_deliveries': unique_deliveries,
         'avg_revenue_per_delivery': float(avg_per_delivery),
         'avg_deliveries_per_day': round(total_deliveries / ((date_end - date_start).days + 1), 1),
-        'best_day': best_day['updated_at__date'].strftime('%d/%m/%Y') if best_day else '—',
+        'best_day': best_day['updated_at__date'].strftime(DATE_FORMAT_DAY_MONTH_YEAR) if best_day else '—',
         'best_day_count': best_day['count'] if best_day else 0,
     }
 
@@ -675,7 +679,7 @@ def get_delivery_details_list(
         result.append({
             'order_number': order.order_number,
             'customer_name': order.customer_name,
-            'delivery_date': order.updated_at.strftime('%d/%m/%Y %H:%M'),
+            'delivery_date': order.updated_at.strftime(DATE_FORMAT_DAY_MONTH_YEAR_HOUR_MINUTES),
             'delivery_user': driver.get_full_name() or driver.username,
             'total_amount': float(order.total_amount),
         })
