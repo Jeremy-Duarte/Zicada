@@ -22,11 +22,13 @@
 
         // Sincroniza checkboxes según el select oculto (para valores iniciales)
         syncFromSelectToCheckboxes() {
-            const selectedValues = Array.from(this.hiddenSelect.options)
-                .filter(opt => opt.selected)
-                .map(opt => opt.value);
+             const selectedValuesSet = new Set(
+                Array.from(this.hiddenSelect.options)
+                    .filter(opt => opt.selected)
+                    .map(opt => opt.value)
+            );
             this.checkboxes.forEach(cb => {
-                cb.checked = selectedValues.includes(cb.value);
+                cb.checked = selectedValuesSet.has(cb.value);
                 this.updateCheckboxStyle(cb);
             });
         }
@@ -62,12 +64,14 @@
 
         // Actualiza el select oculto según los checkboxes marcados
         updateHiddenSelect() {
-            const selectedValues = Array.from(this.checkboxes)
-                .filter(cb => cb.checked)
-                .map(cb => cb.value);
+            const selectedValuesSet = new Set(
+                Array.from(this.checkboxes)
+                    .filter(cb => cb.checked)
+                    .map(cb => cb.value)
+            );
             // Actualizar las opciones del select
             Array.from(this.hiddenSelect.options).forEach(opt => {
-                opt.selected = selectedValues.includes(opt.value);
+                opt.selected = selectedValuesSet.has(opt.value);
             });
             // Disparar evento change para que Django capte el cambio
             this.hiddenSelect.dispatchEvent(new Event('change', { bubbles: true }));

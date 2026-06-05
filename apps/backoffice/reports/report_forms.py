@@ -1,15 +1,15 @@
-# apps/backoffice/report_forms.py
 from django import forms
-from datetime import datetime, timedelta
+from django.utils import timezone
+from datetime import timedelta
 from django.core.exceptions import ValidationError
 from apps.core.crud.mixins import FormStyleMixin
-from apps.orders.models import Order
-from apps.products.models import Product
-from apps.users.models import User
-
 
 class ReportForm(FormStyleMixin, forms.Form):
-    """Formulario para generar reportes financieros."""
+    """Formulario para generar reportes financieros.
+    
+    NOTE: Los límites de fechas (min/max) se asignan dinámicamente en __init__
+    para evitar el problema S8434 (time-dependent expressions en atributos de clase).
+    """
     
     REPORT_TYPES = [
         ('financial', 'Financiero'),
@@ -30,9 +30,7 @@ class ReportForm(FormStyleMixin, forms.Form):
         required=False,
         widget=forms.DateInput(attrs={
             'type': 'date',
-            'class': 'form-control',
-            'max': datetime.now().strftime('%Y-%m-%d'),
-            'min': (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
+            'class': 'form-control'
         })
     )
     
@@ -41,8 +39,7 @@ class ReportForm(FormStyleMixin, forms.Form):
         required=False,
         widget=forms.DateInput(attrs={
             'type': 'date',
-            'class': 'form-control',
-            'max': datetime.now().strftime('%Y-%m-%d')
+            'class': 'form-control'
         })
     )
     
@@ -62,8 +59,8 @@ class ReportForm(FormStyleMixin, forms.Form):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Actualizar dinámicamente los límites de fechas (por si cambia el día)
-        today = datetime.now().date()
+        
+        today = timezone.now().date()
         one_year_ago = today - timedelta(days=365)
         
         self.fields['date_from'].widget.attrs.update({
@@ -75,35 +72,43 @@ class ReportForm(FormStyleMixin, forms.Form):
         })
     
     def clean_date_from(self):
-        """Validar que la fecha desde no sea futura y no sea mayor a 1 año atrás."""
+        """Validar fecha desde con timezone-aware."""
         date_from = self.cleaned_data.get('date_from')
-        today = datetime.now().date()
+        today = timezone.now().date()
         one_year_ago = today - timedelta(days=365)
         
         if date_from:
             if date_from > today:
-                raise ValidationError(f'La fecha "desde" no puede ser futura. Máximo: {today.strftime("%d/%m/%Y")}')
+                raise ValidationError(
+                    f'La fecha "desde" no puede ser futura. Máximo: {today.strftime("%d/%m/%Y")}'
+                )
             
             if date_from < one_year_ago:
-                raise ValidationError(f'La fecha "desde" no puede ser anterior a {one_year_ago.strftime("%d/%m/%Y")} (máximo 1 año).')
+                raise ValidationError(
+                    f'La fecha "desde" no puede ser anterior a {one_year_ago.strftime("%d/%m/%Y")} '
+                    f'(máximo 1 año atrás).'
+                )
         
         return date_from
     
     def clean_date_to(self):
-        """Validar que la fecha hasta no sea futura."""
+        """Validar fecha hasta con timezone-aware."""
         date_to = self.cleaned_data.get('date_to')
-        today = datetime.now().date()
+        today = timezone.now().date()
         
         if date_to and date_to > today:
-            raise ValidationError(f'La fecha "hasta" no puede ser futura. Máximo: {today.strftime("%d/%m/%Y")}')
+            raise ValidationError(
+                f'La fecha "hasta" no puede ser futura. Máximo: {today.strftime("%d/%m/%Y")}'
+            )
         
         return date_to
     
     def clean(self):
+        """Validación cruzada con timezone-aware."""
         cleaned_data = super().clean()
         date_from = cleaned_data.get('date_from')
         date_to = cleaned_data.get('date_to')
-        today = datetime.now().date()
+        today = timezone.now().date()
         
         # Si no hay fechas, usar últimos 30 días
         if not date_from and not date_to:
@@ -118,6 +123,7 @@ class ReportForm(FormStyleMixin, forms.Form):
         if not date_to:
             raise ValidationError('Debes seleccionar una fecha "hasta".')
         
+        # Validar rango lógico
         if date_from > date_to:
             raise ValidationError(
                 f'La fecha "desde" ({date_from.strftime("%d/%m/%Y")}) no puede ser '

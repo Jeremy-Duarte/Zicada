@@ -93,6 +93,8 @@ ICON_BG_YELLOW = 'yellow-100'
 ICON_BG_GREEN = 'green-100'
 ICON_BG_BLUE = 'blue-100'
 ICON_BG_PURPLE = 'purple-100'
+ICON_BG_ORANGE = 'orange-50'
+ICON_BG_INDIGO = 'indigo-50'
 
 # Icon Colors
 ICON_COLOR_ACCENT = 'zicada-accent'
@@ -238,6 +240,39 @@ STRING_PROMEDIO = 'promedio'
 STRING_ULTIMOS_7_DIAS = 'últimos 7 días'
 STRING_PEDIDOS_COMPLETADOS = 'pedidos completados'
 STRING_ACUMULADO = 'acumulado'
+
+# =============================================================================
+# Icon Background Colors (additional)
+# =============================================================================
+ICON_BG_BLUE_50 = 'blue-50'
+ICON_BG_BLUE_100 = 'blue-100'
+ICON_BG_GREEN_50 = 'green-50'
+ICON_BG_GREEN_100 = 'green-100'
+ICON_BG_PURPLE_50 = 'purple-50'
+ICON_BG_PURPLE_100 = 'purple-100'
+ICON_BG_ORANGE_100 = 'orange-100'
+ICON_BG_GRAY_50 = 'gray-50'
+ICON_BG_GRAY_100 = 'gray-100'
+ICON_BG_AMBER_50 = 'amber-50'
+ICON_BG_AMBER_100 = 'amber-100'
+ICON_BG_RED_50 = 'red-50'
+ICON_BG_RED_100 = 'red-100'
+# =============================================================================
+# Icon Colors (additional)
+# =============================================================================
+ICON_COLOR_BLUE_600 = 'blue-600'
+ICON_COLOR_GREEN_600 = 'green-600'
+ICON_COLOR_PURPLE_600 = 'purple-600'
+ICON_COLOR_ORANGE_600 = 'orange-600'
+ICON_COLOR_GRAY_600 = 'gray-600'
+ICON_COLOR_AMBER_600 = 'amber-600'
+# =============================================================================
+# Badge Labels (additional)
+# =============================================================================
+BADGE_CSV_EXCEL = 'CSV/Excel'
+BADGE_PRINCIPAL = 'Principal'
+BADGE_PLUS = '+'
+BADGE_TRASH = '🗑'
 
 
 # =============================================================================
@@ -584,7 +619,7 @@ def admin_dashboard(request):
             'label': FINANCIAL_LABEL_ITEMS_PER_ORDER,
             'value': f"{avg_items:.1f}",
             'icon': FINANCIAL_ICON_BOX,
-            'icon_bg': 'blue-50',
+            'icon_bg': ICON_BG_BLUE,
             'icon_color': FINANCIAL_COLOR_BLUE,
             'sub_value': FINANCIAL_SUB_AVG_ITEMS,
         },
@@ -592,7 +627,7 @@ def admin_dashboard(request):
             'label': FINANCIAL_LABEL_AVG_DAILY_INCOME,
             'value': f"{CURRENCY_PREFIX}{week_revenue:,.0f}",
             'icon': FINANCIAL_ICON_CHART,
-            'icon_bg': 'green-50',
+            'icon_bg': ICON_BG_GREEN,
             'icon_color': FINANCIAL_COLOR_GREEN,
             'sub_value': FINANCIAL_SUB_AVG_DAILY,
         },
@@ -600,7 +635,7 @@ def admin_dashboard(request):
             'label': FINANCIAL_LABEL_TOTAL_PAID,
             'value': total_paid,
             'icon': FINANCIAL_ICON_CART,
-            'icon_bg': 'purple-50',
+            'icon_bg': ICON_BG_PURPLE,
             'icon_color': FINANCIAL_COLOR_PURPLE,
             'sub_value': FINANCIAL_SUB_TOTAL_PAID,
         },
@@ -608,7 +643,7 @@ def admin_dashboard(request):
             'label': FINANCIAL_LABEL_TODAY_INCOME,
             'value': f"{CURRENCY_PREFIX}{today_revenue:,.0f}",
             'icon': FINANCIAL_ICON_SUN,
-            'icon_bg': 'orange-50',
+            'icon_bg': ICON_BG_ORANGE,
             'icon_color': FINANCIAL_COLOR_ORANGE,
             'sub_value': FINANCIAL_SUB_TODAY,
         },
@@ -616,7 +651,7 @@ def admin_dashboard(request):
             'label': FINANCIAL_LABEL_YEAR_INCOME,
             'value': f"{CURRENCY_PREFIX}{year_revenue:,.0f}",
             'icon': FINANCIAL_ICON_CALENDAR,
-            'icon_bg': 'indigo-50',
+            'icon_bg': ICON_BG_INDIGO,
             'icon_color': FINANCIAL_COLOR_INDIGO,
             'sub_value': str(year),
         },
@@ -632,7 +667,7 @@ def admin_dashboard(request):
             'description': 'Generar reportes financieros personalizados',
             'gradient_from': GRADIENT_BLUE_FROM,
             'gradient_to': GRADIENT_BLUE_TO,
-            'badge': 'Nuevo'
+            'badge': BADGE_NEW
         }
     ]
 
@@ -791,46 +826,46 @@ def admin_products(request):
             'url': reverse('products:size_list'),
             'icon': 'ruler',
             'title': 'Tallas',
-            'bg_from': 'blue-50',
-            'bg_to': 'blue-100',
-            'icon_color': 'blue-600',
+            'bg_from': ICON_BG_BLUE_50,
+            'bg_to': ICON_BG_BLUE_100,
+            'icon_color': ICON_COLOR_BLUE_600,
             'badge': f'{Size.objects.count()}',
         },
         {
             'url': reverse('products:category_list'),
             'icon': 'tags',
             'title': 'Categorías',
-            'bg_from': 'green-50',
-            'bg_to': 'green-100',
-            'icon_color': 'green-600',
+            'bg_from': ICON_BG_GREEN_50,
+            'bg_to': ICON_BG_GREEN_100,
+            'icon_color': ICON_COLOR_GREEN_600,
             'badge': f'{Category.objects.count()}',
         },
         {
             'url': reverse('products:color_list'),
             'icon': 'palette',
             'title': 'Colores',
-            'bg_from': 'purple-50',
-            'bg_to': 'purple-100',
-            'icon_color': 'purple-600',
+            'bg_from': ICON_BG_PURPLE_50,
+            'bg_to': ICON_BG_PURPLE_100,
+            'icon_color': ICON_COLOR_PURPLE_600,
             'badge': f'{Color.objects.count()}',
         },
         {
             'url': reverse('products:productimage_list'),
             'icon': 'images',
             'title': 'Imágenes',
-            'bg_from': 'orange-50',
-            'bg_to': 'orange-100',
-            'icon_color': 'orange-600',
+            'bg_from': ICON_BG_ORANGE,
+            'bg_to': ICON_BG_ORANGE_100,
+            'icon_color': ICON_COLOR_ORANGE_600,
             'badge': f'{ProductImage.objects.count()}',
         },
         {
             'url': reverse('products:product_list'),
             'icon': 'box',
             'title': 'Productos',
-            'bg_from': 'zicada-accent/10',
-            'bg_to': 'zicada-accent/20',
-            'icon_color': 'zicada-accent',
-            'badge': 'Principal',
+            'bg_from': f'{ICON_COLOR_ACCENT}/10',
+            'bg_to': f'{ICON_COLOR_ACCENT}/20',
+            'icon_color': ICON_COLOR_ACCENT,
+            'badge': BADGE_PRINCIPAL,
         },
     ]
 
@@ -916,27 +951,27 @@ def admin_users(request):
             'url': reverse('users:user_list'),
             'icon': 'users',
             'title': 'Usuarios',
-            'bg_from': 'gray-50',
-            'bg_to': 'gray-100',
-            'icon_color': 'gray-600',
+            'bg_from': ICON_BG_GRAY_50,
+            'bg_to': ICON_BG_GRAY_100,
+            'icon_color': ICON_COLOR_GRAY_600,
             'badge': f"{delivery_stats['total']}",
         },
         {
             'url': reverse('users:group_list'),
             'icon': 'key',
             'title': 'Roles',
-            'bg_from': 'amber-50',
-            'bg_to': 'amber-100',
-            'icon_color': 'amber-600',
+            'bg_from': ICON_BG_AMBER_50,
+            'bg_to': ICON_BG_AMBER_100,
+            'icon_color': ICON_COLOR_AMBER_600,
             'badge': f"{Group.objects.count()}",
         },
         {
             'url': reverse('users:user_trashcan'),
             'icon': 'trash-alt',
             'title': 'Papelera',
-            'bg_from': 'red-50',
-            'bg_to': 'red-100',
-            'icon_color': 'red-500',
+            'bg_from': ICON_BG_RED_50,
+            'bg_to': ICON_BG_RED_100,
+            'icon_color': STOCK_COLOR_RED,
             'badge': f"{User.objects.filter(is_active=False).count()}",
         },
     ]
@@ -982,19 +1017,19 @@ def admin_config(request):
             'url': reverse('core:hero_list'),
             'icon': 'images',
             'title': 'Slides del Hero',
-            'bg_from': 'purple-50',
-            'bg_to': 'purple-100',
-            'icon_color': 'purple-600',
-            'badge': '+',
+            'bg_from': ICON_BG_PURPLE_50,
+            'bg_to': ICON_BG_PURPLE_100,
+            'icon_color': ICON_COLOR_PURPLE_600,
+            'badge': BADGE_PLUS,
         },
         {
             'url': reverse('core:hero_trashcan'),
             'icon': 'trash-alt',
             'title': 'Papelera',
-            'bg_from': 'red-50',
-            'bg_to': 'red-100',
-            'icon_color': 'red-500',
-            'badge': '🗑',
+            'bg_from': ICON_BG_RED_50,
+            'bg_to': ICON_BG_RED_100,
+            'icon_color': STOCK_COLOR_RED,
+            'badge': BADGE_TRASH,
         },
     ]
     context = {CONTEXT_SECTION: SECTION_CONFIG, 'quick_access_buttons' : quick_access_buttons}
@@ -1038,28 +1073,28 @@ def importers_dashboard(request):
             'url': reverse('products:size_import'),
             'icon': 'ruler',
             'title': 'Tallas',
-            'bg_from': 'blue-50',
-            'bg_to': 'blue-100',
-            'icon_color': 'blue-600',
-            'badge': 'CSV/Excel'
+            'bg_from': ICON_BG_BLUE_50,
+            'bg_to': ICON_BG_BLUE_100,
+            'icon_color': ICON_COLOR_BLUE_600,
+            'badge': BADGE_CSV_EXCEL
         },
         {
             'url': reverse('products:color_import'),
             'icon': 'palette',
             'title': 'Colores',
-            'bg_from': 'purple-50',
-            'bg_to': 'purple-100',
-            'icon_color': 'purple-600',
-            'badge': 'CSV/Excel'
+            'bg_from': ICON_BG_PURPLE_50,
+            'bg_to': ICON_BG_PURPLE_100,
+            'icon_color': ICON_COLOR_PURPLE_600,
+            'badge': BADGE_CSV_EXCEL
         },
         {
             'url': reverse('products:category_import'),
             'icon': 'tags',
             'title': 'Categorías',
-            'bg_from': 'green-50',
-            'bg_to': 'green-100',
-            'icon_color': 'green-600',
-            'badge': 'CSV/Excel'
+            'bg_from': ICON_BG_GREEN_50,
+            'bg_to': ICON_BG_GREEN_100,
+            'icon_color': ICON_COLOR_GREEN_600,
+            'badge': BADGE_CSV_EXCEL
         },
     ]
     

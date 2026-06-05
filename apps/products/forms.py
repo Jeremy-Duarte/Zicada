@@ -593,8 +593,6 @@ class ProductColorUpdateForm(FormStyleMixin, SortableUpdateMixin, forms.ModelFor
         model = ProductColor
         fields = ['images', 'featured_image', 'is_active']
         widgets = {
-            'images': CloudinaryImageSelectWidget(),
-            'featured_image': CloudinaryFeaturedImageWidget(images_widget_name='images'),
             'is_active': forms.CheckboxInput(),
         }
 
@@ -608,6 +606,16 @@ class ProductColorUpdateForm(FormStyleMixin, SortableUpdateMixin, forms.ModelFor
         super().__init__(*args, **kwargs)
 
         if self.instance and self.instance.pk:
+            product_color_id = self.instance.pk
+            
+            self.fields['images'].widget = CloudinaryImageSelectWidget(
+                product_color_id=product_color_id
+            )
+            self.fields['featured_image'].widget = CloudinaryFeaturedImageWidget(
+                product_color_id=product_color_id,
+                images_widget_name='images'
+            )
+            
             self.fields['featured_image'].queryset = ProductImage.objects.all()
             self.fields['images'].queryset = ProductImage.objects.all()
             

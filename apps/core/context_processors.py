@@ -8,141 +8,187 @@ def cart_context(request):
         'cart_total_items': cart.get_total_items(),
     }
 
+# =============================================================================
+# BASE BREADCRUMBS
+# =============================================================================
+
+def _get_home_breadcrumb() -> dict:
+    return {'name': 'Inicio', 'url': reverse('home')}
+
+def _get_catalog_breadcrumb() -> dict:
+    return {'name': 'Catálogo', 'url': reverse('products:catalog')}
+
+def _get_collections_breadcrumb() -> dict:
+    return {'name': 'Colecciones', 'url': reverse('products:collections_list')}
+
+def _get_cart_breadcrumb() -> dict:
+    return {'name': 'Carrito', 'url': reverse('orders:cart_detail')}
+
+def _get_checkout_breadcrumb() -> dict:
+    return {'name': 'Finalizar compra', 'url': None}
+
+def _get_contact_breadcrumb() -> dict:
+    return {'name': 'Contacto', 'url': reverse('core:contact')}
+
+def _build_simple_breadcrumb(page_name: str, parent: dict = None) -> list:
+    breadcrumbs = [_get_home_breadcrumb()]
+    if parent:
+        breadcrumbs.append(parent)
+    breadcrumbs.append({'name': page_name, 'url': None})
+    return breadcrumbs
+
+
+# =============================================================================
+# PRODUCT BREADCRUMBS
+# =============================================================================
+
+def _build_catalog_breadcrumb(category_slug: str = None) -> list:
+    if category_slug:
+        category = Category.objects.filter(slug=category_slug).first()
+        if category:
+            return [
+                _get_home_breadcrumb(),
+                _get_catalog_breadcrumb(),
+                {'name': category.name, 'url': None},
+            ]
+    return [
+        _get_home_breadcrumb(),
+        _get_catalog_breadcrumb(),
+    ]
+
+def _build_product_detail_breadcrumb(slug: str) -> list:
+    try:
+        product = Product.objects.select_related('category').get(slug=slug, is_active=True)
+        category_url = f"{reverse('products:catalog')}?category={product.category.slug}"
+        return [
+            _get_home_breadcrumb(),
+            _get_catalog_breadcrumb(),
+            {'name': product.category.name, 'url': category_url},
+            {'name': product.name, 'url': None},
+        ]
+    except Product.DoesNotExist:
+        return _build_simple_breadcrumb('Producto')
+
+def _build_collection_detail_breadcrumb(slug: str) -> list:
+    try:
+        from apps.products.models import Collection
+        collection = Collection.objects.get(slug=slug, is_active=True)
+        return [
+            _get_home_breadcrumb(),
+            _get_collections_breadcrumb(),
+            {'name': collection.name, 'url': None},
+        ]
+    except (Collection.DoesNotExist, ImportError):
+        return _build_simple_breadcrumb('Colección')
+
+def _build_product_breadcrumbs(request, view_name: str, kwargs: dict) -> list | None:
+    if view_name == 'products:catalog':
+        return _build_catalog_breadcrumb(request.GET.get('category'))
+    if view_name == 'products:product_detail':
+        return _build_product_detail_breadcrumb(kwargs.get('slug'))
+    if view_name == 'products:collections_list':
+        return _build_simple_breadcrumb('Colecciones')
+    if view_name == 'products:collection_detail':
+        return _build_collection_detail_breadcrumb(kwargs.get('slug'))
+    if view_name == 'products:stock_dashboard':
+        return _build_simple_breadcrumb('Dashboard de stock')
+    return None
+
+
+# =============================================================================
+# ORDER BREADCRUMBS
+# =============================================================================
+
+def _build_cart_breadcrumb() -> list:
+    return _build_simple_breadcrumb('Carrito de compras')
+
+def _build_checkout_breadcrumb() -> list:
+    return [
+        _get_home_breadcrumb(),
+        _get_cart_breadcrumb(),
+        _get_checkout_breadcrumb(),
+    ]
+
+def _build_order_confirmation_breadcrumb(order_number: str = None) -> list:
+    order_text = f'Orden #{order_number}' if order_number else 'Confirmación'
+    return [
+        _get_home_breadcrumb(),
+        _get_cart_breadcrumb(),
+        _get_checkout_breadcrumb(),
+        {'name': order_text, 'url': None},
+    ]
+
+def _build_tracking_breadcrumb() -> list:
+    return _build_simple_breadcrumb('Tracking de pedido')
+
+def _build_order_breadcrumbs(view_name: str, kwargs: dict) -> list | None:
+    if view_name == 'orders:cart_detail':
+        return _build_cart_breadcrumb()
+    if view_name == 'orders:checkout':
+        return _build_checkout_breadcrumb()
+    if view_name == 'orders:order_confirmation':
+        return _build_order_confirmation_breadcrumb(kwargs.get('order_number'))
+    if view_name == 'orders:order_tracking':
+        return _build_tracking_breadcrumb()
+    return None
+
+
+# =============================================================================
+# CORE BREADCRUMBS
+# =============================================================================
+
+CORE_PAGES_MAPPING = {
+    'core:about': 'Nosotros',
+    'core:contact': 'Contacto',
+    'core:returns_policy': 'Cambios y devoluciones',
+    'core:privacy_policy': 'Política de privacidad',
+    'core:terms': 'Términos y condiciones',
+    'core:staff_login': 'Acceso staff',
+}
+
+def _build_core_breadcrumbs(view_name: str) -> list | None:
+    if view_name in CORE_PAGES_MAPPING:
+        return _build_simple_breadcrumb(CORE_PAGES_MAPPING[view_name])
+    if view_name == 'core:contact_success':
+        return [
+            _get_home_breadcrumb(),
+            _get_contact_breadcrumb(),
+            {'name': 'Mensaje enviado', 'url': None},
+        ]
+    return None
+
+
+# =============================================================================
+# MAIN CONTEXT PROCESSOR
+# =============================================================================
+
 def breadcrumbs(request):
-    """Context processor para breadcrumbs usando rutas nombradas."""
     path = request.path
-    breadcrumbs = [{'name': 'Inicio', 'url': reverse('home')}]
+    
+    if path == '/':
+        return {'breadcrumbs': []}
     
     try:
         resolver = resolve(path)
         view_name = resolver.view_name
         kwargs = resolver.kwargs
-    except:
-        view_name = None
-        kwargs = {}
+    except Exception:
+        return {'breadcrumbs': _build_simple_breadcrumb('Inicio')}
     
-    # ========== PRODUCTOS ==========
+    breadcrumbs_data = _build_product_breadcrumbs(request, view_name, kwargs)
+    if breadcrumbs_data is not None:
+        return {'breadcrumbs': breadcrumbs_data}
     
-    # Catálogo
-    if view_name == 'products:catalog':
-        breadcrumbs.append({'name': 'Catálogo', 'url': None})
-        
-        category_slug = request.GET.get('category')
-        if category_slug:
-            try:
-                category = Category.objects.filter(slug=category_slug).first()
-                if category:
-                    breadcrumbs = [
-                        {'name': 'Inicio', 'url': reverse('home')},
-                        {'name': 'Catálogo', 'url': reverse('products:catalog')},
-                        {'name': category.name, 'url': None}
-                    ]
-            except:
-                pass
+    breadcrumbs_data = _build_order_breadcrumbs(view_name, kwargs)
+    if breadcrumbs_data is not None:
+        return {'breadcrumbs': breadcrumbs_data}
     
-    # Detalle de producto
-    elif view_name == 'products:product_detail':
-        slug = kwargs.get('slug')
-        if slug:
-            try:
-                product = Product.objects.select_related('category').get(slug=slug, is_active=True)
-                category_url = f"{reverse('products:catalog')}?category={product.category.slug}"
-                breadcrumbs = [
-                    {'name': 'Inicio', 'url': reverse('home')},
-                    {'name': 'Catálogo', 'url': reverse('products:catalog')},
-                    {'name': product.category.name, 'url': category_url},
-                    {'name': product.name, 'url': None}
-                ]
-            except Product.DoesNotExist:
-                breadcrumbs.append({'name': 'Producto', 'url': None})
+    breadcrumbs_data = _build_core_breadcrumbs(view_name)
+    if breadcrumbs_data is not None:
+        return {'breadcrumbs': breadcrumbs_data}
     
-    # Lista de colecciones
-    elif view_name == 'products:collections_list':
-        breadcrumbs.append({'name': 'Colecciones', 'url': None})
-    
-    # Detalle de colección
-    elif view_name == 'products:collection_detail':
-        slug = kwargs.get('slug')
-        if slug:
-            try:
-                collection = Collection.objects.get(slug=slug, is_active=True)
-                breadcrumbs = [
-                    {'name': 'Inicio', 'url': reverse('home')},
-                    {'name': 'Colecciones', 'url': reverse('products:collections_list')},
-                    {'name': collection.name, 'url': None}
-                ]
-            except Collection.DoesNotExist:
-                breadcrumbs.append({'name': 'Colección', 'url': None})
-    
-    # Stock dashboard
-    elif view_name == 'products:stock_dashboard':
-        breadcrumbs.append({'name': 'Dashboard de stock', 'url': None})
-    
-    # ========== ÓRDENES ==========
-    
-    # Carrito
-    elif view_name == 'orders:cart_detail':
-        breadcrumbs.append({'name': 'Carrito de compras', 'url': None})
-    
-    # Checkout
-    elif view_name == 'orders:checkout':
-        breadcrumbs = [
-            {'name': 'Inicio', 'url': reverse('home')},
-            {'name': 'Carrito', 'url': reverse('orders:cart_detail')},
-            {'name': 'Finalizar compra', 'url': None}
-        ]
-    
-    # Confirmación de orden
-    elif view_name == 'orders:order_confirmation':
-        order_number = kwargs.get('order_number')
-        breadcrumbs = [
-            {'name': 'Inicio', 'url': reverse('home')},
-            {'name': 'Carrito', 'url': reverse('orders:cart_detail')},
-            {'name': 'Checkout', 'url': reverse('orders:checkout')},
-            {'name': f'Orden #{order_number}' if order_number else 'Confirmación', 'url': None}
-        ]
-    
-    # Tracking de orden
-    elif view_name == 'orders:order_tracking':
-        breadcrumbs = [
-            {'name': 'Inicio', 'url': reverse('home')},
-            {'name': 'Tracking de pedido', 'url': None}
-        ]
-    
-    # ========== PÁGINAS ESTÁTICAS (CORE) ==========
-    
-    elif view_name == 'core:about':
-        breadcrumbs.append({'name': 'Nosotros', 'url': None})
-    
-    elif view_name == 'core:contact':
-        breadcrumbs.append({'name': 'Contacto', 'url': None})
-    
-    elif view_name == 'core:contact_success':
-        breadcrumbs = [
-            {'name': 'Inicio', 'url': reverse('home')},
-            {'name': 'Contacto', 'url': reverse('core:contact')},
-            {'name': 'Mensaje enviado', 'url': None}
-        ]
-    
-    elif view_name == 'core:returns_policy':
-        breadcrumbs.append({'name': 'Cambios y devoluciones', 'url': None})
-    
-    elif view_name == 'core:privacy_policy':
-        breadcrumbs.append({'name': 'Política de privacidad', 'url': None})
-    
-    elif view_name == 'core:terms':
-        breadcrumbs.append({'name': 'Términos y condiciones', 'url': None})
-    
-    elif view_name == 'core:staff_login':
-        breadcrumbs.append({'name': 'Acceso staff', 'url': None})
-    
-    # ========== HOME ==========
-    
-    elif view_name == 'home' or path == '/':
-        breadcrumbs = []
-    
-    return {'breadcrumbs': breadcrumbs}
+    return {'breadcrumbs': _build_simple_breadcrumb('Inicio')}
+
 
 def is_home(request):
-    """Detecta si estamos en la página de inicio."""
     return {'is_home': request.path == '/'}
