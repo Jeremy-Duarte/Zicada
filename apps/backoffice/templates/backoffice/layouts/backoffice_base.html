@@ -6,7 +6,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>{% block title %}Backoffice Zicada{% endblock %}</title>
     
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com/3.4.1"
+            integrity="sha384-3Z3D3h1hWrVfM0qD3T0hLA7hMqC3jPq8a6GQ74Tv5LOdK6w7FmdF4z7CfmGZPLw"
+            crossorigin="anonymous"></script>
+    
     <script>
         tailwind.config = {
             theme: {
@@ -21,10 +24,19 @@
             }
         }
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
     
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.45.3/apexcharts.min.js"
+            integrity="sha384-XzCuJ8jD/3Zz8Qp9fYxqjfMaw3D2zBU8FKGQzpCSQOfb0TtVpVL4SJn9g0KoFkT"
+            crossorigin="anonymous"></script>
+    
+    <link href="{% static 'fonts/inter.css' %}" rel="stylesheet">
+    
+    <link rel="stylesheet" 
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+          integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA=="
+          crossorigin="anonymous"
+          referrerpolicy="no-referrer">
+    
     <style>
         .sidebar-item {
             @apply flex items-center gap-3 px-4 py-3 rounded-xl transition-colors duration-200 text-gray-300 hover:bg-gray-800 hover:text-white;
@@ -65,12 +77,16 @@
         }
     });
 </script>
+
 {% block extra_js %}
 <script src="{% static 'js/backoffice/charts.js' %}"></script>
 <script src="{% static 'js/core/cloudinary-widget.js' %}" defer></script>
 <script src="{% static 'js/core/cloudinary-featured-widget.js' %}" defer></script>
 <script src="{% static 'js/core/sortable-widget.js' %}" defer></script>
-<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"
+        integrity="sha384-8UxD/m9/gZ+aEF6Nn4S3pKfG0NiZ/g0GgsL02iqEQZFRXgKR6ArymUp61Luxx+Zf"
+        crossorigin="anonymous"></script>
 {% endblock %}
 </body>
 </html>
