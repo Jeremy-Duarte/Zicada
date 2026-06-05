@@ -376,32 +376,43 @@ def get_product_stats_in_range(date_start: date, date_end: date) -> Dict[str, An
 
 
 def get_category_stats_in_range(date_start: date, date_end: date) -> List[Dict[str, Any]]:
-    """Get sales by category within date range."""
-    categories = Category.objects.all()
-    result = []
+    """Get sales by category within date range """
     
-    for category in categories:
-        # Productos de esta categoría
-        products = category.products.filter(is_active=True)
-        product_count = products.count()
+    categories_data = Category.objects.annotate(
+        product_count=Count('products', filter=Q(products__is_active=True))
+    ).values('id', 'name', 'product_count')
+    
+    sales_data = OrderItem.objects.filter(
+        order__created_at__date__gte=date_start,
+        order__created_at__date__lte=date_end,
+        order__status__in=PAID_STATUSES,
+        variant__product__is_active=True,
+        variant__product__category__isnull=False
+    ).values('variant__product__category__id', 'variant__product__category__name').annotate(
+        total_quantity=Sum('quantity'),
+        total_revenue=Sum('subtotal')
+    )
+    
+    sales_dict = {
+        sale['variant__product__category__id']: {
+            'total_quantity': sale['total_quantity'] or 0,
+            'total_revenue': float(sale['total_revenue'] or 0),
+        }
+        for sale in sales_data
+    }
+    
+    result = []
+    for cat in categories_data:
+        cat_id = cat['id']
+        sales = sales_dict.get(cat_id, {'total_quantity': 0, 'total_revenue': 0.0})
         
-        # Ventas de productos de esta categoría
-        sales = OrderItem.objects.filter(
-            order__created_at__date__gte=date_start,
-            order__created_at__date__lte=date_end,
-            order__status__in=['confirmado', 'preparando', 'listo', 'en_camino', 'entregado'],
-            variant__product__category=category
-        ).aggregate(
-            total_quantity=Sum('quantity'),
-            total_revenue=Sum('subtotal')
-        )
-        
-        if product_count > 0 or (sales['total_quantity'] or 0) > 0:
+        # Solo incluir si tiene productos activos o ventas
+        if cat['product_count'] > 0 or sales['total_quantity'] > 0:
             result.append({
-                'name': category.name,
-                'product_count': product_count,
-                'total_quantity': sales['total_quantity'] or 0,
-                'total_revenue': float(sales['total_revenue'] or 0),
+                'name': cat['name'],
+                'product_count': cat['product_count'],
+                'total_quantity': sales['total_quantity'],
+                'total_revenue': sales['total_revenue'],
             })
     
     return sorted(result, key=lambda x: x['total_revenue'], reverse=True)
