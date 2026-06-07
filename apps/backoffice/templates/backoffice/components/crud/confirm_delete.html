@@ -1,41 +1,7 @@
 {% load static %}
-<div class="max-w-md mx-auto">
-    <div class="bg-white rounded-xl shadow-sm p-6 text-center">
-        <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <i class="fas fa-trash-alt text-red-500 text-2xl"></i>
-        </div>
-        <h2 class="text-xl font-bold text-gray-800 mb-2">¿Eliminar {{ object_name }}?</h2>
-        <p class="text-gray-600 mb-4">¿Estás seguro de que deseas eliminar <strong>"{{ object_display }}"</strong>?</p>
-        
-        {% if warning %}
-        <div class="bg-yellow-50 text-yellow-700 p-3 rounded-lg text-sm mb-4">{{ warning }}</div>
-        {% endif %}
-        
-        <form method="post">
-            {% csrf_token %}
-            
-            {% if form %}
-                {% for field in form %}
-                <div class="mb-4 text-left">
-                    <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
-                        {{ field.label }}
-                    </label>
-                    {{ field }}
-                    {% if field.errors %}
-                    <p class="text-red-500 text-xs mt-1">{{ field.errors.0 }}</p>
-                    {% endif %}
-                </div>
-                {% endfor %}
-            {% endif %}
-            
-            <div class="flex justify-center gap-3">
-                {% if cancel_args %}
-                <a href="{% url cancel_url cancel_args.0 %}" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Cancelar</a>
-                {% else %}
-                <a href="{% url cancel_url %}" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Cancelar</a>
-                {% endif %}
-                <button type="submit" class="bg-red-500 hover:bg-red-600 text-white px-5 py-2 rounded-lg">Sí, eliminar</button>
-            </div>
-        </form>
-    </div>
-</div>
+
+{% block title %}Eliminar {{ object_name }} - Zicada{% endblock %}
+
+{% block content %}
+{% include 'backoffice/components/crud/confirm_action.html' with bg_color="red" icon="trash-alt" icon_color="red" title="¿Eliminar "|add:object_name|add:"?" question="¿Estás seguro de que deseas eliminar" btn_color="red" btn_text="Sí, eliminar" cancel_url=cancel_url cancel_args=cancel_args object_display=object_display warning=warning form=form %}
+{% endblock %}
