@@ -6,14 +6,7 @@
 {% block content %}
 <div class="bg-white min-h-screen">
     <div class="w-full px-4 sm:px-6 lg:px-8 py-12">
-        <div class="text-center mb-12">
-            <div class="inline-block bg-zicada-accent/10 backdrop-blur-sm rounded-full px-6 py-2 mb-4">
-                <span class="text-zicada-accent font-semibold text-sm uppercase tracking-wide">Productos</span>
-            </div>
-            <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-3">Catálogo de productos</h1>
-            <div class="w-20 h-1 bg-zicada-accent mx-auto my-4 rounded-full"></div>
-            <p class="text-gray-600 max-w-2xl mx-auto">Explora nuestra colección de ropa streetwear única y personalizada.</p>
-        </div>
+        {% include 'components/page_header.html' with badge_text="Productos" title="Catálogo de productos" description="Explora nuestra colección de ropa streetwear única y personalizada." %}
         
         <div class="flex flex-col lg:flex-row lg:gap-6">
             <div class="lg:w-72 lg:sticky lg:top-24 lg:self-start lg:flex-shrink-0">
@@ -27,26 +20,9 @@
                     <div>{% include 'components/product_card.html' with product=product %}</div>
                     {% endfor %}
                 </div>
-                
-                {% if is_paginated %}
-                <div class="flex justify-center mt-12 gap-3">
-                    {% if page_obj.has_previous %}
-                    <a href="?page=1{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition">« Primera</a>
-                    <a href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition">Anterior</a>
-                    {% endif %}
-                    <span class="px-4 py-2 rounded-lg bg-zicada-accent text-white">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
-                    {% if page_obj.has_next %}
-                    <a href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition">Siguiente</a>
-                    <a href="?page={{ page_obj.paginator.num_pages }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition">Última »</a>
-                    {% endif %}
-                </div>
-                {% endif %}
-                
+                {% include 'components/pagination.html' %}
                 {% else %}
-                <div class="text-center py-12">
-                    <p class="text-gray-500">No hay productos disponibles.</p>
-                    <p class="text-gray-400 text-sm mt-2">¡Vuelve pronto para descubrir nuestros nuevos productos!</p>
-                </div>
+                {% include 'components/empty_state.html' with message="No hay productos disponibles." submessage="¡Vuelve pronto para descubrir nuestros nuevos productos!" %}
                 {% endif %}
             </div>
         </div>
