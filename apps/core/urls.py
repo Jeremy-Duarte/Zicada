@@ -20,7 +20,6 @@ urlpatterns = [
     path('cambios/', views.returns_policy, name='returns_policy'),
     path('privacidad/', views.privacy_policy, name='privacy_policy'),
     path('terminos/', views.terms, name='terms'),
-    path('newsletter/', views.newsletter_subscribe, name='newsletter_subscribe'),
     path('staff/login/', views.StaffLoginView.as_view(), name='staff_login'),
     path('staff/logout/', views.staff_logout, name='staff_logout'),
         #Crud Paths
