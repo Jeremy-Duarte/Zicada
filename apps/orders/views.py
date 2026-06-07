@@ -656,7 +656,7 @@ def order_tracking(request, tracking_token):
 # =============================================================================
 
 @require_POST
-@csrf_exempt
+@csrf_exempt # NOSONAR(S4502)
 def stripe_webhook(request):
     """Handle Stripe webhook events."""
     import stripe

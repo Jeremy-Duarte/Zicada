@@ -2,6 +2,7 @@ from datetime import timedelta
 from typing import Any, Dict, List, Tuple
 
 from django.contrib.admin.views.decorators import staff_member_required
+from django.views.decorators.http import require_GET, require_http_methods
 from django.db.models import Q, QuerySet, Sum
 from django.shortcuts import render
 from django.urls import reverse
@@ -578,6 +579,7 @@ def get_delivery_stats_for_user(user: User) -> Dict[str, Any]:
 # =============================================================================
 
 @staff_member_required
+@require_GET
 def admin_dashboard(request):
     """Main admin dashboard view."""
     today = timezone.now().date()
@@ -707,6 +709,7 @@ def admin_dashboard(request):
 
 
 @staff_member_required
+@require_GET
 def admin_orders_dashboard(request):
     """Orders management dashboard view."""
     stats = get_order_status_counts()
@@ -774,6 +777,7 @@ def admin_orders_dashboard(request):
 
 
 @staff_member_required
+@require_GET
 def admin_products(request):
     """Products management dashboard view."""
     stats = get_product_stats()
@@ -898,6 +902,7 @@ def admin_products(request):
 
 
 @staff_member_required
+@require_GET
 def admin_users(request):
     """Users management dashboard view (focused on delivery users)."""
     delivery_stats = get_delivery_stats()
@@ -1010,6 +1015,7 @@ def admin_users(request):
 
 
 @staff_member_required
+@require_GET
 def admin_config(request):
     """Admin configuration view."""
     quick_access_buttons = [
@@ -1036,6 +1042,7 @@ def admin_config(request):
     return render(request, TEMPLATE_ADMIN_CONFIG, context)
 
 @staff_member_required
+@require_http_methods(['GET', 'POST'])
 def report_generator(request):
     if request.method == 'POST':
         form = ReportForm(request.POST)
@@ -1065,6 +1072,7 @@ def report_generator(request):
     return render(request, 'backoffice/reports/report_generator.html', {'form': form})
 
 @staff_member_required
+@require_GET
 def importers_dashboard(request):
     """Dashboard de importación de datos."""
     

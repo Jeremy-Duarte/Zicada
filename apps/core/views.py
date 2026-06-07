@@ -12,6 +12,7 @@ from django.urls import reverse, reverse_lazy
 from django.views.decorators.cache import never_cache
 from django.views.generic import CreateView, UpdateView, DeleteView, ListView, TemplateView
 from django.contrib.auth.mixins import PermissionRequiredMixin
+from django.views.decorators.http import require_GET, require_http_methods, require_POST, require_safe
 
 from .models import HeroConfig
 from apps.products.models import Product, Collection, Category
@@ -59,7 +60,7 @@ URL_BACKOFFICE_DASHBOARD = 'backoffice:dashboard'
 # -------------------------------------------------------------------------
 # Views
 # -------------------------------------------------------------------------
-
+@require_GET
 def home(request):
     hero_slides = HeroConfig.objects.filter(is_active=True).order_by('sort_order')
     featured_collections = Collection.objects.filter(
@@ -81,6 +82,7 @@ def home(request):
 
 
 @never_cache
+@require_safe
 def pwa_manifest(request):
     manifest = {
         "name": "Zicada",
@@ -93,16 +95,16 @@ def pwa_manifest(request):
     }
     return JsonResponse(manifest)
 
-
+@require_GET
 def about(request):
     return render(request, TEMPLATE_ABOUT)
 
-
+@require_GET
 def contact(request):
     form = ContactForm()
     return render(request, TEMPLATE_CONTACT, {'form': form})
 
-
+@require_http_methods(['GET', 'POST'])
 def contact_submit(request):
     if request.method != 'POST':
         return redirect(URL_CORE_CONTACT)
@@ -170,32 +172,26 @@ def contact_submit(request):
         return redirect(URL_CORE_CONTACT)
 
 
+@require_GET
 def contact_success(request):
     return render(request, TEMPLATE_CONTACT_SUCCESS)
 
 
+@require_GET
 def returns_policy(request):
     return render(request, TEMPLATE_RETURNS)
 
 
+@require_GET
 def privacy_policy(request):
     return render(request, TEMPLATE_PRIVACY)
 
-
+@require_GET
 def terms(request):
     return render(request, TEMPLATE_TERMS)
 
 
-def newsletter_subscribe(request):
-    if request.method == 'POST':
-        email = request.POST.get('email')
-        if email:
-            messages.success(request, '¡Gracias por suscribirte!')
-        else:
-            messages.error(request, 'Por favor ingresa un correo válido.')
-    return HttpResponseRedirect(reverse(URL_HOME))
-
-
+@require_http_methods(['GET', 'POST'])
 class StaffLoginView(LoginView):
     template_name = TEMPLATE_STAFF_LOGIN
     authentication_form = StaffLoginForm
@@ -220,7 +216,7 @@ class StaffLoginView(LoginView):
             return redirect(URL_PRODUCTS_CATALOG)
         return super().dispatch(request, *args, **kwargs)
 
-
+@require_POST
 def staff_logout(request):
     logout(request)
     messages.info(request, 'Sesión cerrada correctamente')
