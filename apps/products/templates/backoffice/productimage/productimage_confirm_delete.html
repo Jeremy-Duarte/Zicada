@@ -7,8 +7,10 @@
     
     {% if image_preview %}
     <div class="mt-4 bg-white rounded-xl shadow-sm p-4 text-center">
-        <img src="{{ image_preview }}" class="max-h-48 mx-auto rounded-lg">
-        <p class="text-xs text-gray-400 mt-2">Vista previa de la imagen a eliminar</p>
+    <img src="{{ image_preview }}" 
+        alt="{{ alt_text }}"
+        class="max-h-48 mx-auto rounded-lg">    
+    <p class="text-xs text-gray-400 mt-2">Vista previa de la imagen a eliminar</p>
     </div>
     {% endif %}
 </div>

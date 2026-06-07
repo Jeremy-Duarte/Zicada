@@ -8,7 +8,9 @@
         
         {% if form.instance.pk and form.instance.image %}
         <div class="mb-6 p-4 bg-gray-50 rounded-lg text-center">
-            <img src="{{ form.instance.image.url }}" class="max-h-48 mx-auto rounded-lg shadow">
+            <img src="{{ form.instance.image.url }}" 
+                alt="{{ alt_text }}"
+                class="max-h-48 mx-auto rounded-lg shadow">
             <p class="text-xs text-gray-400 mt-2">Vista previa actual</p>
         </div>
         {% endif %}
