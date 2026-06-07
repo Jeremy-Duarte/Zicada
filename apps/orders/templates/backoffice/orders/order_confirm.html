@@ -1,4 +1,3 @@
-{# templates/backoffice/orders/order_confirm.html #}
 {% extends "backoffice/layouts/backoffice_base.html" %}
 {% load static %}
 
@@ -10,22 +9,28 @@
         <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <i class="fas fa-check-circle text-green-500 text-2xl"></i>
         </div>
+        
         <h2 class="text-xl font-bold text-gray-800 mb-2">Confirmar pedido</h2>
         <p class="text-gray-600 mb-4">
             ¿Estás seguro de que deseas confirmar el pedido <strong>"{{ order.order_number }}"</strong>?
         </p>
-        <p class="text-sm text-gray-500 mb-4 bg-yellow-50 p-3 rounded-lg">
-            ⚠️ Esta acción reducirá el stock de los productos asociados.
+        <p class="text-sm text-gray-500 mb-4{% if show_warning %} bg-yellow-50 p-3 rounded-lg{% endif %}">
+            {% if show_warning %}⚠️ {% endif %}Esta acción reducirá el stock de los productos asociados.
         </p>
         
         <form method="post">
             {% csrf_token %}
-            <input type="hidden" name="new_status" value="confirmado">
+            
+            {% if new_status_value %}
+            <input type="hidden" name="new_status" value="{{ new_status_value }}">
+            {% endif %}
             
             {% for field in form %}
-                {% if field.name != 'new_status' %}
+                {% if exclude_fields and field.name in exclude_fields %}
+                    {# Skip #}
+                {% elif field.name != 'new_status' %}
                 <div class="mb-4 text-left">
-                       <label for="{{ field.id_for_label }}" class="flex items-center gap-2 cursor-pointer">
+                    <label for="{{ field.id_for_label }}" class="flex items-center gap-2 cursor-pointer">
                         {{ field }}
                         <span class="text-sm text-gray-700">{{ field.label }}</span>
                     </label>

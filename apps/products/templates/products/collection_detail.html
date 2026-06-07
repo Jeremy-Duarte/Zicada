@@ -93,7 +93,7 @@
                     {% with card_config=collection.get_card_config %}
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-5 gap-y-8">
                         {% for product in products %}
-                        <div>{% include 'components/product_card_collection.html' with product=product card_config=card_config collection=collection %}</div>
+                        <div>{% include 'components/product_card.html' with product=product card_style='collection' card_config=collection.get_card_config %}</div>
                         {% endfor %}
                     </div>
                     {% endwith %}

@@ -191,7 +191,6 @@ def terms(request):
     return render(request, TEMPLATE_TERMS)
 
 
-@require_http_methods(['GET', 'POST'])
 class StaffLoginView(LoginView):
     template_name = TEMPLATE_STAFF_LOGIN
     authentication_form = StaffLoginForm
