@@ -1,3 +1,5 @@
+import re
+
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from django.db.models import Q, Min, Max, Count
@@ -624,6 +626,21 @@ class CollectionDetailView(PaginationMixin, FilterMixin, ListView):
         
         return qs
     
+    def _sanitize_css(self, raw_css):
+        if not raw_css:
+            return ''
+        
+        dangerous = re.compile(
+            r'(javascript:|expression\(|behavior\s*:|vbscript:|<script|</script|on\w+\s*=)',
+            re.IGNORECASE
+        )
+        cleaned = dangerous.sub('', raw_css)
+        
+        if len(cleaned) > 5000:
+            cleaned = cleaned[:5000]
+        
+        return mark_safe(cleaned)
+    
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         
@@ -679,6 +696,8 @@ class CollectionDetailView(PaginationMixin, FilterMixin, ListView):
         
         context['clean_url'] = reverse('products:collection_detail', kwargs={'slug': self.collection.slug})
         context['now'] = timezone.now()
+        
+        context['safe_custom_css'] = self._sanitize_css(self.collection.custom_css)
         
         return context
 
@@ -1631,7 +1650,7 @@ class SizeImportView(PermissionRequiredMixin, View):
         
         return render(request, 'backoffice/size/size_import_result.html', {'results': results})
 
-
+@require_GET
 def size_template(request):
     """Descarga plantilla de ejemplo para tallas."""
     import csv
@@ -1674,6 +1693,7 @@ class ColorImportView(PermissionRequiredMixin, View):
         return render(request, 'backoffice/color/color_import_result.html', context)
 
 
+@require_GET
 def color_template(request):
     """Descarga plantilla de ejemplo para colores."""
     import csv
@@ -1722,6 +1742,7 @@ class CategoryImportView(PermissionRequiredMixin, View):
         return render(request, 'backoffice/category/category_import_result.html', context)
 
 
+@require_GET
 def category_template(request):
     """Descarga plantilla de ejemplo para categorías."""
     import csv
