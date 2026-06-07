@@ -1063,11 +1063,12 @@ class ProductImageListView(PermissionRequiredMixin, PaginationMixin, FilterMixin
         context = super().get_context_data(**kwargs)
         rows = []
         for img in context['images']:
+            alt_text = img.alt_text or f"Imagen {img.pk}"
             rows.append({
                 'pk': img.pk,
                 'values': [
-                    mark_safe(f'<img src="{img.image.url}" class="w-16 h-16 object-cover rounded-lg">'),
-                    img.alt_text or '—',
+                    mark_safe(f'<img src="{img.image.url}" alt="{alt_text}" class="w-16 h-16 object-cover rounded-lg">'),
+                    alt_text,
                     img.created_at.strftime(DATE_FORMAT_DISPLAY),
                 ],
             })
@@ -1132,6 +1133,7 @@ class ProductImageDeleteView(PermissionRequiredMixin, DeleteView):
         context[CONTEXT_OBJECT_DISPLAY] = image.image.name.split('/')[-1]
         context[CONTEXT_CANCEL_URL] = URL_PRODUCTIMAGE_LIST
         context[CONTEXT_IMAGE_PREVIEW] = image.image.url
+        context['alt_text'] = image.alt_text
         return context
     
     def post(self, request, *args, **kwargs):
