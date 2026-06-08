@@ -9,20 +9,62 @@ from apps.core.crud.mixins import FormStyleMixin, SortableCreateMixin, SortableU
 from apps.core.crud.widgets import CloudinaryImageSelectWidget, CloudinaryFeaturedImageWidget, SortableOrderWidget
 import re
 
+# =============================================================================
+# CONSTANTES PARA FORMULARIOS
+# =============================================================================
+
+# Estilos
+STYLE_COLOR_INPUT = 'height: 40px;'
+HEX_COLOR_PATTERN = r'^#(?:[0-9a-fA-F]{3}){1,2}$'
+
+# Mensajes de error
+ERROR_PRODUCT_NOT_SPECIFIED = 'Producto no especificado.'
+ERROR_CONFIRM_REQUIRED = 'Debes confirmar la eliminación.'
+ERROR_COLOR_NOT_SPECIFIED = 'Color no especificado.'
+ERROR_CATEGORY_NOT_SPECIFIED = 'Categoría no especificada.'
+ERROR_SIZE_NOT_SPECIFIED = 'Talla no especificada.'
+ERROR_VARIANT_NOT_SPECIFIED = 'Variante no especificada.'
+ERROR_COLLECTION_NOT_SPECIFIED = 'Colección no especificada.'
+ERROR_CONFIRM_RESTORE = 'Debes confirmar la restauración.'
+ERROR_IMAGE_NOT_SPECIFIED = 'Imagen no especificada.'
+
+# Mensajes de confirmación
+CONFIRM_DELETE_PROMPT = 'Escribe el nombre del {} para confirmar'
+CONFIRM_DELETE_COLOR = 'Escribe el nombre del color para confirmar'
+CONFIRM_DELETE_CATEGORY = 'Escribe el nombre de la categoría para confirmar'
+CONFIRM_DELETE_SIZE = 'Escribe el nombre de la talla para confirmar'
+CONFIRM_DELETE_PRODUCT = 'Escribe el nombre del producto para confirmar'
+CONFIRM_DELETE_COLLECTION = 'Escribe el nombre de la colección para confirmar'
+CONFIRM_DELETE_VARIANT = 'Escribe "ELIMINAR" para confirmar'
+
+# Validaciones de precio
+MAX_PRICE = 10000000
+PRICE_ERROR_POSITIVE = 'El precio debe ser mayor a 0.'
+PRICE_ERROR_MAX = f'El precio no puede superar los ${MAX_PRICE:,} COP.'
+
+# Validaciones de imagen
+MAX_IMAGE_SIZE = 5 * 1024 * 1024
+IMAGE_SIZE_ERROR = 'La imagen no puede superar los 5MB.'
+ALLOWED_IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp', '.gif']
+IMAGE_EXTENSION_ERROR = 'Formato no soportado. Usa JPG, PNG, WEBP o GIF.'
+
+# Product types
+PRODUCT_TYPE_FABRICA = 'fabrica'
+PRODUCT_TYPE_COLECCION_LIMITADA = 'coleccion_limitada'
+
+# Order statuses for validation
+ORDER_STATUSES_ACTIVE = ['pendiente', 'confirmado', 'preparando', 'listo', 'en_camino']
+
+
 # ========== FORMULARIOS PARA CATÁLOGOS ESTÁTICOS ==========
 
 class SizeCreateForm(FormStyleMixin, SortableCreateMixin, forms.ModelForm):
-    """Formulario para crear tallas"""
-    
     class Meta:
         model = Size
         fields = ['name']
         widgets = {
             'name': forms.TextInput(attrs={'placeholder': 'Ej: XS, S, M, L, XL'}),
         }
-    
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
     
     def clean_name(self):
         name = self.cleaned_data.get('name', '').upper().strip()
@@ -32,7 +74,6 @@ class SizeCreateForm(FormStyleMixin, SortableCreateMixin, forms.ModelForm):
 
 
 class SizeUpdateForm(FormStyleMixin, SortableUpdateMixin, forms.ModelForm):
-    """Formulario para actualizar tallas"""
     class Meta:
         model = Size
         fields = ['name']
@@ -64,11 +105,9 @@ class SizeUpdateForm(FormStyleMixin, SortableUpdateMixin, forms.ModelForm):
 
 
 class SizeDeleteForm(FormStyleMixin, forms.Form):
-    """Formulario para eliminar talla (con verificación de uso)"""
-    
     confirm = forms.CharField(
         required=True,
-        label='Escribe el nombre de la talla para confirmar',
+        label=CONFIRM_DELETE_SIZE,
         widget=forms.TextInput(attrs={'placeholder': 'Ej: M'})
     )
     
@@ -80,12 +119,11 @@ class SizeDeleteForm(FormStyleMixin, forms.Form):
         value = self.cleaned_data.get('confirm', '').upper().strip()
         
         if not self.size:
-            raise ValidationError('Talla no especificada.')
+            raise ValidationError(ERROR_SIZE_NOT_SPECIFIED)
         
         if self.size.name != value:
             raise ValidationError('El nombre de la talla no coincide.')
         
-        # Verificar si hay variantes usando esta talla
         if self.size.variants.filter(is_active=True).exists():
             raise ValidationError(
                 f'No se puede eliminar la talla "{self.size.name}" porque está siendo usada '
@@ -95,11 +133,7 @@ class SizeDeleteForm(FormStyleMixin, forms.Form):
         return value
 
 
-# ========== CATEGORY FORMS ==========
-
-class CategoryCreateForm(FormStyleMixin, SortableCreateMixin ,forms.ModelForm):
-    """Formulario para crear categorías (slug automático por el modelo)"""
-    
+class CategoryCreateForm(FormStyleMixin, SortableCreateMixin, forms.ModelForm):
     class Meta:
         model = Category
         fields = ['name']
@@ -157,11 +191,9 @@ class CategoryUpdateForm(FormStyleMixin, SortableUpdateMixin, forms.ModelForm):
 
 
 class CategoryDeleteForm(FormStyleMixin, forms.Form):
-    """Formulario para eliminar categoría (con verificación de productos)"""
-    
     confirm = forms.CharField(
         required=True,
-        label='Escribe el nombre de la categoría para confirmar',
+        label=CONFIRM_DELETE_CATEGORY,
         widget=forms.TextInput()
     )
     
@@ -173,12 +205,11 @@ class CategoryDeleteForm(FormStyleMixin, forms.Form):
         value = self.cleaned_data.get('confirm', '').strip().lower()
         
         if not self.category:
-            raise ValidationError('Categoría no especificada.')
+            raise ValidationError(ERROR_CATEGORY_NOT_SPECIFIED)
         
         if self.category.name.lower() != value:
             raise ValidationError('El nombre de la categoría no coincide.')
         
-        # Verificar productos activos en esta categoría
         active_products = self.category.products.filter(is_active=True)
         if active_products.exists():
             raise ValidationError(
@@ -190,8 +221,6 @@ class CategoryDeleteForm(FormStyleMixin, forms.Form):
 
 
 class CategoryImportForm(forms.ModelForm):
-    """Formulario específico para importación de categorías."""
-    
     class Meta:
         model = Category
         fields = ['name']
@@ -202,17 +231,14 @@ class CategoryImportForm(forms.ModelForm):
             raise ValidationError(f'La categoría "{name}" ya existe.')
         return name
 
-# ========== COLOR FORMS (Catálogo) ==========
 
-class ColorCreateForm(FormStyleMixin, SortableCreateMixin ,forms.ModelForm):
-    """Formulario para crear colores"""
-    
+class ColorCreateForm(FormStyleMixin, SortableCreateMixin, forms.ModelForm):
     class Meta:
         model = Color
         fields = ['name', 'code']
         widgets = {
             'name': forms.TextInput(),
-            'code': forms.TextInput(attrs={'type': 'color', 'style': 'height: 40px;'}),
+            'code': forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_INPUT}),
         }
     
     def clean_name(self):
@@ -226,7 +252,7 @@ class ColorCreateForm(FormStyleMixin, SortableCreateMixin ,forms.ModelForm):
         if not code.startswith('#'):
             code = f'#{code}'
         
-        if not re.match(r'^#(?:[0-9a-fA-F]{3}){1,2}$', code):
+        if not re.match(HEX_COLOR_PATTERN, code):
             raise ValidationError('El código debe ser un color hexadecimal válido (ej: #FF0000, #F00)')
         
         if Color.objects.filter(code__iexact=code).exists():
@@ -241,7 +267,7 @@ class ColorUpdateForm(FormStyleMixin, SortableUpdateMixin, forms.ModelForm):
         fields = ['name', 'code']
         widgets = {
             'name': forms.TextInput(),
-            'code': forms.TextInput(attrs={'type': 'color', 'style': 'height: 40px;'}),
+            'code': forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_INPUT}),
         }
 
     sortable_queryset = None
@@ -271,8 +297,7 @@ class ColorUpdateForm(FormStyleMixin, SortableUpdateMixin, forms.ModelForm):
         if not code.startswith('#'):
             code = f'#{code}'
         
-        import re
-        if not re.match(r'^#(?:[0-9a-fA-F]{3}){1,2}$', code):
+        if not re.match(HEX_COLOR_PATTERN, code):
             raise ValidationError('El código debe ser un color hexadecimal válido (ej: #FF0000, #F00)')
         
         qs = Color.objects.filter(code__iexact=code)
@@ -287,11 +312,9 @@ class ColorUpdateForm(FormStyleMixin, SortableUpdateMixin, forms.ModelForm):
 
 
 class ColorDeleteForm(FormStyleMixin, forms.Form):
-    """Formulario para eliminar color (con verificación de uso)"""
-    
     confirm = forms.CharField(
         required=True,
-        label='Escribe el nombre del color para confirmar',
+        label=CONFIRM_DELETE_COLOR,
         widget=forms.TextInput(attrs={'placeholder': 'Ej: Rojo'})
     )
     
@@ -303,7 +326,7 @@ class ColorDeleteForm(FormStyleMixin, forms.Form):
         value = self.cleaned_data.get('confirm', '').strip().capitalize()
         
         if not self.color:
-            raise ValidationError('Color no especificado.')
+            raise ValidationError(ERROR_COLOR_NOT_SPECIFIED)
         
         if self.color.name != value:
             raise ValidationError('El nombre del color no coincide.')
@@ -319,7 +342,6 @@ class ColorDeleteForm(FormStyleMixin, forms.Form):
 
 
 class ColorImportForm(forms.ModelForm):
-    
     class Meta:
         model = Color
         fields = ['name', 'code']
@@ -334,17 +356,14 @@ class ColorImportForm(forms.ModelForm):
         code = self.cleaned_data.get('code', '').strip()
         if not code.startswith('#'):
             code = f'#{code}'
-        if not re.match(r'^#(?:[0-9a-fA-F]{3}){1,2}$', code):
+        if not re.match(HEX_COLOR_PATTERN, code):
             raise ValidationError(f'"{code}" no es un código hexadecimal válido.')
         if Color.objects.filter(code__iexact=code).exists():
             raise ValidationError(f'El código de color "{code}" ya está en uso.')
         return code
-    
-# ========== PRODUCT IMAGE FORMS ==========
+
 
 class ProductImageCreateForm(FormStyleMixin, forms.ModelForm):
-    """Formulario para subir imágenes de productos"""
-    
     class Meta:
         model = ProductImage
         fields = ['image', 'alt_text']
@@ -357,22 +376,18 @@ class ProductImageCreateForm(FormStyleMixin, forms.ModelForm):
         image = self.cleaned_data.get('image')
         
         if image:
-            # Validar tamaño máximo (5MB)
-            if image.size > 5 * 1024 * 1024:
-                raise ValidationError('La imagen no puede superar los 5MB.')
+            if image.size > MAX_IMAGE_SIZE:
+                raise ValidationError(IMAGE_SIZE_ERROR)
             
-            # Validar extensiones
             import os
             ext = os.path.splitext(image.name)[1].lower()
-            if ext not in ['.jpg', '.jpeg', '.png', '.webp', '.gif']:
-                raise ValidationError('Formato no soportado. Usa JPG, PNG, WEBP o GIF.')
+            if ext not in ALLOWED_IMAGE_EXTENSIONS:
+                raise ValidationError(IMAGE_EXTENSION_ERROR)
         
         return image
 
 
 class ProductImageUpdateForm(FormStyleMixin, forms.ModelForm):
-    """Formulario para actualizar metadatos de imagen"""
-    
     class Meta:
         model = ProductImage
         fields = ['alt_text']
@@ -382,8 +397,6 @@ class ProductImageUpdateForm(FormStyleMixin, forms.ModelForm):
 
 
 class ProductImageDeleteForm(FormStyleMixin, forms.Form):
-    """Formulario para eliminar imagen"""
-    
     confirm = forms.BooleanField(
         required=True,
         label='Confirmo que deseo eliminar esta imagen permanentemente'
@@ -397,20 +410,16 @@ class ProductImageDeleteForm(FormStyleMixin, forms.Form):
         cleaned_data = super().clean()
         
         if not self.image:
-            raise ValidationError('Imagen no especificada.')
+            raise ValidationError(ERROR_IMAGE_NOT_SPECIFIED)
         
         confirm = cleaned_data.get('confirm')
         if not confirm:
-            raise ValidationError('Debes confirmar la eliminación.')
+            raise ValidationError(ERROR_CONFIRM_REQUIRED)
         
         return cleaned_data
 
 
-# ========== PRODUCT FORMS ==========
-
 class ProductCreateForm(FormStyleMixin, forms.ModelForm):
-    """Formulario para crear productos"""
-    
     class Meta:
         model = Product
         fields = ['name', 'description', 'price', 'product_type', 'category']
@@ -434,17 +443,15 @@ class ProductCreateForm(FormStyleMixin, forms.ModelForm):
         price = self.cleaned_data.get('price', 0)
         
         if price <= 0:
-            raise ValidationError('El precio debe ser mayor a 0.')
+            raise ValidationError(PRICE_ERROR_POSITIVE)
         
-        if price > 10000000:  # 10 millones COP
-            raise ValidationError('El precio no puede superar los $10,000,000 COP.')
+        if price > MAX_PRICE:
+            raise ValidationError(PRICE_ERROR_MAX)
         
         return price
 
 
 class ProductUpdateForm(FormStyleMixin, forms.ModelForm):
-    """Formulario para actualizar productos"""
-    
     class Meta:
         model = Product
         fields = ['name', 'description', 'price', 'product_type', 'category', 'is_active']
@@ -473,20 +480,18 @@ class ProductUpdateForm(FormStyleMixin, forms.ModelForm):
         price = self.cleaned_data.get('price', 0)
         
         if price <= 0:
-            raise ValidationError('El precio debe ser mayor a 0.')
+            raise ValidationError(PRICE_ERROR_POSITIVE)
         
-        if price > 10000000:
-            raise ValidationError('El precio no puede superar los $10,000,000 COP.')
+        if price > MAX_PRICE:
+            raise ValidationError(PRICE_ERROR_MAX)
         
         return price
 
 
 class ProductDeleteForm(FormStyleMixin, forms.Form):
-    """Formulario para soft-delete de producto"""
-    
     confirm = forms.CharField(
         required=True,
-        label='Escribe el nombre del producto para confirmar',
+        label=CONFIRM_DELETE_PRODUCT,
         widget=forms.TextInput()
     )
     
@@ -498,14 +503,13 @@ class ProductDeleteForm(FormStyleMixin, forms.Form):
         value = self.cleaned_data.get('confirm', '').strip().lower()
         
         if not self.product:
-            raise ValidationError('Producto no especificado.')
+            raise ValidationError(ERROR_PRODUCT_NOT_SPECIFIED)
         
         if self.product.name.lower() != value:
             raise ValidationError('El nombre del producto no coincide.')
         
-        # Verificar si tiene pedidos asociados (no cancelados)
         has_orders = self.product.variants.filter(
-            order_items__order__status__in=['pendiente', 'confirmado', 'preparando', 'listo', 'en_camino']
+            order_items__order__status__in=ORDER_STATUSES_ACTIVE
         ).exists()
         
         if has_orders:
@@ -518,8 +522,6 @@ class ProductDeleteForm(FormStyleMixin, forms.Form):
 
 
 class ProductRestoreForm(FormStyleMixin, forms.Form):
-    """Formulario para restaurar producto (soft-delete)"""
-    
     confirm = forms.BooleanField(
         required=True,
         label='Confirmo que deseo restaurar este producto'
@@ -533,24 +535,19 @@ class ProductRestoreForm(FormStyleMixin, forms.Form):
         cleaned_data = super().clean()
         
         if not self.product:
-            raise ValidationError('Producto no especificado.')
+            raise ValidationError(ERROR_PRODUCT_NOT_SPECIFIED)
         
-        # Verificar si ya existe un producto activo con el mismo nombre
         if Product.objects.filter(name__iexact=self.product.name).exists():
             raise ValidationError('Ya existe un producto activo con este nombre.')
         
         confirm = cleaned_data.get('confirm')
         if not confirm:
-            raise ValidationError('Debes confirmar la restauración.')
+            raise ValidationError(ERROR_CONFIRM_RESTORE)
         
         return cleaned_data
 
 
-# ========== PRODUCT COLOR FORMS ==========
-
-class ProductColorCreateForm(FormStyleMixin, SortableCreateMixin ,forms.ModelForm):
-    """Formulario para asignar colores a un producto"""
-    
+class ProductColorCreateForm(FormStyleMixin, SortableCreateMixin, forms.ModelForm):
     class Meta:
         model = ProductColor
         fields = ['color', 'images', 'featured_image']
@@ -572,7 +569,7 @@ class ProductColorCreateForm(FormStyleMixin, SortableCreateMixin ,forms.ModelFor
         cleaned_data = super().clean()
         
         if not self.product:
-            raise ValidationError('Producto no especificado.')
+            raise ValidationError(ERROR_PRODUCT_NOT_SPECIFIED)
         
         color = cleaned_data.get('color')
         
@@ -633,12 +630,11 @@ class ProductColorUpdateForm(FormStyleMixin, SortableUpdateMixin, forms.ModelFor
             raise ValidationError('La imagen destacada debe estar seleccionada en la lista de imágenes.')
         return cleaned_data
 
+
 class ProductColorDeleteForm(FormStyleMixin, forms.Form):
-    """Formulario para eliminar color de producto"""
-    
     confirm = forms.CharField(
         required=True,
-        label='Escribe el nombre del color para confirmar',
+        label=CONFIRM_DELETE_COLOR,
         widget=forms.TextInput()
     )
     
@@ -655,7 +651,6 @@ class ProductColorDeleteForm(FormStyleMixin, forms.Form):
         if self.product_color.color.name.lower() != value:
             raise ValidationError('El nombre del color no coincide.')
         
-        # Verificar variantes activas
         active_variants = self.product_color.variants.filter(is_active=True)
         if active_variants.exists():
             raise ValidationError(
@@ -666,11 +661,7 @@ class ProductColorDeleteForm(FormStyleMixin, forms.Form):
         return value
 
 
-# ========== PRODUCT VARIANT FORMS ==========
-
 class ProductVariantCreateForm(FormStyleMixin, forms.ModelForm):
-    """Formulario para crear variantes de producto"""
-    
     class Meta:
         model = ProductVariant
         fields = ['product_color', 'size', 'stock']
@@ -693,27 +684,21 @@ class ProductVariantCreateForm(FormStyleMixin, forms.ModelForm):
         cleaned_data = super().clean()
         
         if not self.product:
-            raise ValidationError('Producto no especificado.')
+            raise ValidationError(ERROR_PRODUCT_NOT_SPECIFIED)
         
         product_color = cleaned_data.get('product_color')
         size = cleaned_data.get('size')
         
-        if product_color and size:
-            # Verificar si ya existe la variante
-            if ProductVariant.all_objects.filter(
-                product=self.product, product_color=product_color, size=size
-            ).exists():
-                raise ValidationError(
-                    f'Ya existe una variante para {product_color.color.name} - Talla {size.name}. '
-                    f'Use el formulario de actualización para modificar el stock.'
-                )
+        if product_color and size and ProductVariant.all_objects.filter(
+            product=self.product, product_color=product_color, size=size).exists():
+            raise ValidationError(
+                f'Ya existe una variante para {product_color.color.name} - Talla {size.name}. '
+                f'Use el formulario de actualización para modificar el stock.'
+            )
         
         return cleaned_data
 
-
 class ProductVariantUpdateForm(FormStyleMixin, forms.ModelForm):
-    """Formulario para actualizar variantes"""
-    
     class Meta:
         model = ProductVariant
         fields = ['stock', 'is_active']
@@ -736,11 +721,9 @@ class ProductVariantUpdateForm(FormStyleMixin, forms.ModelForm):
 
 
 class ProductVariantDeleteForm(FormStyleMixin, forms.Form):
-    """Formulario para soft-delete de variante"""
-    
     confirm = forms.CharField(
         required=True,
-        label='Escribe "ELIMINAR" para confirmar',
+        label=CONFIRM_DELETE_VARIANT,
         widget=forms.TextInput(attrs={'placeholder': 'ELIMINAR'})
     )
     
@@ -752,14 +735,13 @@ class ProductVariantDeleteForm(FormStyleMixin, forms.Form):
         value = self.cleaned_data.get('confirm', '').upper().strip()
         
         if not self.variant:
-            raise ValidationError('Variante no especificada.')
+            raise ValidationError(ERROR_VARIANT_NOT_SPECIFIED)
         
         if value != 'ELIMINAR':
             raise ValidationError('Debes escribir "ELIMINAR" para confirmar.')
         
-        # Verificar si tiene pedidos no entregados
         pending_orders = self.variant.order_items.filter(
-            order__status__in=['pendiente', 'confirmado', 'preparando', 'listo', 'en_camino']
+            order__status__in=ORDER_STATUSES_ACTIVE
         ).exists()
         
         if pending_orders:
@@ -771,8 +753,6 @@ class ProductVariantDeleteForm(FormStyleMixin, forms.Form):
 
 
 class ProductVariantRestoreForm(FormStyleMixin, forms.Form):
-    """Formulario para restaurar variante"""
-    
     confirm = forms.BooleanField(
         required=True,
         label='Confirmo que deseo restaurar esta variante'
@@ -786,7 +766,7 @@ class ProductVariantRestoreForm(FormStyleMixin, forms.Form):
         cleaned_data = super().clean()
         
         if not self.variant:
-            raise ValidationError('Variante no especificada.')
+            raise ValidationError(ERROR_VARIANT_NOT_SPECIFIED)
         
         if ProductVariant.objects.filter(
             product=self.variant.product,
@@ -799,16 +779,12 @@ class ProductVariantRestoreForm(FormStyleMixin, forms.Form):
             )
         
         if not cleaned_data.get('confirm'):
-            raise ValidationError('Debes confirmar la restauración.')
+            raise ValidationError(ERROR_CONFIRM_RESTORE)
         
         return cleaned_data
 
 
-# ========== COLLECTION FORMS ==========
-
 class CollectionCreateForm(FormStyleMixin, forms.ModelForm):
-    """Formulario para crear colecciones"""
-    
     class Meta:
         model = Collection
         fields = [
@@ -824,10 +800,10 @@ class CollectionCreateForm(FormStyleMixin, forms.ModelForm):
             'start_date': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
             'end_date': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
             'cover_image': forms.ClearableFileInput(),
-            'primary_color': forms.TextInput(attrs={'type': 'color', 'style': 'height: 40px;'}),
-            'secondary_color': forms.TextInput(attrs={'type': 'color', 'style': 'height: 40px;'}),
-            'background_color': forms.TextInput(attrs={'type': 'color', 'style': 'height: 40px;'}),
-            'text_color': forms.TextInput(attrs={'type': 'color', 'style': 'height: 40px;'}),
+            'primary_color': forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_INPUT}),
+            'secondary_color': forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_INPUT}),
+            'background_color': forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_INPUT}),
+            'text_color': forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_INPUT}),
             'background_image': forms.ClearableFileInput(),
             'title_font': forms.TextInput(attrs={"placeholder": "'Inter', sans-serif"}),
             'products': forms.SelectMultiple(attrs={'size': 10}),
@@ -868,8 +844,6 @@ class CollectionCreateForm(FormStyleMixin, forms.ModelForm):
 
 
 class CollectionUpdateForm(FormStyleMixin, forms.ModelForm):
-    """Formulario para actualizar colecciones"""
-    
     class Meta:
         model = Collection
         fields = [
@@ -885,10 +859,10 @@ class CollectionUpdateForm(FormStyleMixin, forms.ModelForm):
             'start_date': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
             'end_date': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
             'cover_image': forms.ClearableFileInput(),
-            'primary_color': forms.TextInput(attrs={'type': 'color', 'style': 'height: 40px;'}),
-            'secondary_color': forms.TextInput(attrs={'type': 'color', 'style': 'height: 40px;'}),
-            'background_color': forms.TextInput(attrs={'type': 'color', 'style': 'height: 40px;'}),
-            'text_color': forms.TextInput(attrs={'type': 'color', 'style': 'height: 40px;'}),
+            'primary_color': forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_INPUT}),
+            'secondary_color': forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_INPUT}),
+            'background_color': forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_INPUT}),
+            'text_color': forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_INPUT}),
             'background_image': forms.ClearableFileInput(),
             'title_font': forms.TextInput(),
             'products': forms.SelectMultiple(attrs={'size': 10}),
@@ -930,7 +904,6 @@ class CollectionUpdateForm(FormStyleMixin, forms.ModelForm):
                 'status': 'Una colección publicada debe tener al menos un producto asignado.'
             })
         
-        # Si la colección pasa a publicada, verificar que no haya conflictos
         if self.instance and self.instance.status != 'publicada' and status == 'publicada':
             conflicting = Collection.objects.filter(
                 status='publicada', is_active=True, products__in=products
@@ -949,11 +922,9 @@ class CollectionUpdateForm(FormStyleMixin, forms.ModelForm):
 
 
 class CollectionDeleteForm(FormStyleMixin, forms.Form):
-    """Formulario para soft-delete de colección"""
-    
     confirm = forms.CharField(
         required=True,
-        label='Escribe el nombre de la colección para confirmar',
+        label=CONFIRM_DELETE_COLLECTION,
         widget=forms.TextInput()
     )
     
@@ -965,7 +936,7 @@ class CollectionDeleteForm(FormStyleMixin, forms.Form):
         value = self.cleaned_data.get('confirm', '').strip().lower()
         
         if not self.collection:
-            raise ValidationError('Colección no especificada.')
+            raise ValidationError(ERROR_COLLECTION_NOT_SPECIFIED)
         
         if self.collection.name.lower() != value:
             raise ValidationError('El nombre de la colección no coincide.')
@@ -974,8 +945,6 @@ class CollectionDeleteForm(FormStyleMixin, forms.Form):
 
 
 class CollectionRestoreForm(FormStyleMixin, forms.Form):
-    """Formulario para restaurar colección"""
-    
     confirm = forms.BooleanField(
         required=True,
         label='Confirmo que deseo restaurar esta colección'
@@ -995,14 +964,13 @@ class CollectionRestoreForm(FormStyleMixin, forms.Form):
         cleaned_data = super().clean()
         
         if not self.collection:
-            raise ValidationError('Colección no especificada.')
+            raise ValidationError(ERROR_COLLECTION_NOT_SPECIFIED)
         
-        # Verificar si ya existe una colección activa con el mismo slug
         if Collection.objects.filter(slug=self.collection.slug).exists():
             raise ValidationError(f'Ya existe una colección activa con el slug "{self.collection.slug}".')
         
         confirm = cleaned_data.get('confirm')
         if not confirm:
-            raise ValidationError('Debes confirmar la restauración.')
+            raise ValidationError(ERROR_CONFIRM_RESTORE)
         
         return cleaned_data
