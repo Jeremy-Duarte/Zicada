@@ -20,13 +20,13 @@ class BaseListView(PermissionRequiredMixin, FilterMixin, PaginationMixin, ListVi
         if request.GET.get('export') and self.exporter_class:
             exporter = self.exporter_class()
             queryset = self.get_queryset()
-            format = request.GET.get('export')
+            export_format = request.GET.get('export')
             
-            if format == 'csv':
+            if export_format == 'csv':
                 return exporter.export_csv(queryset, request)
-            elif format == 'excel':
+            elif export_format == 'excel':
                 return exporter.export_excel(queryset, request)
-            elif format == 'pdf' and self.export_template:
+            elif export_format == 'pdf' and self.export_template:
                 return exporter.export_pdf(queryset, request, self.export_template)
         
         return super().get(request, *args, **kwargs)

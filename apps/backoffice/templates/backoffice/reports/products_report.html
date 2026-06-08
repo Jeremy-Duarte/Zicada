@@ -8,6 +8,7 @@
     <div class="summary-item">Con stock: <strong>{{ data.variants_with_stock }}</strong></div>
     <div class="summary-item">Stock bajo: <strong>{{ data.variants_low_stock }}</strong></div>
     <div class="summary-item">Agotados: <strong>{{ data.variants_out_stock }}</strong></div>
+    <div class="summary-item">Sin ventas: <strong>{{ data.products_without_sales_count }}</strong></div>
 </div>
 
 <!-- Movimiento de Stock -->
@@ -127,7 +128,7 @@
         </tr>
     </thead>
     <tbody>
-    {% for p in data.products_without_sales %}
+    {% for p in data.products_without_sales_list %}
         <tr>
             <td>{{ p.name }}</td>
             <td>{{ p.category }}</td>

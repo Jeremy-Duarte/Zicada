@@ -11,12 +11,45 @@ from apps.core.crud.mixins import FormStyleMixin
 from apps.core.crud.widgets import DeliveryUserRadioWidget
 from django.contrib.auth import get_user_model
 
-User = get_user_model()
+# =============================================================================
+# CONSTANTES LOCALES
+# =============================================================================
+ERROR_ORDER_NOT_SPECIFIED = 'Pedido no especificado.'
+ERROR_CONFIRM_REQUIRED = 'Debes confirmar la acción.'
+ERROR_INVALID_STATUS_TRANSITION = 'No se puede cambiar de "{from_status}" a "{to_status}". Transición no permitida.'
+ERROR_INVALID_QUANTITY = 'La cantidad debe ser mayor a 0.'
+ERROR_MAX_QUANTITY_EXCEEDED = f'La cantidad máxima por item es {MAX_QUANTITY_PER_ITEM}.'
+ERROR_STOCK_INSUFFICIENT = 'Stock insuficiente. Solo hay {stock} unidades disponibles.'
+ERROR_CANNOT_MODIFY_DELIVERED = 'No se puede modificar un pedido ya entregado.'
+ERROR_PRODUCT_ALREADY_EXISTS = 'El producto "{product}" - Talla {size} ya existe en este pedido. Edita la cantidad del existente en lugar de agregar uno nuevo.'
+ERROR_CONFIRM_MISMATCH = 'Debes escribir "ELIMINAR" exactamente para confirmar.'
+ERROR_CANNOT_UNPAID = 'No se puede desmarcar un pedido ya pagado.'
+ERROR_SHIPPING_NEGATIVE = 'El costo de envío no puede ser negativo.'
+ERROR_FREE_SHIPPING_VIOLATION = 'Este pedido califica para envío gratis (subtotal >= ${threshold:,.0f}). El costo de envío debe ser 0.'
+ERROR_ONLY_PENDING_CAN_CONFIRM = 'Solo se pueden confirmar pedidos en estado "Pendiente". Estado actual: {status}'
+ERROR_NO_ITEMS_TO_CONFIRM = 'No se puede confirmar un pedido sin items.'
+ERROR_CANNOT_CANCEL_DELIVERED = 'No se puede cancelar un pedido ya entregado.'
+ERROR_CANNOT_CANCEL_ALREADY_CANCELLED = 'Este pedido ya está cancelado.'
+ERROR_REASON_TOO_SHORT = 'El motivo de cancelación debe tener al menos 10 caracteres.'
+ERROR_ONLY_READY_CAN_ASSIGN = 'Solo se puede asignar repartidor a pedidos en estado "Listo para envío". Estado actual: {status}'
+ERROR_ONLY_ON_THE_WAY_CAN_DELIVER = 'Solo se puede entregar pedidos que están "En camino". Estado actual: {status}'
+ERROR_NO_DELIVERY_ASSIGNED = 'No se puede entregar un pedido sin repartidor asignado.'
+ERROR_ORDER_ALREADY_PAID = 'Este pedido ya está pagado.'
+ERROR_NO_PAYMENT_METHOD = 'Debes seleccionar al menos un método de notificación (email o WhatsApp).'
+ERROR_NO_EMAIL_FOR_NOTIFICATION = 'No se puede enviar por email porque el cliente no tiene correo registrado.'
+ERROR_INVALID_PHONE_LENGTH = 'El número de teléfono debe tener entre 7 y 15 dígitos.'
+ERROR_ONLY_PENDING_OR_CONFIRMED_CAN_ADD_ITEMS = 'Solo se pueden agregar items a pedidos pendientes o confirmados.'
+ERROR_PRODUCT_ALREADY_IN_ORDER = 'El producto "{product}" - Talla {size} ya existe en este pedido. Edita la cantidad del existente en lugar de agregar uno nuevo.'
+ERROR_CANNOT_MODIFY_ITEM_STATUS = 'Solo se pueden modificar items de pedidos pendientes o confirmados.'
+ERROR_ONLY_PENDING_CAN_PAY = 'Solo se pueden generar links de pago para pedidos pendientes. Estado actual: {status}'
+
+# =============================================================================
+# FORMULARIOS
+# =============================================================================
 
 class CheckoutOrderForm(FormStyleMixin, forms.Form):
-    # Formulario para la creación de un pedido en el checkout.
+    """Formulario para la creación de un pedido en el checkout."""
     
-    # Nombre completo
     customer_name = forms.CharField(
         max_length=200,
         min_length=3,
@@ -33,7 +66,6 @@ class CheckoutOrderForm(FormStyleMixin, forms.Form):
         }
     )
     
-    # Teléfono
     customer_phone = forms.CharField(
         max_length=20,
         required=True,
@@ -47,7 +79,6 @@ class CheckoutOrderForm(FormStyleMixin, forms.Form):
         }
     )
     
-    # Correo electrónico
     customer_email = forms.EmailField(
         required=False,
         label='Correo electrónico',
@@ -60,7 +91,6 @@ class CheckoutOrderForm(FormStyleMixin, forms.Form):
         }
     )
     
-    # Dirección de envío
     shipping_address = forms.CharField(
         required=True,
         label='Dirección de envío',
@@ -75,7 +105,6 @@ class CheckoutOrderForm(FormStyleMixin, forms.Form):
         }
     )
     
-    # Notas adicionales
     delivery_notes = forms.CharField(
         required=False,
         label='Notas adicionales',
@@ -87,19 +116,15 @@ class CheckoutOrderForm(FormStyleMixin, forms.Form):
     )
     
     def clean_customer_phone(self):
-        """Limpia y normaliza el teléfono eliminando caracteres no numéricos."""
         phone = self.cleaned_data.get('customer_phone', '')
         digits = ''.join(c for c in phone if c.isdigit())
         if len(digits) < 7 or len(digits) > 15:
-            raise ValidationError('El número de teléfono debe tener entre 7 y 15 dígitos.')
+            raise ValidationError(ERROR_INVALID_PHONE_LENGTH)
         return digits
 
 
 class OrderCreateForm(FormStyleMixin, forms.ModelForm):
-    """
-    Formulario para crear pedidos manuales desde backoffice.
-    Estos pedidos se crean en estado 'pendiente' y requieren pago o marcado manual.
-    """
+    """Formulario para crear pedidos manuales desde backoffice."""
     
     class Meta:
         model = Order
@@ -125,7 +150,6 @@ class OrderCreateForm(FormStyleMixin, forms.ModelForm):
     
     def clean_customer_phone(self):
         phone = self.cleaned_data.get('customer_phone', '')
-        # Normaliza eliminando todo carácter no numérico (consistente con CheckoutOrderForm)
         digits = ''.join(c for c in phone if c.isdigit())
         if len(digits) < 7:
             raise ValidationError('El teléfono debe tener al menos 7 dígitos.')
@@ -136,17 +160,12 @@ class OrderCreateForm(FormStyleMixin, forms.ModelForm):
     def clean_shipping_cost(self):
         cost = self.cleaned_data.get('shipping_cost', 0)
         if cost < 0:
-            raise ValidationError('El costo de envío no puede ser negativo.')
-        # Para pedidos nuevos (sin subtotal), solo validamos que no sea negativo.
-        # La validación de envío gratis vs subtotal se hace en OrderUpdateForm.
+            raise ValidationError(ERROR_SHIPPING_NEGATIVE)
         return cost
 
 
 class OrderUpdateForm(FormStyleMixin, forms.ModelForm):
-    """
-    Formulario para actualizar pedidos existentes desde backoffice.
-    Respeta la máquina de estados.
-    """
+    """Formulario para actualizar pedidos existentes desde backoffice."""
     
     class Meta:
         model = Order
@@ -171,9 +190,8 @@ class OrderUpdateForm(FormStyleMixin, forms.ModelForm):
         super().__init__(*args, **kwargs)
         
         if self.instance and self.instance.pk:
-            from django.contrib.auth import get_user_model
-            User = get_user_model()
-            self.fields['assigned_delivery_user'].queryset = User.objects.filter(
+            user_model = get_user_model()
+            self.fields['assigned_delivery_user'].queryset = user_model.objects.filter(
                 is_delivery=True
             ).order_by('username')
             
@@ -192,11 +210,11 @@ class OrderUpdateForm(FormStyleMixin, forms.ModelForm):
         if self.instance and self.instance.pk:
             if new_status != self.instance.status:
                 if not self.instance.can_transition_to(new_status):
-                    raise ValidationError(
-                        f'No se puede cambiar de "{self.instance.get_status_display()}" '
-                        f'a "{dict(Order.STATUS_CHOICES).get(new_status, new_status)}". '
-                        f'Transición no permitida.'
-                    )
+                    from_status = self.instance.get_status_display()
+                    to_status = dict(Order.STATUS_CHOICES).get(new_status, new_status)
+                    raise ValidationError(ERROR_INVALID_STATUS_TRANSITION.format(
+                        from_status=from_status, to_status=to_status
+                    ))
         return new_status
     
     def clean_is_paid(self):
@@ -207,7 +225,7 @@ class OrderUpdateForm(FormStyleMixin, forms.ModelForm):
             raise ValidationError('Un pedido entregado debe estar marcado como pagado.')
         
         if self.instance and self.instance.is_paid and not is_paid:
-            raise ValidationError('No se puede desmarcar un pedido ya pagado.')
+            raise ValidationError(ERROR_CANNOT_UNPAID)
         
         return is_paid
     
@@ -216,22 +234,16 @@ class OrderUpdateForm(FormStyleMixin, forms.ModelForm):
         subtotal = self.instance.subtotal if self.instance else 0
         
         if new_cost < 0:
-            raise ValidationError('El costo de envío no puede ser negativo.')
+            raise ValidationError(ERROR_SHIPPING_NEGATIVE)
         
         if subtotal >= FREE_SHIPPING_THRESHOLD and new_cost > 0:
-            raise ValidationError(
-                f'Este pedido califica para envío gratis (subtotal >= ${FREE_SHIPPING_THRESHOLD:,.0f}). '
-                f'El costo de envío debe ser 0.'
-            )
+            raise ValidationError(ERROR_FREE_SHIPPING_VIOLATION.format(threshold=FREE_SHIPPING_THRESHOLD))
         
         return new_cost
 
 
 class OrderConfirmForm(FormStyleMixin, forms.Form):
-    """
-    Formulario específico para confirmar un pedido manualmente (sin Stripe).
-    Esto ejecuta la misma lógica que confirm() del modelo + reduce stock.
-    """
+    """Formulario específico para confirmar un pedido manualmente."""
     
     confirm = forms.BooleanField(
         required=True,
@@ -247,13 +259,13 @@ class OrderConfirmForm(FormStyleMixin, forms.Form):
         cleaned_data = super().clean()
         
         if not self.order:
-            raise ValidationError('Pedido no especificado.')
+            raise ValidationError(ERROR_ORDER_NOT_SPECIFIED)
         
         if self.order.status != 'pendiente':
-            raise ValidationError(f'Solo se pueden confirmar pedidos en estado "Pendiente". Estado actual: {self.order.get_status_display()}')
+            raise ValidationError(ERROR_ONLY_PENDING_CAN_CONFIRM.format(status=self.order.get_status_display()))
         
         if not self.order.items.exists():
-            raise ValidationError('No se puede confirmar un pedido sin items.')
+            raise ValidationError(ERROR_NO_ITEMS_TO_CONFIRM)
         
         stock_errors = []
         for item in self.order.items.all():
@@ -265,18 +277,18 @@ class OrderConfirmForm(FormStyleMixin, forms.Form):
         
         if stock_errors:
             raise ValidationError(
-                f'Stock insuficiente para continuar:\n- ' + '\n- '.join(stock_errors)
+                'Stock insuficiente para continuar:\n- ' + '\n- '.join(stock_errors)
             )
         
         confirm = cleaned_data.get('confirm')
         if not confirm:
-            raise ValidationError('Debes confirmar la acción.')
+            raise ValidationError(ERROR_CONFIRM_REQUIRED)
         
         return cleaned_data
 
 
 class OrderCancelForm(FormStyleMixin, forms.Form):
-    """Formulario específico para cancelar pedidos (libera stock si estaba confirmado)"""
+    """Formulario específico para cancelar pedidos."""
     
     reason = forms.CharField(
         widget=forms.Textarea(attrs={'rows': 3, 'placeholder': 'Ej: Cliente solicitó cancelación, producto agotado, error en dirección...'}),
@@ -297,33 +309,30 @@ class OrderCancelForm(FormStyleMixin, forms.Form):
     def clean_reason(self):
         reason = self.cleaned_data.get('reason', '').strip()
         if len(reason) < 10:
-            raise ValidationError('El motivo de cancelación debe tener al menos 10 caracteres.')
+            raise ValidationError(ERROR_REASON_TOO_SHORT)
         return reason
     
     def clean(self):
         cleaned_data = super().clean()
         
         if not self.order:
-            raise ValidationError('Pedido no especificado.')
+            raise ValidationError(ERROR_ORDER_NOT_SPECIFIED)
         
         if self.order.status == 'entregado':
-            raise ValidationError('No se puede cancelar un pedido ya entregado.')
+            raise ValidationError(ERROR_CANNOT_CANCEL_DELIVERED)
         
         if self.order.status == 'cancelado':
-            raise ValidationError('Este pedido ya está cancelado.')
+            raise ValidationError(ERROR_CANNOT_CANCEL_ALREADY_CANCELLED)
         
         confirm = cleaned_data.get('confirm')
         if not confirm:
-            raise ValidationError('Debes confirmar la cancelación.')
+            raise ValidationError(ERROR_CONFIRM_REQUIRED)
         
         return cleaned_data
 
 
 class OrderChangeStatusForm(FormStyleMixin, forms.Form):
-    """
-    Formulario para cambios rápidos de estado (con validación de transiciones).
-    Útil para botones de acción en el panel de administración.
-    """
+    """Formulario para cambios rápidos de estado."""
     
     new_status = forms.ChoiceField(
         choices=[],
@@ -342,7 +351,6 @@ class OrderChangeStatusForm(FormStyleMixin, forms.Form):
         super().__init__(*args, **kwargs)
         
         if self.order:
-            # Delega en el modelo para mantener una única fuente de verdad
             choices = [
                 (status, label) for status, label in Order.STATUS_CHOICES
                 if self.order.can_transition_to(status)
@@ -357,19 +365,20 @@ class OrderChangeStatusForm(FormStyleMixin, forms.Form):
         new_status = self.cleaned_data.get('new_status')
         
         if not self.order:
-            raise ValidationError('Pedido no especificado.')
+            raise ValidationError(ERROR_ORDER_NOT_SPECIFIED)
         
         if not self.order.can_transition_to(new_status):
-            raise ValidationError(
-                f'No se puede cambiar de "{self.order.get_status_display()}" '
-                f'a "{dict(Order.STATUS_CHOICES).get(new_status, new_status)}".'
-            )
+            from_status = self.order.get_status_display()
+            to_status = dict(Order.STATUS_CHOICES).get(new_status, new_status)
+            raise ValidationError(ERROR_INVALID_STATUS_TRANSITION.format(
+                from_status=from_status, to_status=to_status
+            ))
         
         return new_status
 
 
 class OrderAssignDeliveryForm(FormStyleMixin, forms.Form):
-    """Formulario para asignar repartidor desde backoffice"""
+    """Formulario para asignar repartidor desde backoffice."""
     
     delivery_user = forms.ModelChoiceField(
         queryset=None,
@@ -388,7 +397,8 @@ class OrderAssignDeliveryForm(FormStyleMixin, forms.Form):
         self.order = kwargs.pop('order', None)
         super().__init__(*args, **kwargs)
         
-        self.fields['delivery_user'].queryset = User.objects.filter(
+        user_model = get_user_model()
+        self.fields['delivery_user'].queryset = user_model.objects.filter(
             is_delivery=True, 
             is_active=True
         ).only('id', 'first_name', 'last_name', 'username', 'phone').order_by('first_name', 'last_name')
@@ -415,7 +425,7 @@ class OrderAssignDeliveryForm(FormStyleMixin, forms.Form):
         confirm = self.cleaned_data.get('confirm')
         
         if not confirm:
-            raise ValidationError('Debes confirmar la asignación del repartidor.')
+            raise ValidationError(ERROR_CONFIRM_REQUIRED)
         
         return confirm
     
@@ -423,19 +433,16 @@ class OrderAssignDeliveryForm(FormStyleMixin, forms.Form):
         cleaned_data = super().clean()
         
         if not self.order:
-            raise ValidationError('Pedido no especificado.')
+            raise ValidationError(ERROR_ORDER_NOT_SPECIFIED)
         
         if self.order.status != 'listo':
-            raise ValidationError(
-                f'Solo se puede asignar repartidor a pedidos en estado "Listo para envío". '
-                f'Estado actual: {self.order.get_status_display()}'
-            )
+            raise ValidationError(ERROR_ONLY_READY_CAN_ASSIGN.format(status=self.order.get_status_display()))
         
         return cleaned_data
 
 
 class OrderMarkAsDeliveredForm(FormStyleMixin, forms.Form):
-    """Formulario para marcar pedido como entregado"""
+    """Formulario para marcar pedido como entregado."""
     
     confirm = forms.BooleanField(
         required=True,
@@ -457,29 +464,23 @@ class OrderMarkAsDeliveredForm(FormStyleMixin, forms.Form):
         cleaned_data = super().clean()
         
         if not self.order:
-            raise ValidationError('Pedido no especificado.')
+            raise ValidationError(ERROR_ORDER_NOT_SPECIFIED)
         
         if self.order.status != 'en_camino':
-            raise ValidationError(
-                f'Solo se puede entregar pedidos que están "En camino". '
-                f'Estado actual: {self.order.get_status_display()}'
-            )
+            raise ValidationError(ERROR_ONLY_ON_THE_WAY_CAN_DELIVER.format(status=self.order.get_status_display()))
         
         if not self.order.assigned_delivery_user:
-            raise ValidationError('No se puede entregar un pedido sin repartidor asignado.')
+            raise ValidationError(ERROR_NO_DELIVERY_ASSIGNED)
         
         confirm = cleaned_data.get('confirm')
         if not confirm:
-            raise ValidationError('Debes confirmar la entrega.')
+            raise ValidationError(ERROR_CONFIRM_REQUIRED)
         
         return cleaned_data
 
 
 class OrderPaymentForm(FormStyleMixin, forms.Form):
-    """
-    Formulario para generar un link de pago Stripe para pedidos pendientes.
-    Útil para pedidos creados manualmente en backoffice que requieren pago en línea.
-    """
+    """Formulario para generar un link de pago Stripe para pedidos pendientes."""
     
     send_email = forms.BooleanField(
         required=False,
@@ -506,42 +507,37 @@ class OrderPaymentForm(FormStyleMixin, forms.Form):
         self.order = kwargs.pop('order', None)
         super().__init__(*args, **kwargs)
         
-        if self.order:
-            # Si el cliente no tiene email, deshabilitar opción de email
-            if not self.order.customer_email:
-                self.fields['send_email'].disabled = True
-                self.fields['send_email'].initial = False
-                self.fields['send_email'].help_text = 'El cliente no tiene email registrado.'
+        if self.order and not self.order.customer_email:
+            self.fields['send_email'].disabled = True
+            self.fields['send_email'].initial = False
+            self.fields['send_email'].help_text = 'El cliente no tiene email registrado.'
     
     def clean(self):
         cleaned_data = super().clean()
         
         if not self.order:
-            raise ValidationError('Pedido no especificado.')
+            raise ValidationError(ERROR_ORDER_NOT_SPECIFIED)
         
         if self.order.status != 'pendiente':
-            raise ValidationError(
-                f'Solo se pueden generar links de pago para pedidos pendientes. '
-                f'Estado actual: {self.order.get_status_display()}'
-            )
+            raise ValidationError(ERROR_ONLY_PENDING_CAN_PAY.format(status=self.order.get_status_display()))
         
         if self.order.is_paid:
-            raise ValidationError('Este pedido ya está pagado.')
+            raise ValidationError(ERROR_ORDER_ALREADY_PAID)
         
         send_email = cleaned_data.get('send_email')
         send_whatsapp = cleaned_data.get('send_whatsapp')
         
         if not send_email and not send_whatsapp:
-            raise ValidationError('Debes seleccionar al menos un método de notificación (email o WhatsApp).')
+            raise ValidationError(ERROR_NO_PAYMENT_METHOD)
         
         if send_email and not self.order.customer_email:
-            raise ValidationError('No se puede enviar por email porque el cliente no tiene correo registrado.')
+            raise ValidationError(ERROR_NO_EMAIL_FOR_NOTIFICATION)
         
         return cleaned_data
 
 
 class OrderItemCreateForm(FormStyleMixin, forms.ModelForm):
-    """Formulario para agregar items a un pedido existente"""
+    """Formulario para agregar items a un pedido existente."""
     
     class Meta:
         model = OrderItem
@@ -556,7 +552,6 @@ class OrderItemCreateForm(FormStyleMixin, forms.ModelForm):
         super().__init__(*args, **kwargs)
         
         if self.order:
-            # Mostrar solo variantes activas y con stock (opcional: mostrar todas pero validar después)
             self.fields['variant'].queryset = ProductVariant.objects.filter(
                 is_active=True,
                 product__is_active=True
@@ -566,14 +561,14 @@ class OrderItemCreateForm(FormStyleMixin, forms.ModelForm):
         quantity = self.cleaned_data.get('quantity')
         
         if quantity <= 0:
-            raise ValidationError('La cantidad debe ser mayor a 0.')
+            raise ValidationError(ERROR_INVALID_QUANTITY)
         
         if quantity > MAX_QUANTITY_PER_ITEM:
-            raise ValidationError(f'La cantidad máxima por item es {MAX_QUANTITY_PER_ITEM}.')
+            raise ValidationError(ERROR_MAX_QUANTITY_EXCEEDED)
         
         variant = self.cleaned_data.get('variant')
         if variant and quantity > variant.stock:
-            raise ValidationError(f'Stock insuficiente. Solo hay {variant.stock} unidades disponibles.')
+            raise ValidationError(ERROR_STOCK_INSUFFICIENT.format(stock=variant.stock))
         
         return quantity
     
@@ -581,33 +576,29 @@ class OrderItemCreateForm(FormStyleMixin, forms.ModelForm):
         cleaned_data = super().clean()
         
         if not self.order:
-            raise ValidationError('Pedido no especificado.')
+            raise ValidationError(ERROR_ORDER_NOT_SPECIFIED)
         
-        # Verificar si ya existe el mismo producto+talla en el pedido
         variant = cleaned_data.get('variant')
         if variant and self.order.items.filter(variant=variant).exists():
-            raise ValidationError(
-                f'El producto "{variant.product.name}" - Talla {variant.size.name} ya existe en este pedido. '
-                f'Edita la cantidad del existente en lugar de agregar uno nuevo.'
-            )
+            raise ValidationError(ERROR_PRODUCT_ALREADY_IN_ORDER.format(
+                product=variant.product.name, size=variant.size.name
+            ))
         
         if self.order.status not in ['pendiente', 'confirmado']:
-            raise ValidationError('Solo se pueden agregar items a pedidos pendientes o confirmados.')
+            raise ValidationError(ERROR_ONLY_PENDING_OR_CONFIRMED_CAN_ADD_ITEMS)
         
         return cleaned_data
     
     def save(self, commit=True):
         instance = super().save(commit=False)
         instance.order = self.order
-        
-        # Los snapshots se llenan automáticamente en el save del modelo OrderItem
         if commit:
             instance.save()
         return instance
 
 
 class OrderItemUpdateForm(FormStyleMixin, forms.ModelForm):
-    """Formulario para actualizar cantidad de un item"""
+    """Formulario para actualizar cantidad de un item."""
     
     class Meta:
         model = OrderItem
@@ -624,21 +615,16 @@ class OrderItemUpdateForm(FormStyleMixin, forms.ModelForm):
         new_quantity = self.cleaned_data.get('quantity')
         
         if new_quantity <= 0:
-            raise ValidationError('La cantidad debe ser mayor a 0.')
+            raise ValidationError(ERROR_INVALID_QUANTITY)
         
         if new_quantity > MAX_QUANTITY_PER_ITEM:
-            raise ValidationError(f'La cantidad máxima por item es {MAX_QUANTITY_PER_ITEM}.')
+            raise ValidationError(ERROR_MAX_QUANTITY_EXCEEDED)
         
-        # Verificar stock si la cantidad aumenta
         if self.instance and self.instance.variant:
             if new_quantity > self.original_quantity:
                 increase = new_quantity - self.original_quantity
                 if increase > self.instance.variant.stock:
-                    raise ValidationError(
-                        f'Stock insuficiente para aumentar. '
-                        f'Solo hay {self.instance.variant.stock} unidades disponibles. '
-                        f'Necesitas {increase} más.'
-                    )
+                    raise ValidationError(ERROR_STOCK_INSUFFICIENT.format(stock=self.instance.variant.stock))
         
         return new_quantity
     
@@ -647,13 +633,13 @@ class OrderItemUpdateForm(FormStyleMixin, forms.ModelForm):
         
         if self.instance and self.instance.order:
             if self.instance.order.status not in ['pendiente', 'confirmado']:
-                raise ValidationError('Solo se pueden modificar items de pedidos pendientes o confirmados.')
+                raise ValidationError(ERROR_CANNOT_MODIFY_ITEM_STATUS)
         
         return cleaned_data
 
 
 class OrderItemDeleteForm(FormStyleMixin, forms.Form):
-    """Formulario para eliminar un item del pedido"""
+    """Formulario para eliminar un item del pedido."""
     
     confirm = forms.CharField(
         required=True,
@@ -675,15 +661,12 @@ class OrderItemDeleteForm(FormStyleMixin, forms.Form):
         value = self.cleaned_data.get('confirm', '').strip()
         
         if not self.order_item:
-            raise ValidationError('Item no especificado.')
+            raise ValidationError(ERROR_ORDER_NOT_SPECIFIED)
         
         if value.upper() != 'ELIMINAR':
-            raise ValidationError('Debes escribir "ELIMINAR" exactamente para confirmar.')
+            raise ValidationError(ERROR_CONFIRM_MISMATCH)
         
         if self.order_item.order and self.order_item.order.status not in ['pendiente', 'confirmado']:
-            raise ValidationError(
-                f'Solo se pueden eliminar items de pedidos pendientes o confirmados. '
-                f'Estado actual: {self.order_item.order.get_status_display()}'
-            )
+            raise ValidationError(ERROR_CANNOT_MODIFY_ITEM_STATUS)
         
         return value

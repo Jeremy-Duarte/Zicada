@@ -218,7 +218,7 @@ def contact_submit(request):
             return redirect(CORE_CONTACT_SUCCESS)
 
         except Exception as e:
-            logger.exception("Error al enviar correo de contacto")
+            logger.exception(f"Error al enviar correo de contacto: {str(e)}")
             messages.error(request, CONTACT_ERROR_MESSAGE)
             return redirect(CORE_CONTACT)
 

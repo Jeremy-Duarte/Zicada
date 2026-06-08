@@ -425,22 +425,16 @@ class CollectionListView(PaginationMixin, FilterMixin, ListView):
         (QUERY_PARAM_PRODUCT_TYPE, 'products__product_type', 'exact'),
     ]
     
-    def get_queryset(self):
-        # Apply simple filters from FilterMixin
-        qs = super().get_queryset()
-        
-        # Base filters
-        qs = qs.filter(is_active=True)
-        
-        # 1. Search by name (OR between two fields)
+    def _apply_search_filter(self, qs):
         search = self.request.GET.get(QUERY_PARAM_SEARCH, '')
         if search:
             qs = qs.filter(
                 Q(name__icontains=search) |
                 Q(description__icontains=search)
             )
-        
-        # 2. Status filter
+        return qs
+    
+    def _apply_status_filter(self, qs):
         status_filter = self.request.GET.get(QUERY_PARAM_STATUS, '')
         if status_filter == STATUS_FILTER_ACTIVE:
             qs = qs.filter(status=STATUS_PUBLISHED)
@@ -448,8 +442,9 @@ class CollectionListView(PaginationMixin, FilterMixin, ListView):
             qs = qs.filter(status=STATUS_DRAFT)
         elif status_filter == STATUS_FILTER_ARCHIVED:
             qs = qs.filter(status=STATUS_ARCHIVED)
-        
-        # 3. Price range filter
+        return qs
+    
+    def _apply_price_range_filter(self, qs):
         min_price = self.request.GET.get(QUERY_PARAM_MIN_PRICE, '')
         max_price = self.request.GET.get(QUERY_PARAM_MAX_PRICE, '')
         
@@ -459,7 +454,9 @@ class CollectionListView(PaginationMixin, FilterMixin, ListView):
         if max_price and max_price.isdigit():
             qs = qs.filter(products__price__lte=int(max_price)).distinct()
         
-        # 4. Product count filter
+        return qs
+    
+    def _apply_product_count_filter(self, qs):
         product_count_min = self.request.GET.get(QUERY_PARAM_PRODUCT_COUNT_MIN, '')
         product_count_max = self.request.GET.get(QUERY_PARAM_PRODUCT_COUNT_MAX, '')
         
@@ -471,7 +468,10 @@ class CollectionListView(PaginationMixin, FilterMixin, ListView):
                 qs = qs.annotate(product_count=Count('products'))
             qs = qs.filter(product_count__lte=int(product_count_max))
         
-        # 5. Date filter
+        return qs
+    
+    def _apply_date_filter(self, qs):
+        """Apply date filter (last month, quarter, semester, year, upcoming)."""
         date_filter = self.request.GET.get(QUERY_PARAM_DATE_FILTER, '')
         now = timezone.now()
         
@@ -486,13 +486,27 @@ class CollectionListView(PaginationMixin, FilterMixin, ListView):
         elif date_filter == DATE_FILTER_UPCOMING:
             qs = qs.filter(start_date__gt=now, status=STATUS_DRAFT)
         
-        # Ordering
+        return qs
+    
+    def _apply_ordering(self, qs):
+        """Apply ordering to the queryset."""
         order_by = self.request.GET.get(QUERY_PARAM_ORDER_BY, ORDER_BY_CREATED_AT)
         allowed_orders = [choice[0] for choice in ORDER_CHOICES_COLLECTIONS]
         if order_by in allowed_orders:
-            qs = qs.order_by(order_by)
-        else:
-            qs = qs.order_by(ORDER_BY_CREATED_AT)
+            return qs.order_by(order_by)
+        return qs.order_by(ORDER_BY_CREATED_AT)
+    
+    def get_queryset(self):
+        """Build the queryset with all filters applied."""
+        qs = super().get_queryset()
+        qs = qs.filter(is_active=True)
+        
+        qs = self._apply_search_filter(qs)
+        qs = self._apply_status_filter(qs)
+        qs = self._apply_price_range_filter(qs)
+        qs = self._apply_product_count_filter(qs)
+        qs = self._apply_date_filter(qs)
+        qs = self._apply_ordering(qs)
         
         return qs
     
@@ -703,92 +717,112 @@ class CollectionDetailView(PaginationMixin, FilterMixin, ListView):
 def product_detail(request, slug):
     """Display detailed product information."""
     product = get_object_or_404(Product, slug=slug, is_active=True)
-    product_colors = product.product_colors.filter(is_active=True).prefetch_related('images').order_by(ORDER_BY_SORT_ORDER)
-    variants = product.variants.filter(is_active=True).select_related('product_color', 'size')
     
-    # Build gallery images
+    context = {
+        CONTEXT_PRODUCT: product,
+        **build_gallery_context(product),
+        **build_variants_context(product),
+        'related_products': get_related_products(product),
+    }
+    return render(request, TEMPLATE_PRODUCT_DETAIL, context)
+
+
+def build_gallery_context(product):
+    """Build gallery images data for the product."""
+    product_colors = product.product_colors.filter(
+        is_active=True
+    ).prefetch_related('images').order_by(ORDER_BY_SORT_ORDER)
+    
     gallery_images = []
+    featured_image = None
+    
     for pc in product_colors:
         for img in pc.get_images():
+            image_url = img.image.url if img.image else ''
             gallery_images.append({
-                'image': img.image.url if img.image else '',
+                'image': image_url,
                 'color_id': pc.color.id,
                 'color_name': pc.color.name,
                 'color_code': pc.color.code or '#cccccc',
                 'is_featured': pc.featured_image == img,
             })
+            if not featured_image and pc.featured_image == img:
+                featured_image = image_url
     
-    # Build variants data
+    if not featured_image and gallery_images:
+        featured_image = gallery_images[0]['image']
+    
+    return {
+        'gallery_images': gallery_images,
+        'gallery_images_json': json.dumps(gallery_images),
+        'featured_image': featured_image,
+    }
+
+
+def build_variants_context(product):
+    """Build variants data and unique colors/sizes for the product."""
+    variants = product.variants.filter(
+        is_active=True
+    ).select_related('product_color', 'size')
+    
     variants_data = []
+    unique_colors = []
+    unique_sizes = []
+    seen_color_ids = set()
+    seen_size_ids = set()
+    
     for variant in variants:
         stock_display, stock_message = get_stock_display(variant.stock)
+        color = variant.product_color.color
+        size = variant.size
         
         variants_data.append({
             'id': variant.id,
-            'color_id': variant.product_color.color.id,
-            'color_name': variant.product_color.color.name,
-            'color_code': variant.product_color.color.code or '#cccccc',
-            'size_id': variant.size.id,
-            'size_name': variant.size.name,
+            'color_id': color.id,
+            'color_name': color.name,
+            'color_code': color.code or '#cccccc',
+            'size_id': size.id,
+            'size_name': size.name,
             'stock': variant.stock,
             'stock_display': stock_display,
             'stock_message': stock_message,
             'price': float(product.price),
             'image': variant.product_color.featured_image.image.url if variant.product_color.featured_image and variant.product_color.featured_image.image else '',
         })
-    
-    # Get unique colors
-    unique_colors = []
-    seen_color_ids = set()
-    for variant in variants:
-        color_id = variant.product_color.color.id
-        if color_id not in seen_color_ids:
-            seen_color_ids.add(color_id)
+        
+        if color.id not in seen_color_ids:
+            seen_color_ids.add(color.id)
             unique_colors.append({
-                'id': color_id,
-                'name': variant.product_color.color.name,
-                'code': variant.product_color.color.code or '#cccccc',
+                'id': color.id,
+                'name': color.name,
+                'code': color.code or '#cccccc',
             })
-    
-    # Get unique sizes
-    unique_sizes = []
-    seen_size_ids = set()
-    for variant in variants:
-        size_id = variant.size.id
-        if size_id not in seen_size_ids:
-            seen_size_ids.add(size_id)
+        
+        if size.id not in seen_size_ids:
+            seen_size_ids.add(size.id)
             unique_sizes.append({
-                'id': size_id,
-                'name': variant.size.name,
+                'id': size.id,
+                'name': size.name,
             })
     
-    # Find featured image
-    featured_image = None
-    for img in gallery_images:
-        if img.get('is_featured'):
-            featured_image = img['image']
-            break
-    if not featured_image and gallery_images:
-        featured_image = gallery_images[0]['image']
-    
-    # Get related products
-    related_products = Product.objects.filter(
-        category=product.category,
-        is_active=True
-    ).exclude(id=product.id).select_related('category').prefetch_related('product_colors', 'product_colors__images')[:PRODUCT_LIMIT_RELATED]
-    
-    context = {
-        CONTEXT_PRODUCT: product,
+    return {
         CONTEXT_VARIANTS: variants,
         'unique_colors': unique_colors,
         'unique_sizes': unique_sizes,
-        'gallery_images': gallery_images,
-        'gallery_images_json': json.dumps(gallery_images),
-        'featured_image': featured_image,
         'variants_json': json.dumps(variants_data),
-        'related_products': related_products,
     }
-    return render(request, TEMPLATE_PRODUCT_DETAIL, context)
+
+
+def get_related_products(product, limit=PRODUCT_LIMIT_RELATED):
+    """Get related products from the same category."""
+    return Product.objects.filter(
+        category=product.category,
+        is_active=True
+    ).exclude(id=product.id).select_related(
+        'category'
+    ).prefetch_related(
+        'product_colors', 'product_colors__images'
+    )[:limit]
 
 
 # =============================================================================

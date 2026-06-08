@@ -119,3 +119,14 @@ STATUS_BADGE_TEMPLATE = '<span class="px-2 py-1 text-xs rounded-full {badge_clas
 
 # Default values
 DEFAULT_EMPTY_VALUE = '—'
+
+# Perms
+PERM_USER_VIEW = 'users.view_user'
+PERM_USER_ADD = 'users.add_user'
+PERM_USER_CHANGE = 'users.change_user'
+PERM_USER_DELETE = 'users.delete_user'
+
+PERM_GROUP_VIEW = 'users.view_group'
+PERM_GROUP_ADD = 'users.add_group'
+PERM_GROUP_CHANGE = 'users.change_group'
+PERM_GROUP_DELETE = 'users.delete_group'

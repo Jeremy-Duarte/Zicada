@@ -7,6 +7,33 @@ from apps.products.models import Collection, Product
 from apps.core.crud.widgets import CloudinarySingleImageWidget, SortableOrderWidget
 from apps.core.utils import safe_reverse
 
+# =============================================================================
+# CONSTANTS
+# =============================================================================
+
+# Valores por defecto para botón
+DEFAULT_BUTTON_BG = 'bg-zicada-accent'
+DEFAULT_BUTTON_HOVER = 'hover:bg-red-700'
+DEFAULT_BUTTON_TEXT_COLOR = 'text-white'
+DEFAULT_BUTTON_BORDER_RADIUS = 'rounded-lg'
+DEFAULT_BUTTON_SIZE = 'px-8 py-3 text-lg'
+DEFAULT_BUTTON_SHADOW = 'shadow-lg'
+DEFAULT_BUTTON_WIDTH = 'inline-block'
+
+# Textos de opciones duplicados
+LABEL_WHITE = '⚪ Blanco'
+LABEL_RED_DARKER = '🔴 Rojo más oscuro'
+LABEL_LARGE_RECOMMENDED = 'Grande (recomendado)'
+
+# Valores para parseo de estilos
+FALLBACK_BUTTON_BG = 'bg-zicada-accent'
+FALLBACK_BUTTON_HOVER = 'hover:bg-red-700'
+FALLBACK_BUTTON_TEXT_COLOR = 'text-white'
+FALLBACK_BUTTON_BORDER_RADIUS = 'rounded-lg'
+FALLBACK_BUTTON_SIZE = 'px-8 py-3 text-lg'
+FALLBACK_BUTTON_SHADOW = 'shadow-lg'
+FALLBACK_BUTTON_WIDTH = 'inline-block'
+
 class ContactForm(FormStyleMixin, forms.Form):
     
     name = forms.CharField(
@@ -146,9 +173,9 @@ LINE_HEIGHT_CHOICES = [
 MARGIN_CHOICES = SIZE_CHOICES
 
 BUTTON_BG_CHOICES = [
-    ('bg-zicada-accent', '🔴 Rojo Zicada'),
+    (DEFAULT_BUTTON_BG, '🔴 Rojo Zicada'),
     ('bg-black', '⚫ Negro'),
-    ('bg-white', '⚪ Blanco'),
+    ('bg-white', LABEL_WHITE),
     ('bg-gray-800', '🌑 Gris oscuro'),
     ('bg-gray-100', '☁️ Gris claro'),
     ('bg-blue-600', '💙 Azul'),
@@ -160,7 +187,7 @@ BUTTON_BG_CHOICES = [
 
 # Opciones para colores hover
 BUTTON_HOVER_CHOICES = [
-    ('hover:bg-red-700', '🔴 Rojo más oscuro'),
+    (DEFAULT_BUTTON_HOVER, LABEL_RED_DARKER),
     ('hover:bg-gray-700', '⚫ Negro más oscuro'),
     ('hover:bg-gray-100', '⚪ Gris claro'),
     ('hover:bg-gray-900', '🌑 Negro intenso'),
@@ -174,7 +201,7 @@ BUTTON_HOVER_CHOICES = [
 
 # Opciones para color de texto
 BUTTON_TEXT_COLOR_CHOICES = [
-    ('text-white', '⚪ Blanco'),
+    (DEFAULT_BUTTON_TEXT_COLOR, LABEL_WHITE),
     ('text-gray-900', '⚫ Negro'),
     ('text-gray-700', '🌑 Gris oscuro'),
     ('text-gray-500', '🌫️ Gris medio'),
@@ -197,7 +224,7 @@ BUTTON_SIZE_CHOICES = [
     ('px-3 py-1.5 text-sm', 'Pequeño'),
     ('px-4 py-2 text-base', 'Mediano'),
     ('px-6 py-2.5 text-base', 'Mediano-grande'),
-    ('px-8 py-3 text-lg', 'Grande (recomendado)'),
+    (DEFAULT_BUTTON_SIZE, LABEL_LARGE_RECOMMENDED),
     ('px-10 py-4 text-xl', 'Muy grande'),
 ]
 
@@ -258,8 +285,29 @@ class HeroConfigCreateForm(FormStyleMixin, forms.ModelForm):
     
     class Meta:
         model = HeroConfig
-        fields = '__all__'
-        exclude = ['button_style']  # Excluir button_style porque lo construimos
+        fields = [
+            'background_image',
+            'overlay_opacity',
+            'title_text',
+            'title_font_family',
+            'title_font_size',
+            'title_font_weight',
+            'title_line_height',
+            'title_color',
+            'title_margin_bottom',
+            'subtitle_text',
+            'subtitle_font_family',
+            'subtitle_font_size',
+            'subtitle_font_weight',
+            'subtitle_line_height',
+            'subtitle_color',
+            'subtitle_margin_bottom',
+            'button_text',
+            'button_url',
+            'content_alignment',
+            'section_height',
+            'sort_order',
+        ]
         widgets = {
             'background_image': CloudinarySingleImageWidget(),
             'overlay_opacity': forms.NumberInput(attrs={'min': 0, 'max': 1, 'step': 0.1}),
@@ -294,13 +342,13 @@ class HeroConfigCreateForm(FormStyleMixin, forms.ModelForm):
                 field.widget.attrs.setdefault('class', 'w-full')
         
         # Valores por defecto para los campos del botón
-        self.fields['button_bg_color'].initial = 'bg-zicada-accent'
-        self.fields['button_hover_color'].initial = 'hover:bg-red-700'
-        self.fields['button_text_color'].initial = 'text-white'
-        self.fields['button_border_radius'].initial = 'rounded-lg'
-        self.fields['button_size'].initial = 'px-8 py-3 text-lg'
-        self.fields['button_shadow'].initial = 'shadow-lg'
-        self.fields['button_width'].initial = 'inline-block'
+        self.fields['button_bg_color'].initial = DEFAULT_BUTTON_BG
+        self.fields['button_hover_color'].initial = DEFAULT_BUTTON_HOVER
+        self.fields['button_text_color'].initial = DEFAULT_BUTTON_TEXT_COLOR
+        self.fields['button_border_radius'].initial = DEFAULT_BUTTON_BORDER_RADIUS
+        self.fields['button_size'].initial = DEFAULT_BUTTON_SIZE
+        self.fields['button_shadow'].initial = DEFAULT_BUTTON_SHADOW
+        self.fields['button_width'].initial = DEFAULT_BUTTON_WIDTH
     
     def clean_title_text(self):
         title = self.cleaned_data.get('title_text', '').strip()
@@ -333,10 +381,43 @@ class HeroConfigCreateForm(FormStyleMixin, forms.ModelForm):
         return instance
 
 
-class HeroConfigUpdateForm(FormStyleMixin, SortableUpdateMixin, forms.ModelForm):
+class HeroConfigUpdateForm(FormStyleMixin, SortableUpdateMixin, forms.ModelForm):    
+    # Definición de mapping para parseo de estilos
+    BUTTON_STYLE_FIELDS = [
+        ('button_bg_color', BUTTON_BG_CHOICES, FALLBACK_BUTTON_BG),
+        ('button_hover_color', BUTTON_HOVER_CHOICES, FALLBACK_BUTTON_HOVER),
+        ('button_text_color', BUTTON_TEXT_COLOR_CHOICES, FALLBACK_BUTTON_TEXT_COLOR),
+        ('button_border_radius', BUTTON_BORDER_CHOICES, FALLBACK_BUTTON_BORDER_RADIUS),
+        ('button_size', BUTTON_SIZE_CHOICES, FALLBACK_BUTTON_SIZE),
+        ('button_shadow', BUTTON_SHADOW_CHOICES, FALLBACK_BUTTON_SHADOW),
+        ('button_width', BUTTON_WIDTH_CHOICES, FALLBACK_BUTTON_WIDTH),
+    ]
+    
     class Meta:
         model = HeroConfig
-        exclude = ['sort_order', 'created_at', 'updated_at', 'deleted_at', 'created_by', 'updated_by', 'button_style']
+        fields = [
+            'background_image',
+            'overlay_opacity',
+            'title_text',
+            'title_font_family',
+            'title_font_size',
+            'title_font_weight',
+            'title_line_height',
+            'title_color',
+            'title_margin_bottom',
+            'subtitle_text',
+            'subtitle_font_family',
+            'subtitle_font_size',
+            'subtitle_font_weight',
+            'subtitle_line_height',
+            'subtitle_color',
+            'subtitle_margin_bottom',
+            'button_text',
+            'button_url',
+            'content_alignment',
+            'section_height',
+            'is_active',
+        ]
         widgets = {
             'background_image': CloudinarySingleImageWidget(),
             'overlay_opacity': forms.NumberInput(attrs={'min': 0, 'max': 1, 'step': 0.1, 'class': 'w-full'}),
@@ -383,9 +464,8 @@ class HeroConfigUpdateForm(FormStyleMixin, SortableUpdateMixin, forms.ModelForm)
         self.sortable_queryset = HeroConfig.objects.filter(is_active=True).order_by('sort_order')
         self._setup_sortable_widget()
         
-        # Valores por defecto para los campos del botón
-        default_button_style = 'bg-zicada-accent hover:bg-red-700 text-white rounded-lg px-8 py-3 text-lg shadow-lg inline-block'
-        
+        default_button_style = f'{DEFAULT_BUTTON_BG} {DEFAULT_BUTTON_HOVER} {DEFAULT_BUTTON_TEXT_COLOR} {DEFAULT_BUTTON_BORDER_RADIUS} {DEFAULT_BUTTON_SIZE} {DEFAULT_BUTTON_SHADOW} {DEFAULT_BUTTON_WIDTH} font-semibold transition-all duration-300 transform hover:scale-105 inline-block text-center'
+
         if self.instance.pk:
             self.fields['section_height'].initial = self.instance.section_height
             self.fields['title_font_size'].initial = self.instance.title_font_size
@@ -401,60 +481,18 @@ class HeroConfigUpdateForm(FormStyleMixin, SortableUpdateMixin, forms.ModelForm)
                 self.fields['button_url'].choices = list(self.fields['button_url'].choices) + [(current_url, current_url[:50] + '...')]
                 self.fields['button_url'].initial = current_url
             
-            # Parsear estilos actuales del botón
             current_style = self.instance.button_style or default_button_style
             self._parse_button_style(current_style)
     
     def _parse_button_style(self, style):
-        """Parsea el estilo actual del botón para inicializar los campos"""
-        for choice in BUTTON_BG_CHOICES:
-            if choice[0] in style:
-                self.fields['button_bg_color'].initial = choice[0]
-                break
-        else:
-            self.fields['button_bg_color'].initial = 'bg-zicada-accent'
-        
-        for choice in BUTTON_HOVER_CHOICES:
-            if choice[0] in style:
-                self.fields['button_hover_color'].initial = choice[0]
-                break
-        else:
-            self.fields['button_hover_color'].initial = 'hover:bg-red-700'
-        
-        for choice in BUTTON_TEXT_COLOR_CHOICES:
-            if choice[0] in style:
-                self.fields['button_text_color'].initial = choice[0]
-                break
-        else:
-            self.fields['button_text_color'].initial = 'text-white'
-        
-        for choice in BUTTON_BORDER_CHOICES:
-            if choice[0] in style:
-                self.fields['button_border_radius'].initial = choice[0]
-                break
-        else:
-            self.fields['button_border_radius'].initial = 'rounded-lg'
-        
-        for choice in BUTTON_SIZE_CHOICES:
-            if choice[0] in style:
-                self.fields['button_size'].initial = choice[0]
-                break
-        else:
-            self.fields['button_size'].initial = 'px-8 py-3 text-lg'
-        
-        for choice in BUTTON_SHADOW_CHOICES:
-            if choice[0] in style:
-                self.fields['button_shadow'].initial = choice[0]
-                break
-        else:
-            self.fields['button_shadow'].initial = 'shadow-lg'
-        
-        for choice in BUTTON_WIDTH_CHOICES:
-            if choice[0] in style:
-                self.fields['button_width'].initial = choice[0]
-                break
-        else:
-            self.fields['button_width'].initial = 'inline-block'
+        """Parsea el estilo del botón e inicializa los campos correspondientes."""
+        for field_name, choices, fallback in self.BUTTON_STYLE_FIELDS:
+            for choice_value, _ in choices:
+                if choice_value in style:
+                    self.fields[field_name].initial = choice_value
+                    break
+            else:
+                self.fields[field_name].initial = fallback
     
     def save(self, commit=True):
         instance = super().save(commit=False)

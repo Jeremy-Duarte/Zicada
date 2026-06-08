@@ -9,6 +9,35 @@ from django.core.management import call_command
 from django.contrib import messages
 
 
+# =============================================================================
+# CONSTANTES PARA ADMIN
+# =============================================================================
+
+# Strings duplicados
+SECTION_AUDITORIA = 'Auditoría'
+SECTION_IMAGENES = 'Imágenes'
+SECTION_INFORMACION_BASICA = 'Información básica'
+SECTION_STOCK = 'Stock e inventario'
+
+# Estilos CSS duplicados
+STYLE_COLOR_PICKER = 'width: 60px; height: 35px; cursor: pointer;'
+
+# Valores por defecto
+DEFAULT_BORDER_RADIUS = '0.5rem'
+DEFAULT_BOX_SHADOW = '0 1px 3px 0 rgba(0,0,0,0.1)'
+
+# Etiquetas de sección
+LABEL_CARD_CONFIG = '🎴 Configuración de tarjetas de producto'
+LABEL_STYLE_CONFIG = 'Configuración visual (JSON legado)'
+LABEL_EFFECTS = '✨ Efectos avanzados'
+LABEL_TYPOGRAPHY = '✍️ Tipografía'
+LABEL_BG_IMAGE = '🖼️ Imagen de fondo'
+LABEL_COLORS = '🎨 Colores de la colección'
+LABEL_COVER = '🎨 Imagen de portada'
+LABEL_DATES = 'Fechas de vigencia'
+LABEL_INFO = 'Información de la colección'
+
+
 @admin.register(Size)
 class SizeAdmin(admin.ModelAdmin):
     list_display = ('name', 'sort_order')
@@ -31,6 +60,7 @@ class CategoryAdmin(admin.ModelAdmin):
         return f"{count} productos"
     product_count.short_description = 'Productos'
 
+
 @admin.register(ProductImage)
 class ProductImageAdmin(admin.ModelAdmin):
     list_display = ('id', 'image_preview', 'alt_text', 'created_at')
@@ -42,7 +72,8 @@ class ProductImageAdmin(admin.ModelAdmin):
     fieldsets = (
         ('Imagen', {
             'fields': ('image', 'alt_text')
-        }),        ('Información', {
+        }),
+        ('Información', {
             'fields': ('created_at',),
             'classes': ('collapse',)
         }),
@@ -53,6 +84,7 @@ class ProductImageAdmin(admin.ModelAdmin):
             return format_html('<img src="{}" width="50" height="50" style="object-fit: cover;" />', obj.image.url)
         return "Sin imagen"
     image_preview.short_description = 'Vista previa'
+
 
 class ProductColorInline(admin.TabularInline):
     model = ProductColor
@@ -91,7 +123,7 @@ class ColorAdmin(admin.ModelAdmin):
     def get_form(self, request, obj=None, **kwargs):
         form = super().get_form(request, obj, **kwargs)
         form.base_fields['code'].widget = admin.widgets.AdminTextInputWidget(
-            attrs={'type': 'color', 'style': 'width: 80px; height: 35px; cursor: pointer;'}
+            attrs={'type': 'color', 'style': STYLE_COLOR_PICKER}
         )
         return form
     
@@ -104,6 +136,7 @@ class ColorAdmin(admin.ModelAdmin):
         return "—"
     color_preview.short_description = 'Vista previa'
 
+
 @admin.register(ProductColor)
 class ProductColorAdmin(admin.ModelAdmin):
     list_display = ('product', 'color', 'sort_order', 'images_count', 'featured_image_preview')
@@ -114,10 +147,10 @@ class ProductColorAdmin(admin.ModelAdmin):
     filter_horizontal = ('images',)
     
     fieldsets = (
-        ('Información', {
+        (SECTION_INFORMACION_BASICA, {
             'fields': ('product', 'color', 'sort_order')
         }),
-        ('Imágenes', {
+        (SECTION_IMAGENES, {
             'fields': ('images', 'featured_image'),
             'description': 'Selecciona las imágenes para este color. La imagen destacada será la principal.'
         }),
@@ -154,14 +187,14 @@ class ProductAdmin(admin.ModelAdmin):
     date_hierarchy = 'created_at'
     
     fieldsets = (
-        ('Información básica', {
+        (SECTION_INFORMACION_BASICA, {
             'fields': ('name', 'slug', 'description', 'category', 'price', 'product_type')
         }),
-        ('Stock e inventario', {
+        (SECTION_STOCK, {
             'fields': ('total_stock',),
             'classes': ('collapse',)
         }),
-        ('Auditoría', {
+        (SECTION_AUDITORIA, {
             'fields': ('is_active', 'created_at', 'updated_at', 'created_by', 'updated_by'),
             'classes': ('collapse',)
         }),
@@ -217,7 +250,7 @@ class ProductVariantAdmin(admin.ModelAdmin):
             'fields': ('sku',),
             'classes': ('collapse',)
         }),
-        ('Auditoría', {
+        (SECTION_AUDITORIA, {
             'fields': ('is_active', 'created_at', 'updated_at', 'created_by', 'updated_by'),
             'classes': ('collapse',)
         }),
@@ -250,35 +283,35 @@ class CollectionStyleForm(forms.ModelForm):
     card_background_color = forms.CharField(
         max_length=20, 
         required=False, 
-        widget=forms.TextInput(attrs={'type': 'color', 'style': 'width: 60px; height: 35px; cursor: pointer;'}),
+        widget=forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_PICKER}),
         label='Color de fondo de tarjetas',
         help_text='Color de fondo de las tarjetas de producto'
     )
     card_title_color = forms.CharField(
         max_length=20, 
         required=False, 
-        widget=forms.TextInput(attrs={'type': 'color', 'style': 'width: 60px; height: 35px; cursor: pointer;'}),
+        widget=forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_PICKER}),
         label='Color del título',
         help_text='Color del nombre del producto'
     )
     card_price_color = forms.CharField(
         max_length=20, 
         required=False, 
-        widget=forms.TextInput(attrs={'type': 'color', 'style': 'width: 60px; height: 35px; cursor: pointer;'}),
+        widget=forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_PICKER}),
         label='Color del precio',
         help_text='Color del precio del producto'
     )
     card_border_radius = forms.CharField(
         max_length=20, 
         required=False, 
-        initial='0.5rem',
+        initial=DEFAULT_BORDER_RADIUS,
         label='Radio de borde',
         help_text='Ej: 0.5rem, 1rem, 8px, 12px'
     )
     card_shadow = forms.CharField(
         max_length=200, 
         required=False, 
-        initial='0 1px 3px 0 rgba(0,0,0,0.1)',
+        initial=DEFAULT_BOX_SHADOW,
         label='Sombra de tarjeta',
         help_text='CSS box-shadow. Ej: 0 10px 15px -3px rgba(0,0,0,0.1)'
     )
@@ -305,12 +338,23 @@ class CollectionStyleForm(forms.ModelForm):
     
     class Meta:
         model = Collection
-        fields = '__all__'
+        fields = [
+            'name', 'slug', 'description', 'status', 'products',
+            'start_date', 'end_date',
+            'cover_image',
+            'primary_color', 'secondary_color', 'background_color', 'text_color',
+            'background_image',
+            'title_font',
+            'effects_config',
+            'custom_css',
+            'style_config',
+            'is_active',
+        ]
         widgets = {
-            'primary_color': forms.TextInput(attrs={'type': 'color', 'style': 'width: 60px; height: 35px; cursor: pointer;'}),
-            'secondary_color': forms.TextInput(attrs={'type': 'color', 'style': 'width: 60px; height: 35px; cursor: pointer;'}),
-            'background_color': forms.TextInput(attrs={'type': 'color', 'style': 'width: 60px; height: 35px; cursor: pointer;'}),
-            'text_color': forms.TextInput(attrs={'type': 'color', 'style': 'width: 60px; height: 35px; cursor: pointer;'}),
+            'primary_color': forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_PICKER}),
+            'secondary_color': forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_PICKER}),
+            'background_color': forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_PICKER}),
+            'text_color': forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_PICKER}),
             'custom_css': forms.Textarea(attrs={'rows': 8, 'style': 'font-family: monospace;'}),
             'effects_config': forms.Textarea(attrs={'rows': 6, 'style': 'font-family: monospace;', 'placeholder': '{\n  "hover_effect": "zoom",\n  "animation": "fadeIn"\n}'}),
         }
@@ -322,30 +366,29 @@ class CollectionStyleForm(forms.ModelForm):
             self.fields['card_background_color'].initial = card_config.get('background_color', self.instance.background_color or '#ffffff')
             self.fields['card_title_color'].initial = card_config.get('title_color', self.instance.primary_color or '#c2a575')
             self.fields['card_price_color'].initial = card_config.get('price_color', self.instance.primary_color or '#c2a575')
-            self.fields['card_border_radius'].initial = card_config.get('border_radius', '0.5rem')
-            self.fields['card_shadow'].initial = card_config.get('shadow', '0 1px 3px 0 rgba(0,0,0,0.1)')
+            self.fields['card_border_radius'].initial = card_config.get('border_radius', DEFAULT_BORDER_RADIUS)
+            self.fields['card_shadow'].initial = card_config.get('shadow', DEFAULT_BOX_SHADOW)
             self.fields['card_hover_scale'].initial = card_config.get('hover_scale', 1.05)
             self.fields['card_show_category'].initial = card_config.get('show_category', True)
             self.fields['card_show_stock_badge'].initial = card_config.get('show_stock_badge', True)
     
-    def save(self, commit=True):
-        instance = super().save(commit=False)
-        
-        card_config = {
-            'background_color': self.cleaned_data.get('card_background_color') or instance.background_color or '#ffffff',
-            'title_color': self.cleaned_data.get('card_title_color') or instance.primary_color or '#c2a575',
-            'price_color': self.cleaned_data.get('card_price_color') or instance.primary_color or '#c2a575',
+    def _build_card_config(self, instance, cleaned_data):
+        """Construye la configuración de tarjetas a partir de los datos del formulario."""
+        return {
+            'background_color': cleaned_data.get('card_background_color') or instance.background_color or '#ffffff',
+            'title_color': cleaned_data.get('card_title_color') or instance.primary_color or '#c2a575',
+            'price_color': cleaned_data.get('card_price_color') or instance.primary_color or '#c2a575',
             'badge_background': instance.primary_color or '#c2a575',
             'badge_text_color': '#ffffff',
-            'border_radius': self.cleaned_data.get('card_border_radius') or '0.5rem',
-            'shadow': self.cleaned_data.get('card_shadow') or '0 1px 3px 0 rgba(0,0,0,0.1)',
-            'hover_scale': float(self.cleaned_data.get('card_hover_scale') or 1.05),
-            'show_category': self.cleaned_data.get('card_show_category', True),
-            'show_stock_badge': self.cleaned_data.get('card_show_stock_badge', True),
+            'border_radius': cleaned_data.get('card_border_radius') or DEFAULT_BORDER_RADIUS,
+            'shadow': cleaned_data.get('card_shadow') or DEFAULT_BOX_SHADOW,
+            'hover_scale': float(cleaned_data.get('card_hover_scale') or 1.05),
+            'show_category': cleaned_data.get('card_show_category', True),
+            'show_stock_badge': cleaned_data.get('card_show_stock_badge', True),
         }
-        
-        style_config = instance.style_config or {}
-        
+    
+    def _ensure_colors_config(self, style_config, instance):
+        """Asegura que la configuración de colores exista en style_config."""
         if 'colors' not in style_config:
             style_config['colors'] = {
                 'primary': instance.primary_color or '#c2a575',
@@ -353,11 +396,25 @@ class CollectionStyleForm(forms.ModelForm):
                 'background': instance.background_color or '#ffffff',
                 'text': instance.text_color or '#1a1a1a',
             }
+        return style_config
+    
+    def _ensure_typography_config(self, style_config, instance):
+        """Asegura que la configuración de tipografía exista en style_config."""
         if 'typography' not in style_config:
             style_config['typography'] = {
                 'title_font': instance.title_font or "'Inter', sans-serif",
             }
+        return style_config
+    
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        cleaned_data = self.cleaned_data
         
+        card_config = self._build_card_config(instance, cleaned_data)
+        
+        style_config = instance.style_config or {}
+        style_config = self._ensure_colors_config(style_config, instance)
+        style_config = self._ensure_typography_config(style_config, instance)
         style_config['card_config'] = card_config
         
         instance.style_config = style_config
@@ -365,6 +422,7 @@ class CollectionStyleForm(forms.ModelForm):
         if commit:
             instance.save()
         return instance
+
 
 @admin.register(Collection)
 class CollectionAdmin(admin.ModelAdmin):
@@ -378,76 +436,106 @@ class CollectionAdmin(admin.ModelAdmin):
     list_per_page = 20
     date_hierarchy = 'created_at'
     
-    fieldsets = (
-        ('Información de la colección', {
-            'fields': ('name', 'slug', 'description', 'status', 'products')
-        }),
-        ('Fechas de vigencia', {
-            'fields': ('start_date', 'end_date'),
-            'classes': ('collapse',)
-        }),
-        ('🎨 Imagen de portada', {
-            'fields': ('cover_image',),
-            'description': 'Imagen que aparecerá en la tarjeta de la colección (recomendado: 800x600px)'
-        }),
-        ('🎨 Colores de la colección', {
-            'fields': (('primary_color', 'secondary_color'), ('background_color', 'text_color')),
-            'description': 'Define la paleta de colores única para esta colección',
-            'classes': ('wide',)
-        }),
-        ('🖼️ Imagen de fondo', {
-            'fields': ('background_image',),
-            'classes': ('collapse',),
-            'description': 'Imagen de fondo para la página de la colección (opcional)'
-        }),
-        ('✍️ Tipografía', {
-            'fields': ('title_font',),
-            'classes': ('collapse',),
-            'description': 'Fuente personalizada para los títulos de esta colección.<br>Ejemplos: "Playfair Display", serif | "Poppins", sans-serif | "Montserrat", sans-serif'
-        }),
-        ('✨ Efectos avanzados', {
-            'fields': ('effects_config',),
-            'classes': ('collapse',),
-            'description': '''
-                <details>
-                    <summary>📝 Configuración JSON para efectos (click para ver ejemplo)</summary>
-                    <pre style="background: #f5f5f5; padding: 10px; border-radius: 5px;">
+    def get_fieldsets(self, request, obj=None):
+        """Construye los fieldsets dinámicamente para reducir complejidad cognitiva."""
+        fieldsets = []
+        fieldsets.extend(self._get_base_fieldsets(request, obj))
+        fieldsets.extend(self._get_style_fieldsets(request, obj))
+        fieldsets.extend(self._get_card_fieldsets(request, obj))
+        fieldsets.extend(self._get_legacy_fieldsets(request, obj))
+        return fieldsets
+    
+    def _get_base_fieldsets(self, request, obj=None):
+        """Retorna los fieldsets base de la colección."""
+        return [
+            (LABEL_INFO, {
+                'fields': ('name', 'slug', 'description', 'status', 'products')
+            }),
+            (LABEL_DATES, {
+                'fields': ('start_date', 'end_date'),
+                'classes': ('collapse',)
+            }),
+            (LABEL_COVER, {
+                'fields': ('cover_image',),
+                'description': 'Imagen que aparecerá en la tarjeta de la colección (recomendado: 800x600px)'
+            }),
+        ]
+    
+    def _get_style_fieldsets(self, request, obj=None):
+        """Retorna los fieldsets de estilos de la colección."""
+        return [
+            (LABEL_COLORS, {
+                'fields': (('primary_color', 'secondary_color'), ('background_color', 'text_color')),
+                'description': 'Define la paleta de colores única para esta colección',
+                'classes': ('wide',)
+            }),
+            (LABEL_BG_IMAGE, {
+                'fields': ('background_image',),
+                'classes': ('collapse',),
+                'description': 'Imagen de fondo para la página de la colección (opcional)'
+            }),
+            (LABEL_TYPOGRAPHY, {
+                'fields': ('title_font',),
+                'classes': ('collapse',),
+                'description': 'Fuente personalizada para los títulos de esta colección.<br>Ejemplos: "Playfair Display", serif | "Poppins", sans-serif | "Montserrat", sans-serif'
+            }),
+            (LABEL_EFFECTS, {
+                'fields': ('effects_config',),
+                'classes': ('collapse',),
+                'description': self._get_effects_description()
+            }),
+            ('🎨 CSS personalizado', {
+                'fields': ('custom_css',),
+                'classes': ('collapse',),
+                'description': 'CSS adicional para personalizar aún más la apariencia de esta colección (solo si sabes lo que haces)'
+            }),
+        ]
+    
+    def _get_card_fieldsets(self, request, obj=None):
+        """Retorna los fieldsets de configuración de tarjetas."""
+        return [
+            (LABEL_CARD_CONFIG, {
+                'fields': (
+                    ('card_background_color', 'card_title_color'),
+                    ('card_price_color', 'card_border_radius'),
+                    ('card_shadow', 'card_hover_scale'),
+                    'card_show_category',
+                    'card_show_stock_badge',
+                ),
+                'classes': ('wide',),
+                'description': 'Personaliza la apariencia de las tarjetas de producto dentro de esta colección'
+            }),
+        ]
+    
+    def _get_legacy_fieldsets(self, request, obj=None):
+        """Retorna los fieldsets de configuración legada."""
+        return [
+            (LABEL_STYLE_CONFIG, {
+                'fields': ('style_config',),
+                'classes': ('collapse',),
+                'description': 'JSON manual (solo para casos avanzados, los campos anteriores ya generan esto automáticamente)'
+            }),
+            (SECTION_AUDITORIA, {
+                'fields': ('is_active', 'created_at', 'updated_at', 'created_by', 'updated_by'),
+                'classes': ('collapse',)
+            }),
+        ]
+    
+    def _get_effects_description(self):
+        """Retorna la descripción HTML para la configuración de efectos."""
+        return '''
+            <details>
+                <summary>📝 Configuración JSON para efectos (click para ver ejemplo)</summary>
+                <pre style="background: #f5f5f5; padding: 10px; border-radius: 5px;">
     {
     "hover_effect": "zoom",
     "card_animation": "fadeInUp",
     "parallax": true,
     "particles": false
     }
-                    </pre>
-                </details>
-            '''
-        }),
-        ('🎨 CSS personalizado', {
-            'fields': ('custom_css',),
-            'classes': ('collapse',),
-            'description': 'CSS adicional para personalizar aún más la apariencia de esta colección (solo si sabes lo que haces)'
-        }),
-        ('🎴 Configuración de tarjetas de producto', {
-            'fields': (
-                ('card_background_color', 'card_title_color'),
-                ('card_price_color', 'card_border_radius'),
-                ('card_shadow', 'card_hover_scale'),
-                'card_show_category',
-                'card_show_stock_badge',
-            ),
-            'classes': ('wide',),
-            'description': 'Personaliza la apariencia de las tarjetas de producto dentro de esta colección'
-        }),
-        ('Configuración visual (JSON legado)', {
-            'fields': ('style_config',),
-            'classes': ('collapse',),
-            'description': 'JSON manual (solo para casos avanzados, los campos anteriores ya generan esto automáticamente)'
-        }),
-        ('Auditoría', {
-            'fields': ('is_active', 'created_at', 'updated_at', 'created_by', 'updated_by'),
-            'classes': ('collapse',)
-        }),
-    )
+                </pre>
+            </details>
+        '''
     
     def product_count(self, obj):
         count = obj.products.count()

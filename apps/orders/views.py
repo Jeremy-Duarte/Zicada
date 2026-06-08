@@ -139,6 +139,10 @@ from .constants import (
     ALLOWED_ADD_ITEMS_STATUSES,
     # Date format
     DATE_FORMAT_DISPLAY,
+    # Perms
+    PERM_ORDER_VIEW,
+    PERM_ORDER_ADD,
+    PERM_ORDER_CHANGE,
 )
 
 
@@ -298,7 +302,7 @@ def cart_remove(request):
             'total_items': cart.get_total_items(),
         })
         
-    except Exception as e:
+    except Exception:
         logger.exception("Error in cart_remove")
         return JsonResponse({'error': MSG_REMOVE_ERROR}, status=400)
 
@@ -474,11 +478,31 @@ def cart_detail(request):
 def checkout(request):
     """Checkout page - collects customer information."""
     cart = Cart(request)
+    
+    # Validaciones iniciales
+    if not _validate_cart_not_empty(request, cart):
+        return redirect(PRODUCTS_CATALOG)
+    
+    if not _validate_cart_stock(request, cart):
+        return redirect(ORDERS_CART_DETAIL)
+    
+    # Procesar POST o mostrar formulario
+    if request.method == 'POST':
+        return _process_checkout_form(request, cart)
+    
+    return _render_checkout_form(request, cart)
 
+
+def _validate_cart_not_empty(request, cart):
+    """Valida que el carrito no esté vacío. Retorna False si está vacío."""
     if cart.is_empty():
         messages.warning(request, MESSAGE_CART_EMPTY)
-        return redirect(PRODUCTS_CATALOG)
+        return False
+    return True
 
+
+def _validate_cart_stock(request, cart):
+    """Valida el stock del carrito. Retorna False si hay errores."""
     stock_errors = cart.validate_stock()
     if stock_errors:
         for error in stock_errors:
@@ -487,37 +511,60 @@ def checkout(request):
                 f'"{error["name"]}" ({error["size"]}, {error["color"]}): '
                 f'solicitado {error["requested"]}, disponible {error["available"]}'
             )
-        return redirect(ORDERS_CART_DETAIL)
+        return False
+    return True
 
-    if request.method == 'POST':
-        form = CheckoutOrderForm(request.POST)
-        if form.is_valid():
-            cleaned_data = form.cleaned_data
-            request.session['checkout_data'] = {
-                'customer_name': cleaned_data['customer_name'],
-                'customer_phone': cleaned_data['customer_phone'],
-                'customer_email': cleaned_data['customer_email'],
-                'shipping_address': cleaned_data['shipping_address'],
-                'delivery_notes': cleaned_data['delivery_notes'],
-            }
-            return redirect(ORDERS_CREATE_STRIPE_SESSION)
-        else:
-            for field, errors in form.errors.items():
-                for error in errors:
-                    field_label = form.fields[field].label if field in form.fields else field
-                    messages.error(request, f'{field_label}: {error}')
-    else:
-        form = CheckoutOrderForm()
 
+def _process_checkout_form(request, cart):
+    """Procesa el formulario de checkout enviado por POST."""
+    form = CheckoutOrderForm(request.POST)
+    
+    if form.is_valid():
+        _save_checkout_data_to_session(request, form.cleaned_data)
+        return redirect(ORDERS_CREATE_STRIPE_SESSION)
+    
+    _add_form_errors_to_messages(request, form)
+    return _render_checkout_form(request, cart, form=form)
+
+
+def _save_checkout_data_to_session(request, cleaned_data):
+    """Guarda los datos del checkout en la sesión."""
+    request.session['checkout_data'] = {
+        'customer_name': cleaned_data['customer_name'],
+        'customer_phone': cleaned_data['customer_phone'],
+        'customer_email': cleaned_data['customer_email'],
+        'shipping_address': cleaned_data['shipping_address'],
+        'delivery_notes': cleaned_data['delivery_notes'],
+    }
+
+
+def _add_form_errors_to_messages(request, form):
+    """Añade los errores del formulario a los mensajes de Django."""
+    for field, errors in form.errors.items():
+        for error in errors:
+            field_label = form.fields[field].label if field in form.fields else field
+            messages.error(request, f'{field_label}: {error}')
+
+
+def _get_cart_summary_context(cart):
+    """Obtiene el resumen del carrito para el contexto."""
     summary = cart.get_summary()
+    return {
+        'items': summary['items'],
+        'subtotal': float(summary['subtotal']),
+        'shipping_cost': float(summary['shipping_cost']),
+        'total': float(summary['total']),
+    }
+
+
+def _render_checkout_form(request, cart, form=None):
+    """Renderiza el formulario de checkout."""
+    if form is None:
+        form = CheckoutOrderForm()
+    
     context = {
         'form': form,
-        'cart_summary': {
-            'items': summary['items'],
-            'subtotal': float(summary['subtotal']),
-            'shipping_cost': float(summary['shipping_cost']),
-            'total': float(summary['total']),
-        },
+        'cart_summary': _get_cart_summary_context(cart),
     }
     return render(request, TEMPLATE_CHECKOUT, context)
 
@@ -738,7 +785,7 @@ class OrderListView(PermissionRequiredMixin, PaginationMixin, FilterMixin, ListV
     model = Order
     template_name = TEMPLATE_ORDER_LIST
     context_object_name = 'orders'
-    permission_required = 'orders.view_order'
+    permission_required = PERM_ORDER_VIEW
     paginate_by = PAGINATE_BY_DEFAULT
 
     filters = [
@@ -789,7 +836,7 @@ class OrderCreateView(PermissionRequiredMixin, CreateView):
     model = Order
     form_class = OrderCreateForm
     template_name = TEMPLATE_ORDER_FORM
-    permission_required = 'orders.add_order'
+    permission_required = PERM_ORDER_ADD
     success_url = reverse_lazy(ORDERS_LIST)
 
     def get_context_data(self, **kwargs):
@@ -810,7 +857,7 @@ class OrderUpdateView(PermissionRequiredMixin, UpdateView):
     model = Order
     form_class = OrderUpdateForm
     template_name = TEMPLATE_ORDER_FORM
-    permission_required = 'orders.change_order'
+    permission_required = PERM_ORDER_CHANGE
     success_url = reverse_lazy(ORDERS_LIST)
 
     def get_context_data(self, **kwargs):
@@ -830,7 +877,7 @@ class OrderDetailView(PermissionRequiredMixin, DetailView):
     model = Order
     template_name = TEMPLATE_ORDER_DETAIL
     context_object_name = CONTEXT_ORDER
-    permission_required = 'orders.view_order'
+    permission_required = PERM_ORDER_VIEW
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -860,7 +907,7 @@ class OrderDetailView(PermissionRequiredMixin, DetailView):
 class OrderConfirmView(PermissionRequiredMixin, FormView):
     form_class = OrderConfirmForm
     template_name = TEMPLATE_ORDER_CONFIRM
-    permission_required = 'orders.change_order'
+    permission_required = PERM_ORDER_CHANGE
 
     def dispatch(self, request, *args, **kwargs):
         self.order = get_object_or_404(Order, pk=kwargs['pk'])
@@ -887,7 +934,7 @@ class OrderConfirmView(PermissionRequiredMixin, FormView):
 class OrderCancelView(PermissionRequiredMixin, FormView):
     form_class = OrderCancelForm
     template_name = TEMPLATE_ORDER_CANCEL
-    permission_required = 'orders.change_order'
+    permission_required = PERM_ORDER_CHANGE
 
     def dispatch(self, request, *args, **kwargs):
         self.order = get_object_or_404(Order, pk=kwargs['pk'])
@@ -913,7 +960,7 @@ class OrderCancelView(PermissionRequiredMixin, FormView):
 
 
 class OrderMarkPreparingView(PermissionRequiredMixin, View):
-    permission_required = 'orders.change_order'
+    permission_required = PERM_ORDER_CHANGE
 
     def post(self, request, pk):
         order = get_object_or_404(Order, pk=pk)
@@ -926,7 +973,7 @@ class OrderMarkPreparingView(PermissionRequiredMixin, View):
 
 
 class OrderMarkReadyView(PermissionRequiredMixin, View):
-    permission_required = 'orders.change_order'
+    permission_required = PERM_ORDER_CHANGE
 
     def post(self, request, pk):
         order = get_object_or_404(Order, pk=pk)
@@ -941,7 +988,7 @@ class OrderMarkReadyView(PermissionRequiredMixin, View):
 class OrderAssignDeliveryView(PermissionRequiredMixin, FormView):
     form_class = OrderAssignDeliveryForm
     template_name = TEMPLATE_ORDER_ASSIGN_DELIVERY
-    permission_required = 'orders.change_order'
+    permission_required = PERM_ORDER_CHANGE
 
     def dispatch(self, request, *args, **kwargs):
         self.order = get_object_or_404(Order, pk=kwargs['pk'])
@@ -969,7 +1016,7 @@ class OrderAssignDeliveryView(PermissionRequiredMixin, FormView):
 class OrderMarkAsDeliveredView(PermissionRequiredMixin, FormView):
     form_class = OrderMarkAsDeliveredForm
     template_name = TEMPLATE_ORDER_MARK_DELIVERED
-    permission_required = 'orders.change_order'
+    permission_required = PERM_ORDER_CHANGE
 
     def dispatch(self, request, *args, **kwargs):
         self.order = get_object_or_404(Order, pk=kwargs['pk'])
@@ -997,7 +1044,7 @@ class OrderItemCreateView(PermissionRequiredMixin, CreateView):
     model = OrderItem
     form_class = OrderItemCreateForm
     template_name = TEMPLATE_ORDER_ITEM_FORM
-    permission_required = 'orders.change_order'
+    permission_required = PERM_ORDER_CHANGE
 
     def dispatch(self, request, *args, **kwargs):
         self.order = get_object_or_404(Order, pk=kwargs['order_pk'])
@@ -1026,7 +1073,7 @@ class OrderItemUpdateView(PermissionRequiredMixin, UpdateView):
     model = OrderItem
     form_class = OrderItemUpdateForm
     template_name = TEMPLATE_ORDER_ITEM_FORM
-    permission_required = 'orders.change_order'
+    permission_required = PERM_ORDER_CHANGE
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -1049,7 +1096,7 @@ class OrderItemUpdateView(PermissionRequiredMixin, UpdateView):
 class OrderItemDeleteView(PermissionRequiredMixin, FormView):
     form_class = OrderItemDeleteForm
     template_name = TEMPLATE_ORDER_ITEM_CONFIRM_DELETE
-    permission_required = 'orders.change_order'
+    permission_required = PERM_ORDER_CHANGE
 
     def dispatch(self, request, *args, **kwargs):
         self.order_item = get_object_or_404(OrderItem, pk=kwargs['pk'])

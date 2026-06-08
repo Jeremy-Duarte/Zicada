@@ -17,26 +17,23 @@ class Cart:
     validación de inventario y creación de pedidos con seguridad de concurrencia.
     """
 
-    # Constantes configurables (reemplazables desde settings)
-
     def __init__(self, request):
         self.request = request
         self.session = request.session
-        cart = self.session.get('cart')
-        if not cart:
-            cart = {'items': {}, 'updated_at': None}
-        self.cart = cart
+        cart_data = self.session.get('cart')
+        if not cart_data:
+            cart_data = {'items': {}, 'updated_at': None}
+        self.cart_data = cart_data
         self.FREE_SHIPPING_THRESHOLD = FREE_SHIPPING_THRESHOLD
         self.DEFAULT_SHIPPING_COST = DEFAULT_SHIPPING_COST
         self.CART_EXPIRATION_DAYS = CART_EXPIRATION_DAYS
         self.MAX_QUANTITY_PER_ITEM = MAX_QUANTITY_PER_ITEM
-        # Limpia carritos expirados en memoria sin forzar una escritura en la sesión
         self._clean_if_expired()
 
     def save(self):
         """Persiste el estado del carrito en la sesión con una marca de tiempo actual."""
-        self.cart['updated_at'] = timezone.now().isoformat()
-        self.session['cart'] = self.cart
+        self.cart_data['updated_at'] = timezone.now().isoformat()
+        self.session['cart'] = self.cart_data
         self.session.modified = True
 
     def _clean_if_expired(self):
@@ -44,18 +41,18 @@ class Cart:
         Limpia el contenido del carrito si supera CART_EXPIRATION_DAYS.
         Los cambios se aplican solo en memoria; el siguiente save() persistirá el carrito vacío.
         """
-        updated_at = self.cart.get('updated_at')
+        updated_at = self.cart_data.get('updated_at')
         if not updated_at:
             return
         try:
             last_updated = timezone.datetime.fromisoformat(updated_at)
             if timezone.now() - last_updated > timedelta(days=self.CART_EXPIRATION_DAYS):
-                self.cart['items'] = {}
-                self.cart['updated_at'] = None
+                self.cart_data['items'] = {}
+                self.cart_data['updated_at'] = None
                 logger.info("Cart expired and cleared in memory (last update: %s).", last_updated)
         except (ValueError, TypeError):
-            self.cart['items'] = {}
-            self.cart['updated_at'] = None
+            self.cart_data['items'] = {}
+            self.cart_data['updated_at'] = None
             logger.warning("Cart with invalid timestamp cleared in memory.")
 
     def _get_variant_or_error(self, variant_id):
@@ -102,7 +99,7 @@ class Cart:
             )
 
         variant = self._get_variant_or_error(variant_id)
-        items = self.cart['items']
+        items = self.cart_data['items']
         item_key = str(variant_id)
         current_qty = items[item_key]['quantity'] if item_key in items else 0
         new_qty = current_qty + quantity
@@ -152,8 +149,8 @@ class Cart:
         """Elimina una variante del carrito. Retorna True si el artículo existía."""
         variant_id = self._normalize_variant_id(variant_id)
         item_key = str(variant_id)
-        if item_key in self.cart['items']:
-            del self.cart['items'][item_key]
+        if item_key in self.cart_data['items']:
+            del self.cart_data['items'][item_key]
             self.save()
             logger.info("Variant %s removed from cart.", variant_id)
             return True
@@ -179,7 +176,7 @@ class Cart:
             )
 
         item_key = str(variant_id)
-        if item_key not in self.cart['items']:
+        if item_key not in self.cart_data['items']:
             raise ValidationError('El producto no está en tu carrito.')
 
         with transaction.atomic():
@@ -193,7 +190,7 @@ class Cart:
                     f'({variant.size.name}, {variant.product_color.color.name}). '
                     f'Disponible: {variant.stock}.'
                 )
-            self.cart['items'][item_key]['quantity'] = quantity
+            self.cart_data['items'][item_key]['quantity'] = quantity
             self.save()
             return self.get_item(item_key)
 
@@ -201,15 +198,15 @@ class Cart:
         """Retorna el diccionario del artículo del carrito para una variante, o None."""
         variant_id = self._normalize_variant_id(variant_id)
         item_key = str(variant_id)
-        return self.cart['items'].get(item_key)
+        return self.cart_data['items'].get(item_key)
 
     def get_items(self):
         """Retorna todos los artículos del carrito como una lista de diccionarios."""
-        return list(self.cart['items'].values())
+        return list(self.cart_data['items'].values())
 
     def get_total_items(self):
         """Número total de unidades (suma de todas las cantidades)."""
-        return sum(item['quantity'] for item in self.cart['items'].values())
+        return sum(item['quantity'] for item in self.cart_data['items'].values())
 
     def get_subtotal(self):
         """
@@ -218,7 +215,7 @@ class Cart:
         """
         return Decimal(sum(
             Decimal(item['price']) * item['quantity']
-            for item in self.cart['items'].values()
+            for item in self.cart_data['items'].values()
         ))
 
     def get_shipping_cost(self):
@@ -247,13 +244,13 @@ class Cart:
 
     def clear(self):
         """Vacía el carrito y registra la acción."""
-        self.cart['items'] = {}
+        self.cart_data['items'] = {}
         self.save()
         logger.info("Cart emptied (session_key: %s).", self.session.session_key)
 
     def is_empty(self):
         """Verifica si el carrito no contiene artículos."""
-        return len(self.cart['items']) == 0
+        return len(self.cart_data['items']) == 0
 
     def validate_stock(self):
         """
@@ -315,7 +312,6 @@ class Cart:
             order_items = []
             for item in self.get_items():
                 try:
-                    # Bloquea y carga la variante, asegurando que siga activa
                     variant = ProductVariant.objects.select_related(
                         'product', 'size', 'product_color', 'product_color__color'
                     ).get(id=item['variant_id'], is_active=True)

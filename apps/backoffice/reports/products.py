@@ -48,7 +48,7 @@ class ProductsReport(BaseReport):
             'variants_low_stock': product_stats['variants_low_stock'],
             'variants_out_stock': product_stats['variants_out_stock'],
             'products_with_sales': product_stats['products_with_sales'],
-            'products_without_sales': product_stats['products_without_sales'],
+            'products_without_sales_count': product_stats['products_without_sales'],
             
             # Movimiento de stock
             'units_sold': stock_movement['units_sold'],
@@ -64,8 +64,8 @@ class ProductsReport(BaseReport):
             # Stock problemático
             'low_stock_variants': low_stock_variants,
             'out_of_stock_variants': out_of_stock_variants,
-            'products_without_sales': products_without_sales,
-            
+            'products_without_sales_list': products_without_sales,
+
             # Flags
             'include_charts': include_charts,
             'include_tables': include_tables,
