@@ -1,4 +1,7 @@
 import re
+import json
+import csv
+from datetime import timedelta
 
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
@@ -11,10 +14,7 @@ from django.views import View
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.utils.safestring import mark_safe
 from django.views.decorators.http import require_GET, require_POST, require_http_methods
-from django.views.decorators.csrf import csrf_exempt
-from django.utils import timezone
-from datetime import timedelta
-import json
+from django.http import HttpResponse
 
 from apps.core.crud.mixins import PaginationMixin, FilterMixin, SortableDeleteMixin
 from .models import Product, ProductVariant, ProductColor, ProductImage, Collection, Category, Size, Color
@@ -31,216 +31,233 @@ from apps.products.importers.size_importer import SizeImporter
 from apps.products.importers.color_importer import ColorImporter
 from apps.products.importers.category_importer import CategoryImporter
 
-# =============================================================================
-# CONSTANTS
-# =============================================================================
-
-# Status Strings
-STATUS_PUBLISHED = 'publicada'
-STATUS_DRAFT = 'borrador'
-STATUS_ARCHIVED = 'archivada'
-STATUS_ACTIVE = 'is_active'
-STATUS_INACTIVE = 'is_active'
-
-# Collection Filters
-COLLECTION_FILTER_STATUS = 'publicada'
-COLLECTION_ORDER = '-created_at'
-
-# Product Filters
-PRODUCT_FILTER_ACTIVE = True
-PRODUCT_LIMIT_RELATED = 4
-
-# Stock Thresholds
-STOCK_LOW_THRESHOLD = 10
-STOCK_ZERO = 0
-
-# Order By
-ORDER_BY_CREATED_AT = '-created_at'
-ORDER_BY_SORT_ORDER = 'sort_order'
-ORDER_BY_DELETED_AT = '-deleted_at'
-
-# Pagination
-PAGINATE_BY_DEFAULT = 20
-PAGINATE_BY_COLLECTIONS = 9  # Para la lista de colecciones
-
-# Date Formats
-DATE_FORMAT_DISPLAY = '%d/%m/%Y %H:%M'
-DATE_FORMAT_DAY_MONTH_YEAR = '%d/%m/%Y'
-
-# Template Paths
-TEMPLATE_STOCK_DASHBOARD = 'products/stock_dashboard.html'
-TEMPLATE_CATALOG = 'products/catalog.html'
-TEMPLATE_COLLECTIONS_LIST = 'products/collections_list.html'
-TEMPLATE_COLLECTION_DETAIL = 'products/collection_detail.html'
-TEMPLATE_PRODUCT_DETAIL = 'products/product_detail.html'
-
-# Backoffice Templates
-TEMPLATE_SIZE_LIST = 'backoffice/size/size_list.html'
-TEMPLATE_SIZE_FORM = 'backoffice/size/size_form.html'
-TEMPLATE_SIZE_CONFIRM_DELETE = 'backoffice/size/size_confirm_delete.html'
-
-TEMPLATE_CATEGORY_LIST = 'backoffice/category/category_list.html'
-TEMPLATE_CATEGORY_FORM = 'backoffice/category/category_form.html'
-TEMPLATE_CATEGORY_CONFIRM_DELETE = 'backoffice/category/category_confirm_delete.html'
-
-TEMPLATE_COLOR_LIST = 'backoffice/color/color_list.html'
-TEMPLATE_COLOR_FORM = 'backoffice/color/color_form.html'
-TEMPLATE_COLOR_CONFIRM_DELETE = 'backoffice/color/color_confirm_delete.html'
-
-TEMPLATE_PRODUCTIMAGE_LIST = 'backoffice/productimage/productimage_list.html'
-TEMPLATE_PRODUCTIMAGE_FORM = 'backoffice/productimage/productimage_form.html'
-TEMPLATE_PRODUCTIMAGE_CONFIRM_DELETE = 'backoffice/productimage/productimage_confirm_delete.html'
-
-TEMPLATE_PRODUCT_LIST = 'backoffice/product/product_list.html'
-TEMPLATE_PRODUCT_FORM = 'backoffice/product/product_form.html'
-TEMPLATE_PRODUCT_CONFIRM_DELETE = 'backoffice/product/product_confirm_delete.html'
-TEMPLATE_PRODUCT_RESTORE = 'backoffice/product/product_restore.html'
-TEMPLATE_PRODUCT_TRASHCAN = 'backoffice/product/product_trashcan.html'
-
-TEMPLATE_PRODUCTCOLOR_FORM = 'backoffice/productcolor/productcolor_form.html'
-TEMPLATE_PRODUCTCOLOR_CONFIRM_DELETE = 'backoffice/productcolor/productcolor_confirm_delete.html'
-
-TEMPLATE_PRODUCTVARIANT_FORM = 'backoffice/productvariant/productvariant_form.html'
-TEMPLATE_PRODUCTVARIANT_CONFIRM_DELETE = 'backoffice/productvariant/productvariant_confirm_delete.html'
-TEMPLATE_PRODUCTVARIANT_RESTORE = 'backoffice/productvariant/productvariant_restore.html'
-TEMPLATE_PRODUCTVARIANT_TRASHCAN = 'backoffice/productvariant/productvariant_trashcan.html'
-
-# URL Names
-URL_SIZE_LIST = 'products:size_list'
-URL_CATEGORY_LIST = 'products:category_list'
-URL_COLOR_LIST = 'products:color_list'
-URL_PRODUCTIMAGE_LIST = 'products:productimage_list'
-URL_PRODUCT_LIST = 'products:product_list'
-URL_PRODUCT_EDIT = 'products:product_edit'
-URL_PRODUCT_TRASHCAN = 'products:product_trashcan'
-
-# Form Context Keys
-CONTEXT_CANCEL_URL = 'cancel_url'
-CONTEXT_CANCEL_ARGS = 'cancel_args'
-CONTEXT_TITLE = 'title'
-CONTEXT_IS_CREATE = 'is_create'
-CONTEXT_IS_UPDATE = 'is_update'
-CONTEXT_OBJECT_NAME = 'object_name'
-CONTEXT_OBJECT_DISPLAY = 'object_display'
-CONTEXT_IMAGE_PREVIEW = 'image_preview'
-CONTEXT_PRODUCT = 'product'
-CONTEXT_PRODUCTS = 'products'
-CONTEXT_PRODUCT_COLORS = 'product_colors'
-CONTEXT_VARIANTS = 'variants'
-
-# Table Headers
-HEADER_NAME = 'Nombre'
-HEADER_SLUG = 'Slug'
-HEADER_ORDER = 'Orden'
-HEADER_CODE = 'Código'
-HEADER_IMAGE = 'Imagen'
-HEADER_ALT_TEXT = 'Texto alternativo'
-HEADER_UPLOADED = 'Subida'
-HEADER_CATEGORY = 'Categoría'
-HEADER_PRICE = 'Precio'
-HEADER_TYPE = 'Tipo'
-HEADER_STATUS = 'Estado'
-HEADER_DELETED_AT = 'Eliminado el'
-
-# Table Header Lists
-HEADERS_SIZE = [HEADER_NAME, HEADER_ORDER]
-HEADERS_CATEGORY = [HEADER_NAME, HEADER_SLUG, HEADER_ORDER]
-HEADERS_COLOR = [HEADER_NAME, HEADER_CODE, HEADER_ORDER]
-HEADERS_PRODUCT_IMAGE = [HEADER_IMAGE, HEADER_ALT_TEXT, HEADER_UPLOADED]
-HEADERS_PRODUCT = [HEADER_IMAGE, HEADER_NAME, HEADER_CATEGORY, HEADER_PRICE, HEADER_TYPE, HEADER_STATUS]
-HEADERS_PRODUCT_TRASHCAN = [HEADER_NAME, HEADER_CATEGORY, HEADER_PRICE, HEADER_DELETED_AT]
-HEADER_COVER_IMAGE = 'Portada'
-HEADER_PRODUCT_COUNT = 'Productos'
-HEADER_PRICE_RANGE = 'Rango de precios'
-HEADER_DATES = 'Fechas'
-HEADERS_COLLECTION = [HEADER_NAME, HEADER_COVER_IMAGE, HEADER_PRODUCT_COUNT, HEADER_PRICE_RANGE, HEADER_DATES]
-
-# Product Types
-PRODUCT_TYPE_FABRICA = 'fabrica'
-PRODUCT_TYPE_COLECCION_LIMITADA = 'coleccion_limitada'
-PRODUCT_TYPES_DISPLAY = {
-    PRODUCT_TYPE_FABRICA: 'Producto de fábrica',
-    PRODUCT_TYPE_COLECCION_LIMITADA: 'Colección limitada',
-}
-
-# Stock Display Messages
-STOCK_MESSAGE_OUT_OF_STOCK = 'Agotado'
-STOCK_MESSAGE_LOW_STOCK = '¡Últimas {stock} unidades!'
-STOCK_MESSAGE_AVAILABLE = 'Disponible'
-
-# Stock Display Classes
-STOCK_CLASS_OUT_OF_STOCK = 'out_of_stock'
-STOCK_CLASS_LOW_STOCK = 'low_stock'
-STOCK_CLASS_AVAILABLE = 'available'
-
-# Status Badge Classes
-BADGE_CLASS_ACTIVE = 'bg-green-100 text-green-700'
-BADGE_CLASS_INACTIVE = 'bg-red-100 text-red-700'
-BADGE_TEXT_ACTIVE = 'Activo'
-BADGE_TEXT_INACTIVE = 'Inactivo'
-
-# Icon HTML
-ICON_IMAGE_PLACEHOLDER = (
-    '<div class="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400">'
-    '<i class="fas fa-image"></i>'
-    '</div>'
+from apps.core.url_names import (
+    PRODUCTS_SIZE_LIST,
+    PRODUCTS_SIZE_IMPORT,
+    PRODUCTS_CATEGORY_LIST,
+    PRODUCTS_CATEGORY_IMPORT,
+    PRODUCTS_COLOR_LIST,
+    PRODUCTS_COLOR_IMPORT,
+    PRODUCTS_IMAGE_LIST,
+    PRODUCTS_LIST,
+    PRODUCTS_EDIT,
+    PRODUCTS_TRASHCAN,
 )
 
-# Filter Configurations
-FILTER_NAME = 'name'
-FILTER_CATEGORY = 'category'
-FILTER_PRODUCT_TYPE = 'product_type'
-FILTER_IS_ACTIVE = 'is_active'
+from .constants import (
+    # Umbral de bajo stock
+    STOCK_LOW_THRESHOLD,
+    # Status Strings
+    STATUS_PUBLISHED,
+    STATUS_DRAFT,
+    STATUS_ARCHIVED,
+    # Status Filter Choices
+    STATUS_FILTER_ACTIVE,
+    STATUS_FILTER_UPCOMING,
+    STATUS_FILTER_ARCHIVED,
+    STATUS_FILTER_CHOICES,
+    # Active/Inactive Filter Values
+    ACTIVE_FILTER_VALUE,
+    INACTIVE_FILTER_VALUE,
+    # Collection Filters
+    COLLECTION_FILTER_STATUS,
+    COLLECTION_ORDER,
+    # Product Filters
+    PRODUCT_FILTER_ACTIVE,
+    PRODUCT_LIMIT_RELATED,
+    # Stock Thresholds
+    STOCK_ZERO,
+    # Order By
+    ORDER_BY_CREATED_AT,
+    ORDER_BY_SORT_ORDER,
+    ORDER_BY_DELETED_AT,
+    # Order Choices
+    ORDER_CHOICE_RECENT,
+    ORDER_CHOICE_OLDEST,
+    ORDER_CHOICE_NAME_ASC,
+    ORDER_CHOICE_NAME_DESC,
+    ORDER_CHOICE_PRICE_DESC,
+    ORDER_CHOICE_PRICE_ASC,
+    ORDER_CHOICE_START_DATE_DESC,
+    ORDER_CHOICE_START_DATE_ASC,
+    ORDER_CHOICES_CATALOG,
+    ORDER_CHOICES_COLLECTIONS,
+    # Pagination
+    PAGINATE_BY_DEFAULT,
+    PAGINATE_BY_COLLECTIONS,
+    # Date Formats
+    DATE_FORMAT_DISPLAY,
+    DATE_FORMAT_DAY_MONTH_YEAR,
+    # Template Paths
+    TEMPLATE_STOCK_DASHBOARD,
+    TEMPLATE_CATALOG,
+    TEMPLATE_COLLECTIONS_LIST,
+    TEMPLATE_COLLECTION_DETAIL,
+    TEMPLATE_PRODUCT_DETAIL,
+    # Backoffice Templates
+    TEMPLATE_SIZE_LIST,
+    TEMPLATE_SIZE_FORM,
+    TEMPLATE_SIZE_CONFIRM_DELETE,
+    TEMPLATE_SIZE_IMPORT,
+    TEMPLATE_SIZE_IMPORT_RESULT,
+    TEMPLATE_CATEGORY_LIST,
+    TEMPLATE_CATEGORY_FORM,
+    TEMPLATE_CATEGORY_CONFIRM_DELETE,
+    TEMPLATE_CATEGORY_IMPORT,
+    TEMPLATE_CATEGORY_IMPORT_RESULT,
+    TEMPLATE_COLOR_LIST,
+    TEMPLATE_COLOR_FORM,
+    TEMPLATE_COLOR_CONFIRM_DELETE,
+    TEMPLATE_COLOR_IMPORT,
+    TEMPLATE_COLOR_IMPORT_RESULT,
+    TEMPLATE_PRODUCTIMAGE_LIST,
+    TEMPLATE_PRODUCTIMAGE_FORM,
+    TEMPLATE_PRODUCTIMAGE_CONFIRM_DELETE,
+    TEMPLATE_PRODUCT_LIST,
+    TEMPLATE_PRODUCT_FORM,
+    TEMPLATE_PRODUCT_CONFIRM_DELETE,
+    TEMPLATE_PRODUCT_RESTORE,
+    TEMPLATE_PRODUCT_TRASHCAN,
+    TEMPLATE_PRODUCTCOLOR_FORM,
+    TEMPLATE_PRODUCTCOLOR_CONFIRM_DELETE,
+    TEMPLATE_PRODUCTVARIANT_FORM,
+    TEMPLATE_PRODUCTVARIANT_CONFIRM_DELETE,
+    TEMPLATE_PRODUCTVARIANT_RESTORE,
+    TEMPLATE_PRODUCTVARIANT_TRASHCAN,
+    # Form Context Keys
+    CONTEXT_CANCEL_URL,
+    CONTEXT_CANCEL_ARGS,
+    CONTEXT_TITLE,
+    CONTEXT_IS_CREATE,
+    CONTEXT_IS_UPDATE,
+    CONTEXT_OBJECT_NAME,
+    CONTEXT_OBJECT_DISPLAY,
+    CONTEXT_IMAGE_PREVIEW,
+    CONTEXT_PRODUCT,
+    CONTEXT_PRODUCTS,
+    CONTEXT_PRODUCT_COLORS,
+    CONTEXT_VARIANTS,
+    # Table Headers
+    HEADER_NAME,
+    HEADER_SLUG,
+    HEADER_ORDER,
+    HEADER_CODE,
+    HEADER_IMAGE,
+    HEADER_ALT_TEXT,
+    HEADER_UPLOADED,
+    HEADER_CATEGORY,
+    HEADER_PRICE,
+    HEADER_TYPE,
+    HEADER_STATUS,
+    HEADER_DELETED_AT,
+    HEADER_COVER_IMAGE,
+    HEADER_PRODUCT_COUNT,
+    HEADER_PRICE_RANGE,
+    HEADER_DATES,
+    # Table Header Lists
+    HEADERS_SIZE,
+    HEADERS_CATEGORY,
+    HEADERS_COLOR,
+    HEADERS_PRODUCT_IMAGE,
+    HEADERS_PRODUCT,
+    HEADERS_PRODUCT_TRASHCAN,
+    HEADERS_COLLECTION,
+    # Product Types
+    PRODUCT_TYPE_FABRICA,
+    PRODUCT_TYPE_COLECCION_LIMITADA,
+    PRODUCT_TYPES_DISPLAY,
+    # Stock Display Messages
+    STOCK_MESSAGE_OUT_OF_STOCK,
+    STOCK_MESSAGE_LOW_STOCK,
+    STOCK_MESSAGE_AVAILABLE,
+    # Stock Display Classes
+    STOCK_CLASS_OUT_OF_STOCK,
+    STOCK_CLASS_LOW_STOCK,
+    STOCK_CLASS_AVAILABLE,
+    # Status Badge Classes
+    BADGE_CLASS_ACTIVE,
+    BADGE_CLASS_INACTIVE,
+    BADGE_TEXT_ACTIVE,
+    BADGE_TEXT_INACTIVE,
+    # Filter Configuration
+    FILTER_CONFIG_DEFAULT,
+    FILTER_CONFIG_WITH_STATUS,
+    # Filter Labels
+    FILTER_LABEL_STATUS,
+    FILTER_LABEL_CATEGORY,
+    FILTER_LABEL_TYPE,
+    FILTER_LABEL_PRICE,
+    # Filter Names
+    FILTER_NAME,
+    FILTER_CATEGORY,
+    FILTER_PRODUCT_TYPE,
+    FILTER_IS_ACTIVE,
+    # Query Parameters
+    QUERY_PARAM_CATEGORY,
+    QUERY_PARAM_SEARCH,
+    QUERY_PARAM_STATUS,
+    QUERY_PARAM_MIN_PRICE,
+    QUERY_PARAM_MAX_PRICE,
+    QUERY_PARAM_PRODUCT_COUNT_MIN,
+    QUERY_PARAM_PRODUCT_COUNT_MAX,
+    QUERY_PARAM_DATE_FILTER,
+    QUERY_PARAM_PRODUCT_TYPE,
+    QUERY_PARAM_ORDER_BY,
+    # Date Filter Options
+    DATE_FILTER_LAST_MONTH,
+    DATE_FILTER_LAST_QUARTER,
+    DATE_FILTER_LAST_SEMESTER,
+    DATE_FILTER_LAST_YEAR,
+    DATE_FILTER_UPCOMING,
+    # Import Form Field Names
+    IMPORT_FILE_FIELD,
+    IMPORT_UPDATE_EXISTING_FIELD,
+    # Import Template Columns
+    IMPORT_TEMPLATE_COLUMNS_SIZE,
+    IMPORT_TEMPLATE_COLUMNS_COLOR,
+    IMPORT_TEMPLATE_COLUMNS_CATEGORY,
+    # Import Messages
+    MSG_IMPORT_NO_FILE,
+    # UI Text Strings
+    UI_NO_IMAGE,
+    UI_STATUS_LABEL,
+    UI_PLACEHOLDER_SEARCH_PRODUCT,
+    # Icon HTML
+    ICON_IMAGE_PLACEHOLDER,
+    # Success Messages
+    MSG_SIZE_CREATED,
+    MSG_SIZE_UPDATED,
+    MSG_SIZE_DELETED,
+    MSG_CATEGORY_CREATED,
+    MSG_CATEGORY_UPDATED,
+    MSG_CATEGORY_DELETED,
+    MSG_COLOR_CREATED,
+    MSG_COLOR_UPDATED,
+    MSG_COLOR_DELETED,
+    MSG_PRODUCT_IMAGE_UPLOADED,
+    MSG_PRODUCT_IMAGE_UPDATED,
+    MSG_PRODUCT_IMAGE_DELETED,
+    MSG_PRODUCT_CREATED,
+    MSG_PRODUCT_UPDATED,
+    MSG_PRODUCT_DELETED,
+    MSG_PRODUCT_RESTORED,
+    MSG_PRODUCT_COLOR_UPDATED,
+    MSG_PRODUCT_COLOR_DELETED,
+    MSG_VARIANT_CREATED,
+    MSG_VARIANT_UPDATED,
+    MSG_VARIANT_DELETED,
+    MSG_VARIANT_RESTORED,
+    MSG_VARIANT_RESTORE_ERROR,
+    # Import Template Filenames
+    IMPORT_TEMPLATE_FILENAME_SIZE,
+    IMPORT_TEMPLATE_FILENAME_COLOR,
+    IMPORT_TEMPLATE_FILENAME_CATEGORY,
+    # Import Example Data
+    IMPORT_EXAMPLE_DATA_SIZE,
+    IMPORT_EXAMPLE_DATA_COLOR,
+    IMPORT_EXAMPLE_DATA_CATEGORY,
+)
 
-# Query Parameters
-QUERY_PARAM_CATEGORY = 'category'
-QUERY_PARAM_SEARCH = 'search'
-QUERY_PARAM_STATUS = 'status'
-QUERY_PARAM_MIN_PRICE = 'min_price'
-QUERY_PARAM_MAX_PRICE = 'max_price'
-QUERY_PARAM_PRODUCT_COUNT_MIN = 'product_count_min'
-QUERY_PARAM_PRODUCT_COUNT_MAX = 'product_count_max'
-QUERY_PARAM_DATE_FILTER = 'date_filter'
-QUERY_PARAM_PRODUCT_TYPE = 'product_type'
-QUERY_PARAM_ORDER_BY = 'order_by'
-
-# Date Filter Options
-DATE_FILTER_LAST_MONTH = 'ultimo_mes'
-DATE_FILTER_LAST_QUARTER = 'ultimo_trimestre'
-DATE_FILTER_LAST_SEMESTER = 'ultimo_semestre'
-DATE_FILTER_LAST_YEAR = 'ultimo_ano'
-DATE_FILTER_UPCOMING = 'proximas'
-
-# Success Messages
-MSG_SIZE_CREATED = 'Talla "{name}" creada exitosamente.'
-MSG_SIZE_UPDATED = 'Talla "{name}" actualizada exitosamente.'
-MSG_SIZE_DELETED = 'Talla "{name}" eliminada exitosamente.'
-
-MSG_CATEGORY_CREATED = 'Categoría "{name}" creada exitosamente.'
-MSG_CATEGORY_UPDATED = 'Categoría "{name}" actualizada exitosamente.'
-MSG_CATEGORY_DELETED = 'Categoría "{name}" eliminada exitosamente.'
-
-MSG_COLOR_CREATED = 'Color "{name}" creado exitosamente.'
-MSG_COLOR_UPDATED = 'Color "{name}" actualizado exitosamente.'
-MSG_COLOR_DELETED = 'Color "{name}" eliminado exitosamente.'
-
-MSG_PRODUCT_IMAGE_UPLOADED = 'Imagen "{name}" subida exitosamente.'
-MSG_PRODUCT_IMAGE_UPDATED = 'Texto alternativo de la imagen actualizado exitosamente.'
-MSG_PRODUCT_IMAGE_DELETED = 'Imagen "{name}" eliminada exitosamente.'
-
-MSG_PRODUCT_CREATED = 'Producto "{name}" creado exitosamente.'
-MSG_PRODUCT_UPDATED = 'Producto "{name}" actualizado exitosamente.'
-MSG_PRODUCT_DELETED = 'Producto "{name}" movido a la papelera.'
-MSG_PRODUCT_RESTORED = 'Producto "{name}" restaurado exitosamente.'
-
-MSG_PRODUCT_COLOR_UPDATED = 'Color "{name}" actualizado correctamente.'
-MSG_PRODUCT_COLOR_DELETED = 'Color "{name}" eliminado correctamente.'
-
-MSG_VARIANT_CREATED = 'Variante "{variant}" agregada.'
-MSG_VARIANT_UPDATED = 'Variante actualizada correctamente.'
-MSG_VARIANT_DELETED = 'Variante desactivada correctamente.'
-MSG_VARIANT_RESTORED = 'Variante restaurada correctamente.'
-MSG_VARIANT_RESTORE_ERROR = 'Error al restaurar la variante.'
 
 # =============================================================================
 # UTILITY FUNCTIONS
@@ -254,6 +271,18 @@ def get_stock_display(stock: int) -> tuple:
         return STOCK_CLASS_LOW_STOCK, STOCK_MESSAGE_LOW_STOCK.format(stock=stock)
     else:
         return STOCK_CLASS_AVAILABLE, STOCK_MESSAGE_AVAILABLE
+
+
+def generate_csv_response(filename: str, headers: list, rows: list) -> HttpResponse:
+    """Generate CSV response for template download."""
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    
+    writer = csv.writer(response)
+    writer.writerow(headers)
+    writer.writerows(rows)
+    
+    return response
 
 
 # =============================================================================
@@ -298,9 +327,10 @@ def stock_dashboard(request):
 
 
 class ProductCatalogView(PaginationMixin, FilterMixin, ListView):
+    """Product catalog view with filters and pagination."""
     model = Product
     template_name = TEMPLATE_CATALOG
-    context_object_name = 'products'
+    context_object_name = CONTEXT_PRODUCTS
     paginate_by = PAGINATE_BY_DEFAULT
     
     filters = [
@@ -309,13 +339,13 @@ class ProductCatalogView(PaginationMixin, FilterMixin, ListView):
     ]
     
     def get_queryset(self):
-        qs = super().get_queryset().filter(is_active=True)
+        qs = super().get_queryset().filter(is_active=PRODUCT_FILTER_ACTIVE)
         
         qs = qs.select_related('category').prefetch_related(
             'product_colors', 'product_colors__images', 'variants', 'variants__size'
         )
         
-        # Búsqueda por nombre o descripción
+        # Search by name or description
         search = self.request.GET.get(QUERY_PARAM_SEARCH, '')
         if search:
             qs = qs.filter(
@@ -323,7 +353,7 @@ class ProductCatalogView(PaginationMixin, FilterMixin, ListView):
                 Q(description__icontains=search)
             )
         
-        # Filtro por rango de precios
+        # Filter by price range
         min_price = self.request.GET.get(QUERY_PARAM_MIN_PRICE, '')
         max_price = self.request.GET.get(QUERY_PARAM_MAX_PRICE, '')
         
@@ -333,13 +363,9 @@ class ProductCatalogView(PaginationMixin, FilterMixin, ListView):
         if max_price and max_price.isdigit():
             qs = qs.filter(price__lte=int(max_price))
         
-        # Ordenamiento
+        # Ordering
         order_by = self.request.GET.get(QUERY_PARAM_ORDER_BY, ORDER_BY_CREATED_AT)
-        allowed_orders = [
-            'name', '-name',
-            'created_at', '-created_at',
-            'price', '-price'
-        ]
+        allowed_orders = [choice[0] for choice in ORDER_CHOICES_CATALOG]
         if order_by in allowed_orders:
             qs = qs.order_by(order_by)
         else:
@@ -356,11 +382,11 @@ class ProductCatalogView(PaginationMixin, FilterMixin, ListView):
             min_price=Min('price'), max_price=Max('price')
         )
         
-        # Tipos de producto disponibles (sin duplicados)
+        # Available product types (without duplicates)
         product_types = list(set(
             Product.objects.filter(is_active=True).values_list('product_type', flat=True)
         ))
-        # Filtrar valores vacíos
+        # Filter empty values
         product_types = [pt for pt in product_types if pt]
         
         context['categories'] = categories
@@ -374,18 +400,22 @@ class ProductCatalogView(PaginationMixin, FilterMixin, ListView):
         context['max_price_global'] = int(price_range['max_price'] or 1000000)
         context['product_types'] = product_types
         context['product_type_labels'] = {pt: PRODUCT_TYPES_DISPLAY.get(pt, pt) for pt in product_types}
-        context['filter_config'] = {'status': False, 'price': True, 'product_count': False, 'date': False, 'product_type': True}
-        context['order_choices'] = [('-created_at', 'Más recientes'), ('created_at', 'Más antiguas'), ('name', 'Nombre A-Z'), ('-name', 'Nombre Z-A'), ('-price', 'Precio: mayor a menor'), ('price', 'Precio: menor a mayor')]
-        context['has_active_filters'] = any([self.request.GET.get(QUERY_PARAM_SEARCH), self.request.GET.get(QUERY_PARAM_CATEGORY), self.request.GET.get(QUERY_PARAM_MIN_PRICE), self.request.GET.get(QUERY_PARAM_MAX_PRICE), self.request.GET.get(QUERY_PARAM_PRODUCT_TYPE)])
+        context['filter_config'] = FILTER_CONFIG_DEFAULT
+        context['order_choices'] = ORDER_CHOICES_CATALOG
+        context['has_active_filters'] = any([
+            self.request.GET.get(QUERY_PARAM_SEARCH),
+            self.request.GET.get(QUERY_PARAM_CATEGORY),
+            self.request.GET.get(QUERY_PARAM_MIN_PRICE),
+            self.request.GET.get(QUERY_PARAM_MAX_PRICE),
+            self.request.GET.get(QUERY_PARAM_PRODUCT_TYPE),
+        ])
         context['clean_url'] = reverse('products:catalog')
         
         return context
 
 
 class CollectionListView(PaginationMixin, FilterMixin, ListView):
-    """
-    Vista de lista de colecciones con filtros avanzados.
-    """
+    """Collection list view with advanced filters."""
     model = Collection
     template_name = TEMPLATE_COLLECTIONS_LIST
     context_object_name = 'collections'
@@ -396,13 +426,13 @@ class CollectionListView(PaginationMixin, FilterMixin, ListView):
     ]
     
     def get_queryset(self):
-        # Aplicar filtros simples del FilterMixin
+        # Apply simple filters from FilterMixin
         qs = super().get_queryset()
         
-        # Filtros base
+        # Base filters
         qs = qs.filter(is_active=True)
         
-        # 1. Búsqueda por nombre (manual porque es OR entre dos campos)
+        # 1. Search by name (OR between two fields)
         search = self.request.GET.get(QUERY_PARAM_SEARCH, '')
         if search:
             qs = qs.filter(
@@ -410,16 +440,16 @@ class CollectionListView(PaginationMixin, FilterMixin, ListView):
                 Q(description__icontains=search)
             )
         
-        # 2. Filtro por estado
+        # 2. Status filter
         status_filter = self.request.GET.get(QUERY_PARAM_STATUS, '')
-        if status_filter == 'activas':
+        if status_filter == STATUS_FILTER_ACTIVE:
             qs = qs.filter(status=STATUS_PUBLISHED)
-        elif status_filter == 'proximas':
+        elif status_filter == STATUS_FILTER_UPCOMING:
             qs = qs.filter(status=STATUS_DRAFT)
-        elif status_filter == 'archivadas':
+        elif status_filter == STATUS_FILTER_ARCHIVED:
             qs = qs.filter(status=STATUS_ARCHIVED)
         
-        # 3. Filtro por rango de precios
+        # 3. Price range filter
         min_price = self.request.GET.get(QUERY_PARAM_MIN_PRICE, '')
         max_price = self.request.GET.get(QUERY_PARAM_MAX_PRICE, '')
         
@@ -429,7 +459,7 @@ class CollectionListView(PaginationMixin, FilterMixin, ListView):
         if max_price and max_price.isdigit():
             qs = qs.filter(products__price__lte=int(max_price)).distinct()
         
-        # 4. Filtro por cantidad de productos
+        # 4. Product count filter
         product_count_min = self.request.GET.get(QUERY_PARAM_PRODUCT_COUNT_MIN, '')
         product_count_max = self.request.GET.get(QUERY_PARAM_PRODUCT_COUNT_MAX, '')
         
@@ -441,7 +471,7 @@ class CollectionListView(PaginationMixin, FilterMixin, ListView):
                 qs = qs.annotate(product_count=Count('products'))
             qs = qs.filter(product_count__lte=int(product_count_max))
         
-        # 5. Filtro por fecha de lanzamiento
+        # 5. Date filter
         date_filter = self.request.GET.get(QUERY_PARAM_DATE_FILTER, '')
         now = timezone.now()
         
@@ -456,9 +486,9 @@ class CollectionListView(PaginationMixin, FilterMixin, ListView):
         elif date_filter == DATE_FILTER_UPCOMING:
             qs = qs.filter(start_date__gt=now, status=STATUS_DRAFT)
         
-        # Ordenamiento
+        # Ordering
         order_by = self.request.GET.get(QUERY_PARAM_ORDER_BY, ORDER_BY_CREATED_AT)
-        allowed_orders = ['name', '-name', 'created_at', '-created_at', 'start_date', '-start_date']
+        allowed_orders = [choice[0] for choice in ORDER_CHOICES_COLLECTIONS]
         if order_by in allowed_orders:
             qs = qs.order_by(order_by)
         else:
@@ -469,7 +499,7 @@ class CollectionListView(PaginationMixin, FilterMixin, ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         
-        # Rango de precios global
+        # Global price range
         price_range = ProductVariant.objects.filter(
             is_active=True,
             product__is_active=True
@@ -478,12 +508,12 @@ class CollectionListView(PaginationMixin, FilterMixin, ListView):
             max_price=Max('product__price')
         )
         
-        # Tipos de producto disponibles
+        # Available product types
         product_types = Product.objects.filter(
             is_active=True
         ).values_list('product_type', flat=True).distinct()
         
-        # Construir filas para tabla (similar a ColorListView)
+        # Build table rows
         rows = []
         for collection in context['collections']:
             product_count = collection.products.filter(is_active=True).count()
@@ -494,8 +524,8 @@ class CollectionListView(PaginationMixin, FilterMixin, ListView):
                 max_price=Max('price')
             )
             
-            start_date_str = collection.start_date.strftime('%d/%m/%Y') if collection.start_date else '-'
-            end_date_str = collection.end_date.strftime('%d/%m/%Y') if collection.end_date else '-'
+            start_date_str = collection.start_date.strftime(DATE_FORMAT_DAY_MONTH_YEAR) if collection.start_date else '-'
+            end_date_str = collection.end_date.strftime(DATE_FORMAT_DAY_MONTH_YEAR) if collection.end_date else '-'
 
             rows.append({
                 'pk': collection.pk,
@@ -508,7 +538,7 @@ class CollectionListView(PaginationMixin, FilterMixin, ListView):
                     ),
                     mark_safe(
                         f'<img src="{collection.cover_image.url}" class="w-12 h-12 object-cover rounded" />'
-                        if collection.cover_image else '<span class="text-gray-400">Sin imagen</span>'
+                        if collection.cover_image else f'<span class="text-gray-400">{UI_NO_IMAGE}</span>'
                     ),
                     product_count,
                     f'${price_range_collection["min_price"] or 0:,.0f} - ${price_range_collection["max_price"] or 0:,.0f}',
@@ -537,26 +567,9 @@ class CollectionListView(PaginationMixin, FilterMixin, ListView):
             'current_order_by': self.request.GET.get(QUERY_PARAM_ORDER_BY, ORDER_BY_CREATED_AT),
             'product_types': list(product_types),
             'product_type_labels': {pt: PRODUCT_TYPES_DISPLAY.get(pt, pt) for pt in product_types},
-            'status_choices': [
-                ('activas', 'Activas'),
-                ('proximas', 'Próximas'),
-                ('archivadas', 'Archivadas'),
-            ],
-            'order_choices': [
-                ('-created_at', 'Más recientes'),
-                ('created_at', 'Más antiguas'),
-                ('name', 'Nombre A-Z'),
-                ('-name', 'Nombre Z-A'),
-                ('-start_date', 'Fecha inicio (reciente)'),
-                ('start_date', 'Fecha inicio (antigua)'),
-            ],
-            'filter_config': {
-                'status': True,
-                'price': True,
-                'product_count': True,
-                'date': True,
-                'product_type': True,
-            },
+            'status_choices': STATUS_FILTER_CHOICES,
+            'order_choices': ORDER_CHOICES_COLLECTIONS,
+            'filter_config': FILTER_CONFIG_WITH_STATUS,
             'has_active_filters': any([
                 self.request.GET.get(QUERY_PARAM_SEARCH),
                 self.request.GET.get(QUERY_PARAM_STATUS),
@@ -575,9 +588,10 @@ class CollectionListView(PaginationMixin, FilterMixin, ListView):
 
 
 class CollectionDetailView(PaginationMixin, FilterMixin, ListView):
+    """Collection detail view with products."""
     model = Product
     template_name = TEMPLATE_COLLECTION_DETAIL
-    context_object_name = 'products'
+    context_object_name = CONTEXT_PRODUCTS
     paginate_by = PAGINATE_BY_DEFAULT
     
     filters = [
@@ -594,7 +608,7 @@ class CollectionDetailView(PaginationMixin, FilterMixin, ListView):
         return super().dispatch(request, *args, **kwargs)
     
     def get_queryset(self):
-        qs = super().get_queryset().filter(is_active=True)
+        qs = super().get_queryset().filter(is_active=PRODUCT_FILTER_ACTIVE)
         qs = qs.filter(collections=self.collection)
         
         search = self.request.GET.get(QUERY_PARAM_SEARCH, '')
@@ -614,11 +628,7 @@ class CollectionDetailView(PaginationMixin, FilterMixin, ListView):
             qs = qs.filter(price__lte=int(max_price))
         
         order_by = self.request.GET.get(QUERY_PARAM_ORDER_BY, ORDER_BY_CREATED_AT)
-        allowed_orders = [
-            'name', '-name', 
-            'created_at', '-created_at',
-            'price', '-price'
-        ]
+        allowed_orders = [choice[0] for choice in ORDER_CHOICES_CATALOG]
         if order_by in allowed_orders:
             qs = qs.order_by(order_by)
         else:
@@ -670,22 +680,9 @@ class CollectionDetailView(PaginationMixin, FilterMixin, ListView):
         context['product_types'] = list(product_types)
         context['product_type_labels'] = {pt: PRODUCT_TYPES_DISPLAY.get(pt, pt) for pt in product_types}
         
-        context['filter_config'] = {
-            'status': False,
-            'price': True,
-            'product_count': False,
-            'date': False,
-            'product_type': True,
-        }
+        context['filter_config'] = FILTER_CONFIG_DEFAULT
         
-        context['order_choices'] = [
-            ('-created_at', 'Más recientes'),
-            ('created_at', 'Más antiguas'),
-            ('name', 'Nombre A-Z'),
-            ('-name', 'Nombre Z-A'),
-            ('-price', 'Precio: mayor a menor'),
-            ('price', 'Precio: menor a mayor'),
-        ]
+        context['order_choices'] = ORDER_CHOICES_CATALOG
         
         context['has_active_filters'] = any([
             self.request.GET.get(QUERY_PARAM_SEARCH),
@@ -781,8 +778,8 @@ def product_detail(request, slug):
     ).exclude(id=product.id).select_related('category').prefetch_related('product_colors', 'product_colors__images')[:PRODUCT_LIMIT_RELATED]
     
     context = {
-        'product': product,
-        'variants': variants,
+        CONTEXT_PRODUCT: product,
+        CONTEXT_VARIANTS: variants,
         'unique_colors': unique_colors,
         'unique_sizes': unique_sizes,
         'gallery_images': gallery_images,
@@ -799,6 +796,7 @@ def product_detail(request, slug):
 # =============================================================================
 
 class SizeListView(PermissionRequiredMixin, PaginationMixin, FilterMixin, ListView):
+    """List sizes with filtering and pagination."""
     model = Size
     template_name = TEMPLATE_SIZE_LIST
     context_object_name = 'sizes'
@@ -824,11 +822,12 @@ class SizeListView(PermissionRequiredMixin, PaginationMixin, FilterMixin, ListVi
 
 
 class SizeCreateView(PermissionRequiredMixin, CreateView):
+    """Create a new size."""
     model = Size
     form_class = SizeCreateForm
     template_name = TEMPLATE_SIZE_FORM
     permission_required = 'products.add_size'
-    success_url = reverse_lazy(URL_SIZE_LIST)
+    success_url = reverse_lazy(PRODUCTS_SIZE_LIST)
     
     def form_valid(self, form):
         messages.success(self.request, MSG_SIZE_CREATED.format(name=form.instance.name))
@@ -836,23 +835,25 @@ class SizeCreateView(PermissionRequiredMixin, CreateView):
 
 
 class SizeUpdateView(PermissionRequiredMixin, UpdateView):
+    """Update an existing size."""
     model = Size
     form_class = SizeUpdateForm
     template_name = TEMPLATE_SIZE_FORM
     permission_required = 'products.change_size'
-    success_url = reverse_lazy(URL_SIZE_LIST)
+    success_url = reverse_lazy(PRODUCTS_SIZE_LIST)
     
     def form_valid(self, form):
         messages.success(self.request, MSG_SIZE_UPDATED.format(name=form.instance.name))
         return super().form_valid(form)
 
 
-class SizeDeleteView(PermissionRequiredMixin, SortableDeleteMixin ,DeleteView):
+class SizeDeleteView(PermissionRequiredMixin, SortableDeleteMixin, DeleteView):
+    """Delete a size."""
     model = Size
     form_class = SizeDeleteForm
     template_name = TEMPLATE_SIZE_CONFIRM_DELETE
     permission_required = 'products.delete_size'
-    success_url = reverse_lazy(URL_SIZE_LIST)
+    success_url = reverse_lazy(PRODUCTS_SIZE_LIST)
     
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
@@ -874,11 +875,52 @@ class SizeDeleteView(PermissionRequiredMixin, SortableDeleteMixin ,DeleteView):
         return redirect(self.success_url)
 
 
+class SizeImportView(PermissionRequiredMixin, View):
+    """Import sizes from CSV file."""
+    permission_required = 'products.add_size'
+    
+    def get(self, request):
+        importer = SizeImporter(request, None)
+        context = {
+            'headers': importer.get_template_headers(),
+            'example_data': importer.get_example_data(),
+            'required_columns': importer.required_columns,
+        }
+        return render(request, TEMPLATE_SIZE_IMPORT, context)
+    
+    def post(self, request):
+        file_obj = request.FILES.get(IMPORT_FILE_FIELD)
+        update_existing = request.POST.get(IMPORT_UPDATE_EXISTING_FIELD) == 'on'
+        
+        if not file_obj:
+            messages.error(request, MSG_IMPORT_NO_FILE)
+            return redirect(PRODUCTS_SIZE_IMPORT)
+        
+        importer = SizeImporter(request, file_obj, update_existing=update_existing)
+        results = importer.run()
+        importer.add_messages()
+        
+        request.session['import_results'] = results
+        
+        return render(request, TEMPLATE_SIZE_IMPORT_RESULT, {'results': results})
+
+
+@require_GET
+def size_template(request):
+    """Download size template CSV."""
+    return generate_csv_response(
+        filename=IMPORT_TEMPLATE_FILENAME_SIZE,
+        headers=IMPORT_TEMPLATE_COLUMNS_SIZE,
+        rows=IMPORT_EXAMPLE_DATA_SIZE
+    )
+
+
 # =============================================================================
 # CATEGORY CRUD VIEWS
 # =============================================================================
 
 class CategoryListView(PermissionRequiredMixin, PaginationMixin, FilterMixin, ListView):
+    """List categories with filtering and pagination."""
     model = Category
     template_name = TEMPLATE_CATEGORY_LIST
     context_object_name = 'categories'
@@ -905,11 +947,12 @@ class CategoryListView(PermissionRequiredMixin, PaginationMixin, FilterMixin, Li
 
 
 class CategoryCreateView(PermissionRequiredMixin, CreateView):
+    """Create a new category."""
     model = Category
     form_class = CategoryCreateForm
     template_name = TEMPLATE_CATEGORY_FORM
     permission_required = 'products.add_category'
-    success_url = reverse_lazy(URL_CATEGORY_LIST)
+    success_url = reverse_lazy(PRODUCTS_CATEGORY_LIST)
     
     def form_valid(self, form):
         messages.success(self.request, MSG_CATEGORY_CREATED.format(name=form.instance.name))
@@ -917,11 +960,12 @@ class CategoryCreateView(PermissionRequiredMixin, CreateView):
 
 
 class CategoryUpdateView(PermissionRequiredMixin, UpdateView):
+    """Update an existing category."""
     model = Category
     form_class = CategoryUpdateForm
     template_name = TEMPLATE_CATEGORY_FORM
     permission_required = 'products.change_category'
-    success_url = reverse_lazy(URL_CATEGORY_LIST)
+    success_url = reverse_lazy(PRODUCTS_CATEGORY_LIST)
     
     def form_valid(self, form):
         messages.success(self.request, MSG_CATEGORY_UPDATED.format(name=form.instance.name))
@@ -929,11 +973,12 @@ class CategoryUpdateView(PermissionRequiredMixin, UpdateView):
 
 
 class CategoryDeleteView(PermissionRequiredMixin, DeleteView):
+    """Delete a category."""
     model = Category
     form_class = CategoryDeleteForm
     template_name = TEMPLATE_CATEGORY_CONFIRM_DELETE
     permission_required = 'products.delete_category'
-    success_url = reverse_lazy(URL_CATEGORY_LIST)
+    success_url = reverse_lazy(PRODUCTS_CATEGORY_LIST)
     
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
@@ -955,11 +1000,51 @@ class CategoryDeleteView(PermissionRequiredMixin, DeleteView):
         return redirect(self.success_url)
 
 
+class CategoryImportView(PermissionRequiredMixin, View):
+    """Import categories from CSV file."""
+    permission_required = 'products.add_category'
+    
+    def get(self, request):
+        importer = CategoryImporter(request, None)
+        context = {
+            'headers': importer.get_template_headers(),
+            'example_data': importer.get_example_data(),
+            'required_columns': importer.required_columns,
+        }
+        return render(request, TEMPLATE_CATEGORY_IMPORT, context)
+    
+    def post(self, request):
+        file_obj = request.FILES.get(IMPORT_FILE_FIELD)
+        update_existing = request.POST.get(IMPORT_UPDATE_EXISTING_FIELD) == 'on'
+        
+        if not file_obj:
+            messages.error(request, MSG_IMPORT_NO_FILE)
+            return redirect(PRODUCTS_CATEGORY_IMPORT)
+        
+        importer = CategoryImporter(request, file_obj, update_existing=update_existing)
+        results = importer.run()
+        importer.add_messages()
+        
+        context = {'results': results}
+        return render(request, TEMPLATE_CATEGORY_IMPORT_RESULT, context)
+
+
+@require_GET
+def category_template(request):
+    """Download category template CSV."""
+    return generate_csv_response(
+        filename=IMPORT_TEMPLATE_FILENAME_CATEGORY,
+        headers=IMPORT_TEMPLATE_COLUMNS_CATEGORY,
+        rows=IMPORT_EXAMPLE_DATA_CATEGORY
+    )
+
+
 # =============================================================================
 # COLOR CRUD VIEWS
 # =============================================================================
 
 class ColorListView(PermissionRequiredMixin, PaginationMixin, FilterMixin, ListView):
+    """List colors with filtering and pagination."""
     model = Color
     template_name = TEMPLATE_COLOR_LIST
     context_object_name = 'colors'
@@ -995,15 +1080,16 @@ class ColorListView(PermissionRequiredMixin, PaginationMixin, FilterMixin, ListV
 
 
 class ColorCreateView(PermissionRequiredMixin, CreateView):
+    """Create a new color."""
     model = Color
     form_class = ColorCreateForm
     template_name = TEMPLATE_COLOR_FORM
     permission_required = 'products.add_color'
-    success_url = reverse_lazy(URL_COLOR_LIST)
+    success_url = reverse_lazy(PRODUCTS_COLOR_LIST)
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context[CONTEXT_CANCEL_URL] = URL_COLOR_LIST
+        context[CONTEXT_CANCEL_URL] = PRODUCTS_COLOR_LIST
         return context
     
     def form_valid(self, form):
@@ -1012,15 +1098,16 @@ class ColorCreateView(PermissionRequiredMixin, CreateView):
 
 
 class ColorUpdateView(PermissionRequiredMixin, UpdateView):
+    """Update an existing color."""
     model = Color
     form_class = ColorUpdateForm
     template_name = TEMPLATE_COLOR_FORM
     permission_required = 'products.change_color'
-    success_url = reverse_lazy(URL_COLOR_LIST)
+    success_url = reverse_lazy(PRODUCTS_COLOR_LIST)
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context[CONTEXT_CANCEL_URL] = URL_COLOR_LIST
+        context[CONTEXT_CANCEL_URL] = PRODUCTS_COLOR_LIST
         return context
     
     def form_valid(self, form):
@@ -1028,12 +1115,13 @@ class ColorUpdateView(PermissionRequiredMixin, UpdateView):
         return super().form_valid(form)
 
 
-class ColorDeleteView(PermissionRequiredMixin, SortableDeleteMixin ,DeleteView):
+class ColorDeleteView(PermissionRequiredMixin, SortableDeleteMixin, DeleteView):
+    """Delete a color."""
     model = Color
     form_class = ColorDeleteForm
     template_name = TEMPLATE_COLOR_CONFIRM_DELETE
     permission_required = 'products.delete_color'
-    success_url = reverse_lazy(URL_COLOR_LIST)
+    success_url = reverse_lazy(PRODUCTS_COLOR_LIST)
     
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
@@ -1044,7 +1132,7 @@ class ColorDeleteView(PermissionRequiredMixin, SortableDeleteMixin ,DeleteView):
         context = super().get_context_data(**kwargs)
         context[CONTEXT_OBJECT_NAME] = 'Color'
         context[CONTEXT_OBJECT_DISPLAY] = self.get_object().name
-        context[CONTEXT_CANCEL_URL] = URL_COLOR_LIST
+        context[CONTEXT_CANCEL_URL] = PRODUCTS_COLOR_LIST
         return context
     
     def post(self, request, *args, **kwargs):
@@ -1062,11 +1150,51 @@ class ColorDeleteView(PermissionRequiredMixin, SortableDeleteMixin ,DeleteView):
         return redirect(self.success_url)
 
 
+class ColorImportView(PermissionRequiredMixin, View):
+    """Import colors from CSV file."""
+    permission_required = 'products.add_color'
+    
+    def get(self, request):
+        importer = ColorImporter(request, None)
+        context = {
+            'headers': importer.get_template_headers(),
+            'example_data': importer.get_example_data(),
+            'required_columns': importer.required_columns,
+        }
+        return render(request, TEMPLATE_COLOR_IMPORT, context)
+    
+    def post(self, request):
+        file_obj = request.FILES.get(IMPORT_FILE_FIELD)
+        update_existing = request.POST.get(IMPORT_UPDATE_EXISTING_FIELD) == 'on'
+        
+        if not file_obj:
+            messages.error(request, MSG_IMPORT_NO_FILE)
+            return redirect(PRODUCTS_COLOR_IMPORT)
+        
+        importer = ColorImporter(request, file_obj, update_existing=update_existing)
+        results = importer.run()
+        importer.add_messages()
+        
+        context = {'results': results}
+        return render(request, TEMPLATE_COLOR_IMPORT_RESULT, context)
+
+
+@require_GET
+def color_template(request):
+    """Download color template CSV."""
+    return generate_csv_response(
+        filename=IMPORT_TEMPLATE_FILENAME_COLOR,
+        headers=IMPORT_TEMPLATE_COLUMNS_COLOR,
+        rows=IMPORT_EXAMPLE_DATA_COLOR
+    )
+
+
 # =============================================================================
 # PRODUCT IMAGE CRUD VIEWS
 # =============================================================================
 
 class ProductImageListView(PermissionRequiredMixin, PaginationMixin, FilterMixin, ListView):
+    """List product images with filtering and pagination."""
     model = ProductImage
     template_name = TEMPLATE_PRODUCTIMAGE_LIST
     context_object_name = 'images'
@@ -1097,15 +1225,16 @@ class ProductImageListView(PermissionRequiredMixin, PaginationMixin, FilterMixin
 
 
 class ProductImageCreateView(PermissionRequiredMixin, CreateView):
+    """Upload a new product image."""
     model = ProductImage
     form_class = ProductImageCreateForm
     template_name = TEMPLATE_PRODUCTIMAGE_FORM
     permission_required = 'products.add_productimage'
-    success_url = reverse_lazy(URL_PRODUCTIMAGE_LIST)
+    success_url = reverse_lazy(PRODUCTS_IMAGE_LIST)
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context[CONTEXT_CANCEL_URL] = URL_PRODUCTIMAGE_LIST
+        context[CONTEXT_CANCEL_URL] = PRODUCTS_IMAGE_LIST
         return context
     
     def form_valid(self, form):
@@ -1115,15 +1244,16 @@ class ProductImageCreateView(PermissionRequiredMixin, CreateView):
 
 
 class ProductImageUpdateView(PermissionRequiredMixin, UpdateView):
+    """Update product image alt text."""
     model = ProductImage
     form_class = ProductImageUpdateForm
     template_name = TEMPLATE_PRODUCTIMAGE_FORM
     permission_required = 'products.change_productimage'
-    success_url = reverse_lazy(URL_PRODUCTIMAGE_LIST)
+    success_url = reverse_lazy(PRODUCTS_IMAGE_LIST)
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context[CONTEXT_CANCEL_URL] = URL_PRODUCTIMAGE_LIST
+        context[CONTEXT_CANCEL_URL] = PRODUCTS_IMAGE_LIST
         context[CONTEXT_IS_UPDATE] = True
         return context
     
@@ -1134,11 +1264,12 @@ class ProductImageUpdateView(PermissionRequiredMixin, UpdateView):
 
 
 class ProductImageDeleteView(PermissionRequiredMixin, DeleteView):
+    """Delete a product image."""
     model = ProductImage
     form_class = ProductImageDeleteForm
     template_name = TEMPLATE_PRODUCTIMAGE_CONFIRM_DELETE
     permission_required = 'products.delete_productimage'
-    success_url = reverse_lazy(URL_PRODUCTIMAGE_LIST)
+    success_url = reverse_lazy(PRODUCTS_IMAGE_LIST)
     
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
@@ -1150,7 +1281,7 @@ class ProductImageDeleteView(PermissionRequiredMixin, DeleteView):
         image = self.get_object()
         context[CONTEXT_OBJECT_NAME] = 'Imagen'
         context[CONTEXT_OBJECT_DISPLAY] = image.image.name.split('/')[-1]
-        context[CONTEXT_CANCEL_URL] = URL_PRODUCTIMAGE_LIST
+        context[CONTEXT_CANCEL_URL] = PRODUCTS_IMAGE_LIST
         context[CONTEXT_IMAGE_PREVIEW] = image.image.url
         context['alt_text'] = image.alt_text
         return context
@@ -1175,6 +1306,7 @@ class ProductImageDeleteView(PermissionRequiredMixin, DeleteView):
 # =============================================================================
 
 class ProductListView(PermissionRequiredMixin, PaginationMixin, FilterMixin, ListView):
+    """List products with filtering and pagination."""
     model = Product
     template_name = TEMPLATE_PRODUCT_LIST
     context_object_name = CONTEXT_PRODUCTS
@@ -1220,7 +1352,7 @@ class ProductListView(PermissionRequiredMixin, PaginationMixin, FilterMixin, Lis
         context['categories'] = Category.objects.all()
         context['product_types'] = Product.PRODUCT_TYPES
         context['filters_config'] = [
-            {'name': FILTER_NAME, 'label': HEADER_NAME, 'type': 'search', 'placeholder': 'Buscar producto...'},
+            {'name': FILTER_NAME, 'label': HEADER_NAME, 'type': 'search', 'placeholder': UI_PLACEHOLDER_SEARCH_PRODUCT},
             {'name': FILTER_CATEGORY, 'label': HEADER_CATEGORY, 'type': 'select', 'options': [
                 {'value': cat.id, 'label': cat.name} for cat in Category.objects.all()
             ]},
@@ -1228,15 +1360,16 @@ class ProductListView(PermissionRequiredMixin, PaginationMixin, FilterMixin, Lis
                 {'value': PRODUCT_TYPE_FABRICA, 'label': PRODUCT_TYPES_DISPLAY[PRODUCT_TYPE_FABRICA]},
                 {'value': PRODUCT_TYPE_COLECCION_LIMITADA, 'label': PRODUCT_TYPES_DISPLAY[PRODUCT_TYPE_COLECCION_LIMITADA]},
             ]},
-            {'name': FILTER_IS_ACTIVE, 'label': 'Estado', 'type': 'select', 'options': [
-                {'value': 'true', 'label': BADGE_TEXT_ACTIVE},
-                {'value': 'false', 'label': BADGE_TEXT_INACTIVE},
+            {'name': FILTER_IS_ACTIVE, 'label': UI_STATUS_LABEL, 'type': 'select', 'options': [
+                {'value': ACTIVE_FILTER_VALUE, 'label': BADGE_TEXT_ACTIVE},
+                {'value': INACTIVE_FILTER_VALUE, 'label': BADGE_TEXT_INACTIVE},
             ]},
         ]
         return context
 
 
 class ProductCreateView(PermissionRequiredMixin, CreateView):
+    """Create a new product."""
     model = Product
     form_class = ProductCreateForm
     template_name = TEMPLATE_PRODUCT_FORM
@@ -1244,12 +1377,12 @@ class ProductCreateView(PermissionRequiredMixin, CreateView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context[CONTEXT_CANCEL_URL] = URL_PRODUCT_LIST
+        context[CONTEXT_CANCEL_URL] = PRODUCTS_LIST
         context[CONTEXT_IS_CREATE] = True
         return context
     
     def get_success_url(self):
-        return reverse(URL_PRODUCT_EDIT, kwargs={'pk': self.object.pk})
+        return reverse(PRODUCTS_EDIT, kwargs={'pk': self.object.pk})
 
     def form_valid(self, form):
         response = super().form_valid(form)
@@ -1258,15 +1391,16 @@ class ProductCreateView(PermissionRequiredMixin, CreateView):
 
 
 class ProductUpdateView(PermissionRequiredMixin, UpdateView):
+    """Update an existing product."""
     model = Product
     form_class = ProductUpdateForm
     template_name = TEMPLATE_PRODUCT_FORM
     permission_required = 'products.change_product'
-    success_url = reverse_lazy(URL_PRODUCT_LIST)
+    success_url = reverse_lazy(PRODUCTS_LIST)
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context[CONTEXT_CANCEL_URL] = URL_PRODUCT_LIST
+        context[CONTEXT_CANCEL_URL] = PRODUCTS_LIST
         context[CONTEXT_IS_UPDATE] = True
         context[CONTEXT_PRODUCT_COLORS] = self.object.product_colors.filter(is_active=True)
         context[CONTEXT_VARIANTS] = self.object.variants.filter(is_active=True)
@@ -1279,11 +1413,12 @@ class ProductUpdateView(PermissionRequiredMixin, UpdateView):
 
 
 class ProductDeleteView(PermissionRequiredMixin, DeleteView):
+    """Soft-delete a product (move to trash)."""
     model = Product
     form_class = ProductDeleteForm
     template_name = TEMPLATE_PRODUCT_CONFIRM_DELETE
     permission_required = 'products.delete_product'
-    success_url = reverse_lazy(URL_PRODUCT_LIST)
+    success_url = reverse_lazy(PRODUCTS_LIST)
     
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
@@ -1294,7 +1429,7 @@ class ProductDeleteView(PermissionRequiredMixin, DeleteView):
         context = super().get_context_data(**kwargs)
         context[CONTEXT_OBJECT_NAME] = 'Producto'
         context[CONTEXT_OBJECT_DISPLAY] = self.get_object().name
-        context[CONTEXT_CANCEL_URL] = URL_PRODUCT_LIST
+        context[CONTEXT_CANCEL_URL] = PRODUCTS_LIST
         return context
     
     def post(self, request, *args, **kwargs):
@@ -1318,7 +1453,7 @@ class ProductRestoreView(PermissionRequiredMixin, TemplateView):
     form_class = ProductRestoreForm
     template_name = TEMPLATE_PRODUCT_RESTORE
     permission_required = 'products.change_product'
-    success_url = reverse_lazy(URL_PRODUCT_TRASHCAN)
+    success_url = reverse_lazy(PRODUCTS_TRASHCAN)
     
     def get_object(self):
         return get_object_or_404(Product.all_objects, pk=self.kwargs['pk'], is_active=False)
@@ -1331,7 +1466,7 @@ class ProductRestoreView(PermissionRequiredMixin, TemplateView):
         product = self.get_object()
         context[CONTEXT_PRODUCT] = product
         context['form'] = self.get_form()
-        context[CONTEXT_CANCEL_URL] = URL_PRODUCT_TRASHCAN
+        context[CONTEXT_CANCEL_URL] = PRODUCTS_TRASHCAN
         context[CONTEXT_OBJECT_NAME] = 'Producto'
         context[CONTEXT_OBJECT_DISPLAY] = product.name
         return context
@@ -1342,7 +1477,7 @@ class ProductRestoreView(PermissionRequiredMixin, TemplateView):
         if form.is_valid():
             product.restore(user=request.user)
             messages.success(request, MSG_PRODUCT_RESTORED.format(name=product.name))
-            return redirect(URL_PRODUCT_LIST)
+            return redirect(PRODUCTS_LIST)
         return self.render_to_response(self.get_context_data(form=form))
 
 
@@ -1380,11 +1515,12 @@ class ProductTrashcanView(PermissionRequiredMixin, ListView):
 # =============================================================================
 
 class ProductColorCreateView(PermissionRequiredMixin, CreateView):
+    """Add a color to a product."""
     model = ProductColor
     form_class = ProductColorCreateForm
     template_name = TEMPLATE_PRODUCTCOLOR_FORM
     permission_required = 'products.add_productcolor'
-    success_url = reverse_lazy(URL_PRODUCT_LIST)
+    success_url = reverse_lazy(PRODUCTS_LIST)
     
     def dispatch(self, request, *args, **kwargs):
         self.product = get_object_or_404(Product, pk=kwargs['product_pk'])
@@ -1398,7 +1534,7 @@ class ProductColorCreateView(PermissionRequiredMixin, CreateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context[CONTEXT_PRODUCT] = self.product
-        context[CONTEXT_CANCEL_URL] = URL_PRODUCT_EDIT
+        context[CONTEXT_CANCEL_URL] = PRODUCTS_EDIT
         context[CONTEXT_CANCEL_ARGS] = [self.product.pk]
         context[CONTEXT_TITLE] = f'Agregar Color a {self.product.name}'
         return context
@@ -1409,16 +1545,17 @@ class ProductColorCreateView(PermissionRequiredMixin, CreateView):
 
 
 class ProductColorUpdateView(PermissionRequiredMixin, UpdateView):
+    """Update a product's color."""
     model = ProductColor
     form_class = ProductColorUpdateForm
     template_name = TEMPLATE_PRODUCTCOLOR_FORM
     permission_required = 'products.change_productcolor'
-    success_url = reverse_lazy(URL_PRODUCT_LIST)
+    success_url = reverse_lazy(PRODUCTS_LIST)
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context[CONTEXT_PRODUCT] = self.object.product
-        context[CONTEXT_CANCEL_URL] = URL_PRODUCT_EDIT
+        context[CONTEXT_CANCEL_URL] = PRODUCTS_EDIT
         context[CONTEXT_CANCEL_ARGS] = [self.object.product.pk]
         context[CONTEXT_TITLE] = f'Editar Color - {self.object.color.name}'
         return context
@@ -1426,15 +1563,16 @@ class ProductColorUpdateView(PermissionRequiredMixin, UpdateView):
     def form_valid(self, form):
         response = super().form_valid(form)
         messages.success(self.request, MSG_PRODUCT_COLOR_UPDATED.format(name=self.object.color.name))
-        return redirect(URL_PRODUCT_EDIT, pk=self.object.product.pk)
+        return redirect(PRODUCTS_EDIT, pk=self.object.product.pk)
 
 
-class ProductColorDeleteView(PermissionRequiredMixin, SortableDeleteMixin , DeleteView):
+class ProductColorDeleteView(PermissionRequiredMixin, SortableDeleteMixin, DeleteView):
+    """Remove a color from a product."""
     model = ProductColor
     form_class = ProductColorDeleteForm
     template_name = TEMPLATE_PRODUCTCOLOR_CONFIRM_DELETE
     permission_required = 'products.delete_productcolor'
-    success_url = reverse_lazy(URL_PRODUCT_LIST)
+    success_url = reverse_lazy(PRODUCTS_LIST)
     
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
@@ -1447,7 +1585,7 @@ class ProductColorDeleteView(PermissionRequiredMixin, SortableDeleteMixin , Dele
         context[CONTEXT_PRODUCT] = product_color.product
         context[CONTEXT_OBJECT_NAME] = 'Color del producto'
         context[CONTEXT_OBJECT_DISPLAY] = f'{product_color.color.name} para {product_color.product.name}'
-        context[CONTEXT_CANCEL_URL] = URL_PRODUCT_EDIT
+        context[CONTEXT_CANCEL_URL] = PRODUCTS_EDIT
         context[CONTEXT_CANCEL_ARGS] = [product_color.product.pk]
         return context
     
@@ -1464,7 +1602,7 @@ class ProductColorDeleteView(PermissionRequiredMixin, SortableDeleteMixin , Dele
         color_name = product_color.color.name
         product_color.delete()
         messages.success(request, MSG_PRODUCT_COLOR_DELETED.format(name=color_name))
-        return redirect(URL_PRODUCT_EDIT, pk=product_pk)
+        return redirect(PRODUCTS_EDIT, pk=product_pk)
 
 
 # =============================================================================
@@ -1472,11 +1610,12 @@ class ProductColorDeleteView(PermissionRequiredMixin, SortableDeleteMixin , Dele
 # =============================================================================
 
 class ProductVariantCreateView(PermissionRequiredMixin, CreateView):
+    """Create a new product variant."""
     model = ProductVariant
     form_class = ProductVariantCreateForm
     template_name = TEMPLATE_PRODUCTVARIANT_FORM
     permission_required = 'products.add_productvariant'
-    success_url = reverse_lazy(URL_PRODUCT_LIST)
+    success_url = reverse_lazy(PRODUCTS_LIST)
     
     def dispatch(self, request, *args, **kwargs):
         self.product = get_object_or_404(Product, pk=kwargs['product_pk'])
@@ -1496,7 +1635,7 @@ class ProductVariantCreateView(PermissionRequiredMixin, CreateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context[CONTEXT_PRODUCT] = self.product
-        context[CONTEXT_CANCEL_URL] = URL_PRODUCT_EDIT
+        context[CONTEXT_CANCEL_URL] = PRODUCTS_EDIT
         context[CONTEXT_CANCEL_ARGS] = [self.product.pk]
         context[CONTEXT_TITLE] = f'Agregar Variante a {self.product.name}'
         return context
@@ -1505,20 +1644,21 @@ class ProductVariantCreateView(PermissionRequiredMixin, CreateView):
         form.instance.product = self.product
         variant_name = f'{form.instance.product_color.color.name} - {form.instance.size.name}'
         messages.success(self.request, MSG_VARIANT_CREATED.format(variant=variant_name))
-        return redirect(URL_PRODUCT_EDIT, pk=self.product.pk)
+        return redirect(PRODUCTS_EDIT, pk=self.product.pk)
 
 
 class ProductVariantUpdateView(PermissionRequiredMixin, UpdateView):
+    """Update an existing product variant."""
     model = ProductVariant
     form_class = ProductVariantUpdateForm
     template_name = TEMPLATE_PRODUCTVARIANT_FORM
     permission_required = 'products.change_productvariant'
-    success_url = reverse_lazy(URL_PRODUCT_LIST)
+    success_url = reverse_lazy(PRODUCTS_LIST)
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context[CONTEXT_PRODUCT] = self.object.product
-        context[CONTEXT_CANCEL_URL] = URL_PRODUCT_EDIT
+        context[CONTEXT_CANCEL_URL] = PRODUCTS_EDIT
         context[CONTEXT_CANCEL_ARGS] = [self.object.product.pk]
         context[CONTEXT_TITLE] = f'Editar Variante - {self.object.product_color.color.name} / {self.object.size.name}'
         return context
@@ -1526,15 +1666,16 @@ class ProductVariantUpdateView(PermissionRequiredMixin, UpdateView):
     def form_valid(self, form):
         response = super().form_valid(form)
         messages.success(self.request, MSG_VARIANT_UPDATED)
-        return redirect(URL_PRODUCT_EDIT, pk=self.object.product.pk)
+        return redirect(PRODUCTS_EDIT, pk=self.object.product.pk)
 
 
 class ProductVariantDeleteView(PermissionRequiredMixin, DeleteView):
+    """Soft-delete a product variant."""
     model = ProductVariant
     form_class = ProductVariantDeleteForm
     template_name = TEMPLATE_PRODUCTVARIANT_CONFIRM_DELETE
     permission_required = 'products.delete_productvariant'
-    success_url = reverse_lazy(URL_PRODUCT_LIST)
+    success_url = reverse_lazy(PRODUCTS_LIST)
     
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
@@ -1547,7 +1688,7 @@ class ProductVariantDeleteView(PermissionRequiredMixin, DeleteView):
         context[CONTEXT_PRODUCT] = variant.product
         context[CONTEXT_OBJECT_NAME] = 'Variante'
         context[CONTEXT_OBJECT_DISPLAY] = f'{variant.product_color.color.name} - {variant.size.name}'
-        context[CONTEXT_CANCEL_URL] = URL_PRODUCT_EDIT
+        context[CONTEXT_CANCEL_URL] = PRODUCTS_EDIT
         context[CONTEXT_CANCEL_ARGS] = [variant.product.pk]
         return context
     
@@ -1563,7 +1704,7 @@ class ProductVariantDeleteView(PermissionRequiredMixin, DeleteView):
         product_pk = variant.product.pk
         variant.soft_delete(user=request.user)
         messages.success(request, MSG_VARIANT_DELETED)
-        return redirect(URL_PRODUCT_EDIT, pk=product_pk)
+        return redirect(PRODUCTS_EDIT, pk=product_pk)
 
 
 class ProductVariantRestoreView(PermissionRequiredMixin, FormView):
@@ -1586,14 +1727,14 @@ class ProductVariantRestoreView(PermissionRequiredMixin, FormView):
         context[CONTEXT_PRODUCT] = self.variant.product
         context[CONTEXT_OBJECT_NAME] = 'Variante'
         context[CONTEXT_OBJECT_DISPLAY] = f'{self.variant.product_color.color.name} - {self.variant.size.name}'
-        context[CONTEXT_CANCEL_URL] = URL_PRODUCT_EDIT
+        context[CONTEXT_CANCEL_URL] = PRODUCTS_EDIT
         context[CONTEXT_CANCEL_ARGS] = [self.variant.product.pk]
         return context
     
     def form_valid(self, form):
         self.variant.restore(user=self.request.user)
         messages.success(self.request, MSG_VARIANT_RESTORED)
-        return redirect(URL_PRODUCT_EDIT, pk=self.variant.product.pk)
+        return redirect(PRODUCTS_EDIT, pk=self.variant.product.pk)
     
     def form_invalid(self, form):
         messages.error(self.request, MSG_VARIANT_RESTORE_ERROR)
@@ -1621,144 +1762,3 @@ class ProductVariantTrashcanView(PermissionRequiredMixin, ListView):
         context = super().get_context_data(**kwargs)
         context[CONTEXT_PRODUCT] = self.product
         return context
-
-class SizeImportView(PermissionRequiredMixin, View):
-    permission_required = 'products.add_size'
-    
-    def get(self, request):
-        importer = SizeImporter(request, None)
-        context = {
-            'headers': importer.get_template_headers(),
-            'example_data': importer.get_example_data(),
-            'required_columns': importer.required_columns,
-        }
-        return render(request, 'backoffice/size/size_import.html', context)
-    
-    def post(self, request):
-        file_obj = request.FILES.get('file')
-        update_existing = request.POST.get('update_existing') == 'on'
-        
-        if not file_obj:
-            messages.error(request, 'Por favor selecciona un archivo.')
-            return redirect('products:size_import')
-        
-        importer = SizeImporter(request, file_obj, update_existing=update_existing)
-        results = importer.run()
-        importer.add_messages()
-        
-        request.session['import_results'] = results
-        
-        return render(request, 'backoffice/size/size_import_result.html', {'results': results})
-
-@require_GET
-def size_template(request):
-    """Descarga plantilla de ejemplo para tallas."""
-    import csv
-    from django.http import HttpResponse
-    
-    response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="plantilla_tallas.csv"'
-    
-    writer = csv.writer(response)
-    writer.writerow(['name'])
-    writer.writerows([['XS'], ['S'], ['M'], ['L'], ['XL']])
-    
-    return response
-
-class ColorImportView(PermissionRequiredMixin, View):
-    permission_required = 'products.add_color'
-    
-    def get(self, request):
-        importer = ColorImporter(request, None)
-        context = {
-            'headers': importer.get_template_headers(),
-            'example_data': importer.get_example_data(),
-            'required_columns': importer.required_columns,
-        }
-        return render(request, 'backoffice/color/color_import.html', context)
-    
-    def post(self, request):
-        file_obj = request.FILES.get('file')
-        update_existing = request.POST.get('update_existing') == 'on'
-        
-        if not file_obj:
-            messages.error(request, 'Por favor selecciona un archivo.')
-            return redirect('products:color_import')
-        
-        importer = ColorImporter(request, file_obj, update_existing=update_existing)
-        results = importer.run()
-        importer.add_messages()
-        
-        context = {'results': results}
-        return render(request, 'backoffice/color/color_import_result.html', context)
-
-
-@require_GET
-def color_template(request):
-    """Descarga plantilla de ejemplo para colores."""
-    import csv
-    from django.http import HttpResponse
-    
-    response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="plantilla_colores.csv"'
-    
-    writer = csv.writer(response)
-    writer.writerow(['name', 'code'])
-    writer.writerows([
-        ['Negro', '#000000'],
-        ['Blanco', '#FFFFFF'],
-        ['Rojo', '#FF0000'],
-        ['Azul', '#0000FF'],
-        ['Verde', '#00FF00'],
-    ])
-    
-    return response
-
-class CategoryImportView(PermissionRequiredMixin, View):
-    permission_required = 'products.add_category'
-    
-    def get(self, request):
-        importer = CategoryImporter(request, None)
-        context = {
-            'headers': importer.get_template_headers(),
-            'example_data': importer.get_example_data(),
-            'required_columns': importer.required_columns,
-        }
-        return render(request, 'backoffice/category/category_import.html', context)
-    
-    def post(self, request):
-        file_obj = request.FILES.get('file')
-        update_existing = request.POST.get('update_existing') == 'on'
-        
-        if not file_obj:
-            messages.error(request, 'Por favor selecciona un archivo.')
-            return redirect('products:category_import')
-        
-        importer = CategoryImporter(request, file_obj, update_existing=update_existing)
-        results = importer.run()
-        importer.add_messages()
-        
-        context = {'results': results}
-        return render(request, 'backoffice/category/category_import_result.html', context)
-
-
-@require_GET
-def category_template(request):
-    """Descarga plantilla de ejemplo para categorías."""
-    import csv
-    from django.http import HttpResponse
-    
-    response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="plantilla_categorias.csv"'
-    
-    writer = csv.writer(response)
-    writer.writerow(['name'])
-    writer.writerows([
-        ['Camisetas'],
-        ['Hoodies'],
-        ['Pantalones'],
-        ['Accesorios'],
-        ['Chaquetas'],
-    ])
-    
-    return response

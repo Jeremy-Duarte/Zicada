@@ -18,262 +18,275 @@ from .reports.orders import OrdersReport
 from .reports.products import ProductsReport
 from .reports.delivery import DeliveryReport
 
-# =============================================================================
-# CONSTANTS
-# =============================================================================
+from apps.core.url_names import (
+    ORDERS_DETAIL,
+    ORDERS_LIST,
+    ORDERS_CREATE,
+    PRODUCTS_LIST,
+    PRODUCTS_EDIT,
+    PRODUCTS_CREATE,
+    USERS_LIST,
+    USERS_CREATE,
+    BACKOFFICE_IMPORTERS_DASHBOARD,
+    BACKOFFICE_REPORT_GENERATOR,
+    PRODUCTS_SIZE_LIST,
+    PRODUCTS_CATEGORY_LIST,
+    PRODUCTS_COLOR_LIST,
+    PRODUCTS_IMAGE_LIST,
+    PRODUCTS_SIZE_IMPORT,
+    PRODUCTS_COLOR_IMPORT,
+    PRODUCTS_CATEGORY_IMPORT,
+    USERS_GROUP_LIST,
+    USERS_TRASHCAN,
+    CORE_HERO_LIST,
+    CORE_HERO_TRASHCAN,
+)
 
-# Order Statuses
-STATUS_PENDING = 'pendiente'
-STATUS_CONFIRMED = 'confirmado'
-STATUS_PREPARING = 'preparando'
-STATUS_READY = 'listo'
-STATUS_ON_THE_WAY = 'en_camino'
-STATUS_DELIVERED = 'entregado'
-STATUS_CANCELLED = 'cancelado'
-
-PAID_STATUSES = [
-    STATUS_CONFIRMED,
-    STATUS_PREPARING,
-    STATUS_READY,
-    STATUS_ON_THE_WAY,
-    STATUS_DELIVERED
-]
-
-STATUS_LABELS = {
-    STATUS_PENDING: 'Pendientes',
-    STATUS_CONFIRMED: 'Confirmados',
-    STATUS_PREPARING: 'Preparando',
-    STATUS_READY: 'Listos',
-    STATUS_ON_THE_WAY: 'En camino',
-    STATUS_DELIVERED: 'Entregados',
-    STATUS_CANCELLED: 'Cancelados',
-}
-
-# Route Names
-ROUTE_ORDER_DETAIL = 'orders:order_detail'
-ROUTE_ORDER_LIST = 'orders:order_list'
-ROUTE_ORDER_CREATE = 'orders:order_create'
-ROUTE_PRODUCT_LIST = 'products:product_list'
-ROUTE_PRODUCT_EDIT = 'products:product_edit'
-ROUTE_PRODUCT_CREATE = 'products:product_create'
-ROUTE_USER_LIST = 'users:user_list'
-ROUTE_USER_CREATE = 'users:user_create'
-DASHBOARD_IMPORT_ROUTE = 'backoffice:importers_dashboard'
-
-# URL Query Parameters
-QUERY_STATUS = '?status={}'
-QUERY_NAME = '?name={}'
-QUERY_IS_ACTIVE = '?is_active={}'
-QUERY_IS_DELIVERY = '?is_delivery={}'
-QUERY_STOCK = '?stock={}'
-QUERY_USERNAME = '?username={}'
-
-# Template Paths
-TEMPLATE_ADMIN_DASHBOARD = 'backoffice/admin_dashboard.html'
-TEMPLATE_ADMIN_ORDERS_DASHBOARD = 'backoffice/admin_orders_dashboard.html'
-TEMPLATE_ADMIN_PRODUCTS_DASHBOARD = 'backoffice/admin_products_dashboard.html'
-TEMPLATE_ADMIN_USERS_DASHBOARD = 'backoffice/admin_users_dashboard.html'
-TEMPLATE_ADMIN_CONFIG = 'backoffice/admin_config.html'
-
-# Chart and Display Labels
-CHART_SERIES_NAME_SALES = 'Ventas (COP)'
-CHART_SERIES_NAME_REVENUE = 'Ingreso diario (COP)'
-CHART_SERIES_NAME_ORDERS = 'Pedidos'
-
-# Icon Names
-ICON_BOX = 'box'
-ICON_CHART_LINE = 'chart-line'
-ICON_USER = 'user'
-ICON_CHECK_CIRCLE = 'check-circle'
-ICON_EXCLAMATION_TRIANGLE = 'exclamation-triangle'
-ICON_TSHIRT = 'tshirt'
-
-# Icon Background Colors
-ICON_BG_GRAY = 'gray-100'
-ICON_BG_YELLOW = 'yellow-100'
-ICON_BG_GREEN = 'green-100'
-ICON_BG_BLUE = 'blue-100'
-ICON_BG_PURPLE = 'purple-100'
-ICON_BG_ORANGE = 'orange-50'
-ICON_BG_INDIGO = 'indigo-50'
-
-# Icon Colors
-ICON_COLOR_ACCENT = 'zicada-accent'
-ICON_COLOR_YELLOW = 'yellow-600'
-ICON_COLOR_GREEN = 'green-600'
-ICON_COLOR_BLUE = 'blue-600'
-ICON_COLOR_PURPLE = 'purple-600'
-
-# Badge Labels
-BADGE_NEW = 'Nuevo'
-BADGE_COMING_SOON = 'Próximamente'
-LABEL_EXPORT_REPORTS = 'Exportar Reportes'
-
-# Button Titles
-BTN_TITLE_MANAGE_ORDERS = 'Gestionar Pedidos'
-BTN_TITLE_CREATE_ORDER = 'Crear Pedido'
-BTN_TITLE_MANAGE_PRODUCTS = 'Gestionar Productos'
-BTN_TITLE_CREATE_PRODUCT = 'Crear Producto'
-BTN_TITLE_MANAGE_DELIVERIES = 'Gestionar Entregadores'
-BTN_TITLE_ADD_DELIVERY = 'Agregar Entregador'
-
-# Button Descriptions
-BTN_DESC_MANAGE_ORDERS = 'Ver, filtrar y gestionar todos los pedidos'
-BTN_DESC_CREATE_ORDER = 'Agregar un nuevo pedido desde el catálogo'
-BTN_DESC_MANAGE_PRODUCTS = 'Ver, filtrar y gestionar todos los productos'
-BTN_DESC_CREATE_PRODUCT = 'Agregar un nuevo producto al catálogo'
-BTN_DESC_MANAGE_DELIVERIES = 'Ver, filtrar y gestionar todos los entregadores'
-BTN_DESC_ADD_DELIVERY = 'Registrar un nuevo entregador'
-BTN_DESC_EXPORT = 'Descargar reportes en Excel o PDF'
-BTN_DESC_EXPORT_DELIVERIES = 'Descargar reportes de entregas'
-
-# Gradient Colors
-GRADIENT_ACCENT_FROM = 'zicada-accent'
-GRADIENT_ACCENT_TO = 'zicada-accent/80'
-GRADIENT_GREEN_FROM = 'green-500'
-GRADIENT_GREEN_TO = 'green-600'
-GRADIENT_BLUE_FROM = 'blue-500'
-GRADIENT_BLUE_TO = 'blue-600'
-
-# Financial Item Labels
-FINANCIAL_LABEL_AVG_TICKET = 'Ticket promedio'
-FINANCIAL_LABEL_ITEMS_PER_ORDER = 'Items por pedido'
-FINANCIAL_LABEL_AVG_DAILY_INCOME = 'Ingreso diario promedio'
-FINANCIAL_LABEL_TOTAL_PAID = 'Total pedidos pagados'
-FINANCIAL_LABEL_TODAY_INCOME = 'Ingreso hoy'
-FINANCIAL_LABEL_YEAR_INCOME = 'Ingreso año'
-
-# Financial Item Sub-values
-FINANCIAL_SUB_AVG_TICKET = 'por transacción'
-FINANCIAL_SUB_AVG_ITEMS = 'promedio'
-FINANCIAL_SUB_AVG_DAILY = 'últimos 7 días'
-FINANCIAL_SUB_TOTAL_PAID = 'pedidos completados'
-FINANCIAL_SUB_TODAY = 'acumulado'
-
-# Financial Item Icons
-FINANCIAL_ICON_RECEIPT = 'receipt'
-FINANCIAL_ICON_BOX = 'box'
-FINANCIAL_ICON_CHART = 'chart-line'
-FINANCIAL_ICON_CART = 'shopping-cart'
-FINANCIAL_ICON_SUN = 'sun'
-FINANCIAL_ICON_CALENDAR = 'calendar-alt'
-
-# Financial Item Colors
-FINANCIAL_COLOR_ACCENT = 'zicada-accent'
-FINANCIAL_COLOR_BLUE = 'blue-500'
-FINANCIAL_COLOR_GREEN = 'green-500'
-FINANCIAL_COLOR_PURPLE = 'purple-500'
-FINANCIAL_COLOR_ORANGE = 'orange-500'
-FINANCIAL_COLOR_INDIGO = 'indigo-500'
-
-# Stock Distribution Labels
-STOCK_LABEL_IN_STOCK = 'En stock'
-STOCK_LABEL_LOW_STOCK = 'Stock bajo'
-STOCK_LABEL_OUT_OF_STOCK = 'Agotado'
-STOCK_COLOR_GREEN = 'green-500'
-STOCK_COLOR_YELLOW = 'yellow-500'
-STOCK_COLOR_RED = 'red-500'
-
-# Delivery Stats Labels
-DELIVERY_LABEL_ACTIVE = 'Activos'
-DELIVERY_LABEL_INACTIVE = 'Inactivos'
-DELIVERY_COLOR_ACTIVE = 'green-500'
-DELIVERY_COLOR_INACTIVE = 'gray-400'
-
-# Section Names
-SECTION_DASHBOARD = 'dashboard'
-SECTION_ORDERS = 'orders'
-SECTION_PRODUCTS = 'products'
-SECTION_USERS = 'users'
-SECTION_CONFIG = 'config'
-
-# Context Keys
-CONTEXT_SECTION = 'section'
-CONTEXT_STATS = 'stats'
-CONTEXT_URLS = 'urls'
-CONTEXT_ACTION_BUTTONS = 'action_buttons'
-CONTEXT_RECENT_ORDERS = 'recent_orders'
-CONTEXT_RECENT_PRODUCTS = 'recent_products'
-CONTEXT_RECENT_DELIVERIES = 'recent_deliveries'
-CONTEXT_ACTIVE_DELIVERIES = 'active_deliveries'
-CONTEXT_LOW_STOCK_PRODUCTS = 'low_stock_products'
-CONTEXT_TOP_PRODUCTS = 'top_products'
-CONTEXT_FINANCIAL_STATS = 'financial_stats'
-CONTEXT_FINANCIAL_ITEMS = 'financial_items'
-CONTEXT_SALES_CHART_DATA = 'sales_chart_data'
-CONTEXT_DAILY_REVENUE_CHART_DATA = 'daily_revenue_chart_data'
-CONTEXT_ORDERS_STATUS_DATA = 'orders_status_data'
-CONTEXT_ORDERS_TREND_DATA = 'orders_trend_data'
-CONTEXT_STOCK_DISTRIBUTION = 'stock_distribution'
-CONTEXT_STOCK_STATS_LIST = 'stock_stats_list'
-CONTEXT_DELIVERY_STATS = 'delivery_stats'
-CONTEXT_DELIVERY_STATS_LIST = 'delivery_stats_list'
-CONTEXT_PEDIDOS_POR_ENTREGAR = 'pedidos_por_entregar'
-CONTEXT_PEDIDOS_EN_CAMINO = 'pedidos_en_camino'
-
-# Numeric Constants
-DEFAULT_LIMIT = 5
-MAX_LOW_STOCK = 10
-DAYS_FOR_TREND = 7
-
-# Date Formats
-DATE_FORMAT_DAY_MONTH = '%d/%m'
-DATE_FORMAT_DAY_MONTH_YEAR = '%d/%m/%Y'
-DATE_FORMAT_DAY_MONTH_HOUR = '%d/%m %H:%M'
-
-# Currency Display
-CURRENCY_PREFIX = '$'
-
-# Common Strings
-STRING_EMPTY = ''
-STRING_SIN_CATEGORIA = 'Sin categoría'
-STRING_SIN_EMAIL = 'Sin email'
-STRING_SIN_TELEFONO = 'Sin teléfono'
-STRING_UNIDADES = 'unidades'
-STRING_UNIDADES_VENDIDAS = 'unidades vendidas'
-STRING_TOTAL_RECAUDADO = 'Total recaudado'
-STRING_ENTREGADO_POR = 'Entregado por'
-STRING_EN_CAMINO = 'en camino'
-STRING_ENTREGADOS = 'entregados'
-STRING_ACTIVOS = 'activos'
-STRING_POR_TRANSACCION = 'por transacción'
-STRING_PROMEDIO = 'promedio'
-STRING_ULTIMOS_7_DIAS = 'últimos 7 días'
-STRING_PEDIDOS_COMPLETADOS = 'pedidos completados'
-STRING_ACUMULADO = 'acumulado'
-
-# =============================================================================
-# Icon Background Colors (additional)
-# =============================================================================
-ICON_BG_BLUE_50 = 'blue-50'
-ICON_BG_BLUE_100 = 'blue-100'
-ICON_BG_GREEN_50 = 'green-50'
-ICON_BG_GREEN_100 = 'green-100'
-ICON_BG_PURPLE_50 = 'purple-50'
-ICON_BG_PURPLE_100 = 'purple-100'
-ICON_BG_ORANGE_100 = 'orange-100'
-ICON_BG_GRAY_50 = 'gray-50'
-ICON_BG_GRAY_100 = 'gray-100'
-ICON_BG_AMBER_50 = 'amber-50'
-ICON_BG_AMBER_100 = 'amber-100'
-ICON_BG_RED_50 = 'red-50'
-ICON_BG_RED_100 = 'red-100'
-# =============================================================================
-# Icon Colors (additional)
-# =============================================================================
-ICON_COLOR_BLUE_600 = 'blue-600'
-ICON_COLOR_GREEN_600 = 'green-600'
-ICON_COLOR_PURPLE_600 = 'purple-600'
-ICON_COLOR_ORANGE_600 = 'orange-600'
-ICON_COLOR_GRAY_600 = 'gray-600'
-ICON_COLOR_AMBER_600 = 'amber-600'
-# =============================================================================
-# Badge Labels (additional)
-# =============================================================================
-BADGE_CSV_EXCEL = 'CSV/Excel'
-BADGE_PRINCIPAL = 'Principal'
-BADGE_PLUS = '+'
-BADGE_TRASH = '🗑'
+from .constants import (
+    # Order Statuses
+    ORDER_STATUS_PENDING,
+    ORDER_STATUS_CONFIRMED,
+    ORDER_STATUS_PREPARING,
+    ORDER_STATUS_READY,
+    ORDER_STATUS_ON_THE_WAY,
+    ORDER_STATUS_DELIVERED,
+    ORDER_STATUS_CANCELLED,
+    PAID_ORDER_STATUSES,
+    ORDER_STATUS_LABELS,
+    # URL Query Parameters
+    QUERY_PARAM_STATUS,
+    QUERY_PARAM_NAME,
+    QUERY_PARAM_IS_ACTIVE,
+    QUERY_PARAM_IS_DELIVERY,
+    QUERY_PARAM_STOCK,
+    QUERY_PARAM_USERNAME,
+    # URL Query Templates
+    QUERY_STATUS,
+    QUERY_NAME,
+    QUERY_IS_ACTIVE,
+    QUERY_IS_DELIVERY,
+    QUERY_STOCK,
+    QUERY_USERNAME,
+    # URL Query Parameter Values
+    QUERY_VALUE_ALL,
+    QUERY_VALUE_ACTIVE,
+    QUERY_VALUE_INACTIVE,
+    QUERY_VALUE_LOW_STOCK,
+    QUERY_VALUE_OUT_OF_STOCK,
+    QUERY_VALUE_TODOS,
+    # Template Paths
+    TEMPLATE_ADMIN_DASHBOARD,
+    TEMPLATE_ADMIN_ORDERS_DASHBOARD,
+    TEMPLATE_ADMIN_PRODUCTS_DASHBOARD,
+    TEMPLATE_ADMIN_USERS_DASHBOARD,
+    TEMPLATE_ADMIN_CONFIG,
+    TEMPLATE_REPORT_GENERATOR,
+    TEMPLATE_IMPORTERS_DASHBOARD,
+    # Chart and Display Labels
+    CHART_SERIES_NAME_SALES,
+    CHART_SERIES_NAME_REVENUE,
+    CHART_SERIES_NAME_ORDERS,
+    # Icon Names
+    ICON_BOX,
+    ICON_CHART_LINE,
+    ICON_USER,
+    ICON_CHECK_CIRCLE,
+    ICON_EXCLAMATION_TRIANGLE,
+    ICON_TSHIRT,
+    ICON_FILE_EXPORT,
+    ICON_TABLE_LIST,
+    ICON_PLUS_CIRCLE,
+    ICON_RULER,
+    ICON_TAGS,
+    ICON_PALETTE,
+    ICON_IMAGES,
+    ICON_USERS,
+    ICON_KEY,
+    ICON_TRASH_ALT,
+    ICON_RECEIPT,
+    ICON_SHOPPING_CART,
+    ICON_SUN,
+    ICON_CALENDAR_ALT,
+    # Icon Background Colors
+    ICON_BG_GRAY,
+    ICON_BG_YELLOW,
+    ICON_BG_GREEN,
+    ICON_BG_BLUE,
+    ICON_BG_PURPLE,
+    ICON_BG_ORANGE,
+    ICON_BG_INDIGO,
+    ICON_BG_BLUE_50,
+    ICON_BG_BLUE_100,
+    ICON_BG_GREEN_50,
+    ICON_BG_GREEN_100,
+    ICON_BG_PURPLE_50,
+    ICON_BG_PURPLE_100,
+    ICON_BG_ORANGE_100,
+    ICON_BG_GRAY_50,
+    ICON_BG_GRAY_100,
+    ICON_BG_AMBER_50,
+    ICON_BG_AMBER_100,
+    ICON_BG_RED_50,
+    ICON_BG_RED_100,
+    # Icon Colors
+    ICON_COLOR_ACCENT,
+    ICON_COLOR_YELLOW,
+    ICON_COLOR_GREEN,
+    ICON_COLOR_BLUE,
+    ICON_COLOR_PURPLE,
+    ICON_COLOR_BLUE_600,
+    ICON_COLOR_GREEN_600,
+    ICON_COLOR_PURPLE_600,
+    ICON_COLOR_ORANGE_600,
+    ICON_COLOR_GRAY_600,
+    ICON_COLOR_AMBER_600,
+    ICON_COLOR_RED,
+    # Badge Labels
+    BADGE_NEW,
+    BADGE_COMING_SOON,
+    BADGE_CSV_EXCEL,
+    BADGE_PRIMARY,
+    BADGE_PLUS,
+    BADGE_TRASH,
+    LABEL_EXPORT_REPORTS,
+    # Button Titles
+    BTN_TITLE_MANAGE_ORDERS,
+    BTN_TITLE_CREATE_ORDER,
+    BTN_TITLE_MANAGE_PRODUCTS,
+    BTN_TITLE_CREATE_PRODUCT,
+    BTN_TITLE_MANAGE_DELIVERIES,
+    BTN_TITLE_ADD_DELIVERY,
+    BTN_TITLE_SIZES,
+    BTN_TITLE_CATEGORIES,
+    BTN_TITLE_COLORS,
+    BTN_TITLE_IMAGES,
+    BTN_TITLE_PRODUCTS,
+    BTN_TITLE_USERS,
+    BTN_TITLE_ROLES,
+    BTN_TITLE_TRASHCAN,
+    BTN_TITLE_HERO_SLIDES,
+    # Button Descriptions
+    BTN_DESC_MANAGE_ORDERS,
+    BTN_DESC_CREATE_ORDER,
+    BTN_DESC_MANAGE_PRODUCTS,
+    BTN_DESC_CREATE_PRODUCT,
+    BTN_DESC_MANAGE_DELIVERIES,
+    BTN_DESC_ADD_DELIVERY,
+    BTN_DESC_EXPORT,
+    BTN_DESC_EXPORT_DELIVERIES,
+    BTN_DESC_FINANCIAL_REPORTS,
+    # Gradient Colors
+    GRADIENT_ACCENT_FROM,
+    GRADIENT_ACCENT_TO,
+    GRADIENT_GREEN_FROM,
+    GRADIENT_GREEN_TO,
+    GRADIENT_BLUE_FROM,
+    GRADIENT_BLUE_TO,
+    # Financial Item Labels
+    FINANCIAL_LABEL_AVG_TICKET,
+    FINANCIAL_LABEL_ITEMS_PER_ORDER,
+    FINANCIAL_LABEL_AVG_DAILY_INCOME,
+    FINANCIAL_LABEL_TOTAL_PAID,
+    FINANCIAL_LABEL_TODAY_INCOME,
+    FINANCIAL_LABEL_YEAR_INCOME,
+    # Financial Item Sub-values
+    FINANCIAL_SUB_AVG_TICKET,
+    FINANCIAL_SUB_AVG_ITEMS,
+    FINANCIAL_SUB_AVG_DAILY,
+    FINANCIAL_SUB_TOTAL_PAID,
+    FINANCIAL_SUB_TODAY,
+    # Financial Item Icons
+    FINANCIAL_ICON_RECEIPT,
+    FINANCIAL_ICON_BOX,
+    FINANCIAL_ICON_CHART,
+    FINANCIAL_ICON_CART,
+    FINANCIAL_ICON_SUN,
+    FINANCIAL_ICON_CALENDAR,
+    # Financial Item Colors
+    FINANCIAL_COLOR_ACCENT,
+    FINANCIAL_COLOR_BLUE,
+    FINANCIAL_COLOR_GREEN,
+    FINANCIAL_COLOR_PURPLE,
+    FINANCIAL_COLOR_ORANGE,
+    FINANCIAL_COLOR_INDIGO,
+    # Stock Distribution Labels
+    STOCK_LABEL_IN_STOCK,
+    STOCK_LABEL_LOW_STOCK,
+    STOCK_LABEL_OUT_OF_STOCK,
+    STOCK_COLOR_GREEN,
+    STOCK_COLOR_YELLOW,
+    STOCK_COLOR_RED,
+    # Delivery Stats Labels
+    DELIVERY_LABEL_ACTIVE,
+    DELIVERY_LABEL_INACTIVE,
+    DELIVERY_COLOR_ACTIVE,
+    DELIVERY_COLOR_INACTIVE,
+    # Section Names
+    SECTION_DASHBOARD,
+    SECTION_ORDERS,
+    SECTION_PRODUCTS,
+    SECTION_USERS,
+    SECTION_CONFIG,
+    SECTION_IMPORT,
+    # Context Keys
+    CONTEXT_SECTION,
+    CONTEXT_STATS,
+    CONTEXT_URLS,
+    CONTEXT_ACTION_BUTTONS,
+    CONTEXT_RECENT_ORDERS,
+    CONTEXT_RECENT_PRODUCTS,
+    CONTEXT_RECENT_DELIVERIES,
+    CONTEXT_ACTIVE_DELIVERIES,
+    CONTEXT_LOW_STOCK_PRODUCTS,
+    CONTEXT_TOP_PRODUCTS,
+    CONTEXT_FINANCIAL_STATS,
+    CONTEXT_FINANCIAL_ITEMS,
+    CONTEXT_SALES_CHART_DATA,
+    CONTEXT_DAILY_REVENUE_CHART_DATA,
+    CONTEXT_ORDERS_STATUS_DATA,
+    CONTEXT_ORDERS_TREND_DATA,
+    CONTEXT_STOCK_DISTRIBUTION,
+    CONTEXT_STOCK_STATS_LIST,
+    CONTEXT_DELIVERY_STATS,
+    CONTEXT_DELIVERY_STATS_LIST,
+    CONTEXT_PENDING_ORDERS,
+    CONTEXT_ORDERS_ON_THE_WAY,
+    CONTEXT_QUICK_ACCESS_BUTTONS,
+    CONTEXT_IMPORT_BUTTONS,
+    # Numeric Constants
+    DEFAULT_LIMIT,
+    MAX_LOW_STOCK,
+    DAYS_FOR_TREND,
+    # Date Formats
+    DATE_FORMAT_DAY_MONTH,
+    DATE_FORMAT_DAY_MONTH_YEAR,
+    DATE_FORMAT_DAY_MONTH_HOUR,
+    # Currency Display
+    CURRENCY_PREFIX,
+    # Common Strings
+    STRING_EMPTY,
+    STRING_NO_CATEGORY,
+    STRING_NO_EMAIL,
+    STRING_NO_PHONE,
+    STRING_UNITS,
+    STRING_UNITS_SOLD,
+    STRING_TOTAL_COLLECTED,
+    STRING_DELIVERED_BY,
+    STRING_ON_THE_WAY,
+    STRING_DELIVERED,
+    STRING_ACTIVE,
+    STRING_PER_TRANSACTION,
+    STRING_AVERAGE,
+    STRING_LAST_7_DAYS,
+    STRING_COMPLETED_ORDERS,
+    STRING_ACCUMULATED,
+    STRING_PRODUCTS,
+    # Report Types
+    REPORT_TYPE_FINANCIAL,
+    REPORT_TYPE_PRODUCTS,
+    REPORT_TYPE_DELIVERY,
+    REPORT_TYPE_ORDERS,
+)
 
 
 # =============================================================================
@@ -289,7 +302,7 @@ def sum_order_amount(
     statuses: List[str] = None
 ) -> float:
     """Calculate total order amount for given filters."""
-    qs = Order.objects.filter(status__in=statuses or PAID_STATUSES)
+    qs = Order.objects.filter(status__in=statuses or PAID_ORDER_STATUSES)
 
     if date_start and date_end:
         qs = qs.filter(created_at__date__gte=date_start, created_at__date__lte=date_end)
@@ -320,7 +333,7 @@ def get_status_chart_data() -> Dict[str, Any]:
     """Get order counts by status for chart display."""
     counts, names = [], []
 
-    for code, label in STATUS_LABELS.items():
+    for code, label in ORDER_STATUS_LABELS.items():
         cnt = Order.objects.filter(status=code).count()
         if cnt:
             counts.append(cnt)
@@ -344,7 +357,7 @@ def get_recent_orders(limit: int = DEFAULT_LIMIT) -> List[Dict[str, Any]]:
             'icon': ICON_BOX,
             'icon_bg': ICON_BG_GRAY,
             'icon_color': ICON_COLOR_ACCENT,
-            'url': reverse(ROUTE_ORDER_DETAIL, args=[order.pk]),
+            'url': reverse(ORDERS_DETAIL, args=[order.pk]),
             'status': order.status,
             'status_display': status_display,
         })
@@ -388,11 +401,11 @@ def get_low_stock_products(limit: int = DEFAULT_LIMIT) -> List[Dict[str, Any]]:
         result.append({
             'title': v.product.name,
             'subtitle': f"{v.size.name} - {v.color_name}",
-            'value': f"{v.stock} {STRING_UNIDADES}",
+            'value': f"{v.stock} {STRING_UNITS}",
             'icon': ICON_EXCLAMATION_TRIANGLE,
             'icon_bg': ICON_BG_YELLOW,
             'icon_color': ICON_COLOR_YELLOW,
-            'url': reverse(ROUTE_PRODUCT_EDIT, args=[v.product.pk]),
+            'url': reverse(PRODUCTS_EDIT, args=[v.product.pk]),
             'extra_info': f"SKU: {v.sku}",
         })
 
@@ -402,7 +415,7 @@ def get_low_stock_products(limit: int = DEFAULT_LIMIT) -> List[Dict[str, Any]]:
 def get_top_products(limit: int = DEFAULT_LIMIT) -> List[Dict[str, Any]]:
     """Get best-selling products."""
     top = OrderItem.objects.filter(
-        order__status__in=PAID_STATUSES
+        order__status__in=PAID_ORDER_STATUSES
     ).values('product_name_snapshot').annotate(
         total_quantity=Sum('quantity'),
         total_revenue=Sum('subtotal')
@@ -413,19 +426,19 @@ def get_top_products(limit: int = DEFAULT_LIMIT) -> List[Dict[str, Any]]:
         name = item['product_name_snapshot']
         try:
             product = Product.objects.get(name=name, is_active=True)
-            url = reverse(ROUTE_PRODUCT_EDIT, args=[product.pk])
+            url = reverse(PRODUCTS_EDIT, args=[product.pk])
         except Product.DoesNotExist:
-            url = reverse(ROUTE_PRODUCT_LIST) + QUERY_NAME.format(name)
+            url = reverse(PRODUCTS_LIST) + QUERY_NAME.format(name)
 
         result.append({
             'title': name,
-            'subtitle': f"{item['total_quantity']} {STRING_UNIDADES_VENDIDAS}",
+            'subtitle': f"{item['total_quantity']} {STRING_UNITS_SOLD}",
             'value': f"{CURRENCY_PREFIX}{item['total_revenue']:,.0f}",
             'icon': ICON_CHART_LINE,
             'icon_bg': ICON_BG_GREEN,
             'icon_color': ICON_COLOR_GREEN,
             'url': url,
-            'extra_info': STRING_TOTAL_RECAUDADO,
+            'extra_info': STRING_TOTAL_COLLECTED,
         })
 
     return result
@@ -442,11 +455,10 @@ def get_product_stats() -> Dict[str, int]:
 
     return {
         'total': Product.objects.filter(is_active=True).count(),
-        'total_variantes': total_variants,
-        'con_stock': variants_with_stock,
-        'stock_bajo': variants_low_stock,
-        'agotado': variants_out_stock,
-        'sin_stock': variants_out_stock,
+        'total_variants': total_variants,
+        'in_stock': variants_with_stock,
+        'low_stock': variants_low_stock,
+        'out_of_stock': variants_out_stock,
     }
 
 
@@ -456,16 +468,16 @@ def get_recent_products(limit: int = DEFAULT_LIMIT) -> List[Dict[str, Any]]:
 
     result = []
     for product in products:
-        category_name = product.category.name if product.category else STRING_SIN_CATEGORIA
+        category_name = product.category.name if product.category else STRING_NO_CATEGORY
         result.append({
             'title': product.name,
             'subtitle': f"{CURRENCY_PREFIX}{product.price:,.0f} - {category_name}",
-            'value': f"{product.total_stock()} {STRING_UNIDADES}",
+            'value': f"{product.total_stock()} {STRING_UNITS}",
             'date': product.created_at.strftime(DATE_FORMAT_DAY_MONTH_YEAR),
             'icon': ICON_TSHIRT,
             'icon_bg': ICON_BG_BLUE,
             'icon_color': ICON_COLOR_BLUE,
-            'url': reverse(ROUTE_PRODUCT_EDIT, args=[product.pk]),
+            'url': reverse(PRODUCTS_EDIT, args=[product.pk]),
         })
 
     return result
@@ -479,23 +491,23 @@ def get_delivery_stats() -> Dict[str, int]:
     """Get delivery user statistics."""
     return {
         'total': User.objects.filter(is_delivery=True, is_active=True).count(),
-        'activos': User.objects.filter(is_delivery=True, is_active=True).count(),
-        'inactivos': User.objects.filter(is_delivery=True, is_active=False).count(),
+        'active': User.objects.filter(is_delivery=True, is_active=True).count(),
+        'inactive': User.objects.filter(is_delivery=True, is_active=False).count(),
     }
 
 
 def get_delivery_order_stats() -> Dict[str, int]:
     """Get delivery-related order statistics."""
     return {
-        'listos_para_entregar': Order.objects.filter(
-            status=STATUS_READY, assigned_delivery_user__isnull=True
+        'ready_for_delivery': Order.objects.filter(
+            status=ORDER_STATUS_READY, assigned_delivery_user__isnull=True
         ).count(),
-        'en_camino': Order.objects.filter(status=STATUS_ON_THE_WAY).count(),
-        'entregados_hoy': Order.objects.filter(
-            status=STATUS_DELIVERED, updated_at__date=timezone.now().date()
+        'on_the_way': Order.objects.filter(status=ORDER_STATUS_ON_THE_WAY).count(),
+        'delivered_today': Order.objects.filter(
+            status=ORDER_STATUS_DELIVERED, updated_at__date=timezone.now().date()
         ).count(),
-        'pendientes_asignacion': Order.objects.filter(
-            status=STATUS_READY, assigned_delivery_user__isnull=True
+        'pending_assignment': Order.objects.filter(
+            status=ORDER_STATUS_READY, assigned_delivery_user__isnull=True
         ).count(),
     }
 
@@ -503,7 +515,7 @@ def get_delivery_order_stats() -> Dict[str, int]:
 def get_recent_deliveries(limit: int = DEFAULT_LIMIT) -> List[Dict[str, Any]]:
     """Get most recent completed deliveries."""
     deliveries = Order.objects.filter(
-        status=STATUS_DELIVERED, assigned_delivery_user__isnull=False
+        status=ORDER_STATUS_DELIVERED, assigned_delivery_user__isnull=False
     ).select_related('assigned_delivery_user').order_by('-updated_at')[:limit]
 
     result = []
@@ -513,13 +525,13 @@ def get_recent_deliveries(limit: int = DEFAULT_LIMIT) -> List[Dict[str, Any]]:
 
         result.append({
             'title': f"Pedido {order.order_number}",
-            'subtitle': f"{STRING_ENTREGADO_POR} {driver_name}",
+            'subtitle': f"{STRING_DELIVERED_BY} {driver_name}",
             'value': f"{CURRENCY_PREFIX}{order.total_amount:,.0f}",
             'date': order.updated_at.strftime(DATE_FORMAT_DAY_MONTH_HOUR),
             'icon': ICON_CHECK_CIRCLE,
             'icon_bg': ICON_BG_GREEN,
             'icon_color': ICON_COLOR_GREEN,
-            'url': reverse(ROUTE_ORDER_DETAIL, args=[order.pk]),
+            'url': reverse(ORDERS_DETAIL, args=[order.pk]),
         })
 
     return result
@@ -534,22 +546,22 @@ def get_active_deliveries_list(limit: int = DEFAULT_LIMIT) -> List[Dict[str, Any
     result = []
     for delivery in deliveries:
         assigned_count = Order.objects.filter(
-            assigned_delivery_user=delivery, status=STATUS_ON_THE_WAY
+            assigned_delivery_user=delivery, status=ORDER_STATUS_ON_THE_WAY
         ).count()
         delivered_count = Order.objects.filter(
-            assigned_delivery_user=delivery, status=STATUS_DELIVERED
+            assigned_delivery_user=delivery, status=ORDER_STATUS_DELIVERED
         ).count()
 
         result.append({
             'title': delivery.get_full_name() or delivery.username,
-            'subtitle': delivery.email or STRING_SIN_EMAIL,
-            'value': f"{assigned_count} {STRING_EN_CAMINO}",
-            'date': f"{delivered_count} {STRING_ENTREGADOS}",
+            'subtitle': delivery.email or STRING_NO_EMAIL,
+            'value': f"{assigned_count} {STRING_ON_THE_WAY}",
+            'date': f"{delivered_count} {STRING_DELIVERED}",
             'icon': ICON_USER,
             'icon_bg': ICON_BG_PURPLE,
             'icon_color': ICON_COLOR_PURPLE,
-            'url': reverse(ROUTE_USER_LIST) + QUERY_USERNAME.format(delivery.username),
-            'extra_info': delivery.phone or STRING_SIN_TELEFONO,
+            'url': reverse(USERS_LIST) + QUERY_USERNAME.format(delivery.username),
+            'extra_info': delivery.phone or STRING_NO_PHONE,
         })
 
     return result
@@ -563,12 +575,12 @@ def get_delivery_stats_for_user(user: User) -> Dict[str, Any]:
     assigned_orders = Order.objects.filter(assigned_delivery_user=user)
 
     return {
-        'assigned_count': assigned_orders.exclude(status=STATUS_DELIVERED).count(),
+        'assigned_count': assigned_orders.exclude(status=ORDER_STATUS_DELIVERED).count(),
         'delivered_today': assigned_orders.filter(
-            status=STATUS_DELIVERED, updated_at__date=timezone.now().date()
+            status=ORDER_STATUS_DELIVERED, updated_at__date=timezone.now().date()
         ).count(),
         'pending_assignments': Order.objects.filter(
-            status=STATUS_READY, assigned_delivery_user__isnull=True
+            status=ORDER_STATUS_READY, assigned_delivery_user__isnull=True
         ).count() if user.is_staff else 0,
         'my_orders': assigned_orders.order_by('-created_at')[:10],
     }
@@ -586,7 +598,7 @@ def admin_dashboard(request):
     month, year = today.month, today.year
     week_ago = today - timedelta(days=DAYS_FOR_TREND)
 
-    pending_orders = Order.objects.filter(status=STATUS_PENDING).count()
+    pending_orders = Order.objects.filter(status=ORDER_STATUS_PENDING).count()
     today_orders = Order.objects.filter(created_at__date=today).count()
     month_revenue = sum_order_amount(year=year, month=month)
     active_deliveries = User.objects.filter(is_delivery=True, is_active=True).count()
@@ -595,11 +607,11 @@ def admin_dashboard(request):
     week_revenue = sum_order_amount(date_start=week_ago, date_end=today)
     year_revenue = sum_order_amount(year=year)
 
-    total_paid = Order.objects.filter(status__in=PAID_STATUSES).count()
+    total_paid = Order.objects.filter(status__in=PAID_ORDER_STATUSES).count()
     avg_order = month_revenue / total_paid if total_paid else 0
 
     total_items = OrderItem.objects.filter(
-        order__status__in=PAID_STATUSES
+        order__status__in=PAID_ORDER_STATUSES
     ).aggregate(total=Sum('quantity'))['total'] or 0
     avg_items = total_items / total_paid if total_paid else 0
 
@@ -659,14 +671,14 @@ def admin_dashboard(request):
         },
     ]
 
-    reports_url = reverse('backoffice:report_generator')
+    reports_url = reverse(BACKOFFICE_REPORT_GENERATOR)
     
     action_buttons = [
         {
             'url': reports_url,
-            'icon': 'file-export',
+            'icon': ICON_FILE_EXPORT,
             'title': LABEL_EXPORT_REPORTS,
-            'description': 'Generar reportes financieros personalizados',
+            'description': BTN_DESC_FINANCIAL_REPORTS,
             'gradient_from': GRADIENT_BLUE_FROM,
             'gradient_to': GRADIENT_BLUE_TO,
             'badge': BADGE_NEW
@@ -717,32 +729,32 @@ def admin_orders_dashboard(request):
     recent_orders = get_recent_orders()
     categories, order_counts = get_daily_order_counts()
 
-    orders_url = reverse(ROUTE_ORDER_LIST)
+    orders_url = reverse(ORDERS_LIST)
     urls = {
         'total': orders_url,
-        STATUS_PENDING: orders_url + QUERY_STATUS.format(STATUS_PENDING),
-        STATUS_CONFIRMED: orders_url + QUERY_STATUS.format(STATUS_CONFIRMED),
-        STATUS_PREPARING: orders_url + QUERY_STATUS.format(STATUS_PREPARING),
-        STATUS_READY: orders_url + QUERY_STATUS.format(STATUS_READY),
-        STATUS_ON_THE_WAY: orders_url + QUERY_STATUS.format(STATUS_ON_THE_WAY),
-        STATUS_DELIVERED: orders_url + QUERY_STATUS.format(STATUS_DELIVERED),
-        STATUS_CANCELLED: orders_url + QUERY_STATUS.format(STATUS_CANCELLED),
+        ORDER_STATUS_PENDING: orders_url + QUERY_STATUS.format(ORDER_STATUS_PENDING),
+        ORDER_STATUS_CONFIRMED: orders_url + QUERY_STATUS.format(ORDER_STATUS_CONFIRMED),
+        ORDER_STATUS_PREPARING: orders_url + QUERY_STATUS.format(ORDER_STATUS_PREPARING),
+        ORDER_STATUS_READY: orders_url + QUERY_STATUS.format(ORDER_STATUS_READY),
+        ORDER_STATUS_ON_THE_WAY: orders_url + QUERY_STATUS.format(ORDER_STATUS_ON_THE_WAY),
+        ORDER_STATUS_DELIVERED: orders_url + QUERY_STATUS.format(ORDER_STATUS_DELIVERED),
+        ORDER_STATUS_CANCELLED: orders_url + QUERY_STATUS.format(ORDER_STATUS_CANCELLED),
         'orders_list': orders_url,
     }
 
     action_buttons = [
         {
             'url': orders_url,
-            'icon': 'table-list',
+            'icon': ICON_TABLE_LIST,
             'title': BTN_TITLE_MANAGE_ORDERS,
             'description': BTN_DESC_MANAGE_ORDERS,
             'gradient_from': GRADIENT_ACCENT_FROM,
             'gradient_to': GRADIENT_ACCENT_TO,
-            'badge': f"{stats['total']} {STRING_ACTIVOS}"
+            'badge': f"{stats['total']} {STRING_ACTIVE}"
         },
         {
-            'url': reverse(ROUTE_ORDER_CREATE),
-            'icon': 'plus-circle',
+            'url': reverse(ORDERS_CREATE),
+            'icon': ICON_PLUS_CIRCLE,
             'title': BTN_TITLE_CREATE_ORDER,
             'description': BTN_DESC_CREATE_ORDER,
             'gradient_from': GRADIENT_GREEN_FROM,
@@ -751,7 +763,7 @@ def admin_orders_dashboard(request):
         },
         {
             'url': '#',
-            'icon': 'file-export',
+            'icon': ICON_FILE_EXPORT,
             'title': LABEL_EXPORT_REPORTS,
             'description': BTN_DESC_EXPORT,
             'gradient_from': GRADIENT_BLUE_FROM,
@@ -785,29 +797,29 @@ def admin_products(request):
     low_stock_products = get_low_stock_products()
     top_products = get_top_products()
 
-    products_url = reverse(ROUTE_PRODUCT_LIST)
+    products_url = reverse(PRODUCTS_LIST)
     urls = {
         'products_list': products_url,
-        'total': f"{products_url}?status=todos",
-        'activos': products_url + QUERY_IS_ACTIVE.format('true'),
-        'inactivos': products_url + QUERY_IS_ACTIVE.format('false'),
-        'stock_bajo': products_url + QUERY_STOCK.format('bajo'),
-        'agotados': products_url + QUERY_STOCK.format('agotado'),
+        'total': f"{products_url}?{QUERY_PARAM_STATUS}={QUERY_VALUE_ALL}",
+        'active': products_url + QUERY_IS_ACTIVE.format(QUERY_VALUE_ACTIVE),
+        'inactive': products_url + QUERY_IS_ACTIVE.format(QUERY_VALUE_INACTIVE),
+        'low_stock': products_url + QUERY_STOCK.format(QUERY_VALUE_LOW_STOCK),
+        'out_of_stock': products_url + QUERY_STOCK.format(QUERY_VALUE_OUT_OF_STOCK),
     }
 
     action_buttons = [
         {
             'url': products_url,
-            'icon': 'table-list',
+            'icon': ICON_TABLE_LIST,
             'title': BTN_TITLE_MANAGE_PRODUCTS,
             'description': BTN_DESC_MANAGE_PRODUCTS,
             'gradient_from': GRADIENT_ACCENT_FROM,
             'gradient_to': GRADIENT_ACCENT_TO,
-            'badge': f"{stats['total']} productos"
+            'badge': f"{stats['total']} {STRING_PRODUCTS}"
         },
         {
-            'url': reverse(ROUTE_PRODUCT_CREATE),
-            'icon': 'plus-circle',
+            'url': reverse(PRODUCTS_CREATE),
+            'icon': ICON_PLUS_CIRCLE,
             'title': BTN_TITLE_CREATE_PRODUCT,
             'description': BTN_DESC_CREATE_PRODUCT,
             'gradient_from': GRADIENT_GREEN_FROM,
@@ -815,8 +827,8 @@ def admin_products(request):
             'badge': BADGE_NEW
         },
         {
-            'url': reverse(DASHBOARD_IMPORT_ROUTE),
-            'icon': 'file-export',
+            'url': reverse(BACKOFFICE_IMPORTERS_DASHBOARD),
+            'icon': ICON_FILE_EXPORT,
             'title': LABEL_EXPORT_REPORTS,
             'description': BTN_DESC_EXPORT,
             'gradient_from': GRADIENT_BLUE_FROM,
@@ -827,62 +839,62 @@ def admin_products(request):
 
     quick_access_buttons = [
         {
-            'url': reverse('products:size_list'),
-            'icon': 'ruler',
-            'title': 'Tallas',
+            'url': reverse(PRODUCTS_SIZE_LIST),
+            'icon': ICON_RULER,
+            'title': BTN_TITLE_SIZES,
             'bg_from': ICON_BG_BLUE_50,
             'bg_to': ICON_BG_BLUE_100,
             'icon_color': ICON_COLOR_BLUE_600,
             'badge': f'{Size.objects.count()}',
         },
         {
-            'url': reverse('products:category_list'),
-            'icon': 'tags',
-            'title': 'Categorías',
+            'url': reverse(PRODUCTS_CATEGORY_LIST),
+            'icon': ICON_TAGS,
+            'title': BTN_TITLE_CATEGORIES,
             'bg_from': ICON_BG_GREEN_50,
             'bg_to': ICON_BG_GREEN_100,
             'icon_color': ICON_COLOR_GREEN_600,
             'badge': f'{Category.objects.count()}',
         },
         {
-            'url': reverse('products:color_list'),
-            'icon': 'palette',
-            'title': 'Colores',
+            'url': reverse(PRODUCTS_COLOR_LIST),
+            'icon': ICON_PALETTE,
+            'title': BTN_TITLE_COLORS,
             'bg_from': ICON_BG_PURPLE_50,
             'bg_to': ICON_BG_PURPLE_100,
             'icon_color': ICON_COLOR_PURPLE_600,
             'badge': f'{Color.objects.count()}',
         },
         {
-            'url': reverse('products:productimage_list'),
-            'icon': 'images',
-            'title': 'Imágenes',
+            'url': reverse(PRODUCTS_IMAGE_LIST),
+            'icon': ICON_IMAGES,
+            'title': BTN_TITLE_IMAGES,
             'bg_from': ICON_BG_ORANGE,
             'bg_to': ICON_BG_ORANGE_100,
             'icon_color': ICON_COLOR_ORANGE_600,
             'badge': f'{ProductImage.objects.count()}',
         },
         {
-            'url': reverse('products:product_list'),
-            'icon': 'box',
-            'title': 'Productos',
+            'url': reverse(PRODUCTS_LIST),
+            'icon': ICON_BOX,
+            'title': BTN_TITLE_PRODUCTS,
             'bg_from': f'{ICON_COLOR_ACCENT}/10',
             'bg_to': f'{ICON_COLOR_ACCENT}/20',
             'icon_color': ICON_COLOR_ACCENT,
-            'badge': BADGE_PRINCIPAL,
+            'badge': BADGE_PRIMARY,
         },
     ]
 
 
     stock_distribution = {
-        'series': [stats['con_stock'], stats['stock_bajo'], stats['agotado']],
+        'series': [stats['in_stock'], stats['low_stock'], stats['out_of_stock']],
         'labels': [STOCK_LABEL_IN_STOCK, STOCK_LABEL_LOW_STOCK, STOCK_LABEL_OUT_OF_STOCK],
     }
 
     stock_stats_list = [
-        {'label': STOCK_LABEL_IN_STOCK, 'value': stats['con_stock'], 'color': STOCK_COLOR_GREEN},
-        {'label': STOCK_LABEL_LOW_STOCK, 'value': stats['stock_bajo'], 'color': STOCK_COLOR_YELLOW},
-        {'label': STOCK_LABEL_OUT_OF_STOCK, 'value': stats['agotado'], 'color': STOCK_COLOR_RED},
+        {'label': STOCK_LABEL_IN_STOCK, 'value': stats['in_stock'], 'color': STOCK_COLOR_GREEN},
+        {'label': STOCK_LABEL_LOW_STOCK, 'value': stats['low_stock'], 'color': STOCK_COLOR_YELLOW},
+        {'label': STOCK_LABEL_OUT_OF_STOCK, 'value': stats['out_of_stock'], 'color': STOCK_COLOR_RED},
     ]
 
     context = {
@@ -895,7 +907,7 @@ def admin_products(request):
         CONTEXT_TOP_PRODUCTS: top_products,
         CONTEXT_STOCK_DISTRIBUTION: stock_distribution,
         CONTEXT_STOCK_STATS_LIST: stock_stats_list,
-        'quick_access_buttons' : quick_access_buttons,
+        CONTEXT_QUICK_ACCESS_BUTTONS: quick_access_buttons,
     }
 
     return render(request, TEMPLATE_ADMIN_PRODUCTS_DASHBOARD, context)
@@ -910,30 +922,30 @@ def admin_users(request):
     recent_deliveries = get_recent_deliveries()
     active_deliveries = get_active_deliveries_list()
 
-    users_url = reverse(ROUTE_USER_LIST)
+    users_url = reverse(USERS_LIST)
     urls = {
         'users_list': users_url,
         'total': users_url,
-        'activos': users_url + QUERY_IS_ACTIVE.format('true'),
-        'inactivos': users_url + QUERY_IS_ACTIVE.format('false'),
-        'solo_entregadores': users_url + QUERY_IS_DELIVERY.format('true'),
-        'pedidos_listos': reverse(ROUTE_ORDER_LIST) + QUERY_STATUS.format(STATUS_READY),
-        'pedidos_camino': reverse(ROUTE_ORDER_LIST) + QUERY_STATUS.format(STATUS_ON_THE_WAY),
+        'active': users_url + QUERY_IS_ACTIVE.format(QUERY_VALUE_ACTIVE),
+        'inactive': users_url + QUERY_IS_ACTIVE.format(QUERY_VALUE_INACTIVE),
+        'only_deliveries': users_url + QUERY_IS_DELIVERY.format(QUERY_VALUE_ACTIVE),
+        'ready_orders': reverse(ORDERS_LIST) + QUERY_STATUS.format(ORDER_STATUS_READY),
+        'on_the_way_orders': reverse(ORDERS_LIST) + QUERY_STATUS.format(ORDER_STATUS_ON_THE_WAY),
     }
 
     action_buttons = [
         {
             'url': users_url,
-            'icon': 'users',
+            'icon': ICON_USERS,
             'title': BTN_TITLE_MANAGE_DELIVERIES,
             'description': BTN_DESC_MANAGE_DELIVERIES,
             'gradient_from': GRADIENT_ACCENT_FROM,
             'gradient_to': GRADIENT_ACCENT_TO,
-            'badge': f"{delivery_stats['total']} {STRING_ACTIVOS}"
+            'badge': f"{delivery_stats['total']} {STRING_ACTIVE}"
         },
         {
-            'url': reverse(ROUTE_USER_CREATE),
-            'icon': 'plus-circle',
+            'url': reverse(USERS_CREATE),
+            'icon': ICON_PLUS_CIRCLE,
             'title': BTN_TITLE_ADD_DELIVERY,
             'description': BTN_DESC_ADD_DELIVERY,
             'gradient_from': GRADIENT_GREEN_FROM,
@@ -942,7 +954,7 @@ def admin_users(request):
         },
         {
             'url': '#',
-            'icon': 'file-export',
+            'icon': ICON_FILE_EXPORT,
             'title': LABEL_EXPORT_REPORTS,
             'description': BTN_DESC_EXPORT_DELIVERIES,
             'gradient_from': GRADIENT_BLUE_FROM,
@@ -953,36 +965,36 @@ def admin_users(request):
 
     quick_access_buttons = [
         {
-            'url': reverse('users:user_list'),
-            'icon': 'users',
-            'title': 'Usuarios',
+            'url': reverse(USERS_LIST),
+            'icon': ICON_USERS,
+            'title': BTN_TITLE_USERS,
             'bg_from': ICON_BG_GRAY_50,
             'bg_to': ICON_BG_GRAY_100,
             'icon_color': ICON_COLOR_GRAY_600,
             'badge': f"{delivery_stats['total']}",
         },
         {
-            'url': reverse('users:group_list'),
-            'icon': 'key',
-            'title': 'Roles',
+            'url': reverse(USERS_GROUP_LIST),
+            'icon': ICON_KEY,
+            'title': BTN_TITLE_ROLES,
             'bg_from': ICON_BG_AMBER_50,
             'bg_to': ICON_BG_AMBER_100,
             'icon_color': ICON_COLOR_AMBER_600,
             'badge': f"{Group.objects.count()}",
         },
         {
-            'url': reverse('users:user_trashcan'),
-            'icon': 'trash-alt',
-            'title': 'Papelera',
+            'url': reverse(USERS_TRASHCAN),
+            'icon': ICON_TRASH_ALT,
+            'title': BTN_TITLE_TRASHCAN,
             'bg_from': ICON_BG_RED_50,
             'bg_to': ICON_BG_RED_100,
-            'icon_color': STOCK_COLOR_RED,
+            'icon_color': ICON_COLOR_RED,
             'badge': f"{User.objects.filter(is_active=False).count()}",
         },
     ]
     delivery_stats_list = [
-        {'label': DELIVERY_LABEL_ACTIVE, 'value': delivery_stats['activos'], 'color': DELIVERY_COLOR_ACTIVE},
-        {'label': DELIVERY_LABEL_INACTIVE, 'value': delivery_stats['inactivos'], 'color': DELIVERY_COLOR_INACTIVE},
+        {'label': DELIVERY_LABEL_ACTIVE, 'value': delivery_stats['active'], 'color': DELIVERY_COLOR_ACTIVE},
+        {'label': DELIVERY_LABEL_INACTIVE, 'value': delivery_stats['inactive'], 'color': DELIVERY_COLOR_INACTIVE},
     ]
 
     categories, order_counts = get_daily_order_counts()
@@ -990,10 +1002,10 @@ def admin_users(request):
     context = {
         CONTEXT_SECTION: SECTION_USERS,
         CONTEXT_STATS: {
-            'total_entregadores': delivery_stats['total'],
-            CONTEXT_PEDIDOS_POR_ENTREGAR: order_stats['listos_para_entregar'],
-            CONTEXT_PEDIDOS_EN_CAMINO: order_stats['en_camino'],
-            'entregados_hoy': order_stats['entregados_hoy'],
+            'total_deliveries': delivery_stats['total'],
+            CONTEXT_PENDING_ORDERS: order_stats['ready_for_delivery'],
+            CONTEXT_ORDERS_ON_THE_WAY: order_stats['on_the_way'],
+            'delivered_today': order_stats['delivered_today'],
         },
         CONTEXT_URLS: urls,
         CONTEXT_ACTION_BUTTONS: action_buttons,
@@ -1001,14 +1013,14 @@ def admin_users(request):
         CONTEXT_ACTIVE_DELIVERIES: active_deliveries,
         CONTEXT_DELIVERY_STATS: delivery_stats,
         CONTEXT_DELIVERY_STATS_LIST: delivery_stats_list,
-        CONTEXT_PEDIDOS_POR_ENTREGAR: order_stats['listos_para_entregar'],
-        CONTEXT_PEDIDOS_EN_CAMINO: order_stats['en_camino'],
+        CONTEXT_PENDING_ORDERS: order_stats['ready_for_delivery'],
+        CONTEXT_ORDERS_ON_THE_WAY: order_stats['on_the_way'],
         CONTEXT_ORDERS_TREND_DATA: {
             'series': [{'name': CHART_SERIES_NAME_ORDERS, 'data': order_counts}],
             'categories': categories,
         },
         CONTEXT_ORDERS_STATUS_DATA: get_status_chart_data(),
-        'quick_access_buttons' : quick_access_buttons,
+        CONTEXT_QUICK_ACCESS_BUTTONS: quick_access_buttons,
     }
 
     return render(request, TEMPLATE_ADMIN_USERS_DASHBOARD, context)
@@ -1020,26 +1032,27 @@ def admin_config(request):
     """Admin configuration view."""
     quick_access_buttons = [
         {
-            'url': reverse('core:hero_list'),
-            'icon': 'images',
-            'title': 'Slides del Hero',
+            'url': reverse(CORE_HERO_LIST),
+            'icon': ICON_IMAGES,
+            'title': BTN_TITLE_HERO_SLIDES,
             'bg_from': ICON_BG_PURPLE_50,
             'bg_to': ICON_BG_PURPLE_100,
             'icon_color': ICON_COLOR_PURPLE_600,
             'badge': BADGE_PLUS,
         },
         {
-            'url': reverse('core:hero_trashcan'),
-            'icon': 'trash-alt',
-            'title': 'Papelera',
+            'url': reverse(CORE_HERO_TRASHCAN),
+            'icon': ICON_TRASH_ALT,
+            'title': BTN_TITLE_TRASHCAN,
             'bg_from': ICON_BG_RED_50,
             'bg_to': ICON_BG_RED_100,
-            'icon_color': STOCK_COLOR_RED,
+            'icon_color': ICON_COLOR_RED,
             'badge': BADGE_TRASH,
         },
     ]
-    context = {CONTEXT_SECTION: SECTION_CONFIG, 'quick_access_buttons' : quick_access_buttons}
+    context = {CONTEXT_SECTION: SECTION_CONFIG, CONTEXT_QUICK_ACCESS_BUTTONS: quick_access_buttons}
     return render(request, TEMPLATE_ADMIN_CONFIG, context)
+
 
 @staff_member_required
 @require_http_methods(['GET', 'POST'])
@@ -1058,10 +1071,10 @@ def report_generator(request):
             }
             
             reports = {
-                'financial': FinancialReport,
-                'products': ProductsReport,
-                'delivery': DeliveryReport,
-                'orders': OrdersReport,
+                REPORT_TYPE_FINANCIAL: FinancialReport,
+                REPORT_TYPE_PRODUCTS: ProductsReport,
+                REPORT_TYPE_DELIVERY: DeliveryReport,
+                REPORT_TYPE_ORDERS: OrdersReport,
             }
             
             report = reports[report_type](request, **params)
@@ -1069,7 +1082,8 @@ def report_generator(request):
     else:
         form = ReportForm()
     
-    return render(request, 'backoffice/reports/report_generator.html', {'form': form})
+    return render(request, TEMPLATE_REPORT_GENERATOR, {'form': form})
+
 
 @staff_member_required
 @require_GET
@@ -1078,27 +1092,27 @@ def importers_dashboard(request):
     
     import_buttons = [
         {
-            'url': reverse('products:size_import'),
-            'icon': 'ruler',
-            'title': 'Tallas',
+            'url': reverse(PRODUCTS_SIZE_IMPORT),
+            'icon': ICON_RULER,
+            'title': BTN_TITLE_SIZES,
             'bg_from': ICON_BG_BLUE_50,
             'bg_to': ICON_BG_BLUE_100,
             'icon_color': ICON_COLOR_BLUE_600,
             'badge': BADGE_CSV_EXCEL
         },
         {
-            'url': reverse('products:color_import'),
-            'icon': 'palette',
-            'title': 'Colores',
+            'url': reverse(PRODUCTS_COLOR_IMPORT),
+            'icon': ICON_PALETTE,
+            'title': BTN_TITLE_COLORS,
             'bg_from': ICON_BG_PURPLE_50,
             'bg_to': ICON_BG_PURPLE_100,
             'icon_color': ICON_COLOR_PURPLE_600,
             'badge': BADGE_CSV_EXCEL
         },
         {
-            'url': reverse('products:category_import'),
-            'icon': 'tags',
-            'title': 'Categorías',
+            'url': reverse(PRODUCTS_CATEGORY_IMPORT),
+            'icon': ICON_TAGS,
+            'title': BTN_TITLE_CATEGORIES,
             'bg_from': ICON_BG_GREEN_50,
             'bg_to': ICON_BG_GREEN_100,
             'icon_color': ICON_COLOR_GREEN_600,
@@ -1107,7 +1121,7 @@ def importers_dashboard(request):
     ]
     
     context = {
-        'section': 'import',
-        'import_buttons': import_buttons,
+        CONTEXT_SECTION: SECTION_IMPORT,
+        CONTEXT_IMPORT_BUTTONS: import_buttons,
     }
-    return render(request, 'backoffice/importers/importers_dashboard.html', context)
+    return render(request, TEMPLATE_IMPORTERS_DASHBOARD, context)

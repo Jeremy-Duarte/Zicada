@@ -17,134 +17,114 @@ from apps.users.forms import UserProfileForm, UserProfilePasswordForm
 
 User = get_user_model()
 
+from apps.core.url_names import (
+    USERS_LIST,
+    USERS_TRASHCAN,
+    USERS_GROUP_LIST,
+    USERS_PROFILE,
+)
 
-# =============================================================================
-# CONSTANTS
-# =============================================================================
-
-# URL Names
-URL_USER_LIST = 'users:user_list'
-URL_USER_TRASHCAN = 'users:user_trashcan'
-URL_GROUP_LIST = 'users:group_list'
-
-# Template Paths
-TEMPLATE_USER_LIST = 'backoffice/users/user_list.html'
-TEMPLATE_USER_FORM = 'backoffice/users/user_form.html'
-TEMPLATE_USER_CHANGE_PASSWORD = 'backoffice/users/user_change_password.html'
-TEMPLATE_USER_CONFIRM_DELETE = 'backoffice/users/user_confirm_delete.html'
-TEMPLATE_USER_RESTORE = 'backoffice/users/user_restore.html'
-TEMPLATE_USER_TRASHCAN = 'backoffice/users/user_trashcan.html'
-
-TEMPLATE_GROUP_LIST = 'backoffice/groups/group_list.html'
-TEMPLATE_GROUP_FORM = 'backoffice/groups/group_form.html'
-TEMPLATE_GROUP_DETAIL = 'backoffice/groups/group_detail.html'
-TEMPLATE_GROUP_CONFIRM_DELETE = 'backoffice/groups/group_confirm_delete.html'
-
-# Context Keys
-CONTEXT_CANCEL_URL = 'cancel_url'
-CONTEXT_CANCEL_ARGS = 'cancel_args'
-CONTEXT_TITLE = 'title'
-CONTEXT_SHOW_PASSWORD_CHANGE = 'show_password_change'
-CONTEXT_USER_OBJ = 'user_obj'
-CONTEXT_USERS = 'users'
-CONTEXT_GROUP = 'group'
-CONTEXT_GROUPS = 'groups'
-CONTEXT_USER_COUNT = 'user_count'
-CONTEXT_ROWS = 'rows'
-CONTEXT_HEADERS = 'headers'
-
-# Table Headers
-HEADER_USERNAME = 'Usuario'
-HEADER_FULL_NAME = 'Nombre'
-HEADER_EMAIL = 'Email'
-HEADER_PHONE = 'Teléfono'
-HEADER_USER_TYPE = 'Tipo'
-HEADER_STATUS = 'Estado'
-HEADER_REGISTRATION = 'Registro'
-HEADER_GROUP_NAME = 'Nombre del rol'
-HEADER_ASSIGNED_USERS = 'Usuarios asignados'
-
-# Table Header Lists
-HEADERS_USER_LIST = [HEADER_USERNAME, HEADER_FULL_NAME, HEADER_EMAIL, HEADER_PHONE, HEADER_USER_TYPE, HEADER_STATUS, HEADER_REGISTRATION]
-HEADERS_USER_TRASHCAN = [HEADER_USERNAME, HEADER_FULL_NAME, HEADER_EMAIL, HEADER_PHONE, HEADER_REGISTRATION]
-HEADERS_GROUP_LIST = [HEADER_GROUP_NAME, HEADER_ASSIGNED_USERS]
-
-# Filter Names
-FILTER_USERNAME = 'username'
-FILTER_FIRST_NAME = 'first_name'
-FILTER_LAST_NAME = 'last_name'
-FILTER_EMAIL = 'email'
-FILTER_IS_DELIVERY = 'is_delivery'
-FILTER_IS_ACTIVE = 'is_active'
-FILTER_GROUP_NAME = 'name'
-
-# Query Parameters
-QUERY_PARAM_SEARCH = 'search'
-
-# User Types
-USER_TYPE_SUPERUSER = 'superuser'
-USER_TYPE_STAFF = 'staff'
-USER_TYPE_DELIVERY = 'delivery'
-USER_TYPE_CUSTOMER = 'customer'
-
-# User Type Badges
-USER_TYPE_BADGES = {
-    USER_TYPE_SUPERUSER: ('Superadmin', 'bg-purple-100 text-purple-700'),
-    USER_TYPE_STAFF: ('Staff', 'bg-blue-100 text-blue-700'),
-    USER_TYPE_DELIVERY: ('Entregador', 'bg-orange-100 text-orange-700'),
-    USER_TYPE_CUSTOMER: ('Cliente', 'bg-gray-100 text-gray-700'),
-}
-
-# Status Badges
-STATUS_ACTIVE_BADGE = ('Activo', 'bg-green-100 text-green-700')
-STATUS_INACTIVE_BADGE = ('Inactivo', 'bg-red-100 text-red-700')
-
-# Date Format
-DATE_FORMAT_DISPLAY = '%d/%m/%Y'
-
-# Pagination
-PAGINATE_BY_DEFAULT = 20
-
-# Form Context Values
-CONTEXT_IS_CREATE = 'is_create'
-CONTEXT_IS_UPDATE = 'is_update'
-
-# Title Templates
-TITLE_USER_CREATE = 'Crear usuario'
-TITLE_USER_UPDATE = 'Editar usuario: {username}'
-TITLE_GROUP_CREATE = 'Crear rol'
-TITLE_GROUP_UPDATE = 'Editar rol: {name}'
-
-# Success Messages
-MSG_USER_CREATED = 'Usuario "{username}" creado exitosamente.'
-MSG_USER_UPDATED = 'Usuario "{username}" actualizado exitosamente.'
-MSG_USER_DELETED = 'Usuario "{username}" desactivado exitosamente.'
-MSG_USER_RESTORED = 'Usuario "{username}" reactivado exitosamente.'
-MSG_USER_ALREADY_ACTIVE = 'El usuario "{username}" ya está activo.'
-MSG_PASSWORD_CHANGED = 'Contraseña de "{username}" actualizada exitosamente.'
-
-MSG_GROUP_CREATED = 'Rol "{name}" creado exitosamente.'
-MSG_GROUP_UPDATED = 'Rol "{name}" actualizado exitosamente.'
-MSG_GROUP_DELETED = 'Rol "{name}" eliminado exitosamente.'
-
-# Error Messages
-ERROR_USER_CREATE = 'Error al crear el usuario. Corrige los errores.'
-ERROR_USER_UPDATE = 'Error al actualizar el usuario.'
-ERROR_USER_DELETE = 'Error al desactivar el usuario.'
-ERROR_USER_RESTORE = 'Error al reactivar el usuario.'
-ERROR_PASSWORD_CHANGE = 'Error al cambiar la contraseña.'
-ERROR_GROUP_DELETE = 'Error al eliminar el rol.'
-ERROR_SELF_DELETE = 'No puedes desactivar tu propio usuario.'
-
-# HTML Templates
-STATUS_BADGE_TEMPLATE = '<span class="px-2 py-1 text-xs rounded-full {badge_class}">{badge_text}</span>'
-
-# Default values
-DEFAULT_EMPTY_VALUE = '—'
-
-# HTTP Method Names
-HTTP_METHOD_GET = 'GET'
-HTTP_METHOD_POST = 'POST'
+from .constants import (
+    # Template Paths
+    TEMPLATE_USER_LIST,
+    TEMPLATE_USER_FORM,
+    TEMPLATE_USER_CHANGE_PASSWORD,
+    TEMPLATE_USER_CONFIRM_DELETE,
+    TEMPLATE_USER_RESTORE,
+    TEMPLATE_USER_TRASHCAN,
+    TEMPLATE_USER_PROFILE,
+    TEMPLATE_USER_PROFILE_EDIT,
+    TEMPLATE_USER_PROFILE_PASSWORD,
+    TEMPLATE_GROUP_LIST,
+    TEMPLATE_GROUP_FORM,
+    TEMPLATE_GROUP_DETAIL,
+    TEMPLATE_GROUP_CONFIRM_DELETE,
+    # Context Keys
+    CONTEXT_CANCEL_URL,
+    CONTEXT_CANCEL_ARGS,
+    CONTEXT_TITLE,
+    CONTEXT_SHOW_PASSWORD_CHANGE,
+    CONTEXT_USER_OBJ,
+    CONTEXT_USERS,
+    CONTEXT_GROUP,
+    CONTEXT_GROUPS,
+    CONTEXT_USER_COUNT,
+    CONTEXT_ROWS,
+    CONTEXT_HEADERS,
+    # Table Headers
+    HEADER_USERNAME,
+    HEADER_FULL_NAME,
+    HEADER_EMAIL,
+    HEADER_PHONE,
+    HEADER_USER_TYPE,
+    HEADER_STATUS,
+    HEADER_REGISTRATION,
+    HEADER_GROUP_NAME,
+    HEADER_ASSIGNED_USERS,
+    # Table Header Lists
+    HEADERS_USER_LIST,
+    HEADERS_USER_TRASHCAN,
+    HEADERS_GROUP_LIST,
+    # Filter Names
+    FILTER_USERNAME,
+    FILTER_FIRST_NAME,
+    FILTER_LAST_NAME,
+    FILTER_EMAIL,
+    FILTER_IS_DELIVERY,
+    FILTER_IS_ACTIVE,
+    FILTER_GROUP_NAME,
+    # Order By
+    ORDER_BY_USERNAME_DESC,
+    # Query Parameters
+    QUERY_PARAM_SEARCH,
+    # User Types
+    USER_TYPE_SUPERUSER,
+    USER_TYPE_STAFF,
+    USER_TYPE_DELIVERY,
+    USER_TYPE_CUSTOMER,
+    # User Type Badges
+    USER_TYPE_BADGES,
+    # Status Badges
+    STATUS_ACTIVE_BADGE,
+    STATUS_INACTIVE_BADGE,
+    # Date Format
+    DATE_FORMAT_DISPLAY,
+    # Pagination
+    PAGINATE_BY_DEFAULT,
+    # Form Context Values
+    CONTEXT_IS_CREATE,
+    CONTEXT_IS_UPDATE,
+    # Title Templates
+    TITLE_USER_CREATE,
+    TITLE_USER_UPDATE,
+    TITLE_GROUP_CREATE,
+    TITLE_GROUP_UPDATE,
+    # Success Messages
+    MSG_USER_CREATED,
+    MSG_USER_UPDATED,
+    MSG_USER_DELETED,
+    MSG_USER_RESTORED,
+    MSG_USER_ALREADY_ACTIVE,
+    MSG_PASSWORD_CHANGED,
+    MSG_GROUP_CREATED,
+    MSG_GROUP_UPDATED,
+    MSG_GROUP_DELETED,
+    MSG_PROFILE_UPDATED,
+    MSG_PASSWORD_UPDATED,
+    # Error Messages
+    ERROR_USER_CREATE,
+    ERROR_USER_UPDATE,
+    ERROR_USER_DELETE,
+    ERROR_USER_RESTORE,
+    ERROR_PASSWORD_CHANGE,
+    ERROR_GROUP_DELETE,
+    ERROR_SELF_DELETE,
+    ERROR_PASSWORD_UPDATE,
+    # HTML Templates
+    STATUS_BADGE_TEMPLATE,
+    # Default values
+    DEFAULT_EMPTY_VALUE,
+)
 
 
 # =============================================================================
@@ -234,11 +214,11 @@ class UserCreateView(PermissionRequiredMixin, CreateView):
     form_class = UserCreateForm
     template_name = TEMPLATE_USER_FORM
     permission_required = 'users.add_user'
-    success_url = reverse_lazy(URL_USER_LIST)
+    success_url = reverse_lazy(USERS_LIST)
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context[CONTEXT_CANCEL_URL] = URL_USER_LIST
+        context[CONTEXT_CANCEL_URL] = USERS_LIST
         context[CONTEXT_TITLE] = TITLE_USER_CREATE
         return context
     
@@ -257,11 +237,11 @@ class UserUpdateView(PermissionRequiredMixin, UpdateView):
     form_class = UserUpdateForm
     template_name = TEMPLATE_USER_FORM
     permission_required = 'users.change_user'
-    success_url = reverse_lazy(URL_USER_LIST)
+    success_url = reverse_lazy(USERS_LIST)
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context[CONTEXT_CANCEL_URL] = URL_USER_LIST
+        context[CONTEXT_CANCEL_URL] = USERS_LIST
         context[CONTEXT_TITLE] = TITLE_USER_UPDATE.format(username=self.object.username)
         context[CONTEXT_SHOW_PASSWORD_CHANGE] = True
         return context
@@ -293,14 +273,14 @@ class UserChangePasswordView(PermissionRequiredMixin, FormView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context[CONTEXT_USER_OBJ] = self.user
-        context[CONTEXT_CANCEL_URL] = URL_USER_LIST
+        context[CONTEXT_CANCEL_URL] = USERS_LIST
         context[CONTEXT_CANCEL_ARGS] = [self.user.pk]
         return context
     
     def form_valid(self, form):
         form.save()
         messages.success(self.request, MSG_PASSWORD_CHANGED.format(username=self.user.username))
-        return redirect(URL_USER_LIST, pk=self.user.pk)
+        return redirect(USERS_LIST, pk=self.user.pk)
     
     def form_invalid(self, form):
         messages.error(self.request, ERROR_PASSWORD_CHANGE)
@@ -315,10 +295,9 @@ class UserDeleteView(PermissionRequiredMixin, FormView):
     def dispatch(self, request, *args, **kwargs):
         self.user = get_object_or_404(User, pk=kwargs['pk'])
         
-        # Prevent deactivating own user
         if self.user.pk == request.user.pk:
             messages.error(request, ERROR_SELF_DELETE)
-            return redirect(URL_USER_LIST)
+            return redirect(USERS_LIST)
         
         return super().dispatch(request, *args, **kwargs)
     
@@ -330,15 +309,14 @@ class UserDeleteView(PermissionRequiredMixin, FormView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context[CONTEXT_USER_OBJ] = self.user
-        context[CONTEXT_CANCEL_URL] = URL_USER_LIST
+        context[CONTEXT_CANCEL_URL] = USERS_LIST
         return context
     
     def form_valid(self, form):
-        # Soft delete equivalent: deactivate user
         self.user.is_active = False
         self.user.save(update_fields=[FILTER_IS_ACTIVE])
         messages.success(self.request, MSG_USER_DELETED.format(username=self.user.username))
-        return redirect(URL_USER_LIST)
+        return redirect(USERS_LIST)
     
     def form_invalid(self, form):
         messages.error(self.request, ERROR_USER_DELETE)
@@ -355,7 +333,7 @@ class UserRestoreView(PermissionRequiredMixin, FormView):
         
         if self.user.is_active:
             messages.warning(request, MSG_USER_ALREADY_ACTIVE.format(username=self.user.username))
-            return redirect(URL_USER_LIST)
+            return redirect(USERS_LIST)
         
         return super().dispatch(request, *args, **kwargs)
     
@@ -367,14 +345,14 @@ class UserRestoreView(PermissionRequiredMixin, FormView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context[CONTEXT_USER_OBJ] = self.user
-        context[CONTEXT_CANCEL_URL] = URL_USER_TRASHCAN
+        context[CONTEXT_CANCEL_URL] = USERS_TRASHCAN
         return context
     
     def form_valid(self, form):
         self.user.is_active = True
         self.user.save(update_fields=[FILTER_IS_ACTIVE])
         messages.success(self.request, MSG_USER_RESTORED.format(username=self.user.username))
-        return redirect(URL_USER_LIST)
+        return redirect(USERS_LIST)
     
     def form_invalid(self, form):
         messages.error(self.request, ERROR_USER_RESTORE)
@@ -382,7 +360,6 @@ class UserRestoreView(PermissionRequiredMixin, FormView):
 
 
 class UserTrashcanView(PermissionRequiredMixin, PaginationMixin, ListView):
-    """View deleted users (deactivated users)."""
     model = User
     template_name = TEMPLATE_USER_TRASHCAN
     context_object_name = CONTEXT_USERS
@@ -390,7 +367,7 @@ class UserTrashcanView(PermissionRequiredMixin, PaginationMixin, ListView):
     paginate_by = PAGINATE_BY_DEFAULT
     
     def get_queryset(self):
-        return User.objects.filter(is_active=False).order_by(f'-{FILTER_USERNAME}')
+        return User.objects.filter(is_active=False).order_by(ORDER_BY_USERNAME_DESC)
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -459,11 +436,11 @@ class GroupCreateView(PermissionRequiredMixin, CreateView):
     form_class = GroupCreateForm
     template_name = TEMPLATE_GROUP_FORM
     permission_required = 'users.add_group'
-    success_url = reverse_lazy(URL_GROUP_LIST)
+    success_url = reverse_lazy(USERS_GROUP_LIST)
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context[CONTEXT_CANCEL_URL] = URL_GROUP_LIST
+        context[CONTEXT_CANCEL_URL] = USERS_GROUP_LIST
         context[CONTEXT_TITLE] = TITLE_GROUP_CREATE
         return context
     
@@ -478,11 +455,11 @@ class GroupUpdateView(PermissionRequiredMixin, UpdateView):
     form_class = GroupUpdateForm
     template_name = TEMPLATE_GROUP_FORM
     permission_required = 'users.change_group'
-    success_url = reverse_lazy(URL_GROUP_LIST)
+    success_url = reverse_lazy(USERS_GROUP_LIST)
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context[CONTEXT_CANCEL_URL] = URL_GROUP_LIST
+        context[CONTEXT_CANCEL_URL] = USERS_GROUP_LIST
         context[CONTEXT_TITLE] = TITLE_GROUP_UPDATE.format(name=self.object.name)
         return context
     
@@ -500,7 +477,7 @@ class GroupDetailView(PermissionRequiredMixin, DetailView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context[CONTEXT_CANCEL_URL] = URL_GROUP_LIST
+        context[CONTEXT_CANCEL_URL] = USERS_GROUP_LIST
         context[CONTEXT_USERS] = self.object.user_set.all().order_by(FILTER_USERNAME)
         return context
 
@@ -523,60 +500,62 @@ class GroupDeleteView(PermissionRequiredMixin, FormView):
         context = super().get_context_data(**kwargs)
         context[CONTEXT_GROUP] = self.group
         context[CONTEXT_USER_COUNT] = self.group.user_set.count()
-        context[CONTEXT_CANCEL_URL] = URL_GROUP_LIST
+        context[CONTEXT_CANCEL_URL] = USERS_GROUP_LIST
         return context
     
     def form_valid(self, form):
         group_name = self.group.name
         self.group.delete()
         messages.success(self.request, MSG_GROUP_DELETED.format(name=group_name))
-        return redirect(URL_GROUP_LIST)
+        return redirect(USERS_GROUP_LIST)
     
     def form_invalid(self, form):
         messages.error(self.request, ERROR_GROUP_DELETE)
         return super().form_invalid(form)
-    
+
+
+# =============================================================================
+# USER PROFILE VIEWS
+# =============================================================================
+
 class UserProfileView(DetailView):
-    """Vista para que el usuario vea su propio perfil."""
     model = User
-    template_name = 'backoffice/profile.html'
-    context_object_name = 'user_obj'
+    template_name = TEMPLATE_USER_PROFILE
+    context_object_name = CONTEXT_USER_OBJ
     
     def get_object(self):
         return self.request.user
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['cancel_url'] = 'users:profile'
+        context[CONTEXT_CANCEL_URL] = USERS_PROFILE
         return context
 
 
 class UserProfileUpdateView(UpdateView):
-    """Vista para que el usuario edite su propio perfil."""
     model = User
     form_class = UserProfileForm
-    template_name = 'backoffice/profile_edit.html'
+    template_name = TEMPLATE_USER_PROFILE_EDIT
     
     def get_object(self):
         return self.request.user
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['cancel_url'] = 'users:profile'
+        context[CONTEXT_CANCEL_URL] = USERS_PROFILE
         return context
     
     def form_valid(self, form):
-        messages.success(self.request, 'Tu perfil ha sido actualizado exitosamente.')
-        return redirect('users:profile')
+        messages.success(self.request, MSG_PROFILE_UPDATED)
+        return redirect(USERS_PROFILE)
     
     def get_success_url(self):
-        return reverse_lazy('users:profile')
+        return reverse_lazy(USERS_PROFILE)
 
 
 class UserProfilePasswordView(FormView):
-    """Vista para que el usuario cambie su contraseña."""
     form_class = UserProfilePasswordForm
-    template_name = 'backoffice/profile_password.html'
+    template_name = TEMPLATE_USER_PROFILE_PASSWORD
     
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
@@ -585,14 +564,14 @@ class UserProfilePasswordView(FormView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['cancel_url'] = 'users:profile'
+        context[CONTEXT_CANCEL_URL] = USERS_PROFILE
         return context
     
     def form_valid(self, form):
         form.save()
-        messages.success(self.request, 'Tu contraseña ha sido actualizada exitosamente.')
-        return redirect('users:profile')
+        messages.success(self.request, MSG_PASSWORD_UPDATED)
+        return redirect(USERS_PROFILE)
     
     def form_invalid(self, form):
-        messages.error(self.request, 'Error al actualizar la contraseña. Verifica los datos.')
+        messages.error(self.request, ERROR_PASSWORD_UPDATE)
         return super().form_invalid(form)

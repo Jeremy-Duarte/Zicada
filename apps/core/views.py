@@ -24,56 +24,108 @@ from apps.products.views import (
     CONTEXT_OBJECT_DISPLAY,
     CONTEXT_IS_CREATE,
     CONTEXT_IS_UPDATE,
-    ORDER_BY_DELETED_AT,
-    ORDER_BY_CREATED_AT,
-    PRODUCT_TYPE_FABRICA,
-    PRODUCT_TYPE_COLECCION_LIMITADA,
-    PRODUCT_TYPES_DISPLAY,
 )
 
 logger = logging.getLogger(__name__)
 
-# -------------------------------------------------------------------------
-# Constants – avoid duplicated string literals
-# -------------------------------------------------------------------------
+from apps.core.url_names import (
+    CORE_CONTACT,
+    CORE_CONTACT_SUCCESS,
+    CORE_HERO_LIST,
+    CORE_HERO_TRASHCAN,
+    PRODUCTS_CATALOG,
+    BACKOFFICE_DASHBOARD,
+)
 
-TEMPLATE_HOME = 'home.html'
-TEMPLATE_ABOUT = 'about.html'
-TEMPLATE_CONTACT = 'contact.html'
-TEMPLATE_RETURNS = 'returns_policy.html'
-TEMPLATE_PRIVACY = 'privacy_policy.html'
-TEMPLATE_TERMS = 'terms.html'
-TEMPLATE_STAFF_LOGIN = 'core/staff_login.html'
-TEMPLATE_CONTACT_SUCCESS = 'core/contact_success.html'
+from .constants import (
+    URL_HOME,
+    # Collection Statuses
+    COLLECTION_STATUS_PUBLISHED,
+    COLLECTION_STATUS_DRAFT,
+    COLLECTION_STATUS_ARCHIVED,
+    # Template Paths
+    TEMPLATE_HOME,
+    TEMPLATE_ABOUT,
+    TEMPLATE_CONTACT,
+    TEMPLATE_RETURNS,
+    TEMPLATE_PRIVACY,
+    TEMPLATE_TERMS,
+    TEMPLATE_STAFF_LOGIN,
+    TEMPLATE_CONTACT_SUCCESS,
+    TEMPLATE_HERO_FORM,
+    TEMPLATE_HERO_LIST,
+    TEMPLATE_HERO_CONFIRM_DELETE,
+    TEMPLATE_HERO_RESTORE,
+    TEMPLATE_HERO_TRASHCAN,
+    # Email Configuration
+    EMAIL_SUBJECT_PREFIX,
+    EMAIL_USER_SUBJECT,
+    # Contact Form Field Names
+    CONTACT_FIELD_NAME,
+    CONTACT_FIELD_EMAIL,
+    CONTACT_FIELD_PHONE,
+    CONTACT_FIELD_SUBJECT,
+    CONTACT_FIELD_MESSAGE,
+    # Contact Messages
+    CONTACT_SUCCESS_MESSAGE,
+    CONTACT_ERROR_MESSAGE,
+    # Login/Logout Messages
+    LOGIN_ERROR_MESSAGE,
+    LOGOUT_SUCCESS_MESSAGE,
+    LOGIN_WELCOME_MESSAGE,
+    # Status Labels
+    STATUS_ACTIVE_LABEL,
+    STATUS_INACTIVE_LABEL,
+    # Badge CSS Classes
+    BADGE_ACTIVE_CSS,
+    BADGE_INACTIVE_CSS,
+    # Hero Section Messages
+    MSG_HERO_CREATED,
+    MSG_HERO_UPDATED,
+    MSG_HERO_DELETED,
+    MSG_HERO_RESTORED,
+    # Hero Section Headers
+    HEADERS_HERO,
+    HEADERS_HERO_TRASHCAN,
+    # Hero Section Context Keys
+    CONTEXT_BACKGROUND_IMAGE_URL,
+    CONTEXT_ROWS,
+    CONTEXT_HEADERS,
+    CONTEXT_HERO_SLIDES,
+    # Hero Section Order By
+    HERO_ORDER_BY_SORT,
+    HERO_ORDER_BY_DELETED_AT,
+    # Display Limits
+    FEATURED_COLLECTIONS_LIMIT,
+    LATEST_PRODUCTS_LIMIT,
+    FEATURED_CATEGORIES_LIMIT,
+    # PWA Manifest Configuration
+    PWA_NAME,
+    PWA_SHORT_NAME,
+    PWA_START_URL,
+    PWA_DISPLAY,
+    PWA_BACKGROUND_COLOR,
+    PWA_THEME_COLOR,
+    # Hero Section Object Names
+    HERO_OBJECT_NAME,
+)
 
-EMAIL_SUBJECT_PREFIX = '[Contacto Zicada] '
-EMAIL_USER_SUBJECT = 'Hemos recibido tu mensaje - Zicada'
-CONTACT_SUCCESS_MESSAGE = '¡Mensaje enviado con éxito! Te responderemos pronto.'
-CONTACT_ERROR_MESSAGE = 'Error al enviar el mensaje. Por favor intenta de nuevo.'
 
-URL_CORE_CONTACT = 'core:contact'
-URL_CORE_CONTACT_SUCCESS = 'core:contact_success'
-URL_HOME = 'home'
-URL_PRODUCTS_CATALOG = 'products:catalog'
-URL_BACKOFFICE_DASHBOARD = 'backoffice:dashboard'
-
-# -------------------------------------------------------------------------
-# Views
-# -------------------------------------------------------------------------
 @require_GET
 def home(request):
-    hero_slides = HeroConfig.objects.filter(is_active=True).order_by('sort_order')
+    """Home page view with hero slides, collections, products and categories."""
+    hero_slides = HeroConfig.objects.filter(is_active=True).order_by(HERO_ORDER_BY_SORT)
     featured_collections = Collection.objects.filter(
-        status='publicada',
+        status=COLLECTION_STATUS_PUBLISHED,
         is_active=True
-    ).order_by('-created_at')[:3]
+    ).order_by('-created_at')[:FEATURED_COLLECTIONS_LIMIT]
     latest_products = Product.objects.filter(
         is_active=True
-    ).select_related('category').prefetch_related('variants')[:8]
-    categories = Category.objects.all().order_by('sort_order')[:4]
+    ).select_related('category').prefetch_related('variants')[:LATEST_PRODUCTS_LIMIT]
+    categories = Category.objects.all().order_by(HERO_ORDER_BY_SORT)[:FEATURED_CATEGORIES_LIMIT]
 
     context = {
-        'hero_slides': hero_slides,
+        CONTEXT_HERO_SLIDES: hero_slides,
         'featured_collections': featured_collections,
         'latest_products': latest_products,
         'categories': categories,
@@ -84,46 +136,53 @@ def home(request):
 @never_cache
 @require_safe
 def pwa_manifest(request):
+    """PWA manifest.json generator."""
     manifest = {
-        "name": "Zicada",
-        "short_name": "Zicada",
-        "start_url": "/",
-        "display": "standalone",
-        "background_color": "#ffffff",
-        "theme_color": "#1a1a1a",
+        "name": PWA_NAME,
+        "short_name": PWA_SHORT_NAME,
+        "start_url": PWA_START_URL,
+        "display": PWA_DISPLAY,
+        "background_color": PWA_BACKGROUND_COLOR,
+        "theme_color": PWA_THEME_COLOR,
         "icons": []
     }
     return JsonResponse(manifest)
 
+
 @require_GET
 def about(request):
+    """About page view."""
     return render(request, TEMPLATE_ABOUT)
+
 
 @require_GET
 def contact(request):
+    """Contact page view with form."""
     form = ContactForm()
     return render(request, TEMPLATE_CONTACT, {'form': form})
 
+
 @require_http_methods(['GET', 'POST'])
 def contact_submit(request):
+    """Handle contact form submission and send emails."""
     if request.method != 'POST':
-        return redirect(URL_CORE_CONTACT)
+        return redirect(CORE_CONTACT)
 
     form = ContactForm(request.POST)
 
     if form.is_valid():
-        name = form.cleaned_data['name']
-        email = form.cleaned_data['email']
-        phone = form.cleaned_data['phone']
-        subject = form.cleaned_data['subject']
-        message = form.cleaned_data['message']
+        name = form.cleaned_data[CONTACT_FIELD_NAME]
+        email = form.cleaned_data[CONTACT_FIELD_EMAIL]
+        phone = form.cleaned_data[CONTACT_FIELD_PHONE]
+        subject = form.cleaned_data[CONTACT_FIELD_SUBJECT]
+        message = form.cleaned_data[CONTACT_FIELD_MESSAGE]
 
         context = {
-            'name': name,
-            'email': email,
-            'phone': phone,
-            'subject': subject,
-            'message': message,
+            CONTACT_FIELD_NAME: name,
+            CONTACT_FIELD_EMAIL: email,
+            CONTACT_FIELD_PHONE: phone,
+            CONTACT_FIELD_SUBJECT: subject,
+            CONTACT_FIELD_MESSAGE: message,
             'site_url': settings.SITE_URL,
         }
 
@@ -156,12 +215,12 @@ def contact_submit(request):
             user_email.send(fail_silently=True)
 
             messages.success(request, CONTACT_SUCCESS_MESSAGE)
-            return redirect(URL_CORE_CONTACT_SUCCESS)
+            return redirect(CORE_CONTACT_SUCCESS)
 
         except Exception as e:
             logger.exception("Error al enviar correo de contacto")
             messages.error(request, CONTACT_ERROR_MESSAGE)
-            return redirect(URL_CORE_CONTACT)
+            return redirect(CORE_CONTACT)
 
     else:
         # Show form errors
@@ -169,112 +228,100 @@ def contact_submit(request):
             for error in errors:
                 field_label = form.fields[field].label if field in form.fields else field
                 messages.error(request, f'{field_label}: {error}')
-        return redirect(URL_CORE_CONTACT)
+        return redirect(CORE_CONTACT)
 
 
 @require_GET
 def contact_success(request):
+    """Contact form success page."""
     return render(request, TEMPLATE_CONTACT_SUCCESS)
 
 
 @require_GET
 def returns_policy(request):
+    """Returns policy page."""
     return render(request, TEMPLATE_RETURNS)
 
 
 @require_GET
 def privacy_policy(request):
+    """Privacy policy page."""
     return render(request, TEMPLATE_PRIVACY)
+
 
 @require_GET
 def terms(request):
+    """Terms and conditions page."""
     return render(request, TEMPLATE_TERMS)
 
 
 class StaffLoginView(LoginView):
+    """Custom staff login view."""
     template_name = TEMPLATE_STAFF_LOGIN
     authentication_form = StaffLoginForm
     redirect_authenticated_user = True
 
     def get_success_url(self):
-        return reverse_lazy(URL_BACKOFFICE_DASHBOARD)
+        return reverse_lazy(BACKOFFICE_DASHBOARD)
 
     def form_valid(self, form):
         response = super().form_valid(form)
-        messages.success(self.request, f'Bienvenido {self.request.user.username}')
+        messages.success(self.request, LOGIN_WELCOME_MESSAGE.format(username=self.request.user.username))
         return response
 
     def form_invalid(self, form):
-        messages.error(self.request, 'Usuario o contraseña incorrectos')
+        messages.error(self.request, LOGIN_ERROR_MESSAGE)
         return super().form_invalid(form)
 
     def dispatch(self, request, *args, **kwargs):
         if request.user.is_authenticated:
             if request.user.is_staff or getattr(request.user, 'is_delivery', False):
-                return redirect(URL_BACKOFFICE_DASHBOARD)
-            return redirect(URL_PRODUCTS_CATALOG)
+                return redirect(BACKOFFICE_DASHBOARD)
+            return redirect(PRODUCTS_CATALOG)
         return super().dispatch(request, *args, **kwargs)
+
 
 @require_POST
 def staff_logout(request):
+    """Staff logout view."""
     logout(request)
-    messages.info(request, 'Sesión cerrada correctamente')
-    return redirect(URL_PRODUCTS_CATALOG)
+    messages.info(request, LOGOUT_SUCCESS_MESSAGE)
+    return redirect(PRODUCTS_CATALOG)
 
-# Template Paths
-TEMPLATE_HERO_FORM = 'backoffice/hero/hero_form.html'
-TEMPLATE_HERO_LIST = 'backoffice/hero/hero_list.html'
-TEMPLATE_HERO_CONFIRM_DELETE = 'backoffice/hero/hero_confirm_delete.html'
-TEMPLATE_HERO_RESTORE = 'backoffice/hero/hero_restore.html'
-TEMPLATE_HERO_TRASHCAN = 'backoffice/hero/hero_trashcan.html'
-
-# URL Names
-URL_HERO_LIST = 'core:hero_list'
-URL_HERO_TRASHCAN = 'core:hero_trashcan'
-
-# Messages
-MSG_HERO_CREATED = 'Slide "{title}" creado exitosamente.'
-MSG_HERO_UPDATED = 'Slide "{title}" actualizado exitosamente.'
-MSG_HERO_DELETED = 'Slide "{title}" movido a la papelera.'
-MSG_HERO_RESTORED = 'Slide "{title}" restaurado exitosamente.'
-
-# Headers
-HEADERS_HERO = ['Título', 'Orden', 'Estado']
-
-# Order By
-ORDER_BY_DELETED_AT = '-deleted_at'
 
 class HeroConfigListView(PermissionRequiredMixin, ListView):
+    """List active hero slides."""
     model = HeroConfig
     template_name = TEMPLATE_HERO_LIST
-    context_object_name = 'hero_slides'
+    context_object_name = CONTEXT_HERO_SLIDES
     permission_required = 'core.view_heroconfig'
     paginate_by = PAGINATE_BY_DEFAULT
     
     def get_queryset(self):
-        return HeroConfig.objects.filter(is_active=True).order_by('sort_order')
+        return HeroConfig.objects.filter(is_active=True).order_by(HERO_ORDER_BY_SORT)
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         rows = []
-        for slide in context['hero_slides']:
+        for slide in context[CONTEXT_HERO_SLIDES]:
             rows.append({
                 'pk': slide.pk,
                 'values': [
                     slide.title_text,
                     slide.sort_order,
                     '<span class="px-2 py-1 text-xs rounded-full {}">{}</span>'.format(
-                        'bg-green-100 text-green-700' if slide.is_active else 'bg-red-100 text-red-700',
-                        'Activo' if slide.is_active else 'Inactivo'
+                        BADGE_ACTIVE_CSS if slide.is_active else BADGE_INACTIVE_CSS,
+                        STATUS_ACTIVE_LABEL if slide.is_active else STATUS_INACTIVE_LABEL
                     ),
                 ],
             })
-        context['rows'] = rows
-        context['headers'] = HEADERS_HERO
+        context[CONTEXT_ROWS] = rows
+        context[CONTEXT_HEADERS] = HEADERS_HERO
         return context
 
 
 class HeroConfigCreateView(PermissionRequiredMixin, CreateView):
+    """Create new hero slide."""
     model = HeroConfig
     form_class = HeroConfigCreateForm
     template_name = TEMPLATE_HERO_FORM
@@ -282,13 +329,13 @@ class HeroConfigCreateView(PermissionRequiredMixin, CreateView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context[CONTEXT_CANCEL_URL] = URL_HERO_LIST
+        context[CONTEXT_CANCEL_URL] = CORE_HERO_LIST
         context[CONTEXT_IS_CREATE] = True
-        context['background_image_url'] = ''
+        context[CONTEXT_BACKGROUND_IMAGE_URL] = ''
         return context
     
     def get_success_url(self):
-        return reverse(URL_HERO_LIST)
+        return reverse(CORE_HERO_LIST)
     
     def form_valid(self, form):
         response = super().form_valid(form)
@@ -297,6 +344,7 @@ class HeroConfigCreateView(PermissionRequiredMixin, CreateView):
 
 
 class HeroConfigUpdateView(PermissionRequiredMixin, UpdateView):
+    """Update existing hero slide."""
     model = HeroConfig
     form_class = HeroConfigUpdateForm
     template_name = TEMPLATE_HERO_FORM
@@ -304,29 +352,30 @@ class HeroConfigUpdateView(PermissionRequiredMixin, UpdateView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context[CONTEXT_CANCEL_URL] = URL_HERO_LIST
+        context[CONTEXT_CANCEL_URL] = CORE_HERO_LIST
         context[CONTEXT_IS_UPDATE] = True
         if self.object and self.object.background_image and self.object.background_image.url:
-            context['background_image_url'] = self.object.background_image.url
+            context[CONTEXT_BACKGROUND_IMAGE_URL] = self.object.background_image.url
         else:
-            context['background_image_url'] = ''
+            context[CONTEXT_BACKGROUND_IMAGE_URL] = ''
         return context
     
     def get_success_url(self):
-        return reverse_lazy(URL_HERO_LIST)
+        return reverse_lazy(CORE_HERO_LIST)
     
     def form_valid(self, form):
         response = super().form_valid(form)
         messages.success(self.request, MSG_HERO_UPDATED.format(title=form.instance.title_text))
         return response
 
+
 class HeroConfigDeleteView(PermissionRequiredMixin, DeleteView):
-    """Soft-delete slide del hero (mover a papelera)"""
+    """Soft-delete hero slide (move to trashcan)."""
     model = HeroConfig
     form_class = HeroConfigDeleteForm
     template_name = TEMPLATE_HERO_CONFIRM_DELETE
     permission_required = 'core.delete_heroconfig'
-    success_url = reverse_lazy(URL_HERO_LIST)
+    success_url = reverse_lazy(CORE_HERO_LIST)
     
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
@@ -335,9 +384,9 @@ class HeroConfigDeleteView(PermissionRequiredMixin, DeleteView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context[CONTEXT_OBJECT_NAME] = 'Slide del Hero'
+        context[CONTEXT_OBJECT_NAME] = HERO_OBJECT_NAME
         context[CONTEXT_OBJECT_DISPLAY] = self.get_object().title_text
-        context[CONTEXT_CANCEL_URL] = URL_HERO_LIST
+        context[CONTEXT_CANCEL_URL] = CORE_HERO_LIST
         return context
     
     def post(self, request, *args, **kwargs):
@@ -350,21 +399,21 @@ class HeroConfigDeleteView(PermissionRequiredMixin, DeleteView):
     def delete(self, request, *args, **kwargs):
         slide = self.get_object()
         slide_title = slide.title_text
-        slide.soft_delete(user=request.user)  # Usar soft_delete
+        slide.soft_delete(user=request.user)
         messages.success(request, MSG_HERO_DELETED.format(title=slide_title))
         return redirect(self.success_url)
 
 
 class HeroConfigRestoreView(PermissionRequiredMixin, TemplateView):
-    """Restaurar slide eliminado"""
+    """Restore soft-deleted hero slide."""
     model = HeroConfig
     form_class = HeroConfigRestoreForm
     template_name = TEMPLATE_HERO_RESTORE
     permission_required = 'core.change_heroconfig'
-    success_url = reverse_lazy(URL_HERO_LIST)
+    success_url = reverse_lazy(CORE_HERO_LIST)
     
     def get_object(self):
-        return get_object_or_404(HeroConfig.all_objects, pk=self.kwargs['pk'])  # Usar all_objects
+        return get_object_or_404(HeroConfig.all_objects, pk=self.kwargs['pk'])
     
     def get_form(self):
         return self.form_class(slide=self.get_object(), data=self.request.POST or None)
@@ -372,10 +421,10 @@ class HeroConfigRestoreView(PermissionRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         slide = self.get_object()
-        context['slide'] = slide
+        context[CONTEXT_HERO_SLIDES] = slide
         context['form'] = self.get_form()
-        context[CONTEXT_CANCEL_URL] = URL_HERO_TRASHCAN
-        context[CONTEXT_OBJECT_NAME] = 'Slide del Hero'
+        context[CONTEXT_CANCEL_URL] = CORE_HERO_TRASHCAN
+        context[CONTEXT_OBJECT_NAME] = HERO_OBJECT_NAME
         context[CONTEXT_OBJECT_DISPLAY] = slide.title_text
         return context
     
@@ -383,37 +432,36 @@ class HeroConfigRestoreView(PermissionRequiredMixin, TemplateView):
         slide = self.get_object()
         form = self.get_form()
         if form.is_valid():
-            slide.restore(user=request.user)  # Usar restore
+            slide.restore(user=request.user)
             messages.success(request, MSG_HERO_RESTORED.format(title=slide.title_text))
-            return redirect(URL_HERO_LIST)
+            return redirect(CORE_HERO_LIST)
         return self.render_to_response(self.get_context_data(form=form))
 
 
 class HeroConfigTrashcanView(PermissionRequiredMixin, ListView):
-    """Lista de slides eliminados (papelera)"""
+    """List soft-deleted hero slides (trashcan)."""
     model = HeroConfig
     template_name = TEMPLATE_HERO_TRASHCAN
-    context_object_name = 'hero_slides'
+    context_object_name = CONTEXT_HERO_SLIDES
     permission_required = 'core.view_heroconfig'
     paginate_by = PAGINATE_BY_DEFAULT
     
     def get_queryset(self):
-        # Usar all_objects para ver también los eliminados
-        return HeroConfig.all_objects.filter(is_active=False).order_by('-deleted_at')
+        return HeroConfig.all_objects.filter(is_active=False).order_by(HERO_ORDER_BY_DELETED_AT)
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         rows = []
-        for slide in context['hero_slides']:
+        for slide in context[CONTEXT_HERO_SLIDES]:
             rows.append({
                 'pk': slide.pk,
                 'values': [
                     slide.title_text,
                     slide.subtitle_text[:50] if slide.subtitle_text else '-',
-                    slide.order,
+                    slide.sort_order,
                     slide.deleted_at.strftime('%d/%m/%Y %H:%M') if slide.deleted_at else '-',
                 ],
             })
-        context['rows'] = rows
-        context['headers'] = ['Título', 'Subtítulo', 'Orden', 'Eliminado el']
+        context[CONTEXT_ROWS] = rows
+        context[CONTEXT_HEADERS] = HEADERS_HERO_TRASHCAN
         return context
