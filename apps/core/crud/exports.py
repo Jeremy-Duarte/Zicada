@@ -18,7 +18,7 @@ class BaseExporter:
     def get_row_data(self, obj):
         return {field: getattr(obj, field, '') for _, field in self.fields}
     
-    def export_csv(self, queryset, request):
+    def export_csv(self, queryset):
         response = HttpResponse(content_type='text/csv')
         response['Content-Disposition'] = f'attachment; filename="{self.filename}.csv"'
         
@@ -31,7 +31,7 @@ class BaseExporter:
         
         return response
     
-    def export_excel(self, queryset, request):
+    def export_excel(self, queryset):
         data = []
         for obj in self.get_queryset(queryset):
             data.append(self.get_row_data(obj))
