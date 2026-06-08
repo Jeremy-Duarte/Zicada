@@ -5,8 +5,31 @@ from apps.core.models import BaseAuditModel
 from django.utils import timezone
 from apps.products.constants import STOCK_LOW_THRESHOLD
 
+# =============================================================================
+# CONSTANTES PARA MODELOS
+# =============================================================================
+
+# Strings duplicados
+VERBOSE_CATEGORY = 'Categoría'
+DEFAULT_TITLE_FONT = "'Inter', sans-serif"
+
+# Valores por defecto para configuración de tarjetas
+DEFAULT_BADGE_TEXT_COLOR = '#ffffff'
+DEFAULT_CARD_BORDER_RADIUS = '0.5rem'
+DEFAULT_CARD_SHADOW = '0 1px 3px 0 rgba(0,0,0,0.1)'
+DEFAULT_CARD_HOVER_SHADOW = '0 20px 25px -5px rgba(0,0,0,0.15)'
+DEFAULT_HOVER_SCALE = 1.05
+DEFAULT_SHOW_CATEGORY = True
+DEFAULT_SHOW_STOCK_BADGE = True
+
+# Colores por defecto
+DEFAULT_PRIMARY_COLOR = '#c2a575'
+DEFAULT_SECONDARY_COLOR = '#8b5e3c'
+DEFAULT_BACKGROUND_COLOR = '#ffffff'
+DEFAULT_TEXT_COLOR = '#1a1a1a'
+
+
 class Size(models.Model):
-    # Catálogo de tallas (sin auditoría, es estático).
     name = models.CharField(
         max_length=10,
         unique=True,
@@ -29,11 +52,10 @@ class Size(models.Model):
 
 
 class Category(models.Model):
-    # Catálogo de categorías (sin auditoría, es estático).
     name = models.CharField(
         max_length=50,
         unique=True,
-        verbose_name='Categoría',
+        verbose_name=VERBOSE_CATEGORY,
         help_text='Ej: Camisetas, Hoodies, Pantalones, Accesorios'
     )
     slug = models.SlugField(
@@ -61,8 +83,8 @@ class Category(models.Model):
             self.slug = slugify(self.name)
         super().save(*args, **kwargs)
 
+
 class Color(models.Model):
-    # Catálogo de colores (sin auditoría, es estático).
     name = models.CharField(
         max_length=30,
         unique=True,
@@ -88,9 +110,9 @@ class Color(models.Model):
     
     def __str__(self):
         return self.name
-    
+
+
 class ProductImage(models.Model):
-    # Almacena una imagen física (archivo).
     image = models.ImageField(
         upload_to='products/images/',
         verbose_name='Imagen'
@@ -111,10 +133,9 @@ class ProductImage(models.Model):
         if self.alt_text:
             return self.alt_text
         return f"Imagen {self.id}"
-    
+
 
 class ProductColor(BaseAuditModel):
-    # Asociación de imagen de un producto con su color
     product = models.ForeignKey(
         'Product',
         on_delete=models.CASCADE,
@@ -157,7 +178,6 @@ class ProductColor(BaseAuditModel):
 
 
 class Product(BaseAuditModel):
-    # Producto del catálogo.
     PRODUCT_TYPES = [
         ('fabrica', 'Producto de fábrica'),
         ('coleccion_limitada', 'Colección limitada'),
@@ -197,7 +217,7 @@ class Product(BaseAuditModel):
         Category,
         on_delete=models.PROTECT,
         related_name='products',
-        verbose_name='Categoría',
+        verbose_name=VERBOSE_CATEGORY,
         help_text='Categoría a la que pertenece el producto'
     )
     
@@ -222,22 +242,31 @@ class Product(BaseAuditModel):
     def is_available(self):
         return self.variants.filter(is_active=True, stock__gt=0).exists()
     
-    def get_featured_image(self):
-        if hasattr(self, '_prefetched_objects_cache') and 'product_colors' in self._prefetched_objects_cache:
-            for product_color in self.product_colors.all():
-                if product_color.featured_image:
-                    return product_color.featured_image
-                first_image = product_color.images.first()
-                if first_image:
-                    return first_image
-        else:
-            for product_color in self.product_colors.filter(is_active=True).order_by('sort_order'):
-                if product_color.featured_image:
-                    return product_color.featured_image
-                first_image = product_color.images.first()
-                if first_image:
-                    return first_image
+    def _get_featured_image_from_prefetched(self):
+        """Obtiene imagen destacada usando caché prefetched."""
+        for product_color in self.product_colors.all():
+            if product_color.featured_image:
+                return product_color.featured_image
+            first_image = product_color.images.first()
+            if first_image:
+                return first_image
         return None
+
+    def _get_featured_image_from_db(self):
+        """Obtiene imagen destacada consultando directamente la BD."""
+        for product_color in self.product_colors.filter(is_active=True).order_by('sort_order'):
+            if product_color.featured_image:
+                return product_color.featured_image
+            first_image = product_color.images.first()
+            if first_image:
+                return first_image
+        return None
+
+    def get_featured_image(self):
+        """Get featured image for product, using cache if available."""
+        if hasattr(self, '_prefetched_objects_cache') and 'product_colors' in self._prefetched_objects_cache:
+            return self._get_featured_image_from_prefetched()
+        return self._get_featured_image_from_db()
 
     def __str__(self):
         return self.name
@@ -253,8 +282,7 @@ class Product(BaseAuditModel):
         super().save(*args, **kwargs)
 
 
-class ProductVariantManager(models.Manager):  
-    # Manager para consultas  
+class ProductVariantManager(models.Manager):
     def available(self):
         return self.filter(is_active=True, stock__gt=0)
     
@@ -280,7 +308,6 @@ class ProductVariantManager(models.Manager):
 
 
 class ProductVariant(BaseAuditModel):
-    # Variante por talla y color.
     product = models.ForeignKey(
         Product,
         on_delete=models.CASCADE,
@@ -394,7 +421,6 @@ class ProductVariant(BaseAuditModel):
 
 
 class Collection(BaseAuditModel):
-    # Colecciones temáticas
     STATUS_CHOICES = [
         ('borrador', 'Borrador'),
         ('publicada', 'Publicada'),
@@ -437,7 +463,6 @@ class Collection(BaseAuditModel):
         help_text='Borrador (no visible), Publicada (visible), Archivada (oculta)'
     )
     
-    # Imagen de portada para la tarjeta
     cover_image = models.ImageField(
         upload_to='collections/covers/',
         blank=True,
@@ -448,28 +473,28 @@ class Collection(BaseAuditModel):
     primary_color = models.CharField(
         max_length=20,
         blank=True,
-        default='#c2a575',
+        default=DEFAULT_PRIMARY_COLOR,
         verbose_name='Color principal',
         help_text='Color de botones, enlaces y acentos'
     )
     secondary_color = models.CharField(
         max_length=20,
         blank=True,
-        default='#8b5e3c',
+        default=DEFAULT_SECONDARY_COLOR,
         verbose_name='Color secundario',
         help_text='Color para hover y detalles'
     )
     background_color = models.CharField(
         max_length=20,
         blank=True,
-        default='#ffffff',
+        default=DEFAULT_BACKGROUND_COLOR,
         verbose_name='Color de fondo',
         help_text='Color de fondo de la página de la colección'
     )
     text_color = models.CharField(
         max_length=20,
         blank=True,
-        default='#1a1a1a',
+        default=DEFAULT_TEXT_COLOR,
         verbose_name='Color de texto',
         help_text='Color principal del texto'
     )
@@ -483,7 +508,7 @@ class Collection(BaseAuditModel):
     title_font = models.CharField(
         max_length=100,
         blank=True,
-        default="'Inter', sans-serif",
+        default=DEFAULT_TITLE_FONT,
         verbose_name='Fuente de títulos',
         help_text='Ej: "Playfair Display", serif'
     )
@@ -497,7 +522,7 @@ class Collection(BaseAuditModel):
         blank=True,
         verbose_name='CSS personalizado',
         help_text='CSS adicional para esta colección (solo si sabes lo que haces)'
-    )    
+    )
     style_config = models.JSONField(
         blank=True,
         null=True,
@@ -528,58 +553,54 @@ class Collection(BaseAuditModel):
         return {
             'cover_image': self.cover_image.url if self.cover_image else None,
             'colors': {
-                'primary': self.primary_color or '#c2a575',
-                'secondary': self.secondary_color or '#8b5e3c',
-                'background': self.background_color or '#ffffff',
-                'text': self.text_color or '#1a1a1a',
+                'primary': self.primary_color or DEFAULT_PRIMARY_COLOR,
+                'secondary': self.secondary_color or DEFAULT_SECONDARY_COLOR,
+                'background': self.background_color or DEFAULT_BACKGROUND_COLOR,
+                'text': self.text_color or DEFAULT_TEXT_COLOR,
             },
             'background_image': self.background_image.url if self.background_image else None,
             'typography': {
-                'title_font': self.title_font or "'Inter', sans-serif",
+                'title_font': self.title_font or DEFAULT_TITLE_FONT,
             },
             'effects': self.effects_config or {},
             'custom_css': self.custom_css or '',
         }
     
     def get_card_config(self):
-        style = self.get_style_config()
+        """Retorna la configuración de tarjetas para esta colección."""
+        self.get_style_config()
         
         if self.style_config and 'card_config' in self.style_config:
             return self.style_config['card_config']
         
         return {
-            'background_color': self.background_color or '#ffffff',
-            'text_color': self.text_color or '#1a1a1a',
-            'title_color': self.primary_color or '#c2a575',
-            'price_color': self.primary_color or '#c2a575',
-            'badge_background': self.primary_color or '#c2a575',
-            'badge_text_color': '#ffffff',
-            'border_radius': '0.5rem',
-            'shadow': '0 1px 3px 0 rgba(0,0,0,0.1)',
-            'hover_shadow': '0 20px 25px -5px rgba(0,0,0,0.15)',
-            'hover_scale': 1.05,
-            'show_category': True,
-            'show_stock_badge': True,
+            'background_color': self.background_color or DEFAULT_BACKGROUND_COLOR,
+            'text_color': self.text_color or DEFAULT_TEXT_COLOR,
+            'title_color': self.primary_color or DEFAULT_PRIMARY_COLOR,
+            'price_color': self.primary_color or DEFAULT_PRIMARY_COLOR,
+            'badge_background': self.primary_color or DEFAULT_PRIMARY_COLOR,
+            'badge_text_color': DEFAULT_BADGE_TEXT_COLOR,
+            'border_radius': DEFAULT_CARD_BORDER_RADIUS,
+            'shadow': DEFAULT_CARD_SHADOW,
+            'hover_shadow': DEFAULT_CARD_HOVER_SHADOW,
+            'hover_scale': DEFAULT_HOVER_SCALE,
+            'show_category': DEFAULT_SHOW_CATEGORY,
+            'show_stock_badge': DEFAULT_SHOW_STOCK_BADGE,
         }
     
     def _has_individual_styles(self):
         return any([
             self.cover_image,
-            self.primary_color != '#c2a575',
-            self.secondary_color != '#8b5e3c',
-            self.background_color != '#ffffff',
-            self.text_color != '#1a1a1a',
+            self.primary_color != DEFAULT_PRIMARY_COLOR,
+            self.secondary_color != DEFAULT_SECONDARY_COLOR,
+            self.background_color != DEFAULT_BACKGROUND_COLOR,
+            self.text_color != DEFAULT_TEXT_COLOR,
             self.background_image,
-            self.title_font != "'Inter', sans-serif",
+            self.title_font != DEFAULT_TITLE_FONT,
             self.custom_css,
         ])
 
     def update_products_type(self):
-        """
-        Actualiza el tipo de producto de todos los productos de esta colección.
-        Si la colección está publicada, los productos pasan a 'coleccion_limitada'.
-        Si está archivada o borrador, pasan a 'fabrica' (pero cuidado: un producto puede estar en varias colecciones).
-        """
         for product in self.products.all():
             otras_publicadas = product.collections.filter(
                 status='publicada',
@@ -611,14 +632,12 @@ class Collection(BaseAuditModel):
         return changed
     
     def clean(self):
-        # Validar fechas
         if self.start_date and self.end_date:
             if self.start_date >= self.end_date:
                 raise ValidationError({
                     'end_date': 'La fecha de fin debe ser posterior a la fecha de inicio.'
                 })
         
-        # Validar que una colección publicada tenga al menos un producto
         if self.status == 'publicada' and not self.products.exists():
             raise ValidationError({
                 'status': 'Una colección publicada debe tener al menos un producto asignado.'
