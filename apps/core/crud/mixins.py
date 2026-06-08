@@ -202,11 +202,11 @@ class SortableUpdateMixin:
         field_name = getattr(self, 'sortable_widget_name', 'order_data')
         order_data = self.cleaned_data.get(field_name)
         if order_data:
-            self._update_sort_order(order_data, instance)
+            self._update_sort_order(order_data)
 
         return instance
 
-    def _update_sort_order(self, order_data, instance):
+    def _update_sort_order(self, order_data):
         try:
             ordered_ids = json.loads(order_data)
         except json.JSONDecodeError:
