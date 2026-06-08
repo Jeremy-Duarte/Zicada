@@ -124,6 +124,15 @@ from .constants import (
     STATUS_BADGE_TEMPLATE,
     # Default values
     DEFAULT_EMPTY_VALUE,
+    # Perms
+    PERM_USER_VIEW,
+    PERM_USER_ADD,
+    PERM_USER_CHANGE,
+    PERM_USER_DELETE,
+    PERM_GROUP_VIEW,
+    PERM_GROUP_ADD,
+    PERM_GROUP_CHANGE,
+    PERM_GROUP_DELETE,    
 )
 
 
@@ -160,7 +169,7 @@ class UserListView(PermissionRequiredMixin, PaginationMixin, FilterMixin, ListVi
     model = User
     template_name = TEMPLATE_USER_LIST
     context_object_name = CONTEXT_USERS
-    permission_required = 'users.view_user'
+    permission_required = PERM_USER_VIEW
     paginate_by = PAGINATE_BY_DEFAULT
     
     filters = [
@@ -213,7 +222,7 @@ class UserCreateView(PermissionRequiredMixin, CreateView):
     model = User
     form_class = UserCreateForm
     template_name = TEMPLATE_USER_FORM
-    permission_required = 'users.add_user'
+    permission_required = PERM_USER_ADD
     success_url = reverse_lazy(USERS_LIST)
     
     def get_context_data(self, **kwargs):
@@ -236,7 +245,7 @@ class UserUpdateView(PermissionRequiredMixin, UpdateView):
     model = User
     form_class = UserUpdateForm
     template_name = TEMPLATE_USER_FORM
-    permission_required = 'users.change_user'
+    permission_required = PERM_USER_CHANGE
     success_url = reverse_lazy(USERS_LIST)
     
     def get_context_data(self, **kwargs):
@@ -259,7 +268,7 @@ class UserUpdateView(PermissionRequiredMixin, UpdateView):
 class UserChangePasswordView(PermissionRequiredMixin, FormView):
     form_class = UserChangePasswordForm
     template_name = TEMPLATE_USER_CHANGE_PASSWORD
-    permission_required = 'users.change_user'
+    permission_required = PERM_USER_CHANGE
     
     def dispatch(self, request, *args, **kwargs):
         self.user = get_object_or_404(User, pk=kwargs['pk'])
@@ -290,7 +299,7 @@ class UserChangePasswordView(PermissionRequiredMixin, FormView):
 class UserDeleteView(PermissionRequiredMixin, FormView):
     form_class = UserDeleteForm
     template_name = TEMPLATE_USER_CONFIRM_DELETE
-    permission_required = 'users.delete_user'
+    permission_required = PERM_USER_DELETE
     
     def dispatch(self, request, *args, **kwargs):
         self.user = get_object_or_404(User, pk=kwargs['pk'])
@@ -326,7 +335,7 @@ class UserDeleteView(PermissionRequiredMixin, FormView):
 class UserRestoreView(PermissionRequiredMixin, FormView):
     form_class = UserRestoreForm
     template_name = TEMPLATE_USER_RESTORE
-    permission_required = 'users.change_user'
+    permission_required = PERM_USER_CHANGE
     
     def dispatch(self, request, *args, **kwargs):
         self.user = get_object_or_404(User, pk=kwargs['pk'])
@@ -363,7 +372,7 @@ class UserTrashcanView(PermissionRequiredMixin, PaginationMixin, ListView):
     model = User
     template_name = TEMPLATE_USER_TRASHCAN
     context_object_name = CONTEXT_USERS
-    permission_required = 'users.view_user'
+    permission_required = PERM_USER_VIEW
     paginate_by = PAGINATE_BY_DEFAULT
     
     def get_queryset(self):
@@ -398,7 +407,7 @@ class GroupListView(PermissionRequiredMixin, PaginationMixin, FilterMixin, ListV
     model = Group
     template_name = TEMPLATE_GROUP_LIST
     context_object_name = CONTEXT_GROUPS
-    permission_required = 'users.view_group'
+    permission_required = PERM_GROUP_VIEW
     paginate_by = PAGINATE_BY_DEFAULT
     
     filters = [
@@ -435,7 +444,7 @@ class GroupCreateView(PermissionRequiredMixin, CreateView):
     model = Group
     form_class = GroupCreateForm
     template_name = TEMPLATE_GROUP_FORM
-    permission_required = 'users.add_group'
+    permission_required = PERM_GROUP_ADD
     success_url = reverse_lazy(USERS_GROUP_LIST)
     
     def get_context_data(self, **kwargs):
@@ -454,7 +463,7 @@ class GroupUpdateView(PermissionRequiredMixin, UpdateView):
     model = Group
     form_class = GroupUpdateForm
     template_name = TEMPLATE_GROUP_FORM
-    permission_required = 'users.change_group'
+    permission_required = PERM_GROUP_CHANGE
     success_url = reverse_lazy(USERS_GROUP_LIST)
     
     def get_context_data(self, **kwargs):
@@ -473,7 +482,7 @@ class GroupDetailView(PermissionRequiredMixin, DetailView):
     model = Group
     template_name = TEMPLATE_GROUP_DETAIL
     context_object_name = CONTEXT_GROUP
-    permission_required = 'users.view_group'
+    permission_required = PERM_GROUP_VIEW
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -485,7 +494,7 @@ class GroupDetailView(PermissionRequiredMixin, DetailView):
 class GroupDeleteView(PermissionRequiredMixin, FormView):
     form_class = GroupDeleteForm
     template_name = TEMPLATE_GROUP_CONFIRM_DELETE
-    permission_required = 'users.delete_group'
+    permission_required = PERM_GROUP_DELETE
     
     def dispatch(self, request, *args, **kwargs):
         self.group = get_object_or_404(Group, pk=kwargs['pk'])
@@ -523,7 +532,7 @@ class UserProfileView(DetailView):
     template_name = TEMPLATE_USER_PROFILE
     context_object_name = CONTEXT_USER_OBJ
     
-    def get_object(self):
+    def get_object(self, queryset=None):
         return self.request.user
     
     def get_context_data(self, **kwargs):
@@ -537,7 +546,7 @@ class UserProfileUpdateView(UpdateView):
     form_class = UserProfileForm
     template_name = TEMPLATE_USER_PROFILE_EDIT
     
-    def get_object(self):
+    def get_object(self, queryset=None):
         return self.request.user
     
     def get_context_data(self, **kwargs):
