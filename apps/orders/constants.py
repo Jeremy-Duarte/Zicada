@@ -118,3 +118,8 @@ ALLOWED_ADD_ITEMS_STATUSES = [STATUS_PENDING, STATUS_CONFIRMED]
 
 # Date format
 DATE_FORMAT_DISPLAY = '%d/%m/%Y %H:%M'
+
+# Perms
+PERM_ORDER_VIEW = 'orders.view_order'
+PERM_ORDER_ADD = 'orders.add_order'
+PERM_ORDER_CHANGE = 'orders.change_order'
