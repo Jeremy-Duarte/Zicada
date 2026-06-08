@@ -17,7 +17,6 @@ from apps.users.forms import UserProfileForm, UserProfilePasswordForm
 
 User = get_user_model()
 
-
 # =============================================================================
 # CONSTANTS
 # =============================================================================
@@ -26,6 +25,7 @@ User = get_user_model()
 URL_USER_LIST = 'users:user_list'
 URL_USER_TRASHCAN = 'users:user_trashcan'
 URL_GROUP_LIST = 'users:group_list'
+URL_USER_PROFILE = 'users:profile'
 
 # Template Paths
 TEMPLATE_USER_LIST = 'backoffice/users/user_list.html'
@@ -34,7 +34,9 @@ TEMPLATE_USER_CHANGE_PASSWORD = 'backoffice/users/user_change_password.html'
 TEMPLATE_USER_CONFIRM_DELETE = 'backoffice/users/user_confirm_delete.html'
 TEMPLATE_USER_RESTORE = 'backoffice/users/user_restore.html'
 TEMPLATE_USER_TRASHCAN = 'backoffice/users/user_trashcan.html'
-
+TEMPLATE_USER_PROFILE = 'backoffice/profile.html'
+TEMPLATE_USER_PROFILE_EDIT = 'backoffice/profile_edit.html'
+TEMPLATE_USER_PROFILE_PASSWORD = 'backoffice/profile_password.html'
 TEMPLATE_GROUP_LIST = 'backoffice/groups/group_list.html'
 TEMPLATE_GROUP_FORM = 'backoffice/groups/group_form.html'
 TEMPLATE_GROUP_DETAIL = 'backoffice/groups/group_detail.html'
@@ -77,6 +79,9 @@ FILTER_EMAIL = 'email'
 FILTER_IS_DELIVERY = 'is_delivery'
 FILTER_IS_ACTIVE = 'is_active'
 FILTER_GROUP_NAME = 'name'
+
+# Order By
+ORDER_BY_USERNAME_DESC = '-username'
 
 # Query Parameters
 QUERY_PARAM_SEARCH = 'search'
@@ -122,10 +127,11 @@ MSG_USER_DELETED = 'Usuario "{username}" desactivado exitosamente.'
 MSG_USER_RESTORED = 'Usuario "{username}" reactivado exitosamente.'
 MSG_USER_ALREADY_ACTIVE = 'El usuario "{username}" ya está activo.'
 MSG_PASSWORD_CHANGED = 'Contraseña de "{username}" actualizada exitosamente.'
-
 MSG_GROUP_CREATED = 'Rol "{name}" creado exitosamente.'
 MSG_GROUP_UPDATED = 'Rol "{name}" actualizado exitosamente.'
 MSG_GROUP_DELETED = 'Rol "{name}" eliminado exitosamente.'
+MSG_PROFILE_UPDATED = 'Tu perfil ha sido actualizado exitosamente.'
+MSG_PASSWORD_UPDATED = 'Tu contraseña ha sido actualizada exitosamente.'
 
 # Error Messages
 ERROR_USER_CREATE = 'Error al crear el usuario. Corrige los errores.'
@@ -135,17 +141,13 @@ ERROR_USER_RESTORE = 'Error al reactivar el usuario.'
 ERROR_PASSWORD_CHANGE = 'Error al cambiar la contraseña.'
 ERROR_GROUP_DELETE = 'Error al eliminar el rol.'
 ERROR_SELF_DELETE = 'No puedes desactivar tu propio usuario.'
+ERROR_PASSWORD_UPDATE = 'Error al actualizar la contraseña. Verifica los datos.'
 
 # HTML Templates
 STATUS_BADGE_TEMPLATE = '<span class="px-2 py-1 text-xs rounded-full {badge_class}">{badge_text}</span>'
 
 # Default values
 DEFAULT_EMPTY_VALUE = '—'
-
-# HTTP Method Names
-HTTP_METHOD_GET = 'GET'
-HTTP_METHOD_POST = 'POST'
-
 
 # =============================================================================
 # HELPER FUNCTIONS
@@ -315,7 +317,6 @@ class UserDeleteView(PermissionRequiredMixin, FormView):
     def dispatch(self, request, *args, **kwargs):
         self.user = get_object_or_404(User, pk=kwargs['pk'])
         
-        # Prevent deactivating own user
         if self.user.pk == request.user.pk:
             messages.error(request, ERROR_SELF_DELETE)
             return redirect(URL_USER_LIST)
@@ -334,7 +335,6 @@ class UserDeleteView(PermissionRequiredMixin, FormView):
         return context
     
     def form_valid(self, form):
-        # Soft delete equivalent: deactivate user
         self.user.is_active = False
         self.user.save(update_fields=[FILTER_IS_ACTIVE])
         messages.success(self.request, MSG_USER_DELETED.format(username=self.user.username))
@@ -382,7 +382,6 @@ class UserRestoreView(PermissionRequiredMixin, FormView):
 
 
 class UserTrashcanView(PermissionRequiredMixin, PaginationMixin, ListView):
-    """View deleted users (deactivated users)."""
     model = User
     template_name = TEMPLATE_USER_TRASHCAN
     context_object_name = CONTEXT_USERS
@@ -390,7 +389,7 @@ class UserTrashcanView(PermissionRequiredMixin, PaginationMixin, ListView):
     paginate_by = PAGINATE_BY_DEFAULT
     
     def get_queryset(self):
-        return User.objects.filter(is_active=False).order_by(f'-{FILTER_USERNAME}')
+        return User.objects.filter(is_active=False).order_by(ORDER_BY_USERNAME_DESC)
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -535,48 +534,50 @@ class GroupDeleteView(PermissionRequiredMixin, FormView):
     def form_invalid(self, form):
         messages.error(self.request, ERROR_GROUP_DELETE)
         return super().form_invalid(form)
-    
+
+
+# =============================================================================
+# USER PROFILE VIEWS
+# =============================================================================
+
 class UserProfileView(DetailView):
-    """Vista para que el usuario vea su propio perfil."""
     model = User
-    template_name = 'backoffice/profile.html'
-    context_object_name = 'user_obj'
+    template_name = TEMPLATE_USER_PROFILE
+    context_object_name = CONTEXT_USER_OBJ
     
     def get_object(self):
         return self.request.user
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['cancel_url'] = 'users:profile'
+        context[CONTEXT_CANCEL_URL] = URL_USER_PROFILE
         return context
 
 
 class UserProfileUpdateView(UpdateView):
-    """Vista para que el usuario edite su propio perfil."""
     model = User
     form_class = UserProfileForm
-    template_name = 'backoffice/profile_edit.html'
+    template_name = TEMPLATE_USER_PROFILE_EDIT
     
     def get_object(self):
         return self.request.user
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['cancel_url'] = 'users:profile'
+        context[CONTEXT_CANCEL_URL] = URL_USER_PROFILE
         return context
     
     def form_valid(self, form):
-        messages.success(self.request, 'Tu perfil ha sido actualizado exitosamente.')
-        return redirect('users:profile')
+        messages.success(self.request, MSG_PROFILE_UPDATED)
+        return redirect(URL_USER_PROFILE)
     
     def get_success_url(self):
-        return reverse_lazy('users:profile')
+        return reverse_lazy(URL_USER_PROFILE)
 
 
 class UserProfilePasswordView(FormView):
-    """Vista para que el usuario cambie su contraseña."""
     form_class = UserProfilePasswordForm
-    template_name = 'backoffice/profile_password.html'
+    template_name = TEMPLATE_USER_PROFILE_PASSWORD
     
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
@@ -585,14 +586,14 @@ class UserProfilePasswordView(FormView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['cancel_url'] = 'users:profile'
+        context[CONTEXT_CANCEL_URL] = URL_USER_PROFILE
         return context
     
     def form_valid(self, form):
         form.save()
-        messages.success(self.request, 'Tu contraseña ha sido actualizada exitosamente.')
-        return redirect('users:profile')
+        messages.success(self.request, MSG_PASSWORD_UPDATED)
+        return redirect(URL_USER_PROFILE)
     
     def form_invalid(self, form):
-        messages.error(self.request, 'Error al actualizar la contraseña. Verifica los datos.')
+        messages.error(self.request, ERROR_PASSWORD_UPDATE)
         return super().form_invalid(form)

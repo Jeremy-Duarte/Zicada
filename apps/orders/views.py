@@ -79,6 +79,16 @@ STATUS_BADGE_DEFAULT = ('Cancelado', 'bg-red-100 text-red-700')
 WEBHOOK_MAX_RETRIES = 20
 WEBHOOK_RETRY_DELAY = 0.5
 
+# Stock thresholds
+LOW_STOCK_THRESHOLD = 5
+MAX_QUANTITY_PER_ITEM = 99
+
+# Pagination
+PAGINATE_BY_DEFAULT = 20
+
+# Query parameters
+QUERY_PARAM_SEARCH = 'search'
+
 # Template paths
 TEMPLATE_DELIVERY_DASHBOARD = 'orders/delivery_dashboard.html'
 TEMPLATE_CART_DETAIL = 'orders/cart_detail.html'
@@ -102,6 +112,30 @@ MESSAGE_ORDER_NOT_FOUND = 'Pedido no encontrado.'
 MESSAGE_PAYMENT_PROCESSING = 'Tu pago está siendo procesado. Se actualizará automáticamente en breve.'
 MESSAGE_NO_SHIPPING_DATA = 'No se encontraron datos de envío. Por favor, vuelve a intentarlo.'
 MESSAGE_STOCK_INSUFFICIENT = 'stock insuficiente'
+
+# Error messages
+MSG_INVALID_DATA = '❌ Datos inválidos'
+MSG_QUANTITY_MIN = '❌ La cantidad debe ser al menos 1'
+MSG_QUANTITY_MAX = '⚠️ No puedes agregar más de {max_quantity} unidades del mismo producto'
+MSG_PRODUCT_UNAVAILABLE = 'no está disponible actualmente'
+MSG_OUT_OF_STOCK = 'está agotado'
+MSG_INSUFFICIENT_STOCK = '⚠️ Stock insuficiente para "{product}" ({size}, {color}). Disponible: {stock}.'
+MSG_PRODUCT_NOT_FOUND = '❌ El producto no existe o no está disponible'
+MSG_CART_ALREADY_EMPTY = '🛒 El carrito ya está vacío'
+MSG_PRODUCT_REMOVED_WARNING = '⚠️ Este producto ya no está disponible. Se eliminó de tu carrito.'
+MSG_UPDATE_ERROR = '❌ Error al actualizar la cantidad'
+MSG_REMOVE_ERROR = '❌ Error al eliminar el producto'
+MSG_ADD_ERROR = '❌ Error al agregar el producto. Intenta de nuevo'
+
+# Stock status strings
+STOCK_STATUS_OUT_OF_STOCK = 'out_of_stock'
+STOCK_STATUS_LOW_STOCK = 'low_stock'
+STOCK_STATUS_AVAILABLE = 'available'
+STOCK_STATUS_UNAVAILABLE = 'unavailable'
+
+# Stripe product data templates
+STRIPE_PRODUCT_NAME_TEMPLATE = 'Pedido Zicada - {customer_name}'
+STRIPE_PRODUCT_DESCRIPTION_TEMPLATE = '{total_items} productos'
 
 # Context keys
 CONTEXT_ORDER = 'order'
@@ -129,7 +163,6 @@ ALLOWED_ADD_ITEMS_STATUSES = [STATUS_PENDING, STATUS_CONFIRMED]
 
 # Date format
 DATE_FORMAT_DISPLAY = '%d/%m/%Y %H:%M'
-
 
 # =============================================================================
 # DELIVERY VIEWS
@@ -190,10 +223,10 @@ def deliver_order(request, order_id):
 def _get_stock_status(stock):
     """Helper function to determine stock status."""
     if stock == 0:
-        return 'out_of_stock'
-    elif stock <= 5:
-        return 'low_stock'
-    return 'available'
+        return STOCK_STATUS_OUT_OF_STOCK
+    elif stock <= LOW_STOCK_THRESHOLD:
+        return STOCK_STATUS_LOW_STOCK
+    return STOCK_STATUS_AVAILABLE
 
 
 @require_POST
@@ -204,13 +237,13 @@ def cart_add(request):
         variant_id = data.get('variant_id')
         quantity = int(data.get('quantity', 1))
     except (ValueError, TypeError):
-        return JsonResponse({'error': '❌ Datos inválidos'}, status=400)
+        return JsonResponse({'error': MSG_INVALID_DATA}, status=400)
 
     if quantity < 1:
-        return JsonResponse({'error': '❌ La cantidad debe ser al menos 1'}, status=400)
+        return JsonResponse({'error': MSG_QUANTITY_MIN}, status=400)
     
-    if quantity > 99:
-        return JsonResponse({'error': '⚠️ No puedes agregar más de 99 unidades del mismo producto'}, status=400)
+    if quantity > MAX_QUANTITY_PER_ITEM:
+        return JsonResponse({'error': MSG_QUANTITY_MAX.format(max_quantity=MAX_QUANTITY_PER_ITEM)}, status=400)
 
     cart = Cart(request)
 
@@ -220,7 +253,7 @@ def cart_add(request):
         ).get(id=variant_id, is_active=True)
         
         if not variant.is_active:
-            return JsonResponse({'error': f'❌ "{variant.product.name}" no está disponible actualmente'}, status=400)
+            return JsonResponse({'error': f'❌ "{variant.product.name}" {MSG_PRODUCT_UNAVAILABLE}'}, status=400)
         
         current_qty = 0
         if hasattr(cart, 'cart') and isinstance(cart.cart, dict):
@@ -232,12 +265,17 @@ def cart_add(request):
         
         if variant.stock == 0:
             return JsonResponse({
-                'error': f'❌ "{variant.product.name}" - {variant.size.name} / {variant.color_name} está agotado'
+                'error': f'❌ "{variant.product.name}" - {variant.size.name} / {variant.color_name} {MSG_OUT_OF_STOCK}'
             }, status=400)
         
         if new_qty > variant.stock:
             return JsonResponse({
-                'error': f'⚠️ Stock insuficiente para "{variant.product.name}" ({variant.size.name}, {variant.color_name}). Disponible: {variant.stock}.'
+                'error': MSG_INSUFFICIENT_STOCK.format(
+                    product=variant.product.name,
+                    size=variant.size.name,
+                    color=variant.color_name,
+                    stock=variant.stock
+                )
             }, status=400)
 
         cart.add(variant_id, quantity)
@@ -248,12 +286,12 @@ def cart_add(request):
         })
 
     except ProductVariant.DoesNotExist:
-        return JsonResponse({'error': '❌ El producto no existe o no está disponible'}, status=404)
+        return JsonResponse({'error': MSG_PRODUCT_NOT_FOUND}, status=404)
     except ValidationError as e:
         return JsonResponse({'error': f'⚠️ {str(e)}'}, status=400)
     except Exception as e:
         logger.exception("Error in cart_add")
-        return JsonResponse({'error': '❌ Error al agregar el producto. Intenta de nuevo'}, status=400)
+        return JsonResponse({'error': MSG_ADD_ERROR}, status=400)
 
 
 @require_POST
@@ -263,13 +301,13 @@ def cart_remove(request):
         data = json.loads(request.body) if request.body else request.POST
         variant_id = data.get('variant_id')
     except (ValueError, TypeError):
-        return JsonResponse({'error': '❌ Datos inválidos'}, status=400)
+        return JsonResponse({'error': MSG_INVALID_DATA}, status=400)
 
     cart = Cart(request)
 
     try:
         if not cart.get_item(variant_id):
-            return JsonResponse({'error': '❌ El producto no está en tu carrito'}, status=404)
+            return JsonResponse({'error': MSG_PRODUCT_NOT_FOUND}, status=404)
         
         variant = ProductVariant.objects.filter(id=variant_id).first()
         if variant:
@@ -284,7 +322,7 @@ def cart_remove(request):
         
     except Exception as e:
         logger.exception("Error in cart_remove")
-        return JsonResponse({'error': '❌ Error al eliminar el producto'}, status=400)
+        return JsonResponse({'error': MSG_REMOVE_ERROR}, status=400)
 
 
 @require_POST
@@ -298,16 +336,16 @@ def cart_update(request):
         if isinstance(quantity, str):
             quantity = int(quantity)
         elif not isinstance(quantity, int):
-            return JsonResponse({'error': '❌ Cantidad inválida'}, status=400)
+            return JsonResponse({'error': MSG_INVALID_DATA}, status=400)
             
     except (ValueError, TypeError):
-        return JsonResponse({'error': '❌ Datos inválidos'}, status=400)
+        return JsonResponse({'error': MSG_INVALID_DATA}, status=400)
 
     if quantity < 0:
-        return JsonResponse({'error': '❌ La cantidad no puede ser negativa'}, status=400)
+        return JsonResponse({'error': MSG_QUANTITY_MIN}, status=400)
     
-    if quantity > 99:
-        return JsonResponse({'error': '⚠️ No puedes tener más de 99 unidades del mismo producto'}, status=400)
+    if quantity > MAX_QUANTITY_PER_ITEM:
+        return JsonResponse({'error': MSG_QUANTITY_MAX.format(max_quantity=MAX_QUANTITY_PER_ITEM)}, status=400)
 
     cart = Cart(request)
 
@@ -320,7 +358,7 @@ def cart_update(request):
 
     try:
         if not cart.get_item(variant_id):
-            return JsonResponse({'error': '❌ El producto no está en tu carrito'}, status=404)
+            return JsonResponse({'error': MSG_PRODUCT_NOT_FOUND}, status=404)
         
         variant = ProductVariant.objects.select_related(
             'product', 'product_color__color', 'size'
@@ -329,11 +367,16 @@ def cart_update(request):
         if quantity > variant.stock:
             if variant.stock == 0:
                 return JsonResponse({
-                    'error': f'❌ "{variant.product.name}" - {variant.size.name} / {variant.color_name} está agotado. Elimina este producto de tu carrito.'
+                    'error': f'❌ "{variant.product.name}" - {variant.size.name} / {variant.color_name} {MSG_OUT_OF_STOCK}. {MSG_PRODUCT_REMOVED_WARNING}'
                 }, status=400)
             else:
                 return JsonResponse({
-                    'error': f'⚠️ Stock insuficiente para "{variant.product.name}" ({variant.size.name}, {variant.color_name}). Disponible: {variant.stock} unidades.'
+                    'error': MSG_INSUFFICIENT_STOCK.format(
+                        product=variant.product.name,
+                        size=variant.size.name,
+                        color=variant.color_name,
+                        stock=variant.stock
+                    )
                 }, status=400)
         
         cart.update_quantity(variant_id, quantity)
@@ -348,13 +391,13 @@ def cart_update(request):
         return JsonResponse({
             'success': True,
             'total_items': cart.get_total_items(),
-            'warning': '⚠️ Este producto ya no está disponible. Se eliminó de tu carrito.'
+            'warning': MSG_PRODUCT_REMOVED_WARNING
         })
     except ValidationError as e:
         return JsonResponse({'error': f'⚠️ {str(e)}'}, status=400)
     except Exception as e:
         logger.exception("Error in cart_update")
-        return JsonResponse({'error': '❌ Error al actualizar la cantidad'}, status=400)
+        return JsonResponse({'error': MSG_UPDATE_ERROR}, status=400)
 
 
 @require_POST
@@ -363,7 +406,7 @@ def cart_clear(request):
     cart = Cart(request)
     
     if cart.is_empty():
-        return JsonResponse({'warning': '🛒 El carrito ya está vacío'})
+        return JsonResponse({'warning': MSG_CART_ALREADY_EMPTY})
 
     item_count = cart.get_total_items()
     cart.clear()
@@ -396,8 +439,8 @@ def cart_data(request):
             ).get(id=item['variant_id'])
             
             item['stock_available'] = variant.stock
-            item['max_quantity'] = min(variant.stock, 99)
-            item['is_low_stock'] = 0 < variant.stock <= 5
+            item['max_quantity'] = min(variant.stock, MAX_QUANTITY_PER_ITEM)
+            item['is_low_stock'] = 0 < variant.stock <= LOW_STOCK_THRESHOLD
             item['size_name'] = variant.size.name
             item['color_name'] = variant.color_name
             item['stock_status'] = _get_stock_status(variant.stock)
@@ -406,7 +449,7 @@ def cart_data(request):
             item['stock_available'] = 0
             item['max_quantity'] = 0
             item['is_low_stock'] = False
-            item['stock_status'] = 'unavailable'
+            item['stock_status'] = STOCK_STATUS_UNAVAILABLE
 
     return JsonResponse(summary)
 
@@ -426,13 +469,13 @@ def cart_detail(request):
             ).get(id=item['variant_id'])
             
             item['stock_available'] = variant.stock
-            item['is_low_stock'] = 0 < variant.stock <= 5
+            item['is_low_stock'] = 0 < variant.stock <= LOW_STOCK_THRESHOLD
             item['stock_status'] = _get_stock_status(variant.stock)
             
         except ProductVariant.DoesNotExist:
             item['stock_available'] = 0
             item['is_low_stock'] = False
-            item['stock_status'] = 'unavailable'
+            item['stock_status'] = STOCK_STATUS_UNAVAILABLE
 
     context = {
         'items': summary['items'],
@@ -573,8 +616,8 @@ def create_stripe_checkout_session(request):
                     'currency': 'cop',
                     'unit_amount': int(cart.get_total() * 100),
                     'product_data': {
-                        'name': f'Pedido Zicada - {customer_name}',
-                        'description': f'{cart.get_total_items()} productos',
+                        'name': STRIPE_PRODUCT_NAME_TEMPLATE.format(customer_name=customer_name),
+                        'description': STRIPE_PRODUCT_DESCRIPTION_TEMPLATE.format(total_items=cart.get_total_items()),
                     },
                 },
                 'quantity': 1,
@@ -656,11 +699,10 @@ def order_tracking(request, tracking_token):
 # =============================================================================
 
 @require_POST
-@csrf_exempt # NOSONAR(S4502)
+@csrf_exempt
 def stripe_webhook(request):
     """Handle Stripe webhook events."""
     import stripe
-    logger = logging.getLogger(__name__)
 
     payload = request.body
     sig_header = request.META.get('HTTP_STRIPE_SIGNATURE')
@@ -704,7 +746,7 @@ def stripe_webhook(request):
                 logger.warning(f"Pedido {order.order_number} no tiene email asociado")
 
         except Exception as e:
-            logging.exception(f"Error al procesar pedido {order.order_number}: {e}")
+            logger.exception(f"Error al procesar pedido {order.order_number}: {e}")
             return HttpResponse(status=500)
 
     return HttpResponse(status=200)
@@ -719,7 +761,7 @@ class OrderListView(PermissionRequiredMixin, PaginationMixin, FilterMixin, ListV
     template_name = TEMPLATE_ORDER_LIST
     context_object_name = 'orders'
     permission_required = 'orders.view_order'
-    paginate_by = 20
+    paginate_by = PAGINATE_BY_DEFAULT
 
     filters = [
         ('status', 'status', 'exact'),
@@ -730,7 +772,7 @@ class OrderListView(PermissionRequiredMixin, PaginationMixin, FilterMixin, ListV
 
     def get_queryset(self):
         qs = super().get_queryset().select_related('assigned_delivery_user')
-        search = self.request.GET.get('search', '')
+        search = self.request.GET.get(QUERY_PARAM_SEARCH, '')
         if search:
             qs = qs.filter(
                 models.Q(order_number__icontains=search) |
@@ -997,7 +1039,7 @@ class OrderItemCreateView(PermissionRequiredMixin, CreateView):
 
     def form_valid(self, form):
         form.instance.order = self.order
-        self.order.save()  # Recalcula totales
+        self.order.save()
         messages.success(self.request, f'Producto agregado al pedido {self.order.order_number}.')
         return redirect(ORDER_DETAIL_ROUTE, pk=self.order.pk)
 
