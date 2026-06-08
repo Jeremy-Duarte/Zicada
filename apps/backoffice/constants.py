@@ -26,30 +26,6 @@ ORDER_STATUS_LABELS = {
     ORDER_STATUS_CANCELLED: 'Cancelados',
 }
 
-# Route Names
-ROUTE_ORDER_DETAIL = 'orders:order_detail'
-ROUTE_ORDER_LIST = 'orders:order_list'
-ROUTE_ORDER_CREATE = 'orders:order_create'
-ROUTE_PRODUCT_LIST = 'products:product_list'
-ROUTE_PRODUCT_EDIT = 'products:product_edit'
-ROUTE_PRODUCT_CREATE = 'products:product_create'
-ROUTE_USER_LIST = 'users:user_list'
-ROUTE_USER_CREATE = 'users:user_create'
-ROUTE_IMPORTERS_DASHBOARD = 'backoffice:importers_dashboard'
-ROUTE_REPORT_GENERATOR = 'backoffice:report_generator'
-ROUTE_SIZE_LIST = 'products:size_list'
-ROUTE_CATEGORY_LIST = 'products:category_list'
-ROUTE_COLOR_LIST = 'products:color_list'
-ROUTE_PRODUCT_IMAGE_LIST = 'products:productimage_list'
-ROUTE_SIZE_IMPORT = 'products:size_import'
-ROUTE_COLOR_IMPORT = 'products:color_import'
-ROUTE_CATEGORY_IMPORT = 'products:category_import'
-ROUTE_USER_LIST_BASE = 'users:user_list'
-ROUTE_GROUP_LIST = 'users:group_list'
-ROUTE_USER_TRASHCAN = 'users:user_trashcan'
-ROUTE_HERO_LIST = 'core:hero_list'
-ROUTE_HERO_TRASHCAN = 'core:hero_trashcan'
-
 # URL Query Parameters
 QUERY_PARAM_STATUS = 'status'
 QUERY_PARAM_NAME = 'name'

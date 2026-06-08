@@ -118,18 +118,6 @@ TEMPLATE_PRODUCTVARIANT_CONFIRM_DELETE = 'backoffice/productvariant/productvaria
 TEMPLATE_PRODUCTVARIANT_RESTORE = 'backoffice/productvariant/productvariant_restore.html'
 TEMPLATE_PRODUCTVARIANT_TRASHCAN = 'backoffice/productvariant/productvariant_trashcan.html'
 
-# URL Names
-URL_SIZE_LIST = 'products:size_list'
-URL_SIZE_IMPORT = 'products:size_import'
-URL_CATEGORY_LIST = 'products:category_list'
-URL_CATEGORY_IMPORT = 'products:category_import'
-URL_COLOR_LIST = 'products:color_list'
-URL_COLOR_IMPORT = 'products:color_import'
-URL_PRODUCTIMAGE_LIST = 'products:productimage_list'
-URL_PRODUCT_LIST = 'products:product_list'
-URL_PRODUCT_EDIT = 'products:product_edit'
-URL_PRODUCT_TRASHCAN = 'products:product_trashcan'
-
 # Form Context Keys
 CONTEXT_CANCEL_URL = 'cancel_url'
 CONTEXT_CANCEL_ARGS = 'cancel_args'

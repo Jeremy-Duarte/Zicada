@@ -31,6 +31,19 @@ from apps.products.importers.size_importer import SizeImporter
 from apps.products.importers.color_importer import ColorImporter
 from apps.products.importers.category_importer import CategoryImporter
 
+from apps.core.url_names import (
+    PRODUCTS_SIZE_LIST,
+    PRODUCTS_SIZE_IMPORT,
+    PRODUCTS_CATEGORY_LIST,
+    PRODUCTS_CATEGORY_IMPORT,
+    PRODUCTS_COLOR_LIST,
+    PRODUCTS_COLOR_IMPORT,
+    PRODUCTS_IMAGE_LIST,
+    PRODUCTS_LIST,
+    PRODUCTS_EDIT,
+    PRODUCTS_TRASHCAN,
+)
+
 from .constants import (
     # Umbral de bajo stock
     STOCK_LOW_THRESHOLD,
@@ -111,17 +124,6 @@ from .constants import (
     TEMPLATE_PRODUCTVARIANT_CONFIRM_DELETE,
     TEMPLATE_PRODUCTVARIANT_RESTORE,
     TEMPLATE_PRODUCTVARIANT_TRASHCAN,
-    # URL Names
-    URL_SIZE_LIST,
-    URL_SIZE_IMPORT,
-    URL_CATEGORY_LIST,
-    URL_CATEGORY_IMPORT,
-    URL_COLOR_LIST,
-    URL_COLOR_IMPORT,
-    URL_PRODUCTIMAGE_LIST,
-    URL_PRODUCT_LIST,
-    URL_PRODUCT_EDIT,
-    URL_PRODUCT_TRASHCAN,
     # Form Context Keys
     CONTEXT_CANCEL_URL,
     CONTEXT_CANCEL_ARGS,
@@ -825,7 +827,7 @@ class SizeCreateView(PermissionRequiredMixin, CreateView):
     form_class = SizeCreateForm
     template_name = TEMPLATE_SIZE_FORM
     permission_required = 'products.add_size'
-    success_url = reverse_lazy(URL_SIZE_LIST)
+    success_url = reverse_lazy(PRODUCTS_SIZE_LIST)
     
     def form_valid(self, form):
         messages.success(self.request, MSG_SIZE_CREATED.format(name=form.instance.name))
@@ -838,7 +840,7 @@ class SizeUpdateView(PermissionRequiredMixin, UpdateView):
     form_class = SizeUpdateForm
     template_name = TEMPLATE_SIZE_FORM
     permission_required = 'products.change_size'
-    success_url = reverse_lazy(URL_SIZE_LIST)
+    success_url = reverse_lazy(PRODUCTS_SIZE_LIST)
     
     def form_valid(self, form):
         messages.success(self.request, MSG_SIZE_UPDATED.format(name=form.instance.name))
@@ -851,7 +853,7 @@ class SizeDeleteView(PermissionRequiredMixin, SortableDeleteMixin, DeleteView):
     form_class = SizeDeleteForm
     template_name = TEMPLATE_SIZE_CONFIRM_DELETE
     permission_required = 'products.delete_size'
-    success_url = reverse_lazy(URL_SIZE_LIST)
+    success_url = reverse_lazy(PRODUCTS_SIZE_LIST)
     
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
@@ -892,7 +894,7 @@ class SizeImportView(PermissionRequiredMixin, View):
         
         if not file_obj:
             messages.error(request, MSG_IMPORT_NO_FILE)
-            return redirect(URL_SIZE_IMPORT)
+            return redirect(PRODUCTS_SIZE_IMPORT)
         
         importer = SizeImporter(request, file_obj, update_existing=update_existing)
         results = importer.run()
@@ -950,7 +952,7 @@ class CategoryCreateView(PermissionRequiredMixin, CreateView):
     form_class = CategoryCreateForm
     template_name = TEMPLATE_CATEGORY_FORM
     permission_required = 'products.add_category'
-    success_url = reverse_lazy(URL_CATEGORY_LIST)
+    success_url = reverse_lazy(PRODUCTS_CATEGORY_LIST)
     
     def form_valid(self, form):
         messages.success(self.request, MSG_CATEGORY_CREATED.format(name=form.instance.name))
@@ -963,7 +965,7 @@ class CategoryUpdateView(PermissionRequiredMixin, UpdateView):
     form_class = CategoryUpdateForm
     template_name = TEMPLATE_CATEGORY_FORM
     permission_required = 'products.change_category'
-    success_url = reverse_lazy(URL_CATEGORY_LIST)
+    success_url = reverse_lazy(PRODUCTS_CATEGORY_LIST)
     
     def form_valid(self, form):
         messages.success(self.request, MSG_CATEGORY_UPDATED.format(name=form.instance.name))
@@ -976,7 +978,7 @@ class CategoryDeleteView(PermissionRequiredMixin, DeleteView):
     form_class = CategoryDeleteForm
     template_name = TEMPLATE_CATEGORY_CONFIRM_DELETE
     permission_required = 'products.delete_category'
-    success_url = reverse_lazy(URL_CATEGORY_LIST)
+    success_url = reverse_lazy(PRODUCTS_CATEGORY_LIST)
     
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
@@ -1017,7 +1019,7 @@ class CategoryImportView(PermissionRequiredMixin, View):
         
         if not file_obj:
             messages.error(request, MSG_IMPORT_NO_FILE)
-            return redirect(URL_CATEGORY_IMPORT)
+            return redirect(PRODUCTS_CATEGORY_IMPORT)
         
         importer = CategoryImporter(request, file_obj, update_existing=update_existing)
         results = importer.run()
@@ -1083,11 +1085,11 @@ class ColorCreateView(PermissionRequiredMixin, CreateView):
     form_class = ColorCreateForm
     template_name = TEMPLATE_COLOR_FORM
     permission_required = 'products.add_color'
-    success_url = reverse_lazy(URL_COLOR_LIST)
+    success_url = reverse_lazy(PRODUCTS_COLOR_LIST)
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context[CONTEXT_CANCEL_URL] = URL_COLOR_LIST
+        context[CONTEXT_CANCEL_URL] = PRODUCTS_COLOR_LIST
         return context
     
     def form_valid(self, form):
@@ -1101,11 +1103,11 @@ class ColorUpdateView(PermissionRequiredMixin, UpdateView):
     form_class = ColorUpdateForm
     template_name = TEMPLATE_COLOR_FORM
     permission_required = 'products.change_color'
-    success_url = reverse_lazy(URL_COLOR_LIST)
+    success_url = reverse_lazy(PRODUCTS_COLOR_LIST)
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context[CONTEXT_CANCEL_URL] = URL_COLOR_LIST
+        context[CONTEXT_CANCEL_URL] = PRODUCTS_COLOR_LIST
         return context
     
     def form_valid(self, form):
@@ -1119,7 +1121,7 @@ class ColorDeleteView(PermissionRequiredMixin, SortableDeleteMixin, DeleteView):
     form_class = ColorDeleteForm
     template_name = TEMPLATE_COLOR_CONFIRM_DELETE
     permission_required = 'products.delete_color'
-    success_url = reverse_lazy(URL_COLOR_LIST)
+    success_url = reverse_lazy(PRODUCTS_COLOR_LIST)
     
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
@@ -1130,7 +1132,7 @@ class ColorDeleteView(PermissionRequiredMixin, SortableDeleteMixin, DeleteView):
         context = super().get_context_data(**kwargs)
         context[CONTEXT_OBJECT_NAME] = 'Color'
         context[CONTEXT_OBJECT_DISPLAY] = self.get_object().name
-        context[CONTEXT_CANCEL_URL] = URL_COLOR_LIST
+        context[CONTEXT_CANCEL_URL] = PRODUCTS_COLOR_LIST
         return context
     
     def post(self, request, *args, **kwargs):
@@ -1167,7 +1169,7 @@ class ColorImportView(PermissionRequiredMixin, View):
         
         if not file_obj:
             messages.error(request, MSG_IMPORT_NO_FILE)
-            return redirect(URL_COLOR_IMPORT)
+            return redirect(PRODUCTS_COLOR_IMPORT)
         
         importer = ColorImporter(request, file_obj, update_existing=update_existing)
         results = importer.run()
@@ -1228,11 +1230,11 @@ class ProductImageCreateView(PermissionRequiredMixin, CreateView):
     form_class = ProductImageCreateForm
     template_name = TEMPLATE_PRODUCTIMAGE_FORM
     permission_required = 'products.add_productimage'
-    success_url = reverse_lazy(URL_PRODUCTIMAGE_LIST)
+    success_url = reverse_lazy(PRODUCTS_IMAGE_LIST)
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context[CONTEXT_CANCEL_URL] = URL_PRODUCTIMAGE_LIST
+        context[CONTEXT_CANCEL_URL] = PRODUCTS_IMAGE_LIST
         return context
     
     def form_valid(self, form):
@@ -1247,11 +1249,11 @@ class ProductImageUpdateView(PermissionRequiredMixin, UpdateView):
     form_class = ProductImageUpdateForm
     template_name = TEMPLATE_PRODUCTIMAGE_FORM
     permission_required = 'products.change_productimage'
-    success_url = reverse_lazy(URL_PRODUCTIMAGE_LIST)
+    success_url = reverse_lazy(PRODUCTS_IMAGE_LIST)
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context[CONTEXT_CANCEL_URL] = URL_PRODUCTIMAGE_LIST
+        context[CONTEXT_CANCEL_URL] = PRODUCTS_IMAGE_LIST
         context[CONTEXT_IS_UPDATE] = True
         return context
     
@@ -1267,7 +1269,7 @@ class ProductImageDeleteView(PermissionRequiredMixin, DeleteView):
     form_class = ProductImageDeleteForm
     template_name = TEMPLATE_PRODUCTIMAGE_CONFIRM_DELETE
     permission_required = 'products.delete_productimage'
-    success_url = reverse_lazy(URL_PRODUCTIMAGE_LIST)
+    success_url = reverse_lazy(PRODUCTS_IMAGE_LIST)
     
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
@@ -1279,7 +1281,7 @@ class ProductImageDeleteView(PermissionRequiredMixin, DeleteView):
         image = self.get_object()
         context[CONTEXT_OBJECT_NAME] = 'Imagen'
         context[CONTEXT_OBJECT_DISPLAY] = image.image.name.split('/')[-1]
-        context[CONTEXT_CANCEL_URL] = URL_PRODUCTIMAGE_LIST
+        context[CONTEXT_CANCEL_URL] = PRODUCTS_IMAGE_LIST
         context[CONTEXT_IMAGE_PREVIEW] = image.image.url
         context['alt_text'] = image.alt_text
         return context
@@ -1375,12 +1377,12 @@ class ProductCreateView(PermissionRequiredMixin, CreateView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context[CONTEXT_CANCEL_URL] = URL_PRODUCT_LIST
+        context[CONTEXT_CANCEL_URL] = PRODUCTS_LIST
         context[CONTEXT_IS_CREATE] = True
         return context
     
     def get_success_url(self):
-        return reverse(URL_PRODUCT_EDIT, kwargs={'pk': self.object.pk})
+        return reverse(PRODUCTS_EDIT, kwargs={'pk': self.object.pk})
 
     def form_valid(self, form):
         response = super().form_valid(form)
@@ -1394,11 +1396,11 @@ class ProductUpdateView(PermissionRequiredMixin, UpdateView):
     form_class = ProductUpdateForm
     template_name = TEMPLATE_PRODUCT_FORM
     permission_required = 'products.change_product'
-    success_url = reverse_lazy(URL_PRODUCT_LIST)
+    success_url = reverse_lazy(PRODUCTS_LIST)
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context[CONTEXT_CANCEL_URL] = URL_PRODUCT_LIST
+        context[CONTEXT_CANCEL_URL] = PRODUCTS_LIST
         context[CONTEXT_IS_UPDATE] = True
         context[CONTEXT_PRODUCT_COLORS] = self.object.product_colors.filter(is_active=True)
         context[CONTEXT_VARIANTS] = self.object.variants.filter(is_active=True)
@@ -1416,7 +1418,7 @@ class ProductDeleteView(PermissionRequiredMixin, DeleteView):
     form_class = ProductDeleteForm
     template_name = TEMPLATE_PRODUCT_CONFIRM_DELETE
     permission_required = 'products.delete_product'
-    success_url = reverse_lazy(URL_PRODUCT_LIST)
+    success_url = reverse_lazy(PRODUCTS_LIST)
     
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
@@ -1427,7 +1429,7 @@ class ProductDeleteView(PermissionRequiredMixin, DeleteView):
         context = super().get_context_data(**kwargs)
         context[CONTEXT_OBJECT_NAME] = 'Producto'
         context[CONTEXT_OBJECT_DISPLAY] = self.get_object().name
-        context[CONTEXT_CANCEL_URL] = URL_PRODUCT_LIST
+        context[CONTEXT_CANCEL_URL] = PRODUCTS_LIST
         return context
     
     def post(self, request, *args, **kwargs):
@@ -1451,7 +1453,7 @@ class ProductRestoreView(PermissionRequiredMixin, TemplateView):
     form_class = ProductRestoreForm
     template_name = TEMPLATE_PRODUCT_RESTORE
     permission_required = 'products.change_product'
-    success_url = reverse_lazy(URL_PRODUCT_TRASHCAN)
+    success_url = reverse_lazy(PRODUCTS_TRASHCAN)
     
     def get_object(self):
         return get_object_or_404(Product.all_objects, pk=self.kwargs['pk'], is_active=False)
@@ -1464,7 +1466,7 @@ class ProductRestoreView(PermissionRequiredMixin, TemplateView):
         product = self.get_object()
         context[CONTEXT_PRODUCT] = product
         context['form'] = self.get_form()
-        context[CONTEXT_CANCEL_URL] = URL_PRODUCT_TRASHCAN
+        context[CONTEXT_CANCEL_URL] = PRODUCTS_TRASHCAN
         context[CONTEXT_OBJECT_NAME] = 'Producto'
         context[CONTEXT_OBJECT_DISPLAY] = product.name
         return context
@@ -1475,7 +1477,7 @@ class ProductRestoreView(PermissionRequiredMixin, TemplateView):
         if form.is_valid():
             product.restore(user=request.user)
             messages.success(request, MSG_PRODUCT_RESTORED.format(name=product.name))
-            return redirect(URL_PRODUCT_LIST)
+            return redirect(PRODUCTS_LIST)
         return self.render_to_response(self.get_context_data(form=form))
 
 
@@ -1518,7 +1520,7 @@ class ProductColorCreateView(PermissionRequiredMixin, CreateView):
     form_class = ProductColorCreateForm
     template_name = TEMPLATE_PRODUCTCOLOR_FORM
     permission_required = 'products.add_productcolor'
-    success_url = reverse_lazy(URL_PRODUCT_LIST)
+    success_url = reverse_lazy(PRODUCTS_LIST)
     
     def dispatch(self, request, *args, **kwargs):
         self.product = get_object_or_404(Product, pk=kwargs['product_pk'])
@@ -1532,7 +1534,7 @@ class ProductColorCreateView(PermissionRequiredMixin, CreateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context[CONTEXT_PRODUCT] = self.product
-        context[CONTEXT_CANCEL_URL] = URL_PRODUCT_EDIT
+        context[CONTEXT_CANCEL_URL] = PRODUCTS_EDIT
         context[CONTEXT_CANCEL_ARGS] = [self.product.pk]
         context[CONTEXT_TITLE] = f'Agregar Color a {self.product.name}'
         return context
@@ -1548,12 +1550,12 @@ class ProductColorUpdateView(PermissionRequiredMixin, UpdateView):
     form_class = ProductColorUpdateForm
     template_name = TEMPLATE_PRODUCTCOLOR_FORM
     permission_required = 'products.change_productcolor'
-    success_url = reverse_lazy(URL_PRODUCT_LIST)
+    success_url = reverse_lazy(PRODUCTS_LIST)
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context[CONTEXT_PRODUCT] = self.object.product
-        context[CONTEXT_CANCEL_URL] = URL_PRODUCT_EDIT
+        context[CONTEXT_CANCEL_URL] = PRODUCTS_EDIT
         context[CONTEXT_CANCEL_ARGS] = [self.object.product.pk]
         context[CONTEXT_TITLE] = f'Editar Color - {self.object.color.name}'
         return context
@@ -1561,7 +1563,7 @@ class ProductColorUpdateView(PermissionRequiredMixin, UpdateView):
     def form_valid(self, form):
         response = super().form_valid(form)
         messages.success(self.request, MSG_PRODUCT_COLOR_UPDATED.format(name=self.object.color.name))
-        return redirect(URL_PRODUCT_EDIT, pk=self.object.product.pk)
+        return redirect(PRODUCTS_EDIT, pk=self.object.product.pk)
 
 
 class ProductColorDeleteView(PermissionRequiredMixin, SortableDeleteMixin, DeleteView):
@@ -1570,7 +1572,7 @@ class ProductColorDeleteView(PermissionRequiredMixin, SortableDeleteMixin, Delet
     form_class = ProductColorDeleteForm
     template_name = TEMPLATE_PRODUCTCOLOR_CONFIRM_DELETE
     permission_required = 'products.delete_productcolor'
-    success_url = reverse_lazy(URL_PRODUCT_LIST)
+    success_url = reverse_lazy(PRODUCTS_LIST)
     
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
@@ -1583,7 +1585,7 @@ class ProductColorDeleteView(PermissionRequiredMixin, SortableDeleteMixin, Delet
         context[CONTEXT_PRODUCT] = product_color.product
         context[CONTEXT_OBJECT_NAME] = 'Color del producto'
         context[CONTEXT_OBJECT_DISPLAY] = f'{product_color.color.name} para {product_color.product.name}'
-        context[CONTEXT_CANCEL_URL] = URL_PRODUCT_EDIT
+        context[CONTEXT_CANCEL_URL] = PRODUCTS_EDIT
         context[CONTEXT_CANCEL_ARGS] = [product_color.product.pk]
         return context
     
@@ -1600,7 +1602,7 @@ class ProductColorDeleteView(PermissionRequiredMixin, SortableDeleteMixin, Delet
         color_name = product_color.color.name
         product_color.delete()
         messages.success(request, MSG_PRODUCT_COLOR_DELETED.format(name=color_name))
-        return redirect(URL_PRODUCT_EDIT, pk=product_pk)
+        return redirect(PRODUCTS_EDIT, pk=product_pk)
 
 
 # =============================================================================
@@ -1613,7 +1615,7 @@ class ProductVariantCreateView(PermissionRequiredMixin, CreateView):
     form_class = ProductVariantCreateForm
     template_name = TEMPLATE_PRODUCTVARIANT_FORM
     permission_required = 'products.add_productvariant'
-    success_url = reverse_lazy(URL_PRODUCT_LIST)
+    success_url = reverse_lazy(PRODUCTS_LIST)
     
     def dispatch(self, request, *args, **kwargs):
         self.product = get_object_or_404(Product, pk=kwargs['product_pk'])
@@ -1633,7 +1635,7 @@ class ProductVariantCreateView(PermissionRequiredMixin, CreateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context[CONTEXT_PRODUCT] = self.product
-        context[CONTEXT_CANCEL_URL] = URL_PRODUCT_EDIT
+        context[CONTEXT_CANCEL_URL] = PRODUCTS_EDIT
         context[CONTEXT_CANCEL_ARGS] = [self.product.pk]
         context[CONTEXT_TITLE] = f'Agregar Variante a {self.product.name}'
         return context
@@ -1642,7 +1644,7 @@ class ProductVariantCreateView(PermissionRequiredMixin, CreateView):
         form.instance.product = self.product
         variant_name = f'{form.instance.product_color.color.name} - {form.instance.size.name}'
         messages.success(self.request, MSG_VARIANT_CREATED.format(variant=variant_name))
-        return redirect(URL_PRODUCT_EDIT, pk=self.product.pk)
+        return redirect(PRODUCTS_EDIT, pk=self.product.pk)
 
 
 class ProductVariantUpdateView(PermissionRequiredMixin, UpdateView):
@@ -1651,12 +1653,12 @@ class ProductVariantUpdateView(PermissionRequiredMixin, UpdateView):
     form_class = ProductVariantUpdateForm
     template_name = TEMPLATE_PRODUCTVARIANT_FORM
     permission_required = 'products.change_productvariant'
-    success_url = reverse_lazy(URL_PRODUCT_LIST)
+    success_url = reverse_lazy(PRODUCTS_LIST)
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context[CONTEXT_PRODUCT] = self.object.product
-        context[CONTEXT_CANCEL_URL] = URL_PRODUCT_EDIT
+        context[CONTEXT_CANCEL_URL] = PRODUCTS_EDIT
         context[CONTEXT_CANCEL_ARGS] = [self.object.product.pk]
         context[CONTEXT_TITLE] = f'Editar Variante - {self.object.product_color.color.name} / {self.object.size.name}'
         return context
@@ -1664,7 +1666,7 @@ class ProductVariantUpdateView(PermissionRequiredMixin, UpdateView):
     def form_valid(self, form):
         response = super().form_valid(form)
         messages.success(self.request, MSG_VARIANT_UPDATED)
-        return redirect(URL_PRODUCT_EDIT, pk=self.object.product.pk)
+        return redirect(PRODUCTS_EDIT, pk=self.object.product.pk)
 
 
 class ProductVariantDeleteView(PermissionRequiredMixin, DeleteView):
@@ -1673,7 +1675,7 @@ class ProductVariantDeleteView(PermissionRequiredMixin, DeleteView):
     form_class = ProductVariantDeleteForm
     template_name = TEMPLATE_PRODUCTVARIANT_CONFIRM_DELETE
     permission_required = 'products.delete_productvariant'
-    success_url = reverse_lazy(URL_PRODUCT_LIST)
+    success_url = reverse_lazy(PRODUCTS_LIST)
     
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
@@ -1686,7 +1688,7 @@ class ProductVariantDeleteView(PermissionRequiredMixin, DeleteView):
         context[CONTEXT_PRODUCT] = variant.product
         context[CONTEXT_OBJECT_NAME] = 'Variante'
         context[CONTEXT_OBJECT_DISPLAY] = f'{variant.product_color.color.name} - {variant.size.name}'
-        context[CONTEXT_CANCEL_URL] = URL_PRODUCT_EDIT
+        context[CONTEXT_CANCEL_URL] = PRODUCTS_EDIT
         context[CONTEXT_CANCEL_ARGS] = [variant.product.pk]
         return context
     
@@ -1702,7 +1704,7 @@ class ProductVariantDeleteView(PermissionRequiredMixin, DeleteView):
         product_pk = variant.product.pk
         variant.soft_delete(user=request.user)
         messages.success(request, MSG_VARIANT_DELETED)
-        return redirect(URL_PRODUCT_EDIT, pk=product_pk)
+        return redirect(PRODUCTS_EDIT, pk=product_pk)
 
 
 class ProductVariantRestoreView(PermissionRequiredMixin, FormView):
@@ -1725,14 +1727,14 @@ class ProductVariantRestoreView(PermissionRequiredMixin, FormView):
         context[CONTEXT_PRODUCT] = self.variant.product
         context[CONTEXT_OBJECT_NAME] = 'Variante'
         context[CONTEXT_OBJECT_DISPLAY] = f'{self.variant.product_color.color.name} - {self.variant.size.name}'
-        context[CONTEXT_CANCEL_URL] = URL_PRODUCT_EDIT
+        context[CONTEXT_CANCEL_URL] = PRODUCTS_EDIT
         context[CONTEXT_CANCEL_ARGS] = [self.variant.product.pk]
         return context
     
     def form_valid(self, form):
         self.variant.restore(user=self.request.user)
         messages.success(self.request, MSG_VARIANT_RESTORED)
-        return redirect(URL_PRODUCT_EDIT, pk=self.variant.product.pk)
+        return redirect(PRODUCTS_EDIT, pk=self.variant.product.pk)
     
     def form_invalid(self, form):
         messages.error(self.request, MSG_VARIANT_RESTORE_ERROR)

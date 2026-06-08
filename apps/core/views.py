@@ -28,7 +28,17 @@ from apps.products.views import (
 
 logger = logging.getLogger(__name__)
 
+from apps.core.url_names import (
+    CORE_CONTACT,
+    CORE_CONTACT_SUCCESS,
+    CORE_HERO_LIST,
+    CORE_HERO_TRASHCAN,
+    PRODUCTS_CATALOG,
+    BACKOFFICE_DASHBOARD,
+)
+
 from .constants import (
+    URL_HOME,
     # Collection Statuses
     COLLECTION_STATUS_PUBLISHED,
     COLLECTION_STATUS_DRAFT,
@@ -59,14 +69,6 @@ from .constants import (
     # Contact Messages
     CONTACT_SUCCESS_MESSAGE,
     CONTACT_ERROR_MESSAGE,
-    # URL Names
-    URL_CORE_CONTACT,
-    URL_CORE_CONTACT_SUCCESS,
-    URL_HOME,
-    URL_PRODUCTS_CATALOG,
-    URL_BACKOFFICE_DASHBOARD,
-    URL_HERO_LIST,
-    URL_HERO_TRASHCAN,
     # Login/Logout Messages
     LOGIN_ERROR_MESSAGE,
     LOGOUT_SUCCESS_MESSAGE,
@@ -107,6 +109,7 @@ from .constants import (
     # Hero Section Object Names
     HERO_OBJECT_NAME,
 )
+
 
 @require_GET
 def home(request):
@@ -163,7 +166,7 @@ def contact(request):
 def contact_submit(request):
     """Handle contact form submission and send emails."""
     if request.method != 'POST':
-        return redirect(URL_CORE_CONTACT)
+        return redirect(CORE_CONTACT)
 
     form = ContactForm(request.POST)
 
@@ -212,12 +215,12 @@ def contact_submit(request):
             user_email.send(fail_silently=True)
 
             messages.success(request, CONTACT_SUCCESS_MESSAGE)
-            return redirect(URL_CORE_CONTACT_SUCCESS)
+            return redirect(CORE_CONTACT_SUCCESS)
 
         except Exception as e:
             logger.exception("Error al enviar correo de contacto")
             messages.error(request, CONTACT_ERROR_MESSAGE)
-            return redirect(URL_CORE_CONTACT)
+            return redirect(CORE_CONTACT)
 
     else:
         # Show form errors
@@ -225,7 +228,7 @@ def contact_submit(request):
             for error in errors:
                 field_label = form.fields[field].label if field in form.fields else field
                 messages.error(request, f'{field_label}: {error}')
-        return redirect(URL_CORE_CONTACT)
+        return redirect(CORE_CONTACT)
 
 
 @require_GET
@@ -259,7 +262,7 @@ class StaffLoginView(LoginView):
     redirect_authenticated_user = True
 
     def get_success_url(self):
-        return reverse_lazy(URL_BACKOFFICE_DASHBOARD)
+        return reverse_lazy(BACKOFFICE_DASHBOARD)
 
     def form_valid(self, form):
         response = super().form_valid(form)
@@ -273,8 +276,8 @@ class StaffLoginView(LoginView):
     def dispatch(self, request, *args, **kwargs):
         if request.user.is_authenticated:
             if request.user.is_staff or getattr(request.user, 'is_delivery', False):
-                return redirect(URL_BACKOFFICE_DASHBOARD)
-            return redirect(URL_PRODUCTS_CATALOG)
+                return redirect(BACKOFFICE_DASHBOARD)
+            return redirect(PRODUCTS_CATALOG)
         return super().dispatch(request, *args, **kwargs)
 
 
@@ -283,7 +286,7 @@ def staff_logout(request):
     """Staff logout view."""
     logout(request)
     messages.info(request, LOGOUT_SUCCESS_MESSAGE)
-    return redirect(URL_PRODUCTS_CATALOG)
+    return redirect(PRODUCTS_CATALOG)
 
 
 class HeroConfigListView(PermissionRequiredMixin, ListView):
@@ -326,13 +329,13 @@ class HeroConfigCreateView(PermissionRequiredMixin, CreateView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context[CONTEXT_CANCEL_URL] = URL_HERO_LIST
+        context[CONTEXT_CANCEL_URL] = CORE_HERO_LIST
         context[CONTEXT_IS_CREATE] = True
         context[CONTEXT_BACKGROUND_IMAGE_URL] = ''
         return context
     
     def get_success_url(self):
-        return reverse(URL_HERO_LIST)
+        return reverse(CORE_HERO_LIST)
     
     def form_valid(self, form):
         response = super().form_valid(form)
@@ -349,7 +352,7 @@ class HeroConfigUpdateView(PermissionRequiredMixin, UpdateView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context[CONTEXT_CANCEL_URL] = URL_HERO_LIST
+        context[CONTEXT_CANCEL_URL] = CORE_HERO_LIST
         context[CONTEXT_IS_UPDATE] = True
         if self.object and self.object.background_image and self.object.background_image.url:
             context[CONTEXT_BACKGROUND_IMAGE_URL] = self.object.background_image.url
@@ -358,7 +361,7 @@ class HeroConfigUpdateView(PermissionRequiredMixin, UpdateView):
         return context
     
     def get_success_url(self):
-        return reverse_lazy(URL_HERO_LIST)
+        return reverse_lazy(CORE_HERO_LIST)
     
     def form_valid(self, form):
         response = super().form_valid(form)
@@ -372,7 +375,7 @@ class HeroConfigDeleteView(PermissionRequiredMixin, DeleteView):
     form_class = HeroConfigDeleteForm
     template_name = TEMPLATE_HERO_CONFIRM_DELETE
     permission_required = 'core.delete_heroconfig'
-    success_url = reverse_lazy(URL_HERO_LIST)
+    success_url = reverse_lazy(CORE_HERO_LIST)
     
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
@@ -383,7 +386,7 @@ class HeroConfigDeleteView(PermissionRequiredMixin, DeleteView):
         context = super().get_context_data(**kwargs)
         context[CONTEXT_OBJECT_NAME] = HERO_OBJECT_NAME
         context[CONTEXT_OBJECT_DISPLAY] = self.get_object().title_text
-        context[CONTEXT_CANCEL_URL] = URL_HERO_LIST
+        context[CONTEXT_CANCEL_URL] = CORE_HERO_LIST
         return context
     
     def post(self, request, *args, **kwargs):
@@ -407,7 +410,7 @@ class HeroConfigRestoreView(PermissionRequiredMixin, TemplateView):
     form_class = HeroConfigRestoreForm
     template_name = TEMPLATE_HERO_RESTORE
     permission_required = 'core.change_heroconfig'
-    success_url = reverse_lazy(URL_HERO_LIST)
+    success_url = reverse_lazy(CORE_HERO_LIST)
     
     def get_object(self):
         return get_object_or_404(HeroConfig.all_objects, pk=self.kwargs['pk'])
@@ -420,7 +423,7 @@ class HeroConfigRestoreView(PermissionRequiredMixin, TemplateView):
         slide = self.get_object()
         context[CONTEXT_HERO_SLIDES] = slide
         context['form'] = self.get_form()
-        context[CONTEXT_CANCEL_URL] = URL_HERO_TRASHCAN
+        context[CONTEXT_CANCEL_URL] = CORE_HERO_TRASHCAN
         context[CONTEXT_OBJECT_NAME] = HERO_OBJECT_NAME
         context[CONTEXT_OBJECT_DISPLAY] = slide.title_text
         return context
@@ -431,7 +434,7 @@ class HeroConfigRestoreView(PermissionRequiredMixin, TemplateView):
         if form.is_valid():
             slide.restore(user=request.user)
             messages.success(request, MSG_HERO_RESTORED.format(title=slide.title_text))
-            return redirect(URL_HERO_LIST)
+            return redirect(CORE_HERO_LIST)
         return self.render_to_response(self.get_context_data(form=form))
 
 

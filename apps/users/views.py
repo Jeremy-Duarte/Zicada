@@ -17,12 +17,14 @@ from apps.users.forms import UserProfileForm, UserProfilePasswordForm
 
 User = get_user_model()
 
+from apps.core.url_names import (
+    USERS_LIST,
+    USERS_TRASHCAN,
+    USERS_GROUP_LIST,
+    USERS_PROFILE,
+)
+
 from .constants import (
-    # URL Names
-    URL_USER_LIST,
-    URL_USER_TRASHCAN,
-    URL_GROUP_LIST,
-    URL_USER_PROFILE,
     # Template Paths
     TEMPLATE_USER_LIST,
     TEMPLATE_USER_FORM,
@@ -212,11 +214,11 @@ class UserCreateView(PermissionRequiredMixin, CreateView):
     form_class = UserCreateForm
     template_name = TEMPLATE_USER_FORM
     permission_required = 'users.add_user'
-    success_url = reverse_lazy(URL_USER_LIST)
+    success_url = reverse_lazy(USERS_LIST)
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context[CONTEXT_CANCEL_URL] = URL_USER_LIST
+        context[CONTEXT_CANCEL_URL] = USERS_LIST
         context[CONTEXT_TITLE] = TITLE_USER_CREATE
         return context
     
@@ -235,11 +237,11 @@ class UserUpdateView(PermissionRequiredMixin, UpdateView):
     form_class = UserUpdateForm
     template_name = TEMPLATE_USER_FORM
     permission_required = 'users.change_user'
-    success_url = reverse_lazy(URL_USER_LIST)
+    success_url = reverse_lazy(USERS_LIST)
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context[CONTEXT_CANCEL_URL] = URL_USER_LIST
+        context[CONTEXT_CANCEL_URL] = USERS_LIST
         context[CONTEXT_TITLE] = TITLE_USER_UPDATE.format(username=self.object.username)
         context[CONTEXT_SHOW_PASSWORD_CHANGE] = True
         return context
@@ -271,14 +273,14 @@ class UserChangePasswordView(PermissionRequiredMixin, FormView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context[CONTEXT_USER_OBJ] = self.user
-        context[CONTEXT_CANCEL_URL] = URL_USER_LIST
+        context[CONTEXT_CANCEL_URL] = USERS_LIST
         context[CONTEXT_CANCEL_ARGS] = [self.user.pk]
         return context
     
     def form_valid(self, form):
         form.save()
         messages.success(self.request, MSG_PASSWORD_CHANGED.format(username=self.user.username))
-        return redirect(URL_USER_LIST, pk=self.user.pk)
+        return redirect(USERS_LIST, pk=self.user.pk)
     
     def form_invalid(self, form):
         messages.error(self.request, ERROR_PASSWORD_CHANGE)
@@ -295,7 +297,7 @@ class UserDeleteView(PermissionRequiredMixin, FormView):
         
         if self.user.pk == request.user.pk:
             messages.error(request, ERROR_SELF_DELETE)
-            return redirect(URL_USER_LIST)
+            return redirect(USERS_LIST)
         
         return super().dispatch(request, *args, **kwargs)
     
@@ -307,14 +309,14 @@ class UserDeleteView(PermissionRequiredMixin, FormView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context[CONTEXT_USER_OBJ] = self.user
-        context[CONTEXT_CANCEL_URL] = URL_USER_LIST
+        context[CONTEXT_CANCEL_URL] = USERS_LIST
         return context
     
     def form_valid(self, form):
         self.user.is_active = False
         self.user.save(update_fields=[FILTER_IS_ACTIVE])
         messages.success(self.request, MSG_USER_DELETED.format(username=self.user.username))
-        return redirect(URL_USER_LIST)
+        return redirect(USERS_LIST)
     
     def form_invalid(self, form):
         messages.error(self.request, ERROR_USER_DELETE)
@@ -331,7 +333,7 @@ class UserRestoreView(PermissionRequiredMixin, FormView):
         
         if self.user.is_active:
             messages.warning(request, MSG_USER_ALREADY_ACTIVE.format(username=self.user.username))
-            return redirect(URL_USER_LIST)
+            return redirect(USERS_LIST)
         
         return super().dispatch(request, *args, **kwargs)
     
@@ -343,14 +345,14 @@ class UserRestoreView(PermissionRequiredMixin, FormView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context[CONTEXT_USER_OBJ] = self.user
-        context[CONTEXT_CANCEL_URL] = URL_USER_TRASHCAN
+        context[CONTEXT_CANCEL_URL] = USERS_TRASHCAN
         return context
     
     def form_valid(self, form):
         self.user.is_active = True
         self.user.save(update_fields=[FILTER_IS_ACTIVE])
         messages.success(self.request, MSG_USER_RESTORED.format(username=self.user.username))
-        return redirect(URL_USER_LIST)
+        return redirect(USERS_LIST)
     
     def form_invalid(self, form):
         messages.error(self.request, ERROR_USER_RESTORE)
@@ -434,11 +436,11 @@ class GroupCreateView(PermissionRequiredMixin, CreateView):
     form_class = GroupCreateForm
     template_name = TEMPLATE_GROUP_FORM
     permission_required = 'users.add_group'
-    success_url = reverse_lazy(URL_GROUP_LIST)
+    success_url = reverse_lazy(USERS_GROUP_LIST)
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context[CONTEXT_CANCEL_URL] = URL_GROUP_LIST
+        context[CONTEXT_CANCEL_URL] = USERS_GROUP_LIST
         context[CONTEXT_TITLE] = TITLE_GROUP_CREATE
         return context
     
@@ -453,11 +455,11 @@ class GroupUpdateView(PermissionRequiredMixin, UpdateView):
     form_class = GroupUpdateForm
     template_name = TEMPLATE_GROUP_FORM
     permission_required = 'users.change_group'
-    success_url = reverse_lazy(URL_GROUP_LIST)
+    success_url = reverse_lazy(USERS_GROUP_LIST)
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context[CONTEXT_CANCEL_URL] = URL_GROUP_LIST
+        context[CONTEXT_CANCEL_URL] = USERS_GROUP_LIST
         context[CONTEXT_TITLE] = TITLE_GROUP_UPDATE.format(name=self.object.name)
         return context
     
@@ -475,7 +477,7 @@ class GroupDetailView(PermissionRequiredMixin, DetailView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context[CONTEXT_CANCEL_URL] = URL_GROUP_LIST
+        context[CONTEXT_CANCEL_URL] = USERS_GROUP_LIST
         context[CONTEXT_USERS] = self.object.user_set.all().order_by(FILTER_USERNAME)
         return context
 
@@ -498,14 +500,14 @@ class GroupDeleteView(PermissionRequiredMixin, FormView):
         context = super().get_context_data(**kwargs)
         context[CONTEXT_GROUP] = self.group
         context[CONTEXT_USER_COUNT] = self.group.user_set.count()
-        context[CONTEXT_CANCEL_URL] = URL_GROUP_LIST
+        context[CONTEXT_CANCEL_URL] = USERS_GROUP_LIST
         return context
     
     def form_valid(self, form):
         group_name = self.group.name
         self.group.delete()
         messages.success(self.request, MSG_GROUP_DELETED.format(name=group_name))
-        return redirect(URL_GROUP_LIST)
+        return redirect(USERS_GROUP_LIST)
     
     def form_invalid(self, form):
         messages.error(self.request, ERROR_GROUP_DELETE)
@@ -526,7 +528,7 @@ class UserProfileView(DetailView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context[CONTEXT_CANCEL_URL] = URL_USER_PROFILE
+        context[CONTEXT_CANCEL_URL] = USERS_PROFILE
         return context
 
 
@@ -540,15 +542,15 @@ class UserProfileUpdateView(UpdateView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context[CONTEXT_CANCEL_URL] = URL_USER_PROFILE
+        context[CONTEXT_CANCEL_URL] = USERS_PROFILE
         return context
     
     def form_valid(self, form):
         messages.success(self.request, MSG_PROFILE_UPDATED)
-        return redirect(URL_USER_PROFILE)
+        return redirect(USERS_PROFILE)
     
     def get_success_url(self):
-        return reverse_lazy(URL_USER_PROFILE)
+        return reverse_lazy(USERS_PROFILE)
 
 
 class UserProfilePasswordView(FormView):
@@ -562,13 +564,13 @@ class UserProfilePasswordView(FormView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context[CONTEXT_CANCEL_URL] = URL_USER_PROFILE
+        context[CONTEXT_CANCEL_URL] = USERS_PROFILE
         return context
     
     def form_valid(self, form):
         form.save()
         messages.success(self.request, MSG_PASSWORD_UPDATED)
-        return redirect(URL_USER_PROFILE)
+        return redirect(USERS_PROFILE)
     
     def form_invalid(self, form):
         messages.error(self.request, ERROR_PASSWORD_UPDATE)

@@ -4,16 +4,6 @@ CART_EXPIRATION_DAYS = 7
 MAX_QUANTITY_PER_ITEM = 99
 FREE_SHIPPING_THRESHOLD = Decimal(150000)
 
-# Route names
-DELIVERY_DASHBOARD_ROUTE = 'orders:delivery_dashboard'
-ORDER_LIST_ROUTE = 'orders:order_list'
-ORDER_DETAIL_ROUTE = 'orders:order_detail'
-ORDER_CONFIRMATION_ROUTE = 'orders:order_confirmation'
-CART_DETAIL_ROUTE = 'orders:cart_detail'
-PRODUCTS_CATALOG_ROUTE = 'products:catalog'
-CHECKOUT_ROUTE = 'orders:checkout'
-CREATE_STRIPE_SESSION_ROUTE = 'orders:create_stripe_checkout_session'
-
 # Order statuses
 STATUS_PENDING = 'pendiente'
 STATUS_CONFIRMED = 'confirmado'

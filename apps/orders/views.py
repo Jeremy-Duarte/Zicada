@@ -35,20 +35,22 @@ from .models import Order, OrderItem
 
 logger = logging.getLogger(__name__)
 
+from apps.core.url_names import (
+    ORDERS_DELIVERY_DASHBOARD,
+    ORDERS_LIST,
+    ORDERS_DETAIL,
+    ORDERS_CONFIRMATION,
+    ORDERS_CART_DETAIL,
+    PRODUCTS_CATALOG,
+    ORDERS_CHECKOUT,
+    ORDERS_CREATE_STRIPE_SESSION,
+)
+
 from .constants import (
     DEFAULT_SHIPPING_COST,
     CART_EXPIRATION_DAYS,
     MAX_QUANTITY_PER_ITEM,
     FREE_SHIPPING_THRESHOLD,
-    # Route names
-    DELIVERY_DASHBOARD_ROUTE,
-    ORDER_LIST_ROUTE,
-    ORDER_DETAIL_ROUTE,
-    ORDER_CONFIRMATION_ROUTE,
-    CART_DETAIL_ROUTE,
-    PRODUCTS_CATALOG_ROUTE,
-    CHECKOUT_ROUTE,
-    CREATE_STRIPE_SESSION_ROUTE,
     # Order statuses
     STATUS_PENDING,
     STATUS_CONFIRMED,
@@ -173,13 +175,13 @@ def take_order(request, order_id):
             f'El pedido {order.order_number} no está listo para entregar '
             f'(estado actual: {order.get_status_display()}).'
         )
-        return redirect(DELIVERY_DASHBOARD_ROUTE)
+        return redirect(ORDERS_DELIVERY_DASHBOARD)
 
     order.assigned_delivery_user = request.user
     order.status = STATUS_ON_THE_WAY
     order.save(update_fields=['assigned_delivery_user', 'status'])
     messages.success(request, f'Pedido {order.order_number} asignado correctamente.')
-    return redirect(DELIVERY_DASHBOARD_ROUTE)
+    return redirect(ORDERS_DELIVERY_DASHBOARD)
 
 
 @staff_member_required
@@ -189,7 +191,7 @@ def deliver_order(request, order_id):
     order = get_object_or_404(Order, id=order_id, assigned_delivery_user=request.user)
     order.mark_as_delivered(user=request.user)
     messages.success(request, f'Pedido {order.order_number} entregado y pagado.')
-    return redirect(DELIVERY_DASHBOARD_ROUTE)
+    return redirect(ORDERS_DELIVERY_DASHBOARD)
 
 
 # =============================================================================
@@ -475,7 +477,7 @@ def checkout(request):
 
     if cart.is_empty():
         messages.warning(request, MESSAGE_CART_EMPTY)
-        return redirect(PRODUCTS_CATALOG_ROUTE)
+        return redirect(PRODUCTS_CATALOG)
 
     stock_errors = cart.validate_stock()
     if stock_errors:
@@ -485,7 +487,7 @@ def checkout(request):
                 f'"{error["name"]}" ({error["size"]}, {error["color"]}): '
                 f'solicitado {error["requested"]}, disponible {error["available"]}'
             )
-        return redirect(CART_DETAIL_ROUTE)
+        return redirect(ORDERS_CART_DETAIL)
 
     if request.method == 'POST':
         form = CheckoutOrderForm(request.POST)
@@ -498,7 +500,7 @@ def checkout(request):
                 'shipping_address': cleaned_data['shipping_address'],
                 'delivery_notes': cleaned_data['delivery_notes'],
             }
-            return redirect(CREATE_STRIPE_SESSION_ROUTE)
+            return redirect(ORDERS_CREATE_STRIPE_SESSION)
         else:
             for field, errors in form.errors.items():
                 for error in errors:
@@ -528,7 +530,7 @@ def create_stripe_checkout_session(request):
 
     if cart.is_empty():
         messages.error(request, MESSAGE_CART_EMPTY)
-        return redirect(PRODUCTS_CATALOG_ROUTE)
+        return redirect(PRODUCTS_CATALOG)
 
     stock_errors = cart.validate_stock()
     if stock_errors:
@@ -537,12 +539,12 @@ def create_stripe_checkout_session(request):
                 request,
                 f'"{error["name"]}" ({error["size"]}, {error["color"]}): {MESSAGE_STOCK_INSUFFICIENT}'
             )
-        return redirect(CART_DETAIL_ROUTE)
+        return redirect(ORDERS_CART_DETAIL)
 
     checkout_data = request.session.get('checkout_data')
     if not checkout_data:
         messages.error(request, MESSAGE_NO_SHIPPING_DATA)
-        return redirect(CHECKOUT_ROUTE)
+        return redirect(ORDERS_CHECKOUT)
 
     customer_name = checkout_data.get('customer_name')
     customer_phone = checkout_data.get('customer_phone')
@@ -580,10 +582,10 @@ def create_stripe_checkout_session(request):
 
     try:
         success_url = settings.SITE_URL + reverse(
-            ORDER_CONFIRMATION_ROUTE,
+            ORDERS_CONFIRMATION,
             kwargs={'order_number': order.order_number}
         )
-        cancel_url = settings.SITE_URL + reverse(CART_DETAIL_ROUTE)
+        cancel_url = settings.SITE_URL + reverse(ORDERS_CART_DETAIL)
 
         checkout_session = stripe.checkout.Session.create(
             payment_method_types=['card'],
@@ -619,7 +621,7 @@ def create_stripe_checkout_session(request):
         order.cancelled_reason = f'Error al crear sesión de pago: {str(e)}'
         order.save()
         messages.error(request, f'Error al procesar el pago: {str(e)}')
-        return redirect(CHECKOUT_ROUTE)
+        return redirect(ORDERS_CHECKOUT)
 
 
 @require_GET
@@ -629,7 +631,7 @@ def order_confirmation(request, order_number):
         order = Order.objects.get(order_number=order_number)
     except Order.DoesNotExist:
         messages.error(request, MESSAGE_ORDER_NOT_FOUND)
-        return redirect(PRODUCTS_CATALOG_ROUTE)
+        return redirect(PRODUCTS_CATALOG)
 
     if not order.is_paid:
         for _ in range(WEBHOOK_MAX_RETRIES):
@@ -788,11 +790,11 @@ class OrderCreateView(PermissionRequiredMixin, CreateView):
     form_class = OrderCreateForm
     template_name = TEMPLATE_ORDER_FORM
     permission_required = 'orders.add_order'
-    success_url = reverse_lazy(ORDER_LIST_ROUTE)
+    success_url = reverse_lazy(ORDERS_LIST)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context[CONTEXT_CANCEL_URL] = ORDER_LIST_ROUTE
+        context[CONTEXT_CANCEL_URL] = ORDERS_LIST
         context[CONTEXT_TITLE] = 'Crear pedido manual'
         return context
 
@@ -809,11 +811,11 @@ class OrderUpdateView(PermissionRequiredMixin, UpdateView):
     form_class = OrderUpdateForm
     template_name = TEMPLATE_ORDER_FORM
     permission_required = 'orders.change_order'
-    success_url = reverse_lazy(ORDER_LIST_ROUTE)
+    success_url = reverse_lazy(ORDERS_LIST)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context[CONTEXT_CANCEL_URL] = ORDER_LIST_ROUTE
+        context[CONTEXT_CANCEL_URL] = ORDERS_LIST
         context[CONTEXT_TITLE] = f'Editar pedido {self.object.order_number}'
         return context
 
@@ -872,14 +874,14 @@ class OrderConfirmView(PermissionRequiredMixin, FormView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context[CONTEXT_ORDER] = self.order
-        context[CONTEXT_CANCEL_URL] = ORDER_DETAIL_ROUTE
+        context[CONTEXT_CANCEL_URL] = ORDERS_DETAIL
         context[CONTEXT_CANCEL_ARGS] = [self.order.pk]
         return context
 
     def form_valid(self, form):
         self.order.confirm(user=self.request.user)
         messages.success(self.request, f'Pedido {self.order.order_number} confirmado exitosamente.')
-        return redirect(ORDER_DETAIL_ROUTE, pk=self.order.pk)
+        return redirect(ORDERS_DETAIL, pk=self.order.pk)
 
 
 class OrderCancelView(PermissionRequiredMixin, FormView):
@@ -899,7 +901,7 @@ class OrderCancelView(PermissionRequiredMixin, FormView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context[CONTEXT_ORDER] = self.order
-        context[CONTEXT_CANCEL_URL] = ORDER_DETAIL_ROUTE
+        context[CONTEXT_CANCEL_URL] = ORDERS_DETAIL
         context[CONTEXT_CANCEL_ARGS] = [self.order.pk]
         return context
 
@@ -907,7 +909,7 @@ class OrderCancelView(PermissionRequiredMixin, FormView):
         reason = form.cleaned_data['reason']
         self.order.cancel(reason=reason, user=self.request.user)
         messages.success(self.request, f'Pedido {self.order.order_number} cancelado exitosamente.')
-        return redirect(ORDER_DETAIL_ROUTE, pk=self.order.pk)
+        return redirect(ORDERS_DETAIL, pk=self.order.pk)
 
 
 class OrderMarkPreparingView(PermissionRequiredMixin, View):
@@ -920,7 +922,7 @@ class OrderMarkPreparingView(PermissionRequiredMixin, View):
             messages.success(request, f'Pedido {order.order_number} marcado como en preparación.')
         except ValidationError as e:
             messages.error(request, str(e))
-        return redirect(ORDER_DETAIL_ROUTE, pk=order.pk)
+        return redirect(ORDERS_DETAIL, pk=order.pk)
 
 
 class OrderMarkReadyView(PermissionRequiredMixin, View):
@@ -933,7 +935,7 @@ class OrderMarkReadyView(PermissionRequiredMixin, View):
             messages.success(request, f'Pedido {order.order_number} marcado como listo para envío.')
         except ValidationError as e:
             messages.error(request, str(e))
-        return redirect(ORDER_DETAIL_ROUTE, pk=order.pk)
+        return redirect(ORDERS_DETAIL, pk=order.pk)
 
 
 class OrderAssignDeliveryView(PermissionRequiredMixin, FormView):
@@ -953,7 +955,7 @@ class OrderAssignDeliveryView(PermissionRequiredMixin, FormView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context[CONTEXT_ORDER] = self.order
-        context[CONTEXT_CANCEL_URL] = ORDER_DETAIL_ROUTE
+        context[CONTEXT_CANCEL_URL] = ORDERS_DETAIL
         context[CONTEXT_CANCEL_ARGS] = [self.order.pk]
         return context
 
@@ -961,7 +963,7 @@ class OrderAssignDeliveryView(PermissionRequiredMixin, FormView):
         delivery_user = form.cleaned_data['delivery_user']
         self.order.assign_delivery(delivery_user, user=self.request.user)
         messages.success(self.request, f'Repartidor asignado al pedido {self.order.order_number}.')
-        return redirect(ORDER_DETAIL_ROUTE, pk=self.order.pk)
+        return redirect(ORDERS_DETAIL, pk=self.order.pk)
 
 
 class OrderMarkAsDeliveredView(PermissionRequiredMixin, FormView):
@@ -981,14 +983,14 @@ class OrderMarkAsDeliveredView(PermissionRequiredMixin, FormView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context[CONTEXT_ORDER] = self.order
-        context[CONTEXT_CANCEL_URL] = ORDER_DETAIL_ROUTE
+        context[CONTEXT_CANCEL_URL] = ORDERS_DETAIL
         context[CONTEXT_CANCEL_ARGS] = [self.order.pk]
         return context
 
     def form_valid(self, form):
         self.order.mark_as_delivered(user=self.request.user)
         messages.success(self.request, f'Pedido {self.order.order_number} marcado como entregado.')
-        return redirect(ORDER_DETAIL_ROUTE, pk=self.order.pk)
+        return redirect(ORDERS_DETAIL, pk=self.order.pk)
 
 
 class OrderItemCreateView(PermissionRequiredMixin, CreateView):
@@ -1009,7 +1011,7 @@ class OrderItemCreateView(PermissionRequiredMixin, CreateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context[CONTEXT_ORDER] = self.order
-        context[CONTEXT_CANCEL_URL] = ORDER_DETAIL_ROUTE
+        context[CONTEXT_CANCEL_URL] = ORDERS_DETAIL
         context[CONTEXT_CANCEL_ARGS] = [self.order.pk] if self.order and self.order.pk else []
         return context
 
@@ -1017,7 +1019,7 @@ class OrderItemCreateView(PermissionRequiredMixin, CreateView):
         form.instance.order = self.order
         self.order.save()
         messages.success(self.request, f'Producto agregado al pedido {self.order.order_number}.')
-        return redirect(ORDER_DETAIL_ROUTE, pk=self.order.pk)
+        return redirect(ORDERS_DETAIL, pk=self.order.pk)
 
 
 class OrderItemUpdateView(PermissionRequiredMixin, UpdateView):
@@ -1029,13 +1031,13 @@ class OrderItemUpdateView(PermissionRequiredMixin, UpdateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context[CONTEXT_ORDER] = self.object.order
-        context[CONTEXT_CANCEL_URL] = ORDER_DETAIL_ROUTE
+        context[CONTEXT_CANCEL_URL] = ORDERS_DETAIL
         context[CONTEXT_CANCEL_ARGS] = [self.object.order.pk] if self.object.order and self.object.order.pk else []
         context[CONTEXT_TITLE] = 'Editar cantidad'
         return context
 
     def get_success_url(self):
-        return reverse_lazy(ORDER_DETAIL_ROUTE, kwargs={'pk': self.object.order.pk})
+        return reverse_lazy(ORDERS_DETAIL, kwargs={'pk': self.object.order.pk})
 
     def form_valid(self, form):
         response = super().form_valid(form)
@@ -1062,7 +1064,7 @@ class OrderItemDeleteView(PermissionRequiredMixin, FormView):
         context = super().get_context_data(**kwargs)
         context[CONTEXT_ORDER] = self.order_item.order
         context['order_item'] = self.order_item
-        context[CONTEXT_CANCEL_URL] = ORDER_DETAIL_ROUTE
+        context[CONTEXT_CANCEL_URL] = ORDERS_DETAIL
         context[CONTEXT_CANCEL_ARGS] = [self.order_item.order.pk] if self.order_item.order and self.order_item.order.pk else []
         return context
 
@@ -1072,4 +1074,4 @@ class OrderItemDeleteView(PermissionRequiredMixin, FormView):
         order = Order.objects.get(pk=order_pk)
         order.save()
         messages.success(self.request, f'Producto eliminado del pedido {order.order_number}.')
-        return redirect(ORDER_DETAIL_ROUTE, pk=order_pk)
+        return redirect(ORDERS_DETAIL, pk=order_pk)

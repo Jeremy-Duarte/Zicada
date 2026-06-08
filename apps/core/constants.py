@@ -34,13 +34,7 @@ CONTACT_SUCCESS_MESSAGE = '¡Mensaje enviado con éxito! Te responderemos pronto
 CONTACT_ERROR_MESSAGE = 'Error al enviar el mensaje. Por favor intenta de nuevo.'
 
 # URL Names
-URL_CORE_CONTACT = 'core:contact'
-URL_CORE_CONTACT_SUCCESS = 'core:contact_success'
 URL_HOME = 'home'
-URL_PRODUCTS_CATALOG = 'products:catalog'
-URL_BACKOFFICE_DASHBOARD = 'backoffice:dashboard'
-URL_HERO_LIST = 'core:hero_list'
-URL_HERO_TRASHCAN = 'core:hero_trashcan'
 
 # Login/Logout Messages
 LOGIN_ERROR_MESSAGE = 'Usuario o contraseña incorrectos'

@@ -1,9 +1,3 @@
-# URL Names
-URL_USER_LIST = 'users:user_list'
-URL_USER_TRASHCAN = 'users:user_trashcan'
-URL_GROUP_LIST = 'users:group_list'
-URL_USER_PROFILE = 'users:profile'
-
 # Template Paths
 TEMPLATE_USER_LIST = 'backoffice/users/user_list.html'
 TEMPLATE_USER_FORM = 'backoffice/users/user_form.html'

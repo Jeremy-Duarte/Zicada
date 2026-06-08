@@ -18,6 +18,30 @@ from .reports.orders import OrdersReport
 from .reports.products import ProductsReport
 from .reports.delivery import DeliveryReport
 
+from apps.core.url_names import (
+    ORDERS_DETAIL,
+    ORDERS_LIST,
+    ORDERS_CREATE,
+    PRODUCTS_LIST,
+    PRODUCTS_EDIT,
+    PRODUCTS_CREATE,
+    USERS_LIST,
+    USERS_CREATE,
+    BACKOFFICE_IMPORTERS_DASHBOARD,
+    BACKOFFICE_REPORT_GENERATOR,
+    PRODUCTS_SIZE_LIST,
+    PRODUCTS_CATEGORY_LIST,
+    PRODUCTS_COLOR_LIST,
+    PRODUCTS_IMAGE_LIST,
+    PRODUCTS_SIZE_IMPORT,
+    PRODUCTS_COLOR_IMPORT,
+    PRODUCTS_CATEGORY_IMPORT,
+    USERS_GROUP_LIST,
+    USERS_TRASHCAN,
+    CORE_HERO_LIST,
+    CORE_HERO_TRASHCAN,
+)
+
 from .constants import (
     # Order Statuses
     ORDER_STATUS_PENDING,
@@ -29,29 +53,6 @@ from .constants import (
     ORDER_STATUS_CANCELLED,
     PAID_ORDER_STATUSES,
     ORDER_STATUS_LABELS,
-    # Route Names
-    ROUTE_ORDER_DETAIL,
-    ROUTE_ORDER_LIST,
-    ROUTE_ORDER_CREATE,
-    ROUTE_PRODUCT_LIST,
-    ROUTE_PRODUCT_EDIT,
-    ROUTE_PRODUCT_CREATE,
-    ROUTE_USER_LIST,
-    ROUTE_USER_CREATE,
-    ROUTE_IMPORTERS_DASHBOARD,
-    ROUTE_REPORT_GENERATOR,
-    ROUTE_SIZE_LIST,
-    ROUTE_CATEGORY_LIST,
-    ROUTE_COLOR_LIST,
-    ROUTE_PRODUCT_IMAGE_LIST,
-    ROUTE_SIZE_IMPORT,
-    ROUTE_COLOR_IMPORT,
-    ROUTE_CATEGORY_IMPORT,
-    ROUTE_USER_LIST_BASE,
-    ROUTE_GROUP_LIST,
-    ROUTE_USER_TRASHCAN,
-    ROUTE_HERO_LIST,
-    ROUTE_HERO_TRASHCAN,
     # URL Query Parameters
     QUERY_PARAM_STATUS,
     QUERY_PARAM_NAME,
@@ -356,7 +357,7 @@ def get_recent_orders(limit: int = DEFAULT_LIMIT) -> List[Dict[str, Any]]:
             'icon': ICON_BOX,
             'icon_bg': ICON_BG_GRAY,
             'icon_color': ICON_COLOR_ACCENT,
-            'url': reverse(ROUTE_ORDER_DETAIL, args=[order.pk]),
+            'url': reverse(ORDERS_DETAIL, args=[order.pk]),
             'status': order.status,
             'status_display': status_display,
         })
@@ -404,7 +405,7 @@ def get_low_stock_products(limit: int = DEFAULT_LIMIT) -> List[Dict[str, Any]]:
             'icon': ICON_EXCLAMATION_TRIANGLE,
             'icon_bg': ICON_BG_YELLOW,
             'icon_color': ICON_COLOR_YELLOW,
-            'url': reverse(ROUTE_PRODUCT_EDIT, args=[v.product.pk]),
+            'url': reverse(PRODUCTS_EDIT, args=[v.product.pk]),
             'extra_info': f"SKU: {v.sku}",
         })
 
@@ -425,9 +426,9 @@ def get_top_products(limit: int = DEFAULT_LIMIT) -> List[Dict[str, Any]]:
         name = item['product_name_snapshot']
         try:
             product = Product.objects.get(name=name, is_active=True)
-            url = reverse(ROUTE_PRODUCT_EDIT, args=[product.pk])
+            url = reverse(PRODUCTS_EDIT, args=[product.pk])
         except Product.DoesNotExist:
-            url = reverse(ROUTE_PRODUCT_LIST) + QUERY_NAME.format(name)
+            url = reverse(PRODUCTS_LIST) + QUERY_NAME.format(name)
 
         result.append({
             'title': name,
@@ -476,7 +477,7 @@ def get_recent_products(limit: int = DEFAULT_LIMIT) -> List[Dict[str, Any]]:
             'icon': ICON_TSHIRT,
             'icon_bg': ICON_BG_BLUE,
             'icon_color': ICON_COLOR_BLUE,
-            'url': reverse(ROUTE_PRODUCT_EDIT, args=[product.pk]),
+            'url': reverse(PRODUCTS_EDIT, args=[product.pk]),
         })
 
     return result
@@ -530,7 +531,7 @@ def get_recent_deliveries(limit: int = DEFAULT_LIMIT) -> List[Dict[str, Any]]:
             'icon': ICON_CHECK_CIRCLE,
             'icon_bg': ICON_BG_GREEN,
             'icon_color': ICON_COLOR_GREEN,
-            'url': reverse(ROUTE_ORDER_DETAIL, args=[order.pk]),
+            'url': reverse(ORDERS_DETAIL, args=[order.pk]),
         })
 
     return result
@@ -559,7 +560,7 @@ def get_active_deliveries_list(limit: int = DEFAULT_LIMIT) -> List[Dict[str, Any
             'icon': ICON_USER,
             'icon_bg': ICON_BG_PURPLE,
             'icon_color': ICON_COLOR_PURPLE,
-            'url': reverse(ROUTE_USER_LIST) + QUERY_USERNAME.format(delivery.username),
+            'url': reverse(USERS_LIST) + QUERY_USERNAME.format(delivery.username),
             'extra_info': delivery.phone or STRING_NO_PHONE,
         })
 
@@ -670,7 +671,7 @@ def admin_dashboard(request):
         },
     ]
 
-    reports_url = reverse(ROUTE_REPORT_GENERATOR)
+    reports_url = reverse(BACKOFFICE_REPORT_GENERATOR)
     
     action_buttons = [
         {
@@ -728,7 +729,7 @@ def admin_orders_dashboard(request):
     recent_orders = get_recent_orders()
     categories, order_counts = get_daily_order_counts()
 
-    orders_url = reverse(ROUTE_ORDER_LIST)
+    orders_url = reverse(ORDERS_LIST)
     urls = {
         'total': orders_url,
         ORDER_STATUS_PENDING: orders_url + QUERY_STATUS.format(ORDER_STATUS_PENDING),
@@ -752,7 +753,7 @@ def admin_orders_dashboard(request):
             'badge': f"{stats['total']} {STRING_ACTIVE}"
         },
         {
-            'url': reverse(ROUTE_ORDER_CREATE),
+            'url': reverse(ORDERS_CREATE),
             'icon': ICON_PLUS_CIRCLE,
             'title': BTN_TITLE_CREATE_ORDER,
             'description': BTN_DESC_CREATE_ORDER,
@@ -796,7 +797,7 @@ def admin_products(request):
     low_stock_products = get_low_stock_products()
     top_products = get_top_products()
 
-    products_url = reverse(ROUTE_PRODUCT_LIST)
+    products_url = reverse(PRODUCTS_LIST)
     urls = {
         'products_list': products_url,
         'total': f"{products_url}?{QUERY_PARAM_STATUS}={QUERY_VALUE_ALL}",
@@ -817,7 +818,7 @@ def admin_products(request):
             'badge': f"{stats['total']} {STRING_PRODUCTS}"
         },
         {
-            'url': reverse(ROUTE_PRODUCT_CREATE),
+            'url': reverse(PRODUCTS_CREATE),
             'icon': ICON_PLUS_CIRCLE,
             'title': BTN_TITLE_CREATE_PRODUCT,
             'description': BTN_DESC_CREATE_PRODUCT,
@@ -826,7 +827,7 @@ def admin_products(request):
             'badge': BADGE_NEW
         },
         {
-            'url': reverse(ROUTE_IMPORTERS_DASHBOARD),
+            'url': reverse(BACKOFFICE_IMPORTERS_DASHBOARD),
             'icon': ICON_FILE_EXPORT,
             'title': LABEL_EXPORT_REPORTS,
             'description': BTN_DESC_EXPORT,
@@ -838,7 +839,7 @@ def admin_products(request):
 
     quick_access_buttons = [
         {
-            'url': reverse(ROUTE_SIZE_LIST),
+            'url': reverse(PRODUCTS_SIZE_LIST),
             'icon': ICON_RULER,
             'title': BTN_TITLE_SIZES,
             'bg_from': ICON_BG_BLUE_50,
@@ -847,7 +848,7 @@ def admin_products(request):
             'badge': f'{Size.objects.count()}',
         },
         {
-            'url': reverse(ROUTE_CATEGORY_LIST),
+            'url': reverse(PRODUCTS_CATEGORY_LIST),
             'icon': ICON_TAGS,
             'title': BTN_TITLE_CATEGORIES,
             'bg_from': ICON_BG_GREEN_50,
@@ -856,7 +857,7 @@ def admin_products(request):
             'badge': f'{Category.objects.count()}',
         },
         {
-            'url': reverse(ROUTE_COLOR_LIST),
+            'url': reverse(PRODUCTS_COLOR_LIST),
             'icon': ICON_PALETTE,
             'title': BTN_TITLE_COLORS,
             'bg_from': ICON_BG_PURPLE_50,
@@ -865,7 +866,7 @@ def admin_products(request):
             'badge': f'{Color.objects.count()}',
         },
         {
-            'url': reverse(ROUTE_PRODUCT_IMAGE_LIST),
+            'url': reverse(PRODUCTS_IMAGE_LIST),
             'icon': ICON_IMAGES,
             'title': BTN_TITLE_IMAGES,
             'bg_from': ICON_BG_ORANGE,
@@ -874,7 +875,7 @@ def admin_products(request):
             'badge': f'{ProductImage.objects.count()}',
         },
         {
-            'url': reverse(ROUTE_PRODUCT_LIST),
+            'url': reverse(PRODUCTS_LIST),
             'icon': ICON_BOX,
             'title': BTN_TITLE_PRODUCTS,
             'bg_from': f'{ICON_COLOR_ACCENT}/10',
@@ -921,15 +922,15 @@ def admin_users(request):
     recent_deliveries = get_recent_deliveries()
     active_deliveries = get_active_deliveries_list()
 
-    users_url = reverse(ROUTE_USER_LIST)
+    users_url = reverse(USERS_LIST)
     urls = {
         'users_list': users_url,
         'total': users_url,
         'active': users_url + QUERY_IS_ACTIVE.format(QUERY_VALUE_ACTIVE),
         'inactive': users_url + QUERY_IS_ACTIVE.format(QUERY_VALUE_INACTIVE),
         'only_deliveries': users_url + QUERY_IS_DELIVERY.format(QUERY_VALUE_ACTIVE),
-        'ready_orders': reverse(ROUTE_ORDER_LIST) + QUERY_STATUS.format(ORDER_STATUS_READY),
-        'on_the_way_orders': reverse(ROUTE_ORDER_LIST) + QUERY_STATUS.format(ORDER_STATUS_ON_THE_WAY),
+        'ready_orders': reverse(ORDERS_LIST) + QUERY_STATUS.format(ORDER_STATUS_READY),
+        'on_the_way_orders': reverse(ORDERS_LIST) + QUERY_STATUS.format(ORDER_STATUS_ON_THE_WAY),
     }
 
     action_buttons = [
@@ -943,7 +944,7 @@ def admin_users(request):
             'badge': f"{delivery_stats['total']} {STRING_ACTIVE}"
         },
         {
-            'url': reverse(ROUTE_USER_CREATE),
+            'url': reverse(USERS_CREATE),
             'icon': ICON_PLUS_CIRCLE,
             'title': BTN_TITLE_ADD_DELIVERY,
             'description': BTN_DESC_ADD_DELIVERY,
@@ -964,7 +965,7 @@ def admin_users(request):
 
     quick_access_buttons = [
         {
-            'url': reverse(ROUTE_USER_LIST_BASE),
+            'url': reverse(USERS_LIST),
             'icon': ICON_USERS,
             'title': BTN_TITLE_USERS,
             'bg_from': ICON_BG_GRAY_50,
@@ -973,7 +974,7 @@ def admin_users(request):
             'badge': f"{delivery_stats['total']}",
         },
         {
-            'url': reverse(ROUTE_GROUP_LIST),
+            'url': reverse(USERS_GROUP_LIST),
             'icon': ICON_KEY,
             'title': BTN_TITLE_ROLES,
             'bg_from': ICON_BG_AMBER_50,
@@ -982,7 +983,7 @@ def admin_users(request):
             'badge': f"{Group.objects.count()}",
         },
         {
-            'url': reverse(ROUTE_USER_TRASHCAN),
+            'url': reverse(USERS_TRASHCAN),
             'icon': ICON_TRASH_ALT,
             'title': BTN_TITLE_TRASHCAN,
             'bg_from': ICON_BG_RED_50,
@@ -1031,7 +1032,7 @@ def admin_config(request):
     """Admin configuration view."""
     quick_access_buttons = [
         {
-            'url': reverse(ROUTE_HERO_LIST),
+            'url': reverse(CORE_HERO_LIST),
             'icon': ICON_IMAGES,
             'title': BTN_TITLE_HERO_SLIDES,
             'bg_from': ICON_BG_PURPLE_50,
@@ -1040,7 +1041,7 @@ def admin_config(request):
             'badge': BADGE_PLUS,
         },
         {
-            'url': reverse(ROUTE_HERO_TRASHCAN),
+            'url': reverse(CORE_HERO_TRASHCAN),
             'icon': ICON_TRASH_ALT,
             'title': BTN_TITLE_TRASHCAN,
             'bg_from': ICON_BG_RED_50,
@@ -1091,7 +1092,7 @@ def importers_dashboard(request):
     
     import_buttons = [
         {
-            'url': reverse(ROUTE_SIZE_IMPORT),
+            'url': reverse(PRODUCTS_SIZE_IMPORT),
             'icon': ICON_RULER,
             'title': BTN_TITLE_SIZES,
             'bg_from': ICON_BG_BLUE_50,
@@ -1100,7 +1101,7 @@ def importers_dashboard(request):
             'badge': BADGE_CSV_EXCEL
         },
         {
-            'url': reverse(ROUTE_COLOR_IMPORT),
+            'url': reverse(PRODUCTS_COLOR_IMPORT),
             'icon': ICON_PALETTE,
             'title': BTN_TITLE_COLORS,
             'bg_from': ICON_BG_PURPLE_50,
@@ -1109,7 +1110,7 @@ def importers_dashboard(request):
             'badge': BADGE_CSV_EXCEL
         },
         {
-            'url': reverse(ROUTE_CATEGORY_IMPORT),
+            'url': reverse(PRODUCTS_CATEGORY_IMPORT),
             'icon': ICON_TAGS,
             'title': BTN_TITLE_CATEGORIES,
             'bg_from': ICON_BG_GREEN_50,
