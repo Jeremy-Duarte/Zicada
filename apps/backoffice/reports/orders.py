@@ -30,7 +30,7 @@ class OrdersReport(BaseReport):
 
         # ========== DATOS DIARIOS ==========
         daily_categories, daily_counts = get_daily_order_counts_in_range(start, end)
-        daily_rev_categories, daily_revenues = get_daily_revenue_in_range(start, end)
+        _ , daily_revenues = get_daily_revenue_in_range(start, end)
         
         # Combinar datos diarios
         daily_combined = []

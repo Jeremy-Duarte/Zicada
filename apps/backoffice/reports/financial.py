@@ -40,7 +40,7 @@ class FinancialReport(BaseReport):
 
         # ========== DATOS DIARIOS ==========
         daily_categories, daily_revenue = get_daily_data_in_range(start, end)
-        daily_orders_categories, daily_orders_counts = get_daily_order_counts_in_range(start, end)
+        _ , daily_orders_counts = get_daily_order_counts_in_range(start, end)
 
         # ========== COMBINAR DATOS DIARIOS ==========
         daily_combined = []
