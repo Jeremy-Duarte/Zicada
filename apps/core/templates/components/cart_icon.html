@@ -12,11 +12,11 @@
     </a>
 </div>
 
-<!-- Sidebar del carrito (deslizable desde derecha) -->
+<!-- NOSONAR:Web:S6819 - Usamos role="dialog" porque <dialog> nativo no permite diseño sidebar lateral deslizable -->
 <div id="cart-sidebar" 
      class="fixed inset-0 z-50 hidden" 
      aria-labelledby="cart-title" 
-     role="dialog" 
+     role="dialog"
      aria-modal="true"
      data-cart-url="{% url 'orders:cart_data' %}"
      data-cart-update-url="{% url 'orders:cart_update' %}"
