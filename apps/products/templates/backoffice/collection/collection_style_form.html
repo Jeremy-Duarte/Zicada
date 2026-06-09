@@ -5,330 +5,515 @@
 
 {% block extra_css %}
 <style>
-    .preview-card {
-        transition: all 0.3s ease;
-    }
     .color-preview {
         width: 40px;
         height: 40px;
         border-radius: 8px;
-        border: 1px solid #ddd;
+        border: 2px solid #fff;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         cursor: pointer;
-        display: inline-block;
+        transition: transform 0.2s ease;
     }
+    .color-preview:hover { transform: scale(1.05); }
+    .section-card { transition: all 0.2s ease; scroll-margin-top: 1rem; }
+    .section-card:hover { box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+    .nav-link { transition: all 0.2s ease; cursor: pointer; }
+    .nav-link:hover { color: #c2a575; border-left-color: #c2a575; }
+    .nav-link.active { color: #c2a575; border-left-color: #c2a575; background-color: #fef3c7; }
+    .font-preview-card { transition: all 0.3s ease; }
+    .mock-product-card { transition: all 0.3s ease; }
+    .live-preview-overlay {
+        position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 1000;
+        display: flex; align-items: center; justify-content: center;
+        opacity: 0; visibility: hidden; transition: all 0.3s ease;
+    }
+    .live-preview-overlay.active { opacity: 1; visibility: visible; }
+    .live-preview-container { width: 90vw; height: 90vh; background: white; border-radius: 1rem; overflow: hidden; position: relative; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="space-y-6">
-    <div class="bg-white rounded-xl shadow-sm p-6">
-        <div class="flex justify-between items-center mb-6">
-            <div>
-                <h1 class="text-2xl font-bold text-gray-800">Estilos de {{ collection.name }}</h1>
-                <p class="text-sm text-gray-500 mt-1">Personaliza la apariencia visual de la colección</p>
-            </div>
-            <div class="flex gap-3">
-                <a href="{% url 'products:collection_list' %}" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition">Volver</a>
-                <button type="submit" form="style-form" class="px-6 py-2 bg-zicada-accent hover:bg-red-700 text-white rounded-lg font-semibold transition">
-                    <i class="fas fa-save mr-1"></i> Guardar estilos
-                </button>
-            </div>
+<div class="flex gap-6">
+    <!-- Sidebar de navegación rápida -->
+    <div class="w-64 flex-shrink-0 sticky top-6 h-fit">
+        <div class="bg-white rounded-xl shadow-sm p-4">
+            <h3 class="text-sm font-semibold text-gray-700 mb-3 px-3">Navegación rápida</h3>
+            <nav class="space-y-1">
+                <a href="#preview" class="nav-link block px-3 py-2 text-sm text-gray-600 rounded-lg hover:bg-gray-50 border-l-2 border-transparent">
+                    <i class="fas fa-eye w-5 mr-2"></i> Vista previa
+                </a>
+                <a href="#colors" class="nav-link block px-3 py-2 text-sm text-gray-600 rounded-lg hover:bg-gray-50 border-l-2 border-transparent">
+                    <i class="fas fa-palette w-5 mr-2"></i> Colores
+                </a>
+                <a href="#effects" class="nav-link block px-3 py-2 text-sm text-gray-600 rounded-lg hover:bg-gray-50 border-l-2 border-transparent">
+                    <i class="fas fa-magic w-5 mr-2"></i> Efectos
+                </a>
+                <a href="#background" class="nav-link block px-3 py-2 text-sm text-gray-600 rounded-lg hover:bg-gray-50 border-l-2 border-transparent">
+                    <i class="fas fa-image w-5 mr-2"></i> Fondo
+                </a>
+                <a href="#typography" class="nav-link block px-3 py-2 text-sm text-gray-600 rounded-lg hover:bg-gray-50 border-l-2 border-transparent">
+                    <i class="fas fa-font w-5 mr-2"></i> Tipografía
+                </a>
+                <a href="#cards" class="nav-link block px-3 py-2 text-sm text-gray-600 rounded-lg hover:bg-gray-50 border-l-2 border-transparent">
+                    <i class="fas fa-credit-card w-5 mr-2"></i> Tarjetas
+                </a>
+                <a href="#advanced" class="nav-link block px-3 py-2 text-sm text-gray-600 rounded-lg hover:bg-gray-50 border-l-2 border-transparent">
+                    <i class="fas fa-code w-5 mr-2"></i> Avanzado
+                </a>
+            </nav>
         </div>
+    </div>
 
-        <form id="style-form" method="post" enctype="multipart/form-data" class="space-y-8" novalidate>
-            {% csrf_token %}
-            
-            {% if form.errors %}
-            <div class="bg-red-100 text-red-700 p-4 rounded mb-4 border-l-4 border-red-500">
-                <strong class="block mb-2">⚠️ Por favor corrige los siguientes errores:</strong>
-                <ul class="list-disc list-inside space-y-1">
-                {% for field, errors in form.errors.items %}
-                    <li><strong>{{ field|capfirst }}:</strong> {{ errors|join:", " }}</li>
-                {% endfor %}
-                </ul>
-            </div>
-            {% endif %}
-
-            <!-- Vista previa en vivo -->
-            <div class="bg-gray-50 rounded-xl p-4">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-lg font-semibold text-gray-800">Vista previa en vivo</h3>
-                    <button type="button" id="refresh-preview" class="text-sm text-zicada-accent hover:underline">
-                        <i class="fas fa-sync-alt mr-1"></i> Actualizar
+    <!-- Contenido principal -->
+    <div class="flex-1 space-y-6">
+        <div class="bg-white rounded-xl shadow-sm p-6">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-800">Estilos de {{ collection.name }}</h1>
+                    <p class="text-sm text-gray-500 mt-1">Personaliza la apariencia visual de la colección</p>
+                </div>
+                <div class="flex gap-3">
+                    <a href="{% url 'products:collection_edit' collection.pk %}" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition">
+                        <i class="fas fa-arrow-left mr-1"></i> Volver
+                    </a>
+                    <button type="submit" form="style-form" class="px-6 py-2 bg-zicada-accent hover:bg-red-700 text-white rounded-lg font-semibold transition">
+                        <i class="fas fa-save mr-1"></i> Guardar estilos
                     </button>
                 </div>
-                
-                <!-- Preview de la página de colección -->
-                <div class="mb-6">
-                    <p class="text-sm font-medium text-gray-700 mb-2">Vista previa de la página:</p>
-                    <div id="collection-preview" class="relative rounded-xl overflow-hidden border border-gray-200" style="height: 300px;">
-                        <div id="preview-bg" class="absolute inset-0 bg-cover bg-center" style="background-image: {% if collection.background_image %}url('{{ collection.background_image.url }}'){% else %}linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 100%){% endif %};"></div>
-                        <div id="preview-overlay" class="absolute inset-0 bg-black" style="opacity: 0.4;"></div>
-                        <div class="relative z-10 w-full h-full flex items-center justify-center px-6">
-                            <div class="text-center">
-                                <h1 id="preview-title" class="text-3xl font-bold text-white mb-2" style="font-family: {{ collection.title_font|default:"'Inter', sans-serif" }};">{{ collection.name }}</h1>
-                                <p id="preview-description" class="text-white/80">{{ collection.description|truncatewords:20 }}</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Preview de tarjeta de producto -->
-                <div>
-                    <p class="text-sm font-medium text-gray-700 mb-2">Vista previa de tarjeta de producto:</p>
-                    <div id="card-preview" class="w-72 rounded-xl overflow-hidden shadow-lg" style="background-color: {{ form.card_background_color.value|default:collection.background_color|default:'#ffffff' }}; border-radius: {{ form.card_border_radius.value|default:'0.5rem' }};">
-                        <div class="h-48 bg-gray-200 relative">
-                            <div class="absolute inset-0 flex items-center justify-center text-gray-400">
-                                <i class="fas fa-image text-3xl"></i>
-                            </div>
-                            <div class="absolute top-2 left-2">
-                                <span class="inline-block px-2 py-1 rounded-md text-xs font-semibold bg-black/50 backdrop-blur-sm text-white">Ejemplo</span>
-                            </div>
-                        </div>
-                        <div class="p-4">
-                            <h4 class="font-semibold text-lg mb-1" style="color: {{ form.card_title_color.value|default:collection.primary_color|default:'#c2a575' }};">Producto de ejemplo</h4>
-                            <div class="flex justify-between items-center mt-3">
-                                <span class="text-xl font-bold" style="color: {{ form.card_price_color.value|default:collection.primary_color|default:'#c2a575' }};">$99,900</span>
-                                <span class="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700">Disponible</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
             </div>
 
-            <!-- Colores de la colección -->
-            <div class="border-b border-gray-200 pb-4">
-                <h2 class="text-lg font-semibold text-gray-800">Colores de la Colección</h2>
-                <p class="text-sm text-gray-500">Define la paleta de colores única para esta colección</p>
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Color principal</label>
-                    <div class="flex items-center gap-3">
-                        {{ form.primary_color }}
-                        <div id="primary-color-preview" class="color-preview" style="background-color: {{ form.primary_color.value|default:'#c2a575' }};"></div>
-                    </div>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Color secundario</label>
-                    <div class="flex items-center gap-3">
-                        {{ form.secondary_color }}
-                        <div id="secondary-color-preview" class="color-preview" style="background-color: {{ form.secondary_color.value|default:'#8b5e3c' }};"></div>
-                    </div>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Color de fondo</label>
-                    <div class="flex items-center gap-3">
-                        {{ form.background_color }}
-                        <div id="background-color-preview" class="color-preview" style="background-color: {{ form.background_color.value|default:'#ffffff' }};"></div>
-                    </div>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Color de texto</label>
-                    <div class="flex items-center gap-3">
-                        {{ form.text_color }}
-                        <div id="text-color-preview" class="color-preview" style="background-color: {{ form.text_color.value|default:'#1a1a1a' }};"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Imagen de fondo -->
-            <div class="border-b border-gray-200 pb-4">
-                <h2 class="text-lg font-semibold text-gray-800">Imagen de Fondo</h2>
-                <p class="text-sm text-gray-500">Imagen de fondo para la página de la colección (opcional)</p>
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Imagen de fondo</label>
-                {{ form.background_image }}
-                {% if collection.background_image %}
-                <div class="mt-2">
-                    <img src="{{ collection.background_image.url }}" class="w-32 h-32 object-cover rounded-lg shadow-md">
-                    <p class="text-xs text-gray-500 mt-1">Imagen actual</p>
+            <form id="style-form" method="post" enctype="multipart/form-data" class="space-y-8" novalidate>
+                {% csrf_token %}
+                
+                {% if form.errors %}
+                <div class="bg-red-100 text-red-700 p-4 rounded mb-4 border-l-4 border-red-500">
+                    <strong class="block mb-2">⚠️ Por favor corrige los siguientes errores:</strong>
+                    <ul class="list-disc list-inside space-y-1">
+                    {% for field, errors in form.errors.items %}
+                        <li><strong>{{ field|capfirst }}:</strong> {{ errors|join:", " }}</li>
+                    {% endfor %}
+                    </ul>
                 </div>
                 {% endif %}
-            </div>
 
-            <!-- Tipografía -->
-            <div class="border-b border-gray-200 pb-4">
-                <h2 class="text-lg font-semibold text-gray-800">Tipografía</h2>
-                <p class="text-sm text-gray-500">Fuente personalizada para los títulos</p>
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Fuente de títulos</label>
-                {{ form.title_font }}
-                <div id="font-preview" class="mt-2 p-2 bg-gray-50 rounded" style="font-family: {{ form.title_font.value|default:"'Inter', sans-serif" }}; font-size: 1.25rem;">
-                    Vista previa de la fuente seleccionada
+                <!-- SECCIÓN: Vista previa en vivo -->
+                <div id="preview" class="section-card scroll-mt-6">
+                    <div class="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-lg font-semibold text-gray-800">
+                                <i class="fas fa-eye text-zicada-accent mr-2"></i> Vista previa en vivo
+                            </h2>
+                            <div class="flex gap-2">
+                                <button type="button" id="refresh-preview" class="text-sm text-zicada-accent hover:underline px-3 py-1 rounded-lg hover:bg-white/50 transition">
+                                    <i class="fas fa-sync-alt mr-1"></i> Actualizar
+                                </button>
+                                <button type="button" id="expand-preview" class="text-sm text-zicada-accent hover:underline px-3 py-1 rounded-lg hover:bg-white/50 transition">
+                                    <i class="fas fa-expand mr-1"></i> Expandir
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="relative border-4 border-white rounded-xl shadow-2xl overflow-hidden bg-white">
+                            <div class="bg-gray-100 px-4 py-2 flex items-center gap-2 border-b">
+                                <div class="flex gap-1.5">
+                                    <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                                    <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                                    <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                                </div>
+                                <div class="flex-1 text-center">
+                                    <p class="text-xs text-gray-500">Vista previa - {{ collection.name }}</p>
+                                </div>
+                                <div class="w-16"></div>
+                            </div>
+                            <div id="collection-preview-container" class="h-[500px] overflow-y-auto">
+                                <div id="dynamic-preview"></div>
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-400 mt-3 text-center">
+                            <i class="fas fa-info-circle mr-1"></i> 
+                            Esta vista previa se actualiza automáticamente. Usa "Expandir" para ver en tamaño real.
+                        </p>
+                    </div>
                 </div>
-            </div>
 
-            <!-- Configuración de Tarjetas -->
-            <div class="border-b border-gray-200 pb-4">
-                <h2 class="text-lg font-semibold text-gray-800">Configuración de Tarjetas</h2>
-                <p class="text-sm text-gray-500">Personaliza la apariencia de las tarjetas de producto</p>
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Color de fondo de tarjetas</label>
-                    <div class="flex items-center gap-3">
-                        {{ form.card_background_color }}
-                        <div id="card-bg-preview" class="color-preview" style="background-color: {{ form.card_background_color.value|default:collection.background_color|default:'#ffffff' }};"></div>
+                <!-- SECCIÓN: Colores -->
+                <div id="colors" class="section-card border rounded-xl p-6">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4">
+                        <i class="fas fa-palette text-zicada-accent mr-2"></i> Colores de la Colección
+                    </h2>
+                    
+                    <div class="mb-6 p-4 bg-gradient-to-r from-amber-50 to-orange-50 rounded-lg border border-amber-200">
+                        <div class="flex items-start gap-3">
+                            <div class="flex-1">
+                                <label for="color-palette-selector" class="block text-sm font-medium text-gray-700 mb-2">
+                                    <i class="fas fa-magic text-amber-600 mr-1"></i> Paleta de colores rápida
+                                </label>
+                                <div class="flex gap-3">
+                                    <select id="color-palette-selector" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-zicada-accent focus:ring-zicada-accent">
+                                        <option value="">-- Selecciona una paleta predefinida --</option>
+                                        <option value="zicada">🎨 Zicada (Oro/Blanco)</option>
+                                        <option value="elegant">🎨 Elegante (Negro/Gris)</option>
+                                        <option value="vibrant">🎨 Vibrante (Rojo/Blanco)</option>
+                                        <option value="ocean">🎨 Océano (Azul/Celeste)</option>
+                                        <option value="nature">🎨 Naturaleza (Verde/Crema)</option>
+                                        <option value="luxury">🎨 Lujo (Dorado/Negro)</option>
+                                        <option value="pastel">🎨 Pastel (Naranja/Beige)</option>
+                                        <option value="minimal">🎨 Minimalista (Gris/Blanco)</option>
+                                        <option value="dark">🌙 Dark Mode (Negro/Oro)</option>
+                                        <option value="fresh">✨ Fresh (Verde/Blanco)</option>
+                                    </select>
+                                    <button type="button" id="apply-palette" class="px-4 py-2 bg-zicada-accent text-white rounded-lg hover:bg-red-700 transition whitespace-nowrap">
+                                        <i class="fas fa-check mr-1"></i> Aplicar
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="palette-preview" class="hidden md:flex gap-1 p-2 bg-white rounded-lg shadow-sm">
+                                <div class="w-6 h-6 rounded-full" style="background-color: #c2a575;"></div>
+                                <div class="w-6 h-6 rounded-full" style="background-color: #8b5e3c;"></div>
+                                <div class="w-6 h-6 rounded-full" style="background-color: #ffffff;"></div>
+                                <div class="w-6 h-6 rounded-full" style="background-color: #1a1a1a;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <div>
+                            <label for="{{ form.primary_color.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">Color principal</label>
+                            <div class="flex items-center gap-3">
+                                {{ form.primary_color }}
+                                <div id="primary-color-preview" class="color-preview" style="background-color: {{ form.primary_color.value|default:'#c2a575' }};"></div>
+                            </div>
+                            <p class="text-xs text-gray-400 mt-1">Botones, enlaces, acentos</p>
+                        </div>
+                        <div>
+                            <label for="{{ form.secondary_color.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">Color secundario</label>
+                            <div class="flex items-center gap-3">
+                                {{ form.secondary_color }}
+                                <div id="secondary-color-preview" class="color-preview" style="background-color: {{ form.secondary_color.value|default:'#8b5e3c' }};"></div>
+                            </div>
+                            <p class="text-xs text-gray-400 mt-1">Hover, detalles</p>
+                        </div>
+                        <div>
+                            <label for="{{ form.background_color.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">Color de fondo</label>
+                            <div class="flex items-center gap-3">
+                                {{ form.background_color }}
+                                <div id="background-color-preview" class="color-preview" style="background-color: {{ form.background_color.value|default:'#ffffff' }};"></div>
+                            </div>
+                            <p class="text-xs text-gray-400 mt-1">Fondo principal</p>
+                        </div>
+                        <div>
+                            <label for="{{ form.text_color.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">Color de texto</label>
+                            <div class="flex items-center gap-3">
+                                {{ form.text_color }}
+                                <div id="text-color-preview" class="color-preview" style="background-color: {{ form.text_color.value|default:'#1a1a1a' }};"></div>
+                            </div>
+                            <p class="text-xs text-gray-400 mt-1">Color del texto</p>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4 flex justify-end">
+                        <button type="button" id="reset-colors" class="text-xs text-gray-500 hover:text-zicada-accent transition">
+                            <i class="fas fa-undo-alt mr-1"></i> Restablecer colores
+                        </button>
                     </div>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Color del título</label>
-                    <div class="flex items-center gap-3">
-                        {{ form.card_title_color }}
-                        <div id="card-title-color-preview" class="color-preview" style="background-color: {{ form.card_title_color.value|default:collection.primary_color|default:'#c2a575' }};"></div>
+
+                <!-- SECCIÓN: Efectos de Tarjetas -->
+                <div id="effects" class="section-card border rounded-xl p-6">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4">
+                        <i class="fas fa-magic text-zicada-accent mr-2"></i> Efectos de Tarjetas
+                    </h2>
+                    
+                    <div class="mb-6 p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border border-purple-200">
+                        <div class="flex items-start gap-3">
+                            <div class="flex-1">
+                                <label for="effect-preset-selector" class="block text-sm font-medium text-gray-700 mb-2">
+                                    <i class="fas fa-bolt text-purple-600 mr-1"></i> Efectos rápidos
+                                </label>
+                                <div class="flex gap-3">
+                                    <select id="effect-preset-selector" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-zicada-accent focus:ring-zicada-accent">
+                                        <option value="none">✨ Sin efectos</option>
+                                        <option value="zoom_fade">🔍 Zoom + Fade</option>
+                                        <option value="lift_slide">⬆️ Levitar + Slide</option>
+                                        <option value="glow_premium">✨ Glow Premium</option>
+                                        <option value="parallax_scroll">🌊 Parallax + Partículas</option>
+                                        <option value="explosion">💥 Explosión Dinámica</option>
+                                        <option value="soft_shadow">🎨 Sombra Suave</option>
+                                        <option value="cinematic">🎬 Cinemático</option>
+                                    </select>
+                                    <button type="button" id="apply-effect" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition">
+                                        <i class="fas fa-check mr-1"></i> Aplicar efecto
+                                    </button>
+                                </div>
+                                <p id="effect-description" class="text-xs text-gray-500 mt-2">Selecciona un efecto predefinido para las tarjetas de producto</p>
+                            </div>
+                            <div class="hidden md:flex items-center gap-2 p-2 bg-white rounded-lg shadow-sm">
+                                <div class="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-magic text-purple-600"></i>
+                                </div>
+                                <div>
+                                    <p class="text-xs font-medium text-gray-700">Efecto actual</p>
+                                    <p id="current-effect-name" class="text-xs text-gray-500">Sin efectos</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4 p-4 bg-gray-50 rounded-lg">
+                        <p class="text-sm font-medium text-gray-700 mb-3">Vista previa del efecto (pasa el mouse):</p>
+                        <div id="effect-preview-card" class="w-64 mx-auto">
+                            <div class="rounded-xl overflow-hidden shadow-lg bg-white transition-all duration-300">
+                                <div class="h-32 bg-gradient-to-br from-purple-400 to-pink-400 relative">
+                                    <div class="absolute inset-0 flex items-center justify-center text-white">
+                                        <i class="fas fa-gem text-2xl"></i>
+                                    </div>
+                                </div>
+                                <div class="p-3">
+                                    <h4 class="font-semibold text-sm">Tarjeta de ejemplo</h4>
+                                    <p class="text-xs text-gray-500 mt-1">Pasa el mouse para ver el efecto</p>
+                                    <div class="flex justify-between items-center mt-2">
+                                        <span class="text-sm font-bold text-purple-600">$99,900</span>
+                                        <span class="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700">Disponible</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>                    
+                </div>
+
+                <!-- SECCIÓN: Imagen de fondo -->
+                <div id="background" class="section-card border rounded-xl p-6">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4">
+                        <i class="fas fa-image text-zicada-accent mr-2"></i> Imagen de Fondo
+                    </h2>
+                    <div>
+                        <label for="{{ form.background_image.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">Imagen de fondo</label>
+                        {{ form.background_image }}
+                        {% if collection.background_image %}
+                        <div class="mt-3">
+                            <div class="relative inline-block">
+                                <img id="current-bg-image" src="{{ collection.background_image.url }}" alt="Fondo actual de {{ collection.name }}" class="w-40 h-40 object-cover rounded-lg shadow-md">
+                                <button type="button" id="remove-bg-image" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 transition">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">Imagen actual</p>
+                        </div>
+                        {% endif %}
+                        <div id="bg-image-preview" class="mt-3 hidden">
+                            <div class="relative inline-block">
+                                <img id="bg-image-preview-img" alt="Vista previa" class="w-40 h-40 object-cover rounded-lg shadow-md">
+                                <button type="button" id="clear-bg-preview" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 transition">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            <p class="text-xs text-green-600 mt-1">Nueva imagen seleccionada</p>
+                        </div>
                     </div>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Color del precio</label>
-                    <div class="flex items-center gap-3">
-                        {{ form.card_price_color }}
-                        <div id="card-price-color-preview" class="color-preview" style="background-color: {{ form.card_price_color.value|default:collection.primary_color|default:'#c2a575' }};"></div>
+
+                <!-- SECCIÓN: Tipografía -->
+                <div id="typography" class="section-card border rounded-xl p-6">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4">
+                        <i class="fas fa-font text-zicada-accent mr-2"></i> Tipografía
+                    </h2>
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div class="lg:col-span-2">
+                            <label for="{{ form.title_font.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">Fuente de títulos</label>
+                            {{ form.title_font }}
+                        </div>
+                        <div>
+                            <label for="preview-font-size" class="block text-sm font-medium text-gray-700 mb-2">Tamaño de prueba</label>
+                            <select id="preview-font-size" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-zicada-accent focus:ring-zicada-accent">
+                                <option value="1rem">Normal (1rem)</option>
+                                <option value="1.25rem">Mediano (1.25rem)</option>
+                                <option value="1.5rem">Grande (1.5rem)</option>
+                                <option value="2rem" selected>Muy grande (2rem)</option>
+                                <option value="2.5rem">Extra grande (2.5rem)</option>
+                                <option value="3rem">Título (3rem)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 space-y-4">
+                        <div class="flex items-center justify-between">
+                            <p class="text-sm font-medium text-gray-700">Vista previa en vivo:</p>
+                            <div class="flex gap-2">
+                                <button type="button" id="reset-font-preview" class="text-xs text-gray-500 hover:text-zicada-accent">
+                                    <i class="fas fa-undo-alt mr-1"></i> Restablecer
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-6 font-preview-card">
+                            <div class="space-y-6">
+                                <div>
+                                    <p class="text-xs text-gray-500 mb-2 uppercase tracking-wide">Título de colección:</p>
+                                    <div id="collection-title-preview" class="p-4 bg-white rounded-lg shadow-sm transition-all" style="font-family: {{ form.title_font.value|default:"'Inter', sans-serif" }}; font-size: 2rem;">
+                                        {{ collection.name }}
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <p class="text-xs text-gray-500 mb-2 uppercase tracking-wide">Texto de ejemplo:</p>
+                                    <div class="relative">
+                                        <input type="text" id="custom-preview-text" value="Texto personalizable para probar la fuente" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm mb-2 focus:outline-none focus:border-zicada-accent">
+                                        <div id="custom-font-preview" class="p-4 bg-white rounded-lg shadow-sm transition-all" style="font-family: {{ form.title_font.value|default:"'Inter', sans-serif" }}; font-size: 1.25rem;">
+                                            Texto personalizable para probar la fuente
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <p class="text-xs text-gray-500 mb-2 uppercase tracking-wide">Estilos rápidos:</p>
+                                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                        <button type="button" class="font-style-preset px-3 py-2 text-sm border rounded-lg hover:border-zicada-accent transition" data-font-size="1.5rem" data-font-weight="normal">Normal</button>
+                                        <button type="button" class="font-style-preset px-3 py-2 text-sm border rounded-lg hover:border-zicada-accent transition" data-font-size="2rem" data-font-weight="bold">Negrita</button>
+                                        <button type="button" class="font-style-preset px-3 py-2 text-sm border rounded-lg hover:border-zicada-accent transition" data-font-size="1.8rem" data-font-weight="300" data-font-style="italic">Itálica ligera</button>
+                                        <button type="button" class="font-style-preset px-3 py-2 text-sm border rounded-lg hover:border-zicada-accent transition" data-font-size="2.2rem" data-font-weight="800" data-letter-spacing="-0.02em">Compacto</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <p class="text-xs text-gray-500 mb-2 uppercase tracking-wide">Fondo de prueba:</p>
+                            <div class="flex gap-2 flex-wrap">
+                                <button type="button" class="bg-preview-btn px-3 py-1 text-xs rounded border hover:border-zicada-accent transition" data-bg-color="#ffffff" data-text-color="#1a1a1a">Blanco</button>
+                                <button type="button" class="bg-preview-btn px-3 py-1 text-xs rounded border hover:border-zicada-accent transition" data-bg-color="#1a1a1a" data-text-color="#ffffff">Negro</button>
+                                <button type="button" class="bg-preview-btn px-3 py-1 text-xs rounded border hover:border-zicada-accent transition" data-bg-color="#c2a575" data-text-color="#ffffff">Oro</button>
+                                <button type="button" class="bg-preview-btn px-3 py-1 text-xs rounded border hover:border-zicada-accent transition" data-bg-color="#f3f4f6" data-text-color="#111827">Gris claro</button>
+                                <button type="button" class="bg-preview-btn px-3 py-1 text-xs rounded border hover:border-zicada-accent transition" data-bg-color="#667eea" data-text-color="#ffffff">Púrpura</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <p class="text-xs text-gray-400 mt-4">La fuente seleccionada se aplicará a todos los títulos de la colección</p>
+                </div>
+
+                <!-- SECCIÓN: Configuración de Tarjetas -->
+                <div id="cards" class="section-card border rounded-xl p-6">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4">
+                        <i class="fas fa-credit-card text-zicada-accent mr-2"></i> Configuración de Tarjetas
+                    </h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label for="{{ form.card_background_color.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">Color de fondo</label>
+                            <div class="flex items-center gap-3">
+                                {{ form.card_background_color }}
+                                <div id="card-bg-preview" class="color-preview" style="background-color: {{ form.card_background_color.value|default:collection.background_color|default:'#ffffff' }};"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <label for="{{ form.card_title_color.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">Color del título</label>
+                            <div class="flex items-center gap-3">
+                                {{ form.card_title_color }}
+                                <div id="card-title-color-preview" class="color-preview" style="background-color: {{ form.card_title_color.value|default:collection.primary_color|default:'#c2a575' }};"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <label for="{{ form.card_price_color.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">Color del precio</label>
+                            <div class="flex items-center gap-3">
+                                {{ form.card_price_color }}
+                                <div id="card-price-color-preview" class="color-preview" style="background-color: {{ form.card_price_color.value|default:collection.primary_color|default:'#c2a575' }};"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <label for="{{ form.card_border_radius.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">Radio de borde</label>
+                            {{ form.card_border_radius }}
+                        </div>
+                        <div>
+                            <label for="{{ form.card_shadow.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">Sombra de tarjeta</label>
+                            {{ form.card_shadow }}
+                        </div>
+                        <div>
+                            <label for="{{ form.card_hover_scale.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">Escala al hover</label>
+                            {{ form.card_hover_scale }}
+                        </div>
+                        <div class="md:col-span-2">
+                            <div class="flex gap-6">
+                                <label for="{{ form.card_show_category.id_for_label }}" class="flex items-center gap-2 cursor-pointer">
+                                    {{ form.card_show_category }}
+                                    <span class="text-sm font-medium text-gray-700">Mostrar categoría</span>
+                                </label>
+                                <label for="{{ form.card_show_stock_badge.id_for_label }}" class="flex items-center gap-2 cursor-pointer">
+                                    {{ form.card_show_stock_badge }}
+                                    <span class="text-sm font-medium text-gray-700">Mostrar badge de stock</span>
+                                </label>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Radio de borde</label>
-                    {{ form.card_border_radius }}
+
+                <div id="advanced" class="section-card border rounded-xl p-6">
+                    <button type="button" class="flex items-center justify-between w-full text-left" onclick="toggleAdvanced()">
+                        <h2 class="text-lg font-semibold text-gray-800">
+                            <i class="fas fa-code text-zicada-accent mr-2"></i> Configuración Avanzada
+                        </h2>
+                        <i id="advanced-toggle-icon" class="fas fa-chevron-down text-gray-500"></i>
+                    </button>
+                    <div id="advanced-content" class="hidden mt-4 space-y-6">
+                        <div>
+                            <label for="{{ form.effects_config.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                                Configuración de efectos (JSON)
+                            </label>
+                            {{ form.effects_config }}
+                            <p class="text-xs text-gray-400 mt-1">Configuración JSON generada automáticamente desde los efectos rápidos</p>
+                        </div>
+                        <div>
+                            <label for="{{ form.custom_css.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                                CSS personalizado
+                            </label>
+                            {{ form.custom_css }}
+                            <p class="text-xs text-gray-400 mt-1">CSS adicional para personalizar la apariencia</p>
+                        </div>
+                        <div>
+                            <label for="{{ form.style_config.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                                Style Config (JSON legado)
+                            </label>
+                            {{ form.style_config }}
+                            <p class="text-xs text-gray-400 mt-1">Configuración completa en formato JSON</p>
+                        </div>
+                    </div>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Sombra de tarjeta</label>
-                    {{ form.card_shadow }}
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Escala al hover</label>
-                    {{ form.card_hover_scale }}
-                </div>
-                <div>
-                    <label class="flex items-center gap-2 cursor-pointer">
-                        {{ form.card_show_category }}
-                        <span class="text-sm font-medium text-gray-700">Mostrar categoría</span>
+
+                <div class="flex justify-end pt-4 border-t border-gray-200">
+                    <label for="{{ form.is_active.id_for_label }}" class="flex items-center gap-2 cursor-pointer">
+                        {{ form.is_active }}
+                        <span class="text-sm font-medium text-gray-700">Colección activa</span>
                     </label>
                 </div>
-                <div>
-                    <label class="flex items-center gap-2 cursor-pointer">
-                        {{ form.card_show_stock_badge }}
-                        <span class="text-sm font-medium text-gray-700">Mostrar badge de stock</span>
-                    </label>
+
+                <div class="flex justify-end gap-3 pt-4 border-t border-gray-200">
+                    <a href="{% url 'products:collection_list' %}" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition">Cancelar</a>
+                    <button type="submit" class="px-6 py-2 bg-zicada-accent hover:bg-red-700 text-white rounded-lg font-semibold transition">
+                        <i class="fas fa-save mr-1"></i> Guardar estilos
+                    </button>
                 </div>
-            </div>
-
-            <!-- Efectos avanzados -->
-            <div class="border-b border-gray-200 pb-4">
-                <h2 class="text-lg font-semibold text-gray-800">Efectos Avanzados</h2>
-                <p class="text-sm text-gray-500">Configuración JSON para efectos (opcional)</p>
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Configuración de efectos</label>
-                {{ form.effects_config }}
-                <p class="text-xs text-gray-400 mt-1">Ejemplo: {"hover_effect": "zoom", "parallax": true}</p>
-            </div>
-
-            <!-- CSS personalizado -->
-            <div class="border-b border-gray-200 pb-4">
-                <h2 class="text-lg font-semibold text-gray-800">CSS Personalizado</h2>
-                <p class="text-sm text-gray-500">CSS adicional para personalizar la apariencia (solo para avanzados)</p>
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">CSS personalizado</label>
-                {{ form.custom_css }}
-            </div>
-
-            <!-- Configuración visual JSON -->
-            <div class="border-b border-gray-200 pb-4">
-                <h2 class="text-lg font-semibold text-gray-800">Configuración Visual (JSON Legado)</h2>
-                <p class="text-sm text-gray-500">JSON manual para configuración avanzada</p>
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Style Config</label>
-                {{ form.style_config }}
-                <p class="text-xs text-gray-400 mt-1">Los campos anteriores ya generan esto automáticamente</p>
-            </div>
-
-            <!-- Activo -->
-            <div>
-                <label class="flex items-center gap-2 cursor-pointer">
-                    {{ form.is_active }}
-                    <span class="text-sm font-medium text-gray-700">Colección activa</span>
-                </label>
-            </div>
-
-            <!-- Botones -->
-            <div class="flex justify-end gap-3 pt-4 border-t border-gray-200">
-                <a href="{% url 'products:collection_list' %}" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition">Cancelar</a>
-                <button type="submit" class="px-6 py-2 bg-zicada-accent hover:bg-red-700 text-white rounded-lg font-semibold transition">
-                    <i class="fas fa-save mr-1"></i> Guardar estilos
-                </button>
-            </div>
-        </form>
+            </form>
+        </div>
     </div>
 </div>
 
-<script>
-    function updatePreviews() {
-        // Colores de la colección
-        const primaryColor = document.querySelector('#id_primary_color')?.value || '#c2a575';
-        const secondaryColor = document.querySelector('#id_secondary_color')?.value || '#8b5e3c';
-        const backgroundColor = document.querySelector('#id_background_color')?.value || '#ffffff';
-        const textColor = document.querySelector('#id_text_color')?.value || '#1a1a1a';
-        
-        // Preview de colores
-        document.getElementById('primary-color-preview').style.backgroundColor = primaryColor;
-        document.getElementById('secondary-color-preview').style.backgroundColor = secondaryColor;
-        document.getElementById('background-color-preview').style.backgroundColor = backgroundColor;
-        document.getElementById('text-color-preview').style.backgroundColor = textColor;
-        
-        // Preview de página
-        const titleFont = document.querySelector('#id_title_font')?.value || "'Inter', sans-serif";
-        const titleEl = document.getElementById('preview-title');
-        if (titleEl) {
-            titleEl.style.fontFamily = titleFont;
-            titleEl.style.color = textColor;
-        }
-        document.getElementById('font-preview').style.fontFamily = titleFont;
-        
-        // Preview de overlay
-        const bgImageInput = document.querySelector('#id_background_image');
-        if (bgImageInput && bgImageInput.files && bgImageInput.files[0]) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                document.getElementById('preview-bg').style.backgroundImage = `url(${e.target.result})`;
-            };
-            reader.readAsDataURL(bgImageInput.files[0]);
-        }
-        
-        // Preview de tarjeta
-        const cardBg = document.querySelector('#id_card_background_color')?.value || backgroundColor;
-        const cardTitleColor = document.querySelector('#id_card_title_color')?.value || primaryColor;
-        const cardPriceColor = document.querySelector('#id_card_price_color')?.value || primaryColor;
-        const cardBorderRadius = document.querySelector('#id_card_border_radius')?.value || '0.5rem';
-        
-        const cardPreview = document.getElementById('card-preview');
-        const cardTitle = cardPreview?.querySelector('h4');
-        const cardPrice = cardPreview?.querySelector('.text-xl');
-        
-        if (cardPreview) cardPreview.style.backgroundColor = cardBg;
-        if (cardPreview) cardPreview.style.borderRadius = cardBorderRadius;
-        if (cardTitle) cardTitle.style.color = cardTitleColor;
-        if (cardPrice) cardPrice.style.color = cardPriceColor;
-        
-        // Previews de colores de tarjeta
-        document.getElementById('card-bg-preview').style.backgroundColor = cardBg;
-        document.getElementById('card-title-color-preview').style.backgroundColor = cardTitleColor;
-        document.getElementById('card-price-color-preview').style.backgroundColor = cardPriceColor;
-    }
-    
-    // Escuchar cambios
-    const form = document.getElementById('style-form');
-    if (form) {
-        form.querySelectorAll('input, select').forEach(el => {
-            el.addEventListener('input', updatePreviews);
-            el.addEventListener('change', updatePreviews);
-        });
-    }
-    
-    document.getElementById('refresh-preview')?.addEventListener('click', updatePreviews);
-    document.addEventListener('DOMContentLoaded', updatePreviews);
-</script>
+<!-- Modal de vista previa expandida -->
+<div id="live-preview-modal" class="live-preview-overlay">
+    <div class="live-preview-container">
+        <div class="bg-gray-100 px-4 py-2 flex justify-between items-center border-b">
+            <div class="flex gap-1.5">
+                <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                <div class="w-3 h-3 rounded-full bg-green-500"></div>
+            </div>
+            <p class="text-sm text-gray-600">Vista previa expandida - {{ collection.name }}</p>
+            <button type="button" id="close-preview-modal" class="text-gray-500 hover:text-gray-700">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+        <div id="expanded-preview-container" class="h-[calc(100%-48px)] overflow-y-auto"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/products/collection-form-style.js' %}"></script>
 {% endblock %}
