@@ -104,6 +104,14 @@ PRODUCTS_VARIANT_DELETE = 'products:productvariant_delete'
 PRODUCTS_VARIANT_RESTORE = 'products:productvariant_restore'
 PRODUCTS_VARIANT_TRASHCAN = 'products:productvariant_trashcan'
 
+PRODUCTS_COLLECTION_LIST = 'products:collection_list'
+PRODUCTS_COLLECTION_CREATE = 'products:collection_create'
+PRODUCTS_COLLECTION_EDIT = 'products:collection_edit'
+PRODUCTS_COLLECTION_DELETE = 'products:collection_delete'
+PRODUCTS_COLLECTION_RESTORE = 'products:collection_restore'
+PRODUCTS_COLLECTION_TRASHCAN = 'products:collection_trashcan'
+PRODUCTS_COLLECTION_STYLE = 'products:collection_style'
+
 # Users URLs
 USERS_LIST = 'users:user_list'
 USERS_CREATE = 'users:user_create'

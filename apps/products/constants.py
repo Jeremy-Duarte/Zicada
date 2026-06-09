@@ -118,6 +118,12 @@ TEMPLATE_PRODUCTVARIANT_CONFIRM_DELETE = 'backoffice/productvariant/productvaria
 TEMPLATE_PRODUCTVARIANT_RESTORE = 'backoffice/productvariant/productvariant_restore.html'
 TEMPLATE_PRODUCTVARIANT_TRASHCAN = 'backoffice/productvariant/productvariant_trashcan.html'
 
+TEMPLATE_COLLECTION_FORM = 'backoffice/collection/collection_form.html'
+TEMPLATE_COLLECTION_CONFIRM_DELETE = 'backoffice/collection/collection_confirm_delete.html'
+TEMPLATE_COLLECTION_RESTORE = 'backoffice/collection/collection_restore.html'
+TEMPLATE_COLLECTION_TRASHCAN = 'backoffice/collection/collection_trashcan.html'
+TEMPLATE_COLLECTION_STYLE_FORM = 'backoffice/collection/collection_style_form.html'
+
 # Form Context Keys
 CONTEXT_CANCEL_URL = 'cancel_url'
 CONTEXT_CANCEL_ARGS = 'cancel_args'
@@ -286,6 +292,12 @@ MSG_VARIANT_DELETED = 'Variante desactivada correctamente.'
 MSG_VARIANT_RESTORED = 'Variante restaurada correctamente.'
 MSG_VARIANT_RESTORE_ERROR = 'Error al restaurar la variante.'
 
+MSG_COLLECTION_CREATED = 'Colección "{name}" creada exitosamente.'
+MSG_COLLECTION_UPDATED = 'Colección "{name}" actualizada exitosamente.'
+MSG_COLLECTION_DELETED = 'Colección "{name}" movida a la papelera.'
+MSG_COLLECTION_RESTORED = 'Colección "{name}" restaurada exitosamente.'
+MSG_COLLECTION_STYLE_UPDATED = 'Estilos de "{name}" actualizados correctamente.'
+
 # Import Template Filenames
 IMPORT_TEMPLATE_FILENAME_SIZE = 'plantilla_tallas.csv'
 IMPORT_TEMPLATE_FILENAME_COLOR = 'plantilla_colores.csv'
@@ -307,3 +319,9 @@ IMPORT_EXAMPLE_DATA_CATEGORY = [
     ['Accesorios'],
     ['Chaquetas'],
 ]
+
+# Perms
+PERM_COLLECTION_VIEW = 'products.view_collection'
+PERM_COLLECTION_ADD = 'products.add_collection'
+PERM_COLLECTION_CHANGE = 'products.change_collection'
+PERM_COLLECTION_DELETE = 'products.delete_collection'

@@ -26,6 +26,7 @@ from .forms import (
     ProductUpdateForm, ProductDeleteForm, ProductCreateForm, ProductRestoreForm,
     ProductColorCreateForm, ProductColorUpdateForm, ProductColorDeleteForm,
     ProductVariantCreateForm, ProductVariantDeleteForm, ProductVariantRestoreForm, ProductVariantUpdateForm,
+    CollectionCreateForm, CollectionUpdateForm, CollectionDeleteForm, CollectionRestoreForm, CollectionStyleForm
 )
 from apps.products.importers.size_importer import SizeImporter
 from apps.products.importers.color_importer import ColorImporter
@@ -42,6 +43,13 @@ from apps.core.url_names import (
     PRODUCTS_LIST,
     PRODUCTS_EDIT,
     PRODUCTS_TRASHCAN,
+    PRODUCTS_COLLECTION_LIST,
+    PRODUCTS_COLLECTION_CREATE,
+    PRODUCTS_COLLECTION_EDIT,
+    PRODUCTS_COLLECTION_DELETE,
+    PRODUCTS_COLLECTION_RESTORE,
+    PRODUCTS_COLLECTION_TRASHCAN,
+    PRODUCTS_COLLECTION_STYLE,
 )
 
 from .constants import (
@@ -124,6 +132,11 @@ from .constants import (
     TEMPLATE_PRODUCTVARIANT_CONFIRM_DELETE,
     TEMPLATE_PRODUCTVARIANT_RESTORE,
     TEMPLATE_PRODUCTVARIANT_TRASHCAN,
+    TEMPLATE_COLLECTION_FORM,
+    TEMPLATE_COLLECTION_CONFIRM_DELETE,
+    TEMPLATE_COLLECTION_RESTORE,
+    TEMPLATE_COLLECTION_TRASHCAN,
+    TEMPLATE_COLLECTION_STYLE_FORM,
     # Form Context Keys
     CONTEXT_CANCEL_URL,
     CONTEXT_CANCEL_ARGS,
@@ -248,6 +261,11 @@ from .constants import (
     MSG_VARIANT_DELETED,
     MSG_VARIANT_RESTORED,
     MSG_VARIANT_RESTORE_ERROR,
+    MSG_COLLECTION_CREATED,
+    MSG_COLLECTION_UPDATED,
+    MSG_COLLECTION_DELETED,
+    MSG_COLLECTION_RESTORED,
+    MSG_COLLECTION_STYLE_UPDATED,
     # Import Template Filenames
     IMPORT_TEMPLATE_FILENAME_SIZE,
     IMPORT_TEMPLATE_FILENAME_COLOR,
@@ -256,6 +274,11 @@ from .constants import (
     IMPORT_EXAMPLE_DATA_SIZE,
     IMPORT_EXAMPLE_DATA_COLOR,
     IMPORT_EXAMPLE_DATA_CATEGORY,
+    # Perms
+    PERM_COLLECTION_VIEW,
+    PERM_COLLECTION_ADD,
+    PERM_COLLECTION_CHANGE,
+    PERM_COLLECTION_DELETE,
 )
 
 
@@ -1796,3 +1819,230 @@ class ProductVariantTrashcanView(PermissionRequiredMixin, ListView):
         context = super().get_context_data(**kwargs)
         context[CONTEXT_PRODUCT] = self.product
         return context
+
+
+class CollectionListView(PermissionRequiredMixin, PaginationMixin, FilterMixin, ListView):
+    """Lista de colecciones con filtros avanzados."""
+    model = Collection
+    template_name = TEMPLATE_COLLECTIONS_LIST
+    context_object_name = 'collections'
+    permission_required = PERM_COLLECTION_VIEW
+    paginate_by = PAGINATE_BY_DEFAULT
+    
+    filters = [
+        (FILTER_NAME, FILTER_NAME, 'icontains'),
+        ('status', 'status', 'exact'),
+        (FILTER_IS_ACTIVE, FILTER_IS_ACTIVE, 'exact'),
+    ]
+    
+    def get_queryset(self):
+        qs = super().get_queryset()
+        qs = qs.select_related().prefetch_related('products')
+        return qs
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        rows = []
+        for collection in context['collections']:
+            status_badge = ''
+            if collection.status == 'publicada':
+                status_badge = '<span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-700">Publicada</span>'
+            elif collection.status == 'borrador':
+                status_badge = '<span class="px-2 py-1 text-xs rounded-full bg-amber-100 text-amber-700">Borrador</span>'
+            else:
+                status_badge = '<span class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-700">Archivada</span>'
+            
+            active_badge = ''
+            if collection.is_active:
+                active_badge = '<span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-700">Activo</span>'
+            else:
+                active_badge = '<span class="px-2 py-1 text-xs rounded-full bg-red-100 text-red-700">Inactivo</span>'
+            
+            rows.append({
+                'pk': collection.pk,
+                'values': [
+                    collection.name,
+                    collection.products.count(),
+                    status_badge,
+                    active_badge,
+                    collection.created_at.strftime(DATE_FORMAT_DISPLAY) if collection.created_at else '-',
+                ],
+            })
+        
+        context['rows'] = rows
+        context['headers'] = ['Nombre', 'Productos', 'Estado', 'Activo', 'Creado']
+        return context
+
+
+class CollectionCreateView(PermissionRequiredMixin, CreateView):
+    """Crear una nueva colección."""
+    model = Collection
+    form_class = CollectionCreateForm
+    template_name = TEMPLATE_COLLECTION_FORM
+    permission_required = PERM_COLLECTION_ADD
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context[CONTEXT_CANCEL_URL] = PRODUCTS_COLLECTION_LIST
+        context[CONTEXT_IS_CREATE] = True
+        return context
+    
+    def get_success_url(self):
+        return reverse(PRODUCTS_COLLECTION_EDIT, kwargs={'pk': self.object.pk})
+    
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        messages.success(self.request, MSG_COLLECTION_CREATED.format(name=form.instance.name))
+        return response
+
+
+class CollectionUpdateView(PermissionRequiredMixin, UpdateView):
+    """Editar una colección existente."""
+    model = Collection
+    form_class = CollectionUpdateForm
+    template_name = TEMPLATE_COLLECTION_FORM
+    permission_required = PERM_COLLECTION_CHANGE
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context[CONTEXT_CANCEL_URL] = PRODUCTS_COLLECTION_LIST
+        context[CONTEXT_IS_UPDATE] = True
+        context['product_count'] = self.object.products.filter(is_active=True).count()
+        return context
+    
+    def get_success_url(self):
+        return reverse(PRODUCTS_COLLECTION_LIST)
+    
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        messages.success(self.request, MSG_COLLECTION_UPDATED.format(name=form.instance.name))
+        return response
+
+
+class CollectionDeleteView(PermissionRequiredMixin, DeleteView):
+    """Soft-delete una colección (mover a papelera)."""
+    model = Collection
+    form_class = CollectionDeleteForm
+    template_name = TEMPLATE_COLLECTION_CONFIRM_DELETE
+    permission_required = PERM_COLLECTION_DELETE
+    success_url = reverse_lazy(PRODUCTS_COLLECTION_LIST)
+    
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['collection'] = self.get_object()
+        return kwargs
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        collection = self.get_object()
+        context[CONTEXT_OBJECT_NAME] = 'Colección'
+        context[CONTEXT_OBJECT_DISPLAY] = collection.name
+        context[CONTEXT_CANCEL_URL] = PRODUCTS_COLLECTION_LIST
+        context['product_count'] = collection.products.filter(is_active=True).count()
+        return context
+    
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        form = self.get_form()
+        if form.is_valid():
+            return self.delete(request, *args, **kwargs)
+        return self.render_to_response(self.get_context_data(form=form))
+    
+    def delete(self, request, *args, **kwargs):
+        collection = self.get_object()
+        collection_name = collection.name
+        collection.soft_delete(user=request.user)
+        messages.success(request, MSG_COLLECTION_DELETED.format(name=collection_name))
+        return redirect(self.success_url)
+
+
+class CollectionRestoreView(PermissionRequiredMixin, TemplateView):
+    """Restaurar una colección eliminada."""
+    model = Collection
+    form_class = CollectionRestoreForm
+    template_name = TEMPLATE_COLLECTION_RESTORE
+    permission_required = PERM_COLLECTION_CHANGE
+    success_url = reverse_lazy(PRODUCTS_COLLECTION_TRASHCAN)
+    
+    def get_object(self):
+        return get_object_or_404(Collection.all_objects, pk=self.kwargs['pk'], is_active=False)
+    
+    def get_form(self):
+        return self.form_class(collection=self.get_object(), data=self.request.POST or None)
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        collection = self.get_object()
+        context['collection'] = collection
+        context['form'] = self.get_form()
+        context[CONTEXT_CANCEL_URL] = PRODUCTS_COLLECTION_TRASHCAN
+        context[CONTEXT_OBJECT_NAME] = 'Colección'
+        context[CONTEXT_OBJECT_DISPLAY] = collection.name
+        context['product_count'] = collection.products.filter(is_active=True).count()
+        return context
+    
+    def post(self, request, *args, **kwargs):
+        collection = self.get_object()
+        form = self.get_form()
+        if form.is_valid():
+            collection.restore(user=request.user)
+            
+            if form.cleaned_data.get('restore_products_type'):
+                collection.update_products_type()
+            
+            messages.success(request, MSG_COLLECTION_RESTORED.format(name=collection.name))
+            return redirect(PRODUCTS_COLLECTION_LIST)
+        return self.render_to_response(self.get_context_data(form=form))
+
+
+class CollectionTrashcanView(PermissionRequiredMixin, ListView):
+    """Lista de colecciones eliminadas (papelera)."""
+    model = Collection
+    template_name = TEMPLATE_COLLECTION_TRASHCAN
+    context_object_name = 'collections'
+    permission_required = PERM_COLLECTION_VIEW
+    paginate_by = PAGINATE_BY_DEFAULT
+    
+    def get_queryset(self):
+        return Collection.all_objects.filter(
+            is_active=False
+        ).order_by(ORDER_BY_DELETED_AT)
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        rows = []
+        for collection in context['collections']:
+            rows.append({
+                'pk': collection.pk,
+                'values': [
+                    collection.name,
+                    collection.products.count(),
+                    collection.deleted_at.strftime(DATE_FORMAT_DISPLAY) if collection.deleted_at else '-',
+                ],
+            })
+        context['rows'] = rows
+        context['headers'] = ['Nombre', 'Productos', 'Eliminado el']
+        return context
+
+
+class CollectionStyleView(PermissionRequiredMixin, UpdateView):
+    """Vista separada para la configuración de estilos de colección."""
+    model = Collection
+    form_class = CollectionStyleForm
+    template_name = TEMPLATE_COLLECTION_STYLE_FORM
+    permission_required = PERM_COLLECTION_CHANGE
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context[CONTEXT_CANCEL_URL] = PRODUCTS_COLLECTION_LIST
+        context[CONTEXT_IS_UPDATE] = True
+        context['collection'] = self.get_object()
+        return context
+    
+    def get_success_url(self):
+        return reverse(PRODUCTS_COLLECTION_LIST)
+    
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        messages.success(self.request, MSG_COLLECTION_STYLE_UPDATED.format(name=form.instance.name))
+        return response

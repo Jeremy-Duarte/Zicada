@@ -40,6 +40,13 @@ admin_patterns = [
     path('productos/variantes/<int:pk>/eliminar/', views.ProductVariantDeleteView.as_view(), name='productvariant_delete'),
     path('productos/variantes/<int:pk>/restaurar/', views.ProductVariantRestoreView.as_view(), name='productvariant_restore'),
     path('productos/<int:product_pk>/variantes/papelera/', views.ProductVariantTrashcanView.as_view(), name='productvariant_trashcan'),
+    path('colecciones/', views.CollectionListView.as_view(), name='collection_list'),
+    path('colecciones/crear/', views.CollectionCreateView.as_view(), name='collection_create'),
+    path('colecciones/<int:pk>/editar/', views.CollectionUpdateView.as_view(), name='collection_edit'),
+    path('colecciones/<int:pk>/eliminar/', views.CollectionDeleteView.as_view(), name='collection_delete'),
+    path('colecciones/<int:pk>/restaurar/', views.CollectionRestoreView.as_view(), name='collection_restore'),
+    path('colecciones/papelera/', views.CollectionTrashcanView.as_view(), name='collection_trashcan'),
+    path('colecciones/<int:pk>/estilos/', views.CollectionStyleView.as_view(), name='collection_style'),
 ]
 
 urlpatterns = [
