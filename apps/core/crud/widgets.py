@@ -1,11 +1,12 @@
 import json
 from django import forms
 from django.forms import widgets
+from django.db import models
 from django.urls import reverse
 from django.utils.safestring import mark_safe
 from django.utils.html import escape
 from django.core.cache import cache
-from apps.products.models import ProductImage
+from apps.products.models import ProductImage, Product
 
 
 class CloudinaryImageSelectWidget(widgets.SelectMultiple):
@@ -302,3 +303,127 @@ class DeliveryUserRadioWidget(forms.RadioSelect):
 
         output.append('</div>')
         return mark_safe(''.join(output))
+    
+class ProductCheckboxSelectWidget(forms.Widget):
+    """Widget para selección múltiple de productos con búsqueda y vista en cuadrícula."""
+    
+    def __init__(self, attrs=None, editing=False):
+        self.editing = editing
+        super().__init__(attrs)
+    
+    def render(self, name, value, attrs=None, renderer=None):
+        final_attrs = self.build_attrs(attrs, {'name': name, 'class': 'hidden product-select-input'})
+        if value is None:
+            value = []
+        if not isinstance(value, (list, tuple)):
+            value = [value]
+
+        selected_ids = [str(v) for v in value]
+        
+        # Detectar automáticamente si es edición (si no se pasó explícitamente)
+        if not self.editing and selected_ids:
+            self.editing = True
+        
+        cache_key = 'products_for_select_fabrica_only'
+        
+        if self.editing and selected_ids:
+            cache.delete(cache_key)
+        
+        products = cache.get(cache_key)
+        if products is None:
+            if self.editing:
+                products = list(
+                    Product.objects.filter(
+                        is_active=True
+                    ).filter(
+                        models.Q(product_type='fabrica') | 
+                        models.Q(id__in=selected_ids)
+                    ).select_related('category').distinct()[:100]
+                )
+            else:
+                products = list(
+                    Product.objects.filter(
+                        is_active=True,
+                        product_type='fabrica'
+                    ).select_related('category')[:100]
+                )
+            cache.set(cache_key, products, 60 * 5)
+
+        select_html = self._render_hidden_select(name, selected_ids, products, final_attrs)
+        grid_html = self._render_product_grid(products, selected_ids, name)
+
+        return mark_safe(f"""
+            <div class="product-select-widget space-y-4" data-widget-name="{name}" data-selected-ids='{escape(str(selected_ids))}'>
+                {select_html}
+                <div class="relative">
+                    <input type="text" class="product-search w-full px-3 py-2 border border-gray-300 rounded-lg pl-8 text-sm focus:outline-none focus:border-zicada-accent focus:ring-1 focus:ring-zicada-accent" placeholder="Buscar producto...">
+                    <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
+                </div>
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 max-h-96 overflow-y-auto p-1">
+                    {grid_html}
+                </div>
+                <p class="text-xs text-gray-400 mt-2 flex items-center gap-1">
+                    <i class="fas fa-info-circle"></i>
+                    Selecciona los productos que pertenecen a esta colección.
+                </p>
+            </div>
+        """)
+
+    def _render_hidden_select(self, name, selected_values, products, attrs):
+        options = []
+        for product in products:
+            selected_attr = ' selected' if str(product.pk) in selected_values else ''
+            options.append(f'<option value="{product.pk}"{selected_attr}>{product.name}</option>')
+        select_attrs = ' '.join([f'{k}="{escape(str(v))}"' for k, v in attrs.items()])
+        return f'<select {select_attrs} multiple>{"".join(options)}</select>'
+
+    def _render_product_grid(self, products, selected_ids, name):
+        if not products:
+            return '''
+                <div class="col-span-full text-center py-8 text-gray-400">
+                    <i class="fas fa-box-open text-3xl mb-2 block"></i>
+                    <p class="text-sm">No hay productos disponibles.</p>
+                    <a href="/products/admin/productos/crear/" target="_blank" class="text-zicada-accent hover:underline inline-block mt-2 text-sm">
+                        Crear producto
+                    </a>
+                </div>
+            '''
+
+        grid_items = []
+        for product in products:
+            is_selected = str(product.pk) in selected_ids
+            
+            featured_image = product.get_featured_image()
+            image_url = featured_image.image.url if featured_image else '/static/img/product-placeholder.jpeg'
+
+            grid_items.append(f'''
+                <label class="product-item relative cursor-pointer group" data-product-id="{product.pk}">
+                    <input type="checkbox" name="{name}" value="{product.pk}" 
+                           class="absolute opacity-0 w-0 h-0 peer"
+                           {'checked' if is_selected else ''}>
+                    <div class="relative rounded-lg overflow-hidden border-2 transition-all duration-200
+                                {'border-zicada-accent ring-2 ring-zicada-accent/30' if is_selected else 'border-gray-200'}
+                                group-hover:border-zicada-accent group-hover:shadow-md">
+                        <img src="{image_url}" alt="{escape(product.name)}"
+                            class="w-full h-24 object-cover">
+                        <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 peer-checked:opacity-100 transition-opacity duration-200">
+                            <i class="fas fa-check-circle text-white text-2xl drop-shadow-md"></i>
+                        </div>
+                    </div>
+                    <div class="absolute top-1 right-1 w-5 h-5 rounded-full bg-white shadow-sm flex items-center justify-center">
+                        <div class="w-4 h-4 rounded-full transition-colors duration-200
+                                    {'bg-zicada-accent' if is_selected else 'bg-gray-300'} peer-checked:bg-zicada-accent">
+                        </div>
+                    </div>
+                    <div class="mt-2 text-center">
+                        <span class="text-xs font-medium text-gray-800 line-clamp-1 block">{escape(product.name)}</span>
+                        <span class="text-xs text-gray-500 block">{escape(product.category.name)}</span>
+                        <span class="text-xs font-bold text-gray-700 block mt-1">${product.price:,.0f}</span>
+                    </div>
+                </label>
+            ''')
+
+        return ''.join(grid_items)
+
+    class Media:
+        js = ('js/widgets/product-checkbox-widget.js',)
