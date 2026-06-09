@@ -1,0 +1,8 @@
+{% extends "backoffice/layouts/backoffice_base.html" %}
+{% load static %}
+
+{% block title %}Eliminar Colección - Zicada{% endblock %}
+
+{% block content %}
+{% include 'backoffice/components/crud/confirm_delete.html' with form=form object_name="Colección" object_display=object_display cancel_url="products:collection_list" warning="Esta acción moverá la colección a la papelera. Podrás restaurarla después." %}
+{% endblock %}

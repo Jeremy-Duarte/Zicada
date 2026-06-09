@@ -1,0 +1,58 @@
+{% extends "backoffice/layouts/backoffice_base.html" %}
+{% load static %}
+
+{% block title %}Restaurar Colección - Zicada{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <div class="bg-white rounded-xl shadow-sm p-6">
+        <h1 class="text-2xl font-bold text-gray-800 mb-6">Restaurar Colección</h1>
+        
+        <div class="mb-6 p-4 bg-amber-50 rounded-lg border-l-4 border-amber-500">
+            <p class="text-amber-700 text-sm">
+                <i class="fas fa-exclamation-triangle mr-2"></i>
+                Al restaurar la colección "{{ object_display }}", volverá a estar disponible en el catálogo.
+                Los productos volverán a ser marcados como "Colección limitada" si no pertenecen a otra colección publicada.
+            </p>
+        </div>
+        
+        <form method="post">
+            {% csrf_token %}
+            
+            {% if form.errors %}
+            <div class="bg-red-100 text-red-700 p-4 rounded mb-4">
+                <ul class="list-disc list-inside">
+                {% for field, errors in form.errors.items %}
+                    <li><strong>{{ field }}:</strong> {{ errors|join:", " }}</li>
+                {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+            
+            <div class="space-y-4">
+                {% for field in form %}
+                <div>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        {{ field }}
+                        <span class="text-sm font-medium text-gray-700">{{ field.label }}</span>
+                    </label>
+                    {% if field.help_text %}
+                    <p class="text-xs text-gray-400 mt-1">{{ field.help_text }}</p>
+                    {% endif %}
+                    {% if field.errors %}
+                    <p class="text-red-500 text-xs mt-1">{{ field.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            
+            <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-200">
+                <a href="{% url 'products:collection_trashcan' %}" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition">Cancelar</a>
+                <button type="submit" class="px-6 py-2 bg-zicada-accent hover:bg-red-700 text-white rounded-lg font-semibold transition">
+                    <i class="fas fa-trash-restore mr-1"></i> Restaurar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

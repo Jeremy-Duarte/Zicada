@@ -1,0 +1,97 @@
+{% extends "backoffice/layouts/backoffice_base.html" %}
+{% load static %}
+
+{% block title %}Colecciones - Zicada{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    {% include 'backoffice/components/crud/list_header.html' with title="Colecciones" create_url="products:collection_create" create_label="Nueva Colección" %}
+    
+    {% include 'backoffice/components/crud/list_filters.html' with filters=filters_config %}
+    
+    <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Portada</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Productos</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Activo</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fechas</th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for collection in collections %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4">
+                            <div class="text-sm font-medium text-gray-900">{{ collection.name }}</div>
+                            <div class="text-xs text-gray-500">{{ collection.slug }}</div>
+                        </td>
+                        <td class="px-6 py-4">
+                            {% if collection.cover_image %}
+                            <img src="{{ collection.cover_image.url }}" class="w-12 h-12 object-cover rounded-lg shadow-sm">
+                            {% else %}
+                            <div class="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400">
+                                <i class="fas fa-image"></i>
+                            </div>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-500">{{ collection.products.count }}</td>
+                        <td class="px-6 py-4">
+                            {% if collection.status == 'publicada' %}
+                            <span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-700">Publicada</span>
+                            {% elif collection.status == 'borrador' %}
+                            <span class="px-2 py-1 text-xs rounded-full bg-amber-100 text-amber-700">Borrador</span>
+                            {% else %}
+                            <span class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-700">Archivada</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4">
+                            {% if collection.is_active %}
+                            <span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-700">Activo</span>
+                            {% else %}
+                            <span class="px-2 py-1 text-xs rounded-full bg-red-100 text-red-700">Inactivo</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-xs text-gray-500">
+                            {% if collection.start_date %}
+                            <div>Inicio: {{ collection.start_date|date:"d/m/Y" }}</div>
+                            {% endif %}
+                            {% if collection.end_date %}
+                            <div>Fin: {{ collection.end_date|date:"d/m/Y" }}</div>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-right space-x-2">
+                            <a href="{% url 'products:collection_edit' collection.pk %}" class="text-blue-600 hover:text-blue-800"><i class="fas fa-edit"></i></a>
+                            <a href="{% url 'products:collection_style' collection.pk %}" class="text-purple-600 hover:text-purple-800"><i class="fas fa-palette"></i></a>
+                            <a href="{% url 'products:collection_delete' collection.pk %}" class="text-red-600 hover:text-red-800"><i class="fas fa-trash-alt"></i></a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="px-6 py-12 text-center text-gray-400">
+                            <i class="fas fa-layer-group text-3xl mb-2 block"></i>
+                            No hay colecciones registradas
+                            <div class="mt-2">
+                                <a href="{% url 'products:collection_create' %}" class="text-zicada-accent hover:underline">Crear primera colección</a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    {% include 'backoffice/components/crud/pagination.html' %}
+    
+    <div class="text-right">
+        <a href="{% url 'products:collection_trashcan' %}" class="text-sm text-gray-400 hover:text-gray-600">
+            <i class="fas fa-trash-alt mr-1"></i> Ver colecciones eliminadas
+        </a>
+    </div>
+</div>
+{% endblock %}

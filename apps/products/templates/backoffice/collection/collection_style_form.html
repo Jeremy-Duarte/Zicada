@@ -1,0 +1,334 @@
+{% extends "backoffice/layouts/backoffice_base.html" %}
+{% load static %}
+
+{% block title %}Estilos de {{ collection.name }} - Zicada{% endblock %}
+
+{% block extra_css %}
+<style>
+    .preview-card {
+        transition: all 0.3s ease;
+    }
+    .color-preview {
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        border: 1px solid #ddd;
+        cursor: pointer;
+        display: inline-block;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="bg-white rounded-xl shadow-sm p-6">
+        <div class="flex justify-between items-center mb-6">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800">Estilos de {{ collection.name }}</h1>
+                <p class="text-sm text-gray-500 mt-1">Personaliza la apariencia visual de la colección</p>
+            </div>
+            <div class="flex gap-3">
+                <a href="{% url 'products:collection_list' %}" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition">Volver</a>
+                <button type="submit" form="style-form" class="px-6 py-2 bg-zicada-accent hover:bg-red-700 text-white rounded-lg font-semibold transition">
+                    <i class="fas fa-save mr-1"></i> Guardar estilos
+                </button>
+            </div>
+        </div>
+
+        <form id="style-form" method="post" enctype="multipart/form-data" class="space-y-8" novalidate>
+            {% csrf_token %}
+            
+            {% if form.errors %}
+            <div class="bg-red-100 text-red-700 p-4 rounded mb-4 border-l-4 border-red-500">
+                <strong class="block mb-2">⚠️ Por favor corrige los siguientes errores:</strong>
+                <ul class="list-disc list-inside space-y-1">
+                {% for field, errors in form.errors.items %}
+                    <li><strong>{{ field|capfirst }}:</strong> {{ errors|join:", " }}</li>
+                {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            <!-- Vista previa en vivo -->
+            <div class="bg-gray-50 rounded-xl p-4">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold text-gray-800">Vista previa en vivo</h3>
+                    <button type="button" id="refresh-preview" class="text-sm text-zicada-accent hover:underline">
+                        <i class="fas fa-sync-alt mr-1"></i> Actualizar
+                    </button>
+                </div>
+                
+                <!-- Preview de la página de colección -->
+                <div class="mb-6">
+                    <p class="text-sm font-medium text-gray-700 mb-2">Vista previa de la página:</p>
+                    <div id="collection-preview" class="relative rounded-xl overflow-hidden border border-gray-200" style="height: 300px;">
+                        <div id="preview-bg" class="absolute inset-0 bg-cover bg-center" style="background-image: {% if collection.background_image %}url('{{ collection.background_image.url }}'){% else %}linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 100%){% endif %};"></div>
+                        <div id="preview-overlay" class="absolute inset-0 bg-black" style="opacity: 0.4;"></div>
+                        <div class="relative z-10 w-full h-full flex items-center justify-center px-6">
+                            <div class="text-center">
+                                <h1 id="preview-title" class="text-3xl font-bold text-white mb-2" style="font-family: {{ collection.title_font|default:"'Inter', sans-serif" }};">{{ collection.name }}</h1>
+                                <p id="preview-description" class="text-white/80">{{ collection.description|truncatewords:20 }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Preview de tarjeta de producto -->
+                <div>
+                    <p class="text-sm font-medium text-gray-700 mb-2">Vista previa de tarjeta de producto:</p>
+                    <div id="card-preview" class="w-72 rounded-xl overflow-hidden shadow-lg" style="background-color: {{ form.card_background_color.value|default:collection.background_color|default:'#ffffff' }}; border-radius: {{ form.card_border_radius.value|default:'0.5rem' }};">
+                        <div class="h-48 bg-gray-200 relative">
+                            <div class="absolute inset-0 flex items-center justify-center text-gray-400">
+                                <i class="fas fa-image text-3xl"></i>
+                            </div>
+                            <div class="absolute top-2 left-2">
+                                <span class="inline-block px-2 py-1 rounded-md text-xs font-semibold bg-black/50 backdrop-blur-sm text-white">Ejemplo</span>
+                            </div>
+                        </div>
+                        <div class="p-4">
+                            <h4 class="font-semibold text-lg mb-1" style="color: {{ form.card_title_color.value|default:collection.primary_color|default:'#c2a575' }};">Producto de ejemplo</h4>
+                            <div class="flex justify-between items-center mt-3">
+                                <span class="text-xl font-bold" style="color: {{ form.card_price_color.value|default:collection.primary_color|default:'#c2a575' }};">$99,900</span>
+                                <span class="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700">Disponible</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Colores de la colección -->
+            <div class="border-b border-gray-200 pb-4">
+                <h2 class="text-lg font-semibold text-gray-800">Colores de la Colección</h2>
+                <p class="text-sm text-gray-500">Define la paleta de colores única para esta colección</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Color principal</label>
+                    <div class="flex items-center gap-3">
+                        {{ form.primary_color }}
+                        <div id="primary-color-preview" class="color-preview" style="background-color: {{ form.primary_color.value|default:'#c2a575' }};"></div>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Color secundario</label>
+                    <div class="flex items-center gap-3">
+                        {{ form.secondary_color }}
+                        <div id="secondary-color-preview" class="color-preview" style="background-color: {{ form.secondary_color.value|default:'#8b5e3c' }};"></div>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Color de fondo</label>
+                    <div class="flex items-center gap-3">
+                        {{ form.background_color }}
+                        <div id="background-color-preview" class="color-preview" style="background-color: {{ form.background_color.value|default:'#ffffff' }};"></div>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Color de texto</label>
+                    <div class="flex items-center gap-3">
+                        {{ form.text_color }}
+                        <div id="text-color-preview" class="color-preview" style="background-color: {{ form.text_color.value|default:'#1a1a1a' }};"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Imagen de fondo -->
+            <div class="border-b border-gray-200 pb-4">
+                <h2 class="text-lg font-semibold text-gray-800">Imagen de Fondo</h2>
+                <p class="text-sm text-gray-500">Imagen de fondo para la página de la colección (opcional)</p>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Imagen de fondo</label>
+                {{ form.background_image }}
+                {% if collection.background_image %}
+                <div class="mt-2">
+                    <img src="{{ collection.background_image.url }}" class="w-32 h-32 object-cover rounded-lg shadow-md">
+                    <p class="text-xs text-gray-500 mt-1">Imagen actual</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Tipografía -->
+            <div class="border-b border-gray-200 pb-4">
+                <h2 class="text-lg font-semibold text-gray-800">Tipografía</h2>
+                <p class="text-sm text-gray-500">Fuente personalizada para los títulos</p>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Fuente de títulos</label>
+                {{ form.title_font }}
+                <div id="font-preview" class="mt-2 p-2 bg-gray-50 rounded" style="font-family: {{ form.title_font.value|default:"'Inter', sans-serif" }}; font-size: 1.25rem;">
+                    Vista previa de la fuente seleccionada
+                </div>
+            </div>
+
+            <!-- Configuración de Tarjetas -->
+            <div class="border-b border-gray-200 pb-4">
+                <h2 class="text-lg font-semibold text-gray-800">Configuración de Tarjetas</h2>
+                <p class="text-sm text-gray-500">Personaliza la apariencia de las tarjetas de producto</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Color de fondo de tarjetas</label>
+                    <div class="flex items-center gap-3">
+                        {{ form.card_background_color }}
+                        <div id="card-bg-preview" class="color-preview" style="background-color: {{ form.card_background_color.value|default:collection.background_color|default:'#ffffff' }};"></div>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Color del título</label>
+                    <div class="flex items-center gap-3">
+                        {{ form.card_title_color }}
+                        <div id="card-title-color-preview" class="color-preview" style="background-color: {{ form.card_title_color.value|default:collection.primary_color|default:'#c2a575' }};"></div>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Color del precio</label>
+                    <div class="flex items-center gap-3">
+                        {{ form.card_price_color }}
+                        <div id="card-price-color-preview" class="color-preview" style="background-color: {{ form.card_price_color.value|default:collection.primary_color|default:'#c2a575' }};"></div>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Radio de borde</label>
+                    {{ form.card_border_radius }}
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Sombra de tarjeta</label>
+                    {{ form.card_shadow }}
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Escala al hover</label>
+                    {{ form.card_hover_scale }}
+                </div>
+                <div>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        {{ form.card_show_category }}
+                        <span class="text-sm font-medium text-gray-700">Mostrar categoría</span>
+                    </label>
+                </div>
+                <div>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        {{ form.card_show_stock_badge }}
+                        <span class="text-sm font-medium text-gray-700">Mostrar badge de stock</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Efectos avanzados -->
+            <div class="border-b border-gray-200 pb-4">
+                <h2 class="text-lg font-semibold text-gray-800">Efectos Avanzados</h2>
+                <p class="text-sm text-gray-500">Configuración JSON para efectos (opcional)</p>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Configuración de efectos</label>
+                {{ form.effects_config }}
+                <p class="text-xs text-gray-400 mt-1">Ejemplo: {"hover_effect": "zoom", "parallax": true}</p>
+            </div>
+
+            <!-- CSS personalizado -->
+            <div class="border-b border-gray-200 pb-4">
+                <h2 class="text-lg font-semibold text-gray-800">CSS Personalizado</h2>
+                <p class="text-sm text-gray-500">CSS adicional para personalizar la apariencia (solo para avanzados)</p>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">CSS personalizado</label>
+                {{ form.custom_css }}
+            </div>
+
+            <!-- Configuración visual JSON -->
+            <div class="border-b border-gray-200 pb-4">
+                <h2 class="text-lg font-semibold text-gray-800">Configuración Visual (JSON Legado)</h2>
+                <p class="text-sm text-gray-500">JSON manual para configuración avanzada</p>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Style Config</label>
+                {{ form.style_config }}
+                <p class="text-xs text-gray-400 mt-1">Los campos anteriores ya generan esto automáticamente</p>
+            </div>
+
+            <!-- Activo -->
+            <div>
+                <label class="flex items-center gap-2 cursor-pointer">
+                    {{ form.is_active }}
+                    <span class="text-sm font-medium text-gray-700">Colección activa</span>
+                </label>
+            </div>
+
+            <!-- Botones -->
+            <div class="flex justify-end gap-3 pt-4 border-t border-gray-200">
+                <a href="{% url 'products:collection_list' %}" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition">Cancelar</a>
+                <button type="submit" class="px-6 py-2 bg-zicada-accent hover:bg-red-700 text-white rounded-lg font-semibold transition">
+                    <i class="fas fa-save mr-1"></i> Guardar estilos
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function updatePreviews() {
+        // Colores de la colección
+        const primaryColor = document.querySelector('#id_primary_color')?.value || '#c2a575';
+        const secondaryColor = document.querySelector('#id_secondary_color')?.value || '#8b5e3c';
+        const backgroundColor = document.querySelector('#id_background_color')?.value || '#ffffff';
+        const textColor = document.querySelector('#id_text_color')?.value || '#1a1a1a';
+        
+        // Preview de colores
+        document.getElementById('primary-color-preview').style.backgroundColor = primaryColor;
+        document.getElementById('secondary-color-preview').style.backgroundColor = secondaryColor;
+        document.getElementById('background-color-preview').style.backgroundColor = backgroundColor;
+        document.getElementById('text-color-preview').style.backgroundColor = textColor;
+        
+        // Preview de página
+        const titleFont = document.querySelector('#id_title_font')?.value || "'Inter', sans-serif";
+        const titleEl = document.getElementById('preview-title');
+        if (titleEl) {
+            titleEl.style.fontFamily = titleFont;
+            titleEl.style.color = textColor;
+        }
+        document.getElementById('font-preview').style.fontFamily = titleFont;
+        
+        // Preview de overlay
+        const bgImageInput = document.querySelector('#id_background_image');
+        if (bgImageInput && bgImageInput.files && bgImageInput.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('preview-bg').style.backgroundImage = `url(${e.target.result})`;
+            };
+            reader.readAsDataURL(bgImageInput.files[0]);
+        }
+        
+        // Preview de tarjeta
+        const cardBg = document.querySelector('#id_card_background_color')?.value || backgroundColor;
+        const cardTitleColor = document.querySelector('#id_card_title_color')?.value || primaryColor;
+        const cardPriceColor = document.querySelector('#id_card_price_color')?.value || primaryColor;
+        const cardBorderRadius = document.querySelector('#id_card_border_radius')?.value || '0.5rem';
+        
+        const cardPreview = document.getElementById('card-preview');
+        const cardTitle = cardPreview?.querySelector('h4');
+        const cardPrice = cardPreview?.querySelector('.text-xl');
+        
+        if (cardPreview) cardPreview.style.backgroundColor = cardBg;
+        if (cardPreview) cardPreview.style.borderRadius = cardBorderRadius;
+        if (cardTitle) cardTitle.style.color = cardTitleColor;
+        if (cardPrice) cardPrice.style.color = cardPriceColor;
+        
+        // Previews de colores de tarjeta
+        document.getElementById('card-bg-preview').style.backgroundColor = cardBg;
+        document.getElementById('card-title-color-preview').style.backgroundColor = cardTitleColor;
+        document.getElementById('card-price-color-preview').style.backgroundColor = cardPriceColor;
+    }
+    
+    // Escuchar cambios
+    const form = document.getElementById('style-form');
+    if (form) {
+        form.querySelectorAll('input, select').forEach(el => {
+            el.addEventListener('input', updatePreviews);
+            el.addEventListener('change', updatePreviews);
+        });
+    }
+    
+    document.getElementById('refresh-preview')?.addEventListener('click', updatePreviews);
+    document.addEventListener('DOMContentLoaded', updatePreviews);
+</script>
+{% endblock %}

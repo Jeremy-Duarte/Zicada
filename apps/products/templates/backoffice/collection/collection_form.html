@@ -1,0 +1,127 @@
+{% extends "backoffice/layouts/backoffice_base.html" %}
+{% load static %}
+
+{% block title %}{% if form.instance.pk %}Editar{% else %}Nueva{% endif %} Colección - Zicada{% endblock %}
+
+{% block extra_css %}
+<style>
+    .preview-card {
+        transition: all 0.3s ease;
+    }
+    .color-preview {
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        border: 1px solid #ddd;
+        cursor: pointer;
+        display: inline-block;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="bg-white rounded-xl shadow-sm p-6">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-bold text-gray-800">
+                {% if form.instance.pk %}Editar{% else %}Nueva{% endif %} Colección
+            </h1>
+            <div class="flex gap-3">
+                <a href="{% url 'products:collection_list' %}" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition">Cancelar</a>
+                <button type="submit" form="collection-form" class="px-6 py-2 bg-zicada-accent hover:bg-red-700 text-white rounded-lg font-semibold transition">
+                    <i class="fas fa-save mr-1"></i> Guardar
+                </button>
+            </div>
+        </div>
+
+        <form id="collection-form" method="post" enctype="multipart/form-data" class="space-y-8" novalidate>
+            {% csrf_token %}
+            
+            {% if form.errors %}
+            <div class="bg-red-100 text-red-700 p-4 rounded mb-4 border-l-4 border-red-500">
+                <strong class="block mb-2">⚠️ Por favor corrige los siguientes errores:</strong>
+                <ul class="list-disc list-inside space-y-1">
+                {% for field, errors in form.errors.items %}
+                    <li><strong>{{ field|capfirst }}:</strong> {{ errors|join:", " }}</li>
+                {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            <!-- Información Básica -->
+            <div class="border-b border-gray-200 pb-4">
+                <h2 class="text-lg font-semibold text-gray-800">Información Básica</h2>
+                <p class="text-sm text-gray-500">Datos generales de la colección</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Nombre <span class="text-red-500">*</span></label>
+                    {{ form.name }}
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Slug</label>
+                    {{ form.slug }}
+                    <p class="text-xs text-gray-400 mt-1">{{ form.slug.help_text }}</p>
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Descripción</label>
+                    {{ form.description }}
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Estado</label>
+                    {{ form.status }}
+                </div>
+                <div>
+                    <label class="flex items-center gap-2 cursor-pointer mt-8">
+                        {{ form.is_active }}
+                        <span class="text-sm font-medium text-gray-700">Colección activa</span>
+                    </label>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Fecha de inicio</label>
+                    {{ form.start_date }}
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Fecha de fin</label>
+                    {{ form.end_date }}
+                </div>
+            </div>
+
+            <!-- Imagen de Portada -->
+            <div class="border-b border-gray-200 pb-4">
+                <h2 class="text-lg font-semibold text-gray-800">Imagen de Portada</h2>
+                <p class="text-sm text-gray-500">Imagen que aparecerá en la tarjeta de la colección</p>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Imagen de portada</label>
+                {{ form.cover_image }}
+                {% if form.instance.cover_image %}
+                <div class="mt-2">
+                    <img src="{{ form.instance.cover_image.url }}" class="w-32 h-32 object-cover rounded-lg shadow-md">
+                    <p class="text-xs text-gray-500 mt-1">Imagen actual</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Productos -->
+            <div class="border-b border-gray-200 pb-4">
+                <h2 class="text-lg font-semibold text-gray-800">Productos</h2>
+                <p class="text-sm text-gray-500">Selecciona los productos que pertenecen a esta colección</p>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Productos</label>
+                {{ form.products }}
+                <p class="text-xs text-gray-400 mt-1">Mantén presionado Ctrl (Cmd en Mac) para seleccionar múltiples productos</p>
+            </div>
+
+            <!-- Botones -->
+            <div class="flex justify-end gap-3 pt-4 border-t border-gray-200">
+                <a href="{% url 'products:collection_list' %}" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition">Cancelar</a>
+                <button type="submit" class="px-6 py-2 bg-zicada-accent hover:bg-red-700 text-white rounded-lg font-semibold transition">
+                    <i class="fas fa-save mr-1"></i> Guardar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
