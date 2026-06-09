@@ -1,0 +1,8 @@
+{% extends "backoffice/layouts/backoffice_base.html" %}
+{% load static %}
+
+{% block title %}Restaurar Colección - Zicada{% endblock %}
+
+{% block content %}
+{% include 'backoffice/components/crud/confirm_restore.html' with form=form object_name=object_name object_display=object_display cancel_url="products:collection_trashcan" warning="Al restaurar la colección, volverá a estar disponible en el catálogo. Los productos volverán a ser marcados como 'Colección limitada' si no pertenecen a otra colección publicada." %}
+{% endblock %}

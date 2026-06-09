@@ -147,6 +147,7 @@ BTN_TITLE_USERS = 'Usuarios'
 BTN_TITLE_ROLES = 'Roles'
 BTN_TITLE_TRASHCAN = 'Papelera'
 BTN_TITLE_HERO_SLIDES = 'Slides del Hero'
+BTN_TITLE_MANAGE_COLLECTIONS = 'Gestionar Colecciones'
 
 # Button Descriptions
 BTN_DESC_MANAGE_ORDERS = 'Ver, filtrar y gestionar todos los pedidos'
@@ -158,6 +159,8 @@ BTN_DESC_ADD_DELIVERY = 'Registrar un nuevo entregador'
 BTN_DESC_EXPORT = 'Descargar reportes en Excel o PDF'
 BTN_DESC_EXPORT_DELIVERIES = 'Descargar reportes de entregas'
 BTN_DESC_FINANCIAL_REPORTS = 'Generar reportes financieros personalizados'
+BTN_DESC_MANAGE_ORDERS = 'Ver, filtrar y gestionar todos los pedidos'
+BTN_DESC_MANAGE_COLLECTIONS = 'Planear, Crear una Colección de productos'
 
 # Gradient Colors
 GRADIENT_ACCENT_FROM = 'zicada-accent'
@@ -277,6 +280,7 @@ STRING_LAST_7_DAYS = 'últimos 7 días'
 STRING_COMPLETED_ORDERS = 'pedidos completados'
 STRING_ACCUMULATED = 'acumulado'
 STRING_PRODUCTS = 'productos'
+STRING_COLLECTIONS = 'colecciones'
 
 # Report Types
 REPORT_TYPE_FINANCIAL = 'financial'

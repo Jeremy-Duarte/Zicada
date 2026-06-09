@@ -1,3 +1,5 @@
+from datetime import timezone
+
 from django import forms
 from django.core.exceptions import ValidationError
 from django.utils.text import slugify
@@ -6,8 +8,19 @@ from .models import (
     Collection, ProductColor, ProductImage
 )
 from apps.core.crud.mixins import FormStyleMixin, SortableCreateMixin, SortableUpdateMixin
-from apps.core.crud.widgets import CloudinaryImageSelectWidget, CloudinaryFeaturedImageWidget, SortableOrderWidget
+from apps.core.crud.widgets import CloudinaryImageSelectWidget, CloudinaryFeaturedImageWidget, SortableOrderWidget, ProductCheckboxSelectWidget
 import re
+
+from apps.core.design_options import (
+    FONT_FAMILY_CHOICES, FONT_WEIGHT_CHOICES, FONT_SIZE_CHOICES,
+    LINE_HEIGHT_CHOICES, MARGIN_CHOICES, CARD_BORDER_RADIUS_CHOICES,
+    CARD_SHADOW_CHOICES, CARD_HOVER_SCALE_CHOICES,
+    DEFAULT_BORDER_RADIUS, DEFAULT_BOX_SHADOW, DEFAULT_HOVER_SCALE,
+    DEFAULT_SHOW_CATEGORY, DEFAULT_SHOW_STOCK_BADGE,
+    DEFAULT_BADGE_TEXT_COLOR, DEFAULT_PRIMARY_COLOR, DEFAULT_SECONDARY_COLOR,
+    DEFAULT_BACKGROUND_COLOR, DEFAULT_TEXT_COLOR, DEFAULT_TITLE_FONT, COLOR_PALETTES,
+    get_color_palette_choices, apply_color_palette
+)
 
 # =============================================================================
 # CONSTANTES PARA FORMULARIOS
@@ -55,6 +68,48 @@ PRODUCT_TYPE_COLECCION_LIMITADA = 'coleccion_limitada'
 # Order statuses for validation
 ORDER_STATUSES_ACTIVE = ['pendiente', 'confirmado', 'preparando', 'listo', 'en_camino']
 
+# Colores por defecto para colecciones
+DEFAULT_PRIMARY_COLOR = '#c2a575'
+DEFAULT_SECONDARY_COLOR = '#8b5e3c'
+DEFAULT_BACKGROUND_COLOR = '#ffffff'
+DEFAULT_TEXT_COLOR = '#1a1a1a'
+DEFAULT_TITLE_FONT = "'Inter', sans-serif"
+
+# Configuración de tarjetas
+DEFAULT_BORDER_RADIUS = '0.5rem'
+DEFAULT_BOX_SHADOW = '0 1px 3px 0 rgba(0,0,0,0.1)'
+DEFAULT_HOVER_SCALE = 1.05
+DEFAULT_SHOW_CATEGORY = True
+DEFAULT_SHOW_STOCK_BADGE = True
+DEFAULT_BADGE_TEXT_COLOR = '#ffffff'
+
+# Estilos
+STYLE_COLOR_PICKER = 'width: 60px; height: 35px; cursor: pointer;'
+
+# Mensajes para colecciones (si no existen)
+MSG_COLLECTION_NAME_EXISTS_ACTIVE = 'Ya existe una colección activa con ese nombre.'
+MSG_COLLECTION_NAME_EXISTS_DELETED = 'Ya existe una colección con ese nombre (activa o eliminada).'
+MSG_COLLECTION_END_DATE_AFTER_START = 'La fecha de fin debe ser posterior a la fecha de inicio.'
+MSG_COLLECTION_PUBLISHED_NO_PRODUCTS = 'Una colección publicada debe tener al menos un producto asignado.'
+MSG_COLLECTION_PRODUCTS_IN_OTHER_PUBLISHED = 'Los siguientes productos ya pertenecen a otra colección publicada: {}'
+MSG_COLLECTION_SLUG_EXISTS = 'Ya existe una colección con ese slug.'
+MSG_COLLECTION_SLUG_GENERATED = 'El slug se genera automáticamente si lo dejas vacío.'
+MSG_COLLECTION_DATE_PAST_ERROR = 'La fecha de inicio no puede ser anterior a la fecha actual.'
+MSG_COLLECTION_RESTORE_ACTIVE_SLUG = 'Ya existe una colección activa con el slug "{}".'
+MSG_COLLECTION_CONFIRM_DELETE = 'Escribe el nombre de la colección para confirmar'
+MSG_COLLECTION_CONFIRM_RESTORE = 'Confirmo que deseo restaurar esta colección'
+MSG_COLLECTION_RESTORE_PRODUCTS_TYPE = 'Actualizar tipo de productos'
+MSG_COLLECTION_RESTORE_PRODUCTS_TYPE_HELP = 'Si está activado, los productos de esta colección pasarán a "Colección limitada" si no están en otra colección publicada.'
+
+# Configuración de tarjetas (labels)
+LABEL_CARD_BG_COLOR = 'Color de fondo de tarjetas'
+LABEL_CARD_TITLE_COLOR = 'Color del título'
+LABEL_CARD_PRICE_COLOR = 'Color del precio'
+LABEL_CARD_BORDER_RADIUS = 'Radio de borde'
+LABEL_CARD_SHADOW = 'Sombra de tarjeta'
+LABEL_CARD_HOVER_SCALE = 'Escala al hover'
+LABEL_CARD_SHOW_CATEGORY = 'Mostrar categoría'
+LABEL_CARD_SHOW_STOCK_BADGE = 'Mostrar badge de stock'
 
 # ========== FORMULARIOS PARA CATÁLOGOS ESTÁTICOS ==========
 
@@ -784,193 +839,599 @@ class ProductVariantRestoreForm(FormStyleMixin, forms.Form):
         return cleaned_data
 
 
+# Opciones de fuentes (limitadas a Tailwind + Google Fonts populares)
+FONT_FAMILY_CHOICES = [
+    ("'Inter', sans-serif", "Inter"),
+    ("'Roboto', sans-serif", "Roboto"),
+    ("'Poppins', sans-serif", "Poppins"),
+    ("'Montserrat', sans-serif", "Montserrat"),
+    ("'Open Sans', sans-serif", "Open Sans"),
+    ("'Playfair Display', serif", "Playfair Display"),
+    ("'Merriweather', serif", "Merriweather"),
+]
+
+# Opciones de altura de sección (para efectos)
+SECTION_HEIGHT_CHOICES = [(f'{i}vh', f'{i}% de la pantalla') for i in range(10, 101, 10)]
+
+# Opciones de tamaño (fuente, margen, etc.)
+SIZE_CHOICES = [
+    ('0.5rem', 'Muy pequeño (0.5rem)'),
+    ('0.75rem', 'Pequeño (0.75rem)'),
+    ('1rem', 'Normal (1rem)'),
+    ('1.25rem', 'Mediano (1.25rem)'),
+    ('1.5rem', 'Grande (1.5rem)'),
+    ('2rem', 'Muy grande (2rem)'),
+    ('2.5rem', 'Extra grande (2.5rem)'),
+    ('3rem', 'Gigante (3rem)'),
+    ('4rem', 'Muy gigante (4rem)'),
+]
+
+# Opciones de altura de línea
+LINE_HEIGHT_CHOICES = [
+    ('1.2', 'Compacto (1.2)'),
+    ('1.4', 'Normal (1.4)'),
+    ('1.6', 'Espaciado (1.6)'),
+    ('1.8', 'Muy espaciado (1.8)'),
+    ('2.0', 'Doble espacio (2.0)'),
+]
+
+# Opciones de margen
+MARGIN_CHOICES = SIZE_CHOICES
+
+
 class CollectionCreateForm(FormStyleMixin, forms.ModelForm):
+    """Formulario para crear colecciones - SOLO campos básicos."""
+
     class Meta:
         model = Collection
         fields = [
-            'name', 'description', 'status', 'start_date', 'end_date',
-            'cover_image', 'primary_color', 'secondary_color', 
-            'background_color', 'text_color', 'background_image',
-            'title_font', 'products', 'slug'
+            'name', 'description', 'products',
+            'cover_image',
+            'primary_color', 'secondary_color', 'background_color', 'text_color',
+            'background_image',
+            'title_font',
         ]
         widgets = {
-            'name': forms.TextInput(),
-            'description': forms.Textarea(attrs={'rows': 4}),
-            'status': forms.Select(),
-            'start_date': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
-            'end_date': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
-            'cover_image': forms.ClearableFileInput(),
-            'primary_color': forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_INPUT}),
-            'secondary_color': forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_INPUT}),
-            'background_color': forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_INPUT}),
-            'text_color': forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_INPUT}),
-            'background_image': forms.ClearableFileInput(),
-            'title_font': forms.TextInput(attrs={"placeholder": "'Inter', sans-serif"}),
-            'products': forms.SelectMultiple(attrs={'size': 10}),
+            'name': forms.TextInput(attrs={
+                'class': 'w-full', 
+                'placeholder': 'Ej: Colección Verano 2024'
+            }),
+            'description': forms.Textarea(attrs={
+                'rows': 4, 
+                'class': 'w-full',
+                'placeholder': 'Describe la inspiración y detalles de esta colección...'
+            }),
+            'products': ProductCheckboxSelectWidget(editing=False),
+            'cover_image': forms.ClearableFileInput(attrs={'class': 'w-full'}),
+            'primary_color': forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_PICKER}),
+            'secondary_color': forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_PICKER}),
+            'background_color': forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_PICKER}),
+            'text_color': forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_PICKER}),
+            'background_image': forms.ClearableFileInput(attrs={'class': 'w-full'}),
+            'title_font': forms.Select(choices=FONT_FAMILY_CHOICES, attrs={'class': 'w-full'}),
         }
-    
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['products'].queryset = Product.objects.filter(is_active=True)
-        self.fields['slug'].required = False
-    
-    def clean_name(self):
-        name = self.cleaned_data.get('name', '').strip()
+        self.fields['products'].queryset = Product.objects.filter(is_active=True, product_type='fabrica')
+        self.fields['primary_color'].required = False
+        self.fields['secondary_color'].required = False
+        self.fields['background_color'].required = False
+        self.fields['text_color'].required = False
+        self.fields['title_font'].required = False
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        instance.status = 'borrador'
+        instance.slug = slugify(instance.name)
         
-        if Collection.all_objects.filter(name__iexact=name).exists():
-            raise ValidationError('Ya existe una colección con ese nombre (activa o eliminada).')
-        
-        return name
-    
-    def clean(self):
-        cleaned_data = super().clean()
-        
-        start_date = cleaned_data.get('start_date')
-        end_date = cleaned_data.get('end_date')
-        status = cleaned_data.get('status')
-        products = cleaned_data.get('products', [])
-        
-        if start_date and end_date and start_date >= end_date:
-            raise ValidationError({
-                'end_date': 'La fecha de fin debe ser posterior a la fecha de inicio.'
-            })
-        
-        if status == 'publicada' and not products:
-            raise ValidationError({
-                'status': 'Una colección publicada debe tener al menos un producto asignado.'
-            })
-        
-        return cleaned_data
+        if commit:
+            instance.save()
+            self.save_m2m()
+        return instance
 
 
 class CollectionUpdateForm(FormStyleMixin, forms.ModelForm):
+    """Formulario para actualizar colecciones - TODOS los campos."""
+    
+    start_date = forms.DateTimeField(
+        required=False,
+        widget=forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'w-full'}),
+        label='Fecha de inicio'
+    )
+    end_date = forms.DateTimeField(
+        required=False,
+        widget=forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'w-full'}),
+        label='Fecha de fin'
+    )
+
     class Meta:
         model = Collection
         fields = [
-            'name', 'description', 'status', 'start_date', 'end_date',
-            'cover_image', 'primary_color', 'secondary_color', 
-            'background_color', 'text_color', 'background_image',
-            'title_font', 'products', 'is_active', 'slug'
+            'name', 'description', 'products',
+            'cover_image',
+            'primary_color', 'secondary_color', 'background_color', 'text_color',
+            'background_image',
+            'title_font',
+            'is_active',
         ]
         widgets = {
-            'name': forms.TextInput(),
-            'description': forms.Textarea(attrs={'rows': 4}),
-            'status': forms.Select(),
-            'start_date': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
-            'end_date': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
-            'cover_image': forms.ClearableFileInput(),
-            'primary_color': forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_INPUT}),
-            'secondary_color': forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_INPUT}),
-            'background_color': forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_INPUT}),
-            'text_color': forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_INPUT}),
-            'background_image': forms.ClearableFileInput(),
-            'title_font': forms.TextInput(),
-            'products': forms.SelectMultiple(attrs={'size': 10}),
-            'is_active': forms.CheckboxInput(),
+            'name': forms.TextInput(attrs={'class': 'w-full'}),
+            'description': forms.Textarea(attrs={'rows': 4, 'class': 'w-full'}),
+            'products': ProductCheckboxSelectWidget(editing=True),
+            'cover_image': forms.ClearableFileInput(attrs={'class': 'w-full'}),
+            'primary_color': forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_PICKER}),
+            'secondary_color': forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_PICKER}),
+            'background_color': forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_PICKER}),
+            'text_color': forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_PICKER}),
+            'background_image': forms.ClearableFileInput(attrs={'class': 'w-full'}),
+            'title_font': forms.Select(choices=FONT_FAMILY_CHOICES, attrs={'class': 'w-full'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'toggle-switch'}),
         }
-    
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['products'].queryset = Product.objects.filter(is_active=True)
-        self.fields['slug'].required = False
-    
-    def clean_name(self):
-        name = self.cleaned_data.get('name', '').strip()
-        qs = Collection.objects.filter(name__iexact=name)
+        self.fields['primary_color'].required = False
+        self.fields['secondary_color'].required = False
+        self.fields['background_color'].required = False
+        self.fields['text_color'].required = False
+        self.fields['title_font'].required = False
+        self.fields['is_active'].required = False
         
         if self.instance and self.instance.pk:
-            qs = qs.exclude(pk=self.instance.pk)
+            if self.instance.start_date:
+                self.initial['start_date'] = self.instance.start_date.strftime('%Y-%m-%dT%H:%M')
+            if self.instance.end_date:
+                self.initial['end_date'] = self.instance.end_date.strftime('%Y-%m-%dT%H:%M')
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        instance.start_date = self.cleaned_data.get('start_date')
+        instance.end_date = self.cleaned_data.get('end_date')
         
-        if qs.exists():
-            raise ValidationError('Ya existe una colección activa con ese nombre.')
-        
-        return name
-    
-    def clean(self):
-        cleaned_data = super().clean()
-        
-        start_date = cleaned_data.get('start_date')
-        end_date = cleaned_data.get('end_date')
-        status = cleaned_data.get('status')
-        products = cleaned_data.get('products', [])
-        
-        if start_date and end_date and start_date >= end_date:
-            raise ValidationError({
-                'end_date': 'La fecha de fin debe ser posterior a la fecha de inicio.'
-            })
-        
-        if status == 'publicada' and not products:
-            raise ValidationError({
-                'status': 'Una colección publicada debe tener al menos un producto asignado.'
-            })
-        
-        if self.instance and self.instance.status != 'publicada' and status == 'publicada':
-            conflicting = Collection.objects.filter(
-                status='publicada', is_active=True, products__in=products
-            ).exclude(pk=self.instance.pk).distinct()
-            
-            if conflicting.exists():
-                product_names = []
-                for collection in conflicting[:3]:
-                    product_names.extend([p.name for p in collection.products.filter(is_active=True)[:2]])
-                
-                raise ValidationError({
-                    'status': f'Los siguientes productos ya pertenecen a otra colección publicada: {", ".join(set(product_names)[:5])}'
-                })
-        
-        return cleaned_data
+        if commit:
+            instance.save()
+            self.save_m2m()
+        return instance
 
 
 class CollectionDeleteForm(FormStyleMixin, forms.Form):
+    """Formulario para soft-delete de colección."""
+
     confirm = forms.CharField(
         required=True,
         label=CONFIRM_DELETE_COLLECTION,
-        widget=forms.TextInput()
+        widget=forms.TextInput(attrs={'class': 'w-full', 'placeholder': 'Escribe el nombre de la colección'})
     )
-    
+
     def __init__(self, *args, **kwargs):
         self.collection = kwargs.pop('collection', None)
         super().__init__(*args, **kwargs)
-    
+
     def clean_confirm(self):
         value = self.cleaned_data.get('confirm', '').strip().lower()
-        
+
         if not self.collection:
             raise ValidationError(ERROR_COLLECTION_NOT_SPECIFIED)
-        
+
         if self.collection.name.lower() != value:
             raise ValidationError('El nombre de la colección no coincide.')
-        
+
+        if self.collection.status == 'publicada':
+            has_orders = self.collection.products.filter(
+                variants__order_items__order__status__in=ORDER_STATUSES_ACTIVE
+            ).exists()
+            if has_orders:
+                raise ValidationError(
+                    'No se puede eliminar esta colección porque tiene productos en pedidos en curso. '
+                    'Considere archivarla en lugar de eliminarla.'
+                )
+
         return value
 
 
 class CollectionRestoreForm(FormStyleMixin, forms.Form):
+    """Formulario para restaurar colección eliminada."""
+
     confirm = forms.BooleanField(
         required=True,
-        label='Confirmo que deseo restaurar esta colección'
+        label=MSG_COLLECTION_CONFIRM_RESTORE,
+        widget=forms.CheckboxInput(attrs={'class': 'toggle-switch'})
     )
+
     restore_products_type = forms.BooleanField(
         required=False,
         initial=True,
-        label='Actualizar tipo de productos',
-        help_text='Si está activado, los productos de esta colección pasarán a "Colección limitada" si no están en otra colección publicada.'
+        label=MSG_COLLECTION_RESTORE_PRODUCTS_TYPE,
+        help_text=MSG_COLLECTION_RESTORE_PRODUCTS_TYPE_HELP,
+        widget=forms.CheckboxInput(attrs={'class': 'toggle-switch'})
     )
-    
+
     def __init__(self, *args, **kwargs):
         self.collection = kwargs.pop('collection', None)
         super().__init__(*args, **kwargs)
-    
+
     def clean(self):
         cleaned_data = super().clean()
-        
+
         if not self.collection:
             raise ValidationError(ERROR_COLLECTION_NOT_SPECIFIED)
-        
-        if Collection.objects.filter(slug=self.collection.slug).exists():
-            raise ValidationError(f'Ya existe una colección activa con el slug "{self.collection.slug}".')
-        
-        confirm = cleaned_data.get('confirm')
-        if not confirm:
+
+        if Collection.objects.filter(slug=self.collection.slug, is_active=True).exists():
+            raise ValidationError(MSG_COLLECTION_RESTORE_ACTIVE_SLUG.format(self.collection.slug))
+
+        if not cleaned_data.get('confirm'):
             raise ValidationError(ERROR_CONFIRM_RESTORE)
-        
+
         return cleaned_data
+
+
+LABEL_CARD_BG_COLOR = 'Color de fondo de tarjetas'
+LABEL_CARD_TITLE_COLOR = 'Color del título'
+LABEL_CARD_PRICE_COLOR = 'Color del precio'
+LABEL_CARD_BORDER_RADIUS = 'Radio de borde'
+LABEL_CARD_SHADOW = 'Sombra de tarjeta'
+LABEL_CARD_HOVER_SCALE = 'Escala al hover'
+LABEL_CARD_SHOW_CATEGORY = 'Mostrar categoría'
+LABEL_CARD_SHOW_STOCK_BADGE = 'Mostrar badge de stock'
+
+# =============================================================================
+# EFECTOS PREDEFINIDOS
+# =============================================================================
+
+EFFECT_PRESETS = {
+    'none': {
+        'name': '✨ Sin efectos',
+        'description': 'Tarjetas estáticas, sin animaciones',
+        'config': {
+            'hover_effect': 'none',
+            'card_animation': 'none',
+            'parallax': False,
+            'particles': False
+        }
+    },
+    'zoom_fade': {
+        'name': '🔍 Zoom + Fade',
+        'description': 'Zoom al hacer hover + animación de entrada fade',
+        'config': {
+            'hover_effect': 'zoom',
+            'card_animation': 'fadeIn',
+            'parallax': False,
+            'particles': False,
+            'animation_duration': 0.5
+        }
+    },
+    'lift_slide': {
+        'name': '⬆️ Levitar + Slide',
+        'description': 'Tarjeta se levanta al hover + entrada deslizante',
+        'config': {
+            'hover_effect': 'lift',
+            'card_animation': 'slideInUp',
+            'parallax': False,
+            'particles': False,
+            'animation_duration': 0.6
+        }
+    },
+    'glow_premium': {
+        'name': '✨ Glow Premium',
+        'description': 'Efecto de brillo dorado al hover + fade suave',
+        'config': {
+            'hover_effect': 'glow',
+            'card_animation': 'fadeInUp',
+            'parallax': False,
+            'particles': False,
+            'glow_color': '#c2a575',
+            'animation_duration': 0.5
+        }
+    },
+    'parallax_scroll': {
+        'name': '🌊 Parallax + Partículas',
+        'description': 'Efecto parallax suave y partículas flotantes',
+        'config': {
+            'hover_effect': 'none',
+            'card_animation': 'fadeIn',
+            'parallax': True,
+            'particles': True,
+            'animation_duration': 0.8
+        }
+    },
+    'explosion': {
+        'name': '💥 Explosión Dinámica',
+        'description': 'Efecto de escala explosiva al hover + entrada dramática',
+        'config': {
+            'hover_effect': 'explode',
+            'card_animation': 'zoomIn',
+            'parallax': False,
+            'particles': True,
+            'animation_duration': 0.4,
+            'hover_scale': 1.1
+        }
+    },
+    'soft_shadow': {
+        'name': '🎨 Sombra Suave',
+        'description': 'Sombra flotante y transición suave',
+        'config': {
+            'hover_effect': 'shadow',
+            'card_animation': 'none',
+            'parallax': False,
+            'particles': False,
+            'shadow_intensity': 'lg'
+        }
+    },
+    'cinematic': {
+        'name': '🎬 Cinemático',
+        'description': 'Efecto de luz y movimiento cinematográfico',
+        'config': {
+            'hover_effect': 'cinematic',
+            'card_animation': 'slideInLeft',
+            'parallax': True,
+            'particles': False,
+            'animation_duration': 0.7,
+            'light_intensity': 0.3
+        }
+    }
+}
+
+def get_effect_preset_choices():
+    """Retorna las opciones de efectos predefinidos para selects rápidos"""
+    return [(key, preset['name']) for key, preset in EFFECT_PRESETS.items()]
+
+def get_effect_preset_description(preset_key):
+    """Retorna la descripción de un preset de efectos"""
+    return EFFECT_PRESETS.get(preset_key, {}).get('description', '')
+
+
+class CollectionStyleForm(FormStyleMixin, forms.ModelForm):
+    """Formulario para estilos y configuración de tarjetas de colección."""
+    
+    # Selector rápido de paleta de colores
+    color_palette = forms.ChoiceField(
+        choices=get_color_palette_choices(),
+        required=False,
+        label='🎨 Paleta de colores rápida',
+        help_text='Selecciona una combinación de colores predefinida',
+        widget=forms.Select(attrs={'class': 'w-full'})
+    )
+    
+    # Selector rápido de efectos
+    effect_preset = forms.ChoiceField(
+        choices=get_effect_preset_choices(),
+        required=False,
+        label='✨ Efectos rápidos',
+        help_text='Selecciona un efecto predefinido para las tarjetas de producto',
+        widget=forms.Select(attrs={'class': 'w-full'})
+    )
+    
+    # Configuración de tarjetas
+    card_background_color = forms.CharField(
+        max_length=20,
+        required=False,
+        widget=forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_PICKER}),
+        label=LABEL_CARD_BG_COLOR
+    )
+    card_title_color = forms.CharField(
+        max_length=20,
+        required=False,
+        widget=forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_PICKER}),
+        label=LABEL_CARD_TITLE_COLOR
+    )
+    card_price_color = forms.CharField(
+        max_length=20,
+        required=False,
+        widget=forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_PICKER}),
+        label=LABEL_CARD_PRICE_COLOR
+    )
+    card_border_radius = forms.ChoiceField(
+        choices=CARD_BORDER_RADIUS_CHOICES,
+        required=False,
+        initial=DEFAULT_BORDER_RADIUS,
+        label=LABEL_CARD_BORDER_RADIUS,
+        help_text='Redondeo de las esquinas de la tarjeta'
+    )
+    card_shadow = forms.ChoiceField(
+        choices=CARD_SHADOW_CHOICES,
+        required=False,
+        initial=DEFAULT_BOX_SHADOW,
+        label=LABEL_CARD_SHADOW,
+        help_text='Sombra de la tarjeta'
+    )
+    card_hover_scale = forms.ChoiceField(
+        choices=CARD_HOVER_SCALE_CHOICES,
+        required=False,
+        initial=str(DEFAULT_HOVER_SCALE),
+        label=LABEL_CARD_HOVER_SCALE,
+        help_text='Escala al pasar el mouse sobre la tarjeta'
+    )
+    card_show_category = forms.BooleanField(
+        required=False,
+        initial=DEFAULT_SHOW_CATEGORY,
+        label=LABEL_CARD_SHOW_CATEGORY,
+        help_text='Muestra la categoría del producto en la tarjeta'
+    )
+    card_show_stock_badge = forms.BooleanField(
+        required=False,
+        initial=DEFAULT_SHOW_STOCK_BADGE,
+        label=LABEL_CARD_SHOW_STOCK_BADGE,
+        help_text='Muestra el estado del stock'
+    )
+
+    class Meta:
+        model = Collection
+        fields = [
+            'color_palette',
+            'effect_preset',
+            'primary_color', 'secondary_color', 'background_color', 'text_color',
+            'background_image',
+            'title_font',
+            'effects_config',
+            'custom_css',
+            'style_config',
+            'is_active',
+        ]
+        widgets = {
+            'primary_color': forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_PICKER, 'class': 'w-16 h-10 p-1'}),
+            'secondary_color': forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_PICKER, 'class': 'w-16 h-10 p-1'}),
+            'background_color': forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_PICKER, 'class': 'w-16 h-10 p-1'}),
+            'text_color': forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_PICKER, 'class': 'w-16 h-10 p-1'}),
+            'background_image': forms.ClearableFileInput(attrs={'class': 'w-full'}),
+            'title_font': forms.Select(choices=FONT_FAMILY_CHOICES, attrs={'class': 'w-full'}),
+            'custom_css': forms.Textarea(attrs={'rows': 8, 'class': 'w-full font-mono'}),
+            'effects_config': forms.Textarea(attrs={'rows': 6, 'class': 'w-full font-mono', 'placeholder': '{\n  "hover_effect": "zoom",\n  "card_animation": "fadeInUp"\n}'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'toggle-switch'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        self._make_all_fields_optional()
+        self._load_card_config_from_instance()
+        self._load_effect_config_from_instance()
+
+
+    def _make_all_fields_optional(self):
+        for field_name in self.fields:
+            self.fields[field_name].required = False
+
+
+    def _get_card_field_value(self, card_config, field_name, config_key, instance_attr, default):
+        """Helper para obtener el valor inicial de un campo de tarjeta."""
+        config_value = card_config.get(config_key)
+        if config_value is not None:
+            return config_value
+        if instance_attr is not None:
+            return instance_attr
+        return default
+
+
+    def _load_card_config_from_instance(self):
+        if not (self.instance and self.instance.style_config):
+            return
+        
+        card_config = self.instance.style_config.get('card_config', {})
+        
+        self.fields['card_background_color'].initial = self._get_card_field_value(
+            card_config, 'card_background_color', 'background_color', self.instance.background_color, DEFAULT_BACKGROUND_COLOR
+        )
+        self.fields['card_title_color'].initial = self._get_card_field_value(
+            card_config, 'card_title_color', 'title_color', self.instance.primary_color, DEFAULT_PRIMARY_COLOR
+        )
+        self.fields['card_price_color'].initial = self._get_card_field_value(
+            card_config, 'card_price_color', 'price_color', self.instance.primary_color, DEFAULT_PRIMARY_COLOR
+        )
+        self.fields['card_border_radius'].initial = self._get_card_field_value(
+            card_config, 'card_border_radius', 'border_radius', None, DEFAULT_BORDER_RADIUS
+        )
+        self.fields['card_shadow'].initial = self._get_card_field_value(
+            card_config, 'card_shadow', 'shadow', None, DEFAULT_BOX_SHADOW
+        )
+        self.fields['card_hover_scale'].initial = str(self._get_card_field_value(
+            card_config, 'card_hover_scale', 'hover_scale', None, DEFAULT_HOVER_SCALE
+        ))
+        self.fields['card_show_category'].initial = self._get_card_field_value(
+            card_config, 'card_show_category', 'show_category', None, DEFAULT_SHOW_CATEGORY
+        )
+        self.fields['card_show_stock_badge'].initial = self._get_card_field_value(
+            card_config, 'card_show_stock_badge', 'show_stock_badge', None, DEFAULT_SHOW_STOCK_BADGE
+        )
+
+
+    def _find_matching_effect_preset(self, current_config):
+        for preset_key, preset in EFFECT_PRESETS.items():
+            preset_config = preset.get('config', {})
+            if (preset_config.get('hover_effect') == current_config.get('hover_effect') and
+                preset_config.get('card_animation') == current_config.get('card_animation')):
+                return preset_key
+        return None
+
+
+    def _load_effect_config_from_instance(self):
+        if not (self.instance and self.instance.effects_config):
+            return
+        
+        matching_preset = self._find_matching_effect_preset(self.instance.effects_config)
+        if matching_preset:
+            self.fields['effect_preset'].initial = matching_preset
+    
+    def clean_color_palette(self):
+        """Aplica la paleta de colores seleccionada si existe"""
+        palette_key = self.cleaned_data.get('color_palette')
+        if palette_key and palette_key != '' and palette_key in COLOR_PALETTES:
+            palette = COLOR_PALETTES[palette_key]
+            self.cleaned_data['primary_color'] = palette['primary']
+            self.cleaned_data['secondary_color'] = palette['secondary']
+            self.cleaned_data['background_color'] = palette['background']
+            self.cleaned_data['text_color'] = palette['text']
+        return palette_key
+    
+    def clean_effect_preset(self):
+        """Aplica el preset de efectos seleccionado"""
+        preset_key = self.cleaned_data.get('effect_preset')
+        if preset_key and preset_key != '' and preset_key in EFFECT_PRESETS:
+            return EFFECT_PRESETS[preset_key]['config']
+        return None
+    
+    def _build_card_config(self, instance, cleaned_data):
+        """Construye la configuración de tarjetas a partir de los datos del formulario."""
+        return {
+            'background_color': cleaned_data.get('card_background_color') or instance.background_color or DEFAULT_BACKGROUND_COLOR,
+            'title_color': cleaned_data.get('card_title_color') or instance.primary_color or DEFAULT_PRIMARY_COLOR,
+            'price_color': cleaned_data.get('card_price_color') or instance.primary_color or DEFAULT_PRIMARY_COLOR,
+            'badge_background': instance.primary_color or DEFAULT_PRIMARY_COLOR,
+            'badge_text_color': DEFAULT_BADGE_TEXT_COLOR,
+            'border_radius': cleaned_data.get('card_border_radius') or DEFAULT_BORDER_RADIUS,
+            'shadow': cleaned_data.get('card_shadow') or DEFAULT_BOX_SHADOW,
+            'hover_scale': float(cleaned_data.get('card_hover_scale') or DEFAULT_HOVER_SCALE),
+            'show_category': cleaned_data.get('card_show_category', DEFAULT_SHOW_CATEGORY),
+            'show_stock_badge': cleaned_data.get('card_show_stock_badge', DEFAULT_SHOW_STOCK_BADGE),
+        }
+    
+    def _ensure_colors_config(self, style_config, instance):
+        if 'colors' not in style_config:
+            style_config['colors'] = {
+                'primary': instance.primary_color or DEFAULT_PRIMARY_COLOR,
+                'secondary': instance.secondary_color or DEFAULT_SECONDARY_COLOR,
+                'background': instance.background_color or DEFAULT_BACKGROUND_COLOR,
+                'text': instance.text_color or DEFAULT_TEXT_COLOR,
+            }
+        return style_config
+    
+    def _ensure_typography_config(self, style_config, instance):
+        if 'typography' not in style_config:
+            style_config['typography'] = {
+                'title_font': instance.title_font or DEFAULT_TITLE_FONT,
+            }
+        return style_config
+    
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        cleaned_data = self.cleaned_data
+
+        # Actualizar campos del modelo
+        instance.primary_color = cleaned_data.get('primary_color') or instance.primary_color
+        instance.secondary_color = cleaned_data.get('secondary_color') or instance.secondary_color
+        instance.background_color = cleaned_data.get('background_color') or instance.background_color
+        instance.text_color = cleaned_data.get('text_color') or instance.text_color
+        instance.title_font = cleaned_data.get('title_font') or instance.title_font
+        
+        # Actualizar configuración de efectos
+        effect_config = cleaned_data.get('effect_preset')
+        if effect_config:
+            instance.effects_config = effect_config
+        
+        # Construir card_config
+        card_config = self._build_card_config(instance, cleaned_data)
+        
+        # Construir style_config completo
+        style_config = instance.style_config or {}
+        style_config = self._ensure_colors_config(style_config, instance)
+        style_config = self._ensure_typography_config(style_config, instance)
+        style_config['card_config'] = card_config
+        
+        instance.style_config = style_config
+
+        if commit:
+            instance.save()
+            self.save_m2m()
+        
+        return instance

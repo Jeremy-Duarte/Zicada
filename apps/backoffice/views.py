@@ -24,7 +24,7 @@ from apps.core.url_names import (
     ORDERS_CREATE,
     PRODUCTS_LIST,
     PRODUCTS_EDIT,
-    PRODUCTS_CREATE,
+    PRODUCTS_COLLECTION_LIST,
     USERS_LIST,
     USERS_CREATE,
     BACKOFFICE_IMPORTERS_DASHBOARD,
@@ -165,6 +165,7 @@ from .constants import (
     BTN_TITLE_ROLES,
     BTN_TITLE_TRASHCAN,
     BTN_TITLE_HERO_SLIDES,
+    BTN_TITLE_MANAGE_COLLECTIONS,
     # Button Descriptions
     BTN_DESC_MANAGE_ORDERS,
     BTN_DESC_CREATE_ORDER,
@@ -175,6 +176,7 @@ from .constants import (
     BTN_DESC_EXPORT,
     BTN_DESC_EXPORT_DELIVERIES,
     BTN_DESC_FINANCIAL_REPORTS,
+    BTN_DESC_MANAGE_COLLECTIONS,
     # Gradient Colors
     GRADIENT_ACCENT_FROM,
     GRADIENT_ACCENT_TO,
@@ -281,6 +283,7 @@ from .constants import (
     STRING_COMPLETED_ORDERS,
     STRING_ACCUMULATED,
     STRING_PRODUCTS,
+    STRING_COLLECTIONS,
     # Report Types
     REPORT_TYPE_FINANCIAL,
     REPORT_TYPE_PRODUCTS,
@@ -818,13 +821,13 @@ def admin_products(request):
             'badge': f"{stats['total']} {STRING_PRODUCTS}"
         },
         {
-            'url': reverse(PRODUCTS_CREATE),
-            'icon': ICON_PLUS_CIRCLE,
-            'title': BTN_TITLE_CREATE_PRODUCT,
-            'description': BTN_DESC_CREATE_PRODUCT,
+            'url': reverse(PRODUCTS_COLLECTION_LIST),
+            'icon': ICON_TABLE_LIST,
+            'title': BTN_TITLE_MANAGE_COLLECTIONS,
+            'description': BTN_DESC_MANAGE_COLLECTIONS,
             'gradient_from': GRADIENT_GREEN_FROM,
             'gradient_to': GRADIENT_GREEN_TO,
-            'badge': BADGE_NEW
+            'badge': f"{stats['total']} {STRING_COLLECTIONS}" #TODO hacer consultas de colecciones
         },
         {
             'url': reverse(BACKOFFICE_IMPORTERS_DASHBOARD),

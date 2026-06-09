@@ -1,0 +1,31 @@
+{% extends "backoffice/layouts/backoffice_base.html" %}
+{% load static %}
+
+{% block title %}Colecciones - Zicada{% endblock %}
+
+
+
+{% block content %}
+<div class="space-y-6">
+    {% include 'backoffice/components/crud/list_header.html' with title="Colecciones" create_url="products:collection_create" create_label="Nueva Colección" %}
+    
+    {% include 'backoffice/components/crud/bulk_actions.html' with bulk_actions=bulk_actions %}
+    
+    {% include 'backoffice/components/crud/list_filters.html' with filters=filters_config %}
+    
+    {% include 'backoffice/components/crud/list_table.html' with headers=headers rows=rows show_actions=True edit_url_name="products:collection_edit" style_url_name="products:collection_style" delete_url_name="products:collection_delete" empty_message="No hay colecciones registradas" page_obj=page_obj %}
+    
+    <div class="text-right">
+        <a href="{% url 'products:collection_trashcan' %}" class="text-sm text-gray-400 hover:text-gray-600">
+            <i class="fas fa-trash-alt mr-1"></i> Ver colecciones eliminadas
+        </a>
+    </div>
+</div>
+
+{% include 'backoffice/components/crud/confirm_modal.html' %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/backoffice/confirm-modal.js' %}"></script>
+<script src="{% static 'js/backoffice/bulk-actions.js' %}"></script>
+{% endblock %}

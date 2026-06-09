@@ -1,0 +1,23 @@
+{% load static %}
+
+<div id="confirm-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 transform transition-all">
+        <form id="confirm-form" method="post" class="p-6">
+            {% csrf_token %}
+            <input type="hidden" name="bulk_action" id="modal-bulk-action" value="">
+            
+            <div class="flex items-center gap-3 mb-4">
+                <div id="modal-icon" class="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+                    <i class="fas fa-exclamation-triangle text-amber-600"></i>
+                </div>
+                <h3 id="modal-title" class="text-lg font-bold text-gray-900">Confirmar acción</h3>
+            </div>
+            <p id="modal-message" class="text-gray-600 mb-4">¿Estás seguro de realizar esta acción?</p>
+            <p id="modal-detail" class="text-sm text-gray-500 mb-6"></p>
+            <div class="flex gap-3">
+                <button type="button" id="modal-cancel" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition">Cancelar</button>
+                <button type="submit" id="modal-confirm" class="flex-1 px-4 py-2 bg-zicada-accent hover:bg-red-700 text-white rounded-lg transition">Confirmar</button>
+            </div>
+        </form>
+    </div>
+</div>

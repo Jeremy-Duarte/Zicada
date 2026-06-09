@@ -1,0 +1,120 @@
+{% extends "backoffice/layouts/backoffice_base.html" %}
+{% load static %}
+
+{% block title %}{% if form.instance.pk %}Editar{% else %}Nueva{% endif %} Colección - Zicada{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="bg-white rounded-xl shadow-sm p-6">
+        <h1 class="text-2xl font-bold text-gray-800 mb-6">{% if form.instance.pk %}Editar{% else %}Nueva{% endif %} Colección</h1>
+        
+        <form method="post" enctype="multipart/form-data" class="space-y-5">
+            {% csrf_token %}
+            
+            {% if form.errors %}
+            <div class="bg-red-100 text-red-700 p-4 rounded mb-4 border-l-4 border-red-500">
+                <strong class="block mb-2">⚠️ Por favor corrige los siguientes errores:</strong>
+                <ul class="list-disc list-inside space-y-1">
+                {% for field, errors in form.errors.items %}
+                    <li><strong>{{ field|capfirst }}:</strong> {{ errors|join:", " }}</li>
+                {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            <div>
+                <label for="{{ form.name.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                    Nombre <span class="text-red-500">*</span>
+                </label>
+                {{ form.name }}
+                {% if form.name.help_text %}
+                <p class="text-xs text-gray-400 mt-1">{{ form.name.help_text }}</p>
+                {% endif %}
+                {% for error in form.name.errors %}
+                <p class="text-red-500 text-xs mt-1">{{ error }}</p>
+                {% endfor %}
+            </div>
+
+            <div>
+                <label for="{{ form.description.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                    Descripción
+                </label>
+                {{ form.description }}
+                {% if form.description.help_text %}
+                <p class="text-xs text-gray-400 mt-1">{{ form.description.help_text }}</p>
+                {% endif %}
+                {% for error in form.description.errors %}
+                <p class="text-red-500 text-xs mt-1">{{ error }}</p>
+                {% endfor %}
+            </div>
+
+            <div>
+                <label for="{{ form.products.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                    Productos
+                </label>
+                {{ form.products }}
+                <p class="text-xs text-gray-400 mt-1">Selecciona los productos que pertenecen a esta colección</p>
+                {% for error in form.products.errors %}
+                <p class="text-red-500 text-xs mt-1">{{ error }}</p>
+                {% endfor %}
+            </div>
+
+            <div>
+                <label for="{{ form.cover_image.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                    Imagen de portada
+                </label>
+                {{ form.cover_image }}
+                {% if form.instance.cover_image %}
+                <div class="mt-2">
+                    <img src="{{ form.instance.cover_image.url }}" alt="Portada de {{ form.instance.name }}" class="w-32 h-32 object-cover rounded-lg shadow-md">
+                    <p class="text-xs text-gray-500 mt-1">Imagen actual</p>
+                </div>
+                {% endif %}
+                {% for error in form.cover_image.errors %}
+                <p class="text-red-500 text-xs mt-1">{{ error }}</p>
+                {% endfor %}
+            </div>
+
+            {% if form.instance.pk %}
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="{{ form.start_date.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                            Fecha de inicio
+                        </label>
+                        {{ form.start_date }}
+                        {% for error in form.start_date.errors %}
+                        <p class="text-red-500 text-xs mt-1">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                    <div>
+                        <label for="{{ form.end_date.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                            Fecha de fin
+                        </label>
+                        {{ form.end_date }}
+                        {% for error in form.end_date.errors %}
+                        <p class="text-red-500 text-xs mt-1">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div>
+                    <label for="{{ form.is_active.id_for_label }}" class="flex items-center gap-2 cursor-pointer">
+                        {{ form.is_active }}
+                        <span class="text-sm font-medium text-gray-700">Colección activa</span>
+                    </label>
+                    {% for error in form.is_active.errors %}
+                    <p class="text-red-500 text-xs mt-1">{{ error }}</p>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            <div class="flex justify-end gap-3 pt-4">
+                <a href="{% url 'products:collection_list' %}" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition">Cancelar</a>
+                <button type="submit" class="bg-zicada-accent hover:bg-opacity-90 text-white px-6 py-2 rounded-lg transition">
+                    {% if form.instance.pk %}Guardar Cambios{% else %}Crear Colección{% endif %}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

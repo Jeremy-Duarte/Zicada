@@ -1,0 +1,21 @@
+{% load static %}
+
+{% if bulk_actions %}
+<div class="bg-white rounded-xl shadow-sm p-4">
+    <div class="flex flex-wrap items-center gap-3">
+        <span class="text-sm font-medium text-gray-700">Acciones rápidas:</span>
+        {% for action in bulk_actions %}
+        <button type="button" 
+                data-action="{{ action.name }}"
+                data-confirm="{{ action.confirm|default:'¿Estás seguro?' }}"
+                data-message="{{ action.message|default:'' }}"
+                class="bulk-action-btn px-4 py-2 rounded-lg text-sm font-medium transition {{ action.class|default:'bg-gray-100 text-gray-700 hover:bg-gray-200' }} flex items-center gap-2">
+            {% if action.icon %}
+            <i class="fas {{ action.icon }}"></i>
+            {% endif %}
+            {{ action.label }}
+        </button>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
