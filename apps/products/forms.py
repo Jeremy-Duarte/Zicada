@@ -1,3 +1,5 @@
+from datetime import timezone
+
 from django import forms
 from django.core.exceptions import ValidationError
 from django.utils.text import slugify
@@ -55,6 +57,48 @@ PRODUCT_TYPE_COLECCION_LIMITADA = 'coleccion_limitada'
 # Order statuses for validation
 ORDER_STATUSES_ACTIVE = ['pendiente', 'confirmado', 'preparando', 'listo', 'en_camino']
 
+# Colores por defecto para colecciones
+DEFAULT_PRIMARY_COLOR = '#c2a575'
+DEFAULT_SECONDARY_COLOR = '#8b5e3c'
+DEFAULT_BACKGROUND_COLOR = '#ffffff'
+DEFAULT_TEXT_COLOR = '#1a1a1a'
+DEFAULT_TITLE_FONT = "'Inter', sans-serif"
+
+# Configuración de tarjetas
+DEFAULT_BORDER_RADIUS = '0.5rem'
+DEFAULT_BOX_SHADOW = '0 1px 3px 0 rgba(0,0,0,0.1)'
+DEFAULT_HOVER_SCALE = 1.05
+DEFAULT_SHOW_CATEGORY = True
+DEFAULT_SHOW_STOCK_BADGE = True
+DEFAULT_BADGE_TEXT_COLOR = '#ffffff'
+
+# Estilos
+STYLE_COLOR_PICKER = 'width: 60px; height: 35px; cursor: pointer;'
+
+# Mensajes para colecciones (si no existen)
+MSG_COLLECTION_NAME_EXISTS_ACTIVE = 'Ya existe una colección activa con ese nombre.'
+MSG_COLLECTION_NAME_EXISTS_DELETED = 'Ya existe una colección con ese nombre (activa o eliminada).'
+MSG_COLLECTION_END_DATE_AFTER_START = 'La fecha de fin debe ser posterior a la fecha de inicio.'
+MSG_COLLECTION_PUBLISHED_NO_PRODUCTS = 'Una colección publicada debe tener al menos un producto asignado.'
+MSG_COLLECTION_PRODUCTS_IN_OTHER_PUBLISHED = 'Los siguientes productos ya pertenecen a otra colección publicada: {}'
+MSG_COLLECTION_SLUG_EXISTS = 'Ya existe una colección con ese slug.'
+MSG_COLLECTION_SLUG_GENERATED = 'El slug se genera automáticamente si lo dejas vacío.'
+MSG_COLLECTION_DATE_PAST_ERROR = 'La fecha de inicio no puede ser anterior a la fecha actual.'
+MSG_COLLECTION_RESTORE_ACTIVE_SLUG = 'Ya existe una colección activa con el slug "{}".'
+MSG_COLLECTION_CONFIRM_DELETE = 'Escribe el nombre de la colección para confirmar'
+MSG_COLLECTION_CONFIRM_RESTORE = 'Confirmo que deseo restaurar esta colección'
+MSG_COLLECTION_RESTORE_PRODUCTS_TYPE = 'Actualizar tipo de productos'
+MSG_COLLECTION_RESTORE_PRODUCTS_TYPE_HELP = 'Si está activado, los productos de esta colección pasarán a "Colección limitada" si no están en otra colección publicada.'
+
+# Configuración de tarjetas (labels)
+LABEL_CARD_BG_COLOR = 'Color de fondo de tarjetas'
+LABEL_CARD_TITLE_COLOR = 'Color del título'
+LABEL_CARD_PRICE_COLOR = 'Color del precio'
+LABEL_CARD_BORDER_RADIUS = 'Radio de borde'
+LABEL_CARD_SHADOW = 'Sombra de tarjeta'
+LABEL_CARD_HOVER_SCALE = 'Escala al hover'
+LABEL_CARD_SHOW_CATEGORY = 'Mostrar categoría'
+LABEL_CARD_SHOW_STOCK_BADGE = 'Mostrar badge de stock'
 
 # ========== FORMULARIOS PARA CATÁLOGOS ESTÁTICOS ==========
 
@@ -784,193 +828,457 @@ class ProductVariantRestoreForm(FormStyleMixin, forms.Form):
         return cleaned_data
 
 
+# Opciones de fuentes (limitadas a Tailwind + Google Fonts populares)
+FONT_FAMILY_CHOICES = [
+    ("'Inter', sans-serif", "Inter"),
+    ("'Roboto', sans-serif", "Roboto"),
+    ("'Poppins', sans-serif", "Poppins"),
+    ("'Montserrat', sans-serif", "Montserrat"),
+    ("'Open Sans', sans-serif", "Open Sans"),
+    ("'Playfair Display', serif", "Playfair Display"),
+    ("'Merriweather', serif", "Merriweather"),
+]
+
+# Opciones de altura de sección (para efectos)
+SECTION_HEIGHT_CHOICES = [(f'{i}vh', f'{i}% de la pantalla') for i in range(10, 101, 10)]
+
+# Opciones de tamaño (fuente, margen, etc.)
+SIZE_CHOICES = [
+    ('0.5rem', 'Muy pequeño (0.5rem)'),
+    ('0.75rem', 'Pequeño (0.75rem)'),
+    ('1rem', 'Normal (1rem)'),
+    ('1.25rem', 'Mediano (1.25rem)'),
+    ('1.5rem', 'Grande (1.5rem)'),
+    ('2rem', 'Muy grande (2rem)'),
+    ('2.5rem', 'Extra grande (2.5rem)'),
+    ('3rem', 'Gigante (3rem)'),
+    ('4rem', 'Muy gigante (4rem)'),
+]
+
+# Opciones de altura de línea
+LINE_HEIGHT_CHOICES = [
+    ('1.2', 'Compacto (1.2)'),
+    ('1.4', 'Normal (1.4)'),
+    ('1.6', 'Espaciado (1.6)'),
+    ('1.8', 'Muy espaciado (1.8)'),
+    ('2.0', 'Doble espacio (2.0)'),
+]
+
+# Opciones de margen
+MARGIN_CHOICES = SIZE_CHOICES
+
+
 class CollectionCreateForm(FormStyleMixin, forms.ModelForm):
+    """Formulario robusto para crear colecciones."""
+
     class Meta:
         model = Collection
         fields = [
-            'name', 'description', 'status', 'start_date', 'end_date',
-            'cover_image', 'primary_color', 'secondary_color', 
-            'background_color', 'text_color', 'background_image',
-            'title_font', 'products', 'slug'
+            'name', 'slug', 'description', 'status', 'products',
+            'start_date', 'end_date',
+            'cover_image',
+            'primary_color', 'secondary_color', 'background_color', 'text_color',
+            'background_image',
+            'title_font',
         ]
         widgets = {
-            'name': forms.TextInput(),
-            'description': forms.Textarea(attrs={'rows': 4}),
-            'status': forms.Select(),
-            'start_date': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
-            'end_date': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
-            'cover_image': forms.ClearableFileInput(),
-            'primary_color': forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_INPUT}),
-            'secondary_color': forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_INPUT}),
-            'background_color': forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_INPUT}),
-            'text_color': forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_INPUT}),
-            'background_image': forms.ClearableFileInput(),
-            'title_font': forms.TextInput(attrs={"placeholder": "'Inter', sans-serif"}),
-            'products': forms.SelectMultiple(attrs={'size': 10}),
+            'name': forms.TextInput(attrs={'class': 'w-full', 'placeholder': 'Ej: Colección Verano 2024'}),
+            'slug': forms.TextInput(attrs={'class': 'w-full', 'readonly': 'readonly'}),
+            'description': forms.Textarea(attrs={'rows': 4, 'class': 'w-full'}),
+            'status': forms.Select(attrs={'class': 'w-full'}),
+            'products': forms.SelectMultiple(attrs={'class': 'w-full', 'size': 8}),
+            'start_date': forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'w-full'}),
+            'end_date': forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'w-full'}),
+            'cover_image': forms.ClearableFileInput(attrs={'class': 'w-full'}),
+            'primary_color': forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_PICKER}),
+            'secondary_color': forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_PICKER}),
+            'background_color': forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_PICKER}),
+            'text_color': forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_PICKER}),
+            'background_image': forms.ClearableFileInput(attrs={'class': 'w-full'}),
+            'title_font': forms.Select(choices=FONT_FAMILY_CHOICES, attrs={'class': 'w-full'}),
         }
-    
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['products'].queryset = Product.objects.filter(is_active=True)
         self.fields['slug'].required = False
-    
+        self.fields['slug'].help_text = MSG_COLLECTION_SLUG_GENERATED
+
     def clean_name(self):
         name = self.cleaned_data.get('name', '').strip()
-        
+        if not name:
+            raise ValidationError('El nombre de la colección es obligatorio.')
+
         if Collection.all_objects.filter(name__iexact=name).exists():
-            raise ValidationError('Ya existe una colección con ese nombre (activa o eliminada).')
-        
+            raise ValidationError(MSG_COLLECTION_NAME_EXISTS_DELETED)
         return name
-    
+
+    def clean_slug(self):
+        slug = self.cleaned_data.get('slug', '').strip()
+        if slug and Collection.all_objects.filter(slug__iexact=slug).exists():
+            raise ValidationError(MSG_COLLECTION_SLUG_EXISTS)
+        return slug
+
+    def clean_start_date(self):
+        start_date = self.cleaned_data.get('start_date')
+        if start_date and start_date < timezone.now():
+            raise ValidationError(MSG_COLLECTION_DATE_PAST_ERROR)
+        return start_date
+
+    def clean_end_date(self):
+        end_date = self.cleaned_data.get('end_date')
+        if end_date and end_date < timezone.now():
+            raise ValidationError(MSG_COLLECTION_DATE_PAST_ERROR)
+        return end_date
+
     def clean(self):
         cleaned_data = super().clean()
-        
         start_date = cleaned_data.get('start_date')
         end_date = cleaned_data.get('end_date')
         status = cleaned_data.get('status')
         products = cleaned_data.get('products', [])
-        
+
         if start_date and end_date and start_date >= end_date:
-            raise ValidationError({
-                'end_date': 'La fecha de fin debe ser posterior a la fecha de inicio.'
-            })
-        
+            self.add_error('end_date', MSG_COLLECTION_END_DATE_AFTER_START)
+
         if status == 'publicada' and not products:
-            raise ValidationError({
-                'status': 'Una colección publicada debe tener al menos un producto asignado.'
-            })
-        
+            self.add_error('status', MSG_COLLECTION_PUBLISHED_NO_PRODUCTS)
+
         return cleaned_data
 
 
 class CollectionUpdateForm(FormStyleMixin, forms.ModelForm):
+    """Formulario robusto para actualizar colecciones."""
+
     class Meta:
         model = Collection
         fields = [
-            'name', 'description', 'status', 'start_date', 'end_date',
-            'cover_image', 'primary_color', 'secondary_color', 
-            'background_color', 'text_color', 'background_image',
-            'title_font', 'products', 'is_active', 'slug'
+            'name', 'slug', 'description', 'status', 'products',
+            'start_date', 'end_date',
+            'cover_image',
+            'primary_color', 'secondary_color', 'background_color', 'text_color',
+            'background_image',
+            'title_font',
+            'is_active',
         ]
         widgets = {
-            'name': forms.TextInput(),
-            'description': forms.Textarea(attrs={'rows': 4}),
-            'status': forms.Select(),
-            'start_date': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
-            'end_date': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
-            'cover_image': forms.ClearableFileInput(),
-            'primary_color': forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_INPUT}),
-            'secondary_color': forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_INPUT}),
-            'background_color': forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_INPUT}),
-            'text_color': forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_INPUT}),
-            'background_image': forms.ClearableFileInput(),
-            'title_font': forms.TextInput(),
-            'products': forms.SelectMultiple(attrs={'size': 10}),
-            'is_active': forms.CheckboxInput(),
+            'name': forms.TextInput(attrs={'class': 'w-full'}),
+            'slug': forms.TextInput(attrs={'class': 'w-full', 'readonly': 'readonly'}),
+            'description': forms.Textarea(attrs={'rows': 4, 'class': 'w-full'}),
+            'status': forms.Select(attrs={'class': 'w-full'}),
+            'products': forms.SelectMultiple(attrs={'class': 'w-full', 'size': 8}),
+            'start_date': forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'w-full'}),
+            'end_date': forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'w-full'}),
+            'cover_image': forms.ClearableFileInput(attrs={'class': 'w-full'}),
+            'primary_color': forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_PICKER}),
+            'secondary_color': forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_PICKER}),
+            'background_color': forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_PICKER}),
+            'text_color': forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_PICKER}),
+            'background_image': forms.ClearableFileInput(attrs={'class': 'w-full'}),
+            'title_font': forms.Select(choices=FONT_FAMILY_CHOICES, attrs={'class': 'w-full'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'toggle-switch'}),
         }
-    
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['products'].queryset = Product.objects.filter(is_active=True)
         self.fields['slug'].required = False
-    
+        self.fields['slug'].help_text = MSG_COLLECTION_SLUG_GENERATED
+
     def clean_name(self):
         name = self.cleaned_data.get('name', '').strip()
+        if not name:
+            raise ValidationError('El nombre de la colección es obligatorio.')
+
         qs = Collection.objects.filter(name__iexact=name)
-        
         if self.instance and self.instance.pk:
             qs = qs.exclude(pk=self.instance.pk)
-        
         if qs.exists():
-            raise ValidationError('Ya existe una colección activa con ese nombre.')
-        
+            raise ValidationError(MSG_COLLECTION_NAME_EXISTS_ACTIVE)
         return name
-    
+
+    def clean_slug(self):
+        slug = self.cleaned_data.get('slug', '').strip()
+        qs = Collection.objects.filter(slug__iexact=slug)
+        if self.instance and self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise ValidationError(MSG_COLLECTION_SLUG_EXISTS)
+        return slug
+
+    def clean_start_date(self):
+        start_date = self.cleaned_data.get('start_date')
+        if start_date and start_date < timezone.now():
+            raise ValidationError(MSG_COLLECTION_DATE_PAST_ERROR)
+        return start_date
+
+    def clean_end_date(self):
+        end_date = self.cleaned_data.get('end_date')
+        if end_date and end_date < timezone.now():
+            raise ValidationError(MSG_COLLECTION_DATE_PAST_ERROR)
+        return end_date
+
     def clean(self):
         cleaned_data = super().clean()
-        
         start_date = cleaned_data.get('start_date')
         end_date = cleaned_data.get('end_date')
         status = cleaned_data.get('status')
         products = cleaned_data.get('products', [])
-        
+
         if start_date and end_date and start_date >= end_date:
-            raise ValidationError({
-                'end_date': 'La fecha de fin debe ser posterior a la fecha de inicio.'
-            })
-        
+            self.add_error('end_date', MSG_COLLECTION_END_DATE_AFTER_START)
+
         if status == 'publicada' and not products:
-            raise ValidationError({
-                'status': 'Una colección publicada debe tener al menos un producto asignado.'
-            })
-        
+            self.add_error('status', MSG_COLLECTION_PUBLISHED_NO_PRODUCTS)
+
         if self.instance and self.instance.status != 'publicada' and status == 'publicada':
             conflicting = Collection.objects.filter(
-                status='publicada', is_active=True, products__in=products
+                status='publicada',
+                is_active=True,
+                products__in=products
             ).exclude(pk=self.instance.pk).distinct()
-            
+
             if conflicting.exists():
                 product_names = []
                 for collection in conflicting[:3]:
                     product_names.extend([p.name for p in collection.products.filter(is_active=True)[:2]])
-                
-                raise ValidationError({
-                    'status': f'Los siguientes productos ya pertenecen a otra colección publicada: {", ".join(set(product_names)[:5])}'
-                })
-        
+                self.add_error(
+                    'status',
+                    MSG_COLLECTION_PRODUCTS_IN_OTHER_PUBLISHED.format(', '.join(set(product_names)[:5]))
+                )
+
         return cleaned_data
 
 
 class CollectionDeleteForm(FormStyleMixin, forms.Form):
+    """Formulario para soft-delete de colección."""
+
     confirm = forms.CharField(
         required=True,
         label=CONFIRM_DELETE_COLLECTION,
-        widget=forms.TextInput()
+        widget=forms.TextInput(attrs={'class': 'w-full', 'placeholder': 'Escribe el nombre de la colección'})
     )
-    
+
     def __init__(self, *args, **kwargs):
         self.collection = kwargs.pop('collection', None)
         super().__init__(*args, **kwargs)
-    
+
     def clean_confirm(self):
         value = self.cleaned_data.get('confirm', '').strip().lower()
-        
+
         if not self.collection:
             raise ValidationError(ERROR_COLLECTION_NOT_SPECIFIED)
-        
+
         if self.collection.name.lower() != value:
             raise ValidationError('El nombre de la colección no coincide.')
-        
+
+        if self.collection.status == 'publicada':
+            has_orders = self.collection.products.filter(
+                variants__order_items__order__status__in=ORDER_STATUSES_ACTIVE
+            ).exists()
+            if has_orders:
+                raise ValidationError(
+                    'No se puede eliminar esta colección porque tiene productos en pedidos en curso. '
+                    'Considere archivarla en lugar de eliminarla.'
+                )
+
         return value
 
 
 class CollectionRestoreForm(FormStyleMixin, forms.Form):
+    """Formulario para restaurar colección eliminada."""
+
     confirm = forms.BooleanField(
         required=True,
-        label='Confirmo que deseo restaurar esta colección'
+        label=MSG_COLLECTION_CONFIRM_RESTORE,
+        widget=forms.CheckboxInput(attrs={'class': 'toggle-switch'})
     )
+
     restore_products_type = forms.BooleanField(
         required=False,
         initial=True,
-        label='Actualizar tipo de productos',
-        help_text='Si está activado, los productos de esta colección pasarán a "Colección limitada" si no están en otra colección publicada.'
+        label=MSG_COLLECTION_RESTORE_PRODUCTS_TYPE,
+        help_text=MSG_COLLECTION_RESTORE_PRODUCTS_TYPE_HELP,
+        widget=forms.CheckboxInput(attrs={'class': 'toggle-switch'})
     )
-    
+
     def __init__(self, *args, **kwargs):
         self.collection = kwargs.pop('collection', None)
         super().__init__(*args, **kwargs)
-    
+
     def clean(self):
         cleaned_data = super().clean()
-        
+
         if not self.collection:
             raise ValidationError(ERROR_COLLECTION_NOT_SPECIFIED)
-        
-        if Collection.objects.filter(slug=self.collection.slug).exists():
-            raise ValidationError(f'Ya existe una colección activa con el slug "{self.collection.slug}".')
-        
-        confirm = cleaned_data.get('confirm')
-        if not confirm:
+
+        if Collection.objects.filter(slug=self.collection.slug, is_active=True).exists():
+            raise ValidationError(MSG_COLLECTION_RESTORE_ACTIVE_SLUG.format(self.collection.slug))
+
+        if not cleaned_data.get('confirm'):
             raise ValidationError(ERROR_CONFIRM_RESTORE)
-        
+
         return cleaned_data
+
+
+class CollectionStyleForm(forms.ModelForm):
+    """Formulario para estilos y configuración de tarjetas de colección."""
+
+    card_background_color = forms.CharField(
+        max_length=20,
+        required=False,
+        widget=forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_PICKER}),
+        label=LABEL_CARD_BG_COLOR
+    )
+    card_title_color = forms.CharField(
+        max_length=20,
+        required=False,
+        widget=forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_PICKER}),
+        label=LABEL_CARD_TITLE_COLOR
+    )
+    card_price_color = forms.CharField(
+        max_length=20,
+        required=False,
+        widget=forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_PICKER}),
+        label=LABEL_CARD_PRICE_COLOR
+    )
+    card_border_radius = forms.CharField(
+        max_length=20,
+        required=False,
+        initial=DEFAULT_BORDER_RADIUS,
+        label=LABEL_CARD_BORDER_RADIUS,
+        help_text='Ej: 0.5rem, 1rem, 8px, 12px'
+    )
+    card_shadow = forms.CharField(
+        max_length=200,
+        required=False,
+        initial=DEFAULT_BOX_SHADOW,
+        label=LABEL_CARD_SHADOW,
+        help_text='CSS box-shadow. Ej: 0 10px 15px -3px rgba(0,0,0,0.1)'
+    )
+    card_hover_scale = forms.DecimalField(
+        required=False,
+        initial=DEFAULT_HOVER_SCALE,
+        max_digits=4,
+        decimal_places=2,
+        label=LABEL_CARD_HOVER_SCALE,
+        help_text='Ej: 1.05 (5% más grande), 1.1 (10% más grande)'
+    )
+    card_show_category = forms.BooleanField(
+        required=False,
+        initial=DEFAULT_SHOW_CATEGORY,
+        label=LABEL_CARD_SHOW_CATEGORY,
+        help_text='Muestra la categoría del producto en la tarjeta'
+    )
+    card_show_stock_badge = forms.BooleanField(
+        required=False,
+        initial=DEFAULT_SHOW_STOCK_BADGE,
+        label=LABEL_CARD_SHOW_STOCK_BADGE,
+        help_text='Muestra el estado del stock (disponible, agotado, últimas unidades)'
+    )
+
+    class Meta:
+        model = Collection
+        fields = [
+            'name', 'slug', 'description', 'status', 'products',
+            'start_date', 'end_date',
+            'cover_image',
+            'primary_color', 'secondary_color', 'background_color', 'text_color',
+            'background_image',
+            'title_font',
+            'effects_config',
+            'custom_css',
+            'style_config',
+            'is_active',
+        ]
+        widgets = {
+            'primary_color': forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_PICKER}),
+            'secondary_color': forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_PICKER}),
+            'background_color': forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_PICKER}),
+            'text_color': forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_PICKER}),
+            'custom_css': forms.Textarea(attrs={'rows': 8, 'class': 'w-full font-mono'}),
+            'effects_config': forms.Textarea(attrs={'rows': 6, 'class': 'w-full font-mono', 'placeholder': '{\n  "hover_effect": "zoom",\n  "animation": "fadeIn"\n}'}),
+            'slug': forms.TextInput(attrs={'readonly': 'readonly'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['products'].queryset = Product.objects.filter(is_active=True)
+        self.fields['slug'].required = False
+
+        if self.instance and self.instance.style_config:
+            card_config = self.instance.style_config.get('card_config', {})
+            self.fields['card_background_color'].initial = card_config.get('background_color', self.instance.background_color or DEFAULT_BACKGROUND_COLOR)
+            self.fields['card_title_color'].initial = card_config.get('title_color', self.instance.primary_color or DEFAULT_PRIMARY_COLOR)
+            self.fields['card_price_color'].initial = card_config.get('price_color', self.instance.primary_color or DEFAULT_PRIMARY_COLOR)
+            self.fields['card_border_radius'].initial = card_config.get('border_radius', DEFAULT_BORDER_RADIUS)
+            self.fields['card_shadow'].initial = card_config.get('shadow', DEFAULT_BOX_SHADOW)
+            self.fields['card_hover_scale'].initial = card_config.get('hover_scale', DEFAULT_HOVER_SCALE)
+            self.fields['card_show_category'].initial = card_config.get('show_category', DEFAULT_SHOW_CATEGORY)
+            self.fields['card_show_stock_badge'].initial = card_config.get('show_stock_badge', DEFAULT_SHOW_STOCK_BADGE)
+
+    def _build_card_config(self, instance, cleaned_data):
+        """Construye la configuración de tarjetas a partir de los datos del formulario."""
+        return {
+            'background_color': cleaned_data.get('card_background_color') or instance.background_color or DEFAULT_BACKGROUND_COLOR,
+            'title_color': cleaned_data.get('card_title_color') or instance.primary_color or DEFAULT_PRIMARY_COLOR,
+            'price_color': cleaned_data.get('card_price_color') or instance.primary_color or DEFAULT_PRIMARY_COLOR,
+            'badge_background': instance.primary_color or DEFAULT_PRIMARY_COLOR,
+            'badge_text_color': DEFAULT_BADGE_TEXT_COLOR,
+            'border_radius': cleaned_data.get('card_border_radius') or DEFAULT_BORDER_RADIUS,
+            'shadow': cleaned_data.get('card_shadow') or DEFAULT_BOX_SHADOW,
+            'hover_scale': float(cleaned_data.get('card_hover_scale') or DEFAULT_HOVER_SCALE),
+            'show_category': cleaned_data.get('card_show_category', DEFAULT_SHOW_CATEGORY),
+            'show_stock_badge': cleaned_data.get('card_show_stock_badge', DEFAULT_SHOW_STOCK_BADGE),
+        }
+
+    def _ensure_colors_config(self, style_config, instance):
+        """Asegura que la configuración de colores exista en style_config."""
+        if 'colors' not in style_config:
+            style_config['colors'] = {
+                'primary': instance.primary_color or DEFAULT_PRIMARY_COLOR,
+                'secondary': instance.secondary_color or DEFAULT_SECONDARY_COLOR,
+                'background': instance.background_color or DEFAULT_BACKGROUND_COLOR,
+                'text': instance.text_color or DEFAULT_TEXT_COLOR,
+            }
+        return style_config
+
+    def _ensure_typography_config(self, style_config, instance):
+        """Asegura que la configuración de tipografía exista en style_config."""
+        if 'typography' not in style_config:
+            style_config['typography'] = {
+                'title_font': instance.title_font or DEFAULT_TITLE_FONT,
+            }
+        return style_config
+
+    def clean(self):
+        cleaned_data = super().clean()
+        start_date = cleaned_data.get('start_date')
+        end_date = cleaned_data.get('end_date')
+        status = cleaned_data.get('status')
+        products = cleaned_data.get('products', [])
+
+        if start_date and end_date and start_date >= end_date:
+            self.add_error('end_date', MSG_COLLECTION_END_DATE_AFTER_START)
+
+        if status == 'publicada' and not products:
+            self.add_error('status', MSG_COLLECTION_PUBLISHED_NO_PRODUCTS)
+
+        return cleaned_data
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        cleaned_data = self.cleaned_data
+
+        card_config = self._build_card_config(instance, cleaned_data)
+
+        style_config = instance.style_config or {}
+        style_config = self._ensure_colors_config(style_config, instance)
+        style_config = self._ensure_typography_config(style_config, instance)
+        style_config['card_config'] = card_config
+
+        instance.style_config = style_config
+
+        if commit:
+            instance.save()
+        return instance
