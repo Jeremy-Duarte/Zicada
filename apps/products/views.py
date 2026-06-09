@@ -8,6 +8,7 @@ from django.contrib import messages
 from django.db.models import Q, Min, Max, Count
 from django.contrib.admin.views.decorators import staff_member_required
 from django.utils import timezone
+from django.core.management import call_command
 from django.urls import reverse, reverse_lazy
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView, TemplateView, FormView
 from django.views import View
@@ -1823,7 +1824,7 @@ class ProductVariantTrashcanView(PermissionRequiredMixin, ListView):
 
 
 class CollectionListView(PermissionRequiredMixin, PaginationMixin, FilterMixin, ListView):
-    """Lista de colecciones con filtros avanzados."""
+    """List collections with filtering and pagination."""
     model = Collection
     template_name = TEMPLATE_COLLECTIONS_LIST
     context_object_name = 'collections'
@@ -1838,41 +1839,146 @@ class CollectionListView(PermissionRequiredMixin, PaginationMixin, FilterMixin, 
     
     def get_queryset(self):
         qs = super().get_queryset()
-        qs = qs.select_related().prefetch_related('products')
+        qs = qs.prefetch_related('products')
         return qs
     
+    def _get_cover_image_html(self, collection):
+        if collection.cover_image:
+            return mark_safe(f'<img src="{collection.cover_image.url}" class="w-12 h-12 object-cover rounded-lg shadow-sm">')
+        return mark_safe(ICON_IMAGE_PLACEHOLDER)
+    
+    def _get_name_html(self, collection):
+        return mark_safe(f'<div><strong>{collection.name}</strong><br><span class="text-xs text-gray-500">{collection.slug}</span></div>')
+    
+    def _get_status_badge_html(self, collection):
+        status_map = {
+            'publicada': ('bg-green-100 text-green-700', 'Publicada'),
+            'borrador': ('bg-amber-100 text-amber-700', 'Borrador'),
+        }
+        if collection.status in status_map:
+            badge_class, badge_text = status_map[collection.status]
+            return mark_safe(f'<span class="px-2 py-1 text-xs rounded-full {badge_class}">{badge_text}</span>')
+        return mark_safe('<span class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-700">Archivada</span>')
+    
+    def _get_active_badge_html(self, collection):
+        badge_class = BADGE_CLASS_ACTIVE if collection.is_active else BADGE_CLASS_INACTIVE
+        badge_text = BADGE_TEXT_ACTIVE if collection.is_active else BADGE_TEXT_INACTIVE
+        return mark_safe(f'<span class="px-2 py-1 text-xs rounded-full {badge_class}">{badge_text}</span>')
+    
+    def _get_dates_html(self, collection):
+        start_date = collection.start_date.strftime(DATE_FORMAT_DAY_MONTH_YEAR) if collection.start_date else '-'
+        end_date = collection.end_date.strftime(DATE_FORMAT_DAY_MONTH_YEAR) if collection.end_date else '-'
+        return mark_safe(f'<div class="text-xs">{start_date}<br>{end_date}</div>')
+    
+    def _build_collection_row(self, collection):
+        return {
+            'pk': collection.pk,
+            'values': [
+                self._get_cover_image_html(collection),
+                self._get_name_html(collection),
+                collection.products.count(),
+                self._get_status_badge_html(collection),
+                self._get_active_badge_html(collection),
+                self._get_dates_html(collection),
+            ],
+        }
+    
+    def _build_collection_rows(self, collections):
+        """Construye todas las filas de la tabla."""
+        return [self._build_collection_row(collection) for collection in collections]    
+    
+    def _get_filters_config(self):
+        """Retorna la configuración de filtros para el template."""
+        return [
+            {'name': FILTER_NAME, 'label': 'Nombre', 'type': 'search', 'placeholder': 'Buscar colección...'},
+            {'name': 'status', 'label': 'Estado', 'type': 'select', 'options': [
+                {'value': 'publicada', 'label': 'Publicada'},
+                {'value': 'borrador', 'label': 'Borrador'},
+                {'value': 'archivada', 'label': 'Archivada'},
+            ]},
+            {'name': FILTER_IS_ACTIVE, 'label': 'Activo', 'type': 'select', 'options': [
+                {'value': 'true', 'label': 'Activo'},
+                {'value': 'false', 'label': 'Inactivo'},
+            ]},
+        ]
+    
+    def _get_bulk_actions_config(self):
+        """Retorna la configuración de acciones masivas."""
+        return [
+            {
+                'name': 'archive_expired',
+                'label': 'Archivar expiradas',
+                'icon': 'fa-archive',
+                'class': 'bg-amber-100 text-amber-700 hover:bg-amber-200',
+                'confirm': '¿Archivar todas las colecciones expiradas?',
+                'message': 'Esta acción archivará todas las colecciones cuya fecha de fin ya pasó.',
+                'type': 'warning'
+            },
+            {
+                'name': 'publish_scheduled',
+                'label': 'Publicar programadas',
+                'icon': 'fa-calendar-check',
+                'class': 'bg-green-100 text-green-700 hover:bg-green-200',
+                'confirm': '¿Publicar todas las colecciones programadas?',
+                'message': 'Esta acción publicará todas las colecciones cuya fecha de inicio ya llegó.',
+                'type': 'info'
+            },
+        ]
+        
+    def _handle_archive_expired(self, request):
+        """Maneja la acción de archivar colecciones expiradas."""
+        call_command('archive_collections')
+        messages.success(request, 'Colecciones expiradas archivadas correctamente.')
+    
+    def _handle_publish_scheduled(self, request):
+        """Maneja la acción de publicar colecciones programadas."""
+        call_command('publish_collections')
+        messages.success(request, 'Colecciones programadas publicadas correctamente.')
+    
+    def _handle_archive_selected(self, request, selected_ids):
+        """Maneja la acción de archivar colecciones seleccionadas."""
+        if not selected_ids:
+            messages.warning(request, 'No se seleccionó ninguna colección.')
+            return
+        
+        count = 0
+        for collection_id in selected_ids:
+            try:
+                collection = Collection.objects.get(pk=collection_id)
+                if collection.status == 'publicada':
+                    collection.status = 'archivada'
+                    collection.save(update_fields=['status'])
+                    collection.update_products_type()
+                    count += 1
+            except Collection.DoesNotExist:
+                pass
+        messages.success(request, f'{count} colección(es) archivada(s).')
+        
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        rows = []
-        for collection in context['collections']:
-            status_badge = ''
-            if collection.status == 'publicada':
-                status_badge = '<span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-700">Publicada</span>'
-            elif collection.status == 'borrador':
-                status_badge = '<span class="px-2 py-1 text-xs rounded-full bg-amber-100 text-amber-700">Borrador</span>'
-            else:
-                status_badge = '<span class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-700">Archivada</span>'
-            
-            active_badge = ''
-            if collection.is_active:
-                active_badge = '<span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-700">Activo</span>'
-            else:
-                active_badge = '<span class="px-2 py-1 text-xs rounded-full bg-red-100 text-red-700">Inactivo</span>'
-            
-            rows.append({
-                'pk': collection.pk,
-                'values': [
-                    collection.name,
-                    collection.products.count(),
-                    status_badge,
-                    active_badge,
-                    collection.created_at.strftime(DATE_FORMAT_DISPLAY) if collection.created_at else '-',
-                ],
-            })
-        
-        context['rows'] = rows
-        context['headers'] = ['Nombre', 'Productos', 'Estado', 'Activo', 'Creado']
+        context['rows'] = self._build_collection_rows(context['collections'])
+        context['headers'] = ['Portada', 'Nombre', 'Productos', 'Estado', 'Activo', 'Fechas']
+        context['filters_config'] = self._get_filters_config()
+        context['bulk_actions'] = self._get_bulk_actions_config()
         return context
+    
+    def post(self, request, *args, **kwargs):
+        """Handle bulk actions."""
+        action = request.POST.get('bulk_action')
+        selected_ids = request.POST.getlist('selected_ids')
+        
+        action_handlers = {
+            'archive_expired': self._handle_archive_expired,
+            'publish_scheduled': self._handle_publish_scheduled,
+            'archive_selected': lambda req: self._handle_archive_selected(req, selected_ids),
+        }
+        
+        if action in action_handlers:
+            action_handlers[action](request)
+        else:
+            messages.error(request, 'Acción no válida.')
+        
+        return redirect(request.META.get('HTTP_REFERER', reverse('products:collection_list')))
 
 
 class CollectionCreateView(PermissionRequiredMixin, CreateView):
@@ -1997,21 +2103,20 @@ class CollectionRestoreView(PermissionRequiredMixin, TemplateView):
 
 
 class CollectionTrashcanView(PermissionRequiredMixin, ListView):
-    """Lista de colecciones eliminadas (papelera)."""
+    """View deleted collections (trash can)."""
     model = Collection
     template_name = TEMPLATE_COLLECTION_TRASHCAN
     context_object_name = 'collections'
-    permission_required = PERM_COLLECTION_VIEW
+    permission_required = 'products.view_collection'
     paginate_by = PAGINATE_BY_DEFAULT
     
     def get_queryset(self):
-        return Collection.all_objects.filter(
-            is_active=False
-        ).order_by(ORDER_BY_DELETED_AT)
+        return Collection.all_objects.filter(is_active=False).order_by(ORDER_BY_DELETED_AT)
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         rows = []
+        
         for collection in context['collections']:
             rows.append({
                 'pk': collection.pk,
@@ -2021,8 +2126,10 @@ class CollectionTrashcanView(PermissionRequiredMixin, ListView):
                     collection.deleted_at.strftime(DATE_FORMAT_DISPLAY) if collection.deleted_at else '-',
                 ],
             })
+        
         context['rows'] = rows
         context['headers'] = ['Nombre', 'Productos', 'Eliminado el']
+        
         return context
 
 
