@@ -87,32 +87,34 @@
             const productItems = this.widget.querySelectorAll('.product-item');
             let hasResults = false;
             
-            if (term.length < 2) {
+            const isSearchValid = term.length >= 2;
+            
+            if (isSearchValid) {
+                productItems.forEach(item => {
+                    const name = item.querySelector('.font-medium')?.textContent.toLowerCase() || '';
+                    const category = item.querySelector('.text-gray-500')?.textContent.toLowerCase() || '';
+                    
+                    if (name.includes(term) || category.includes(term)) {
+                        item.style.display = '';
+                        hasResults = true;
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+                
+                if (hasResults) {
+                    this.hideNoResults();
+                } else {
+                    this.showNoResults();
+                }
+            } else {
                 productItems.forEach(item => {
                     item.style.display = '';
                 });
                 this.hideNoResults();
-                return;
-            }
-            
-            productItems.forEach(item => {
-                const name = item.querySelector('.font-medium')?.textContent.toLowerCase() || '';
-                const category = item.querySelector('.text-gray-500')?.textContent.toLowerCase() || '';
-                
-                if (name.includes(term) || category.includes(term)) {
-                    item.style.display = '';
-                    hasResults = true;
-                } else {
-                    item.style.display = 'none';
-                }
-            });
-            
-            if (!hasResults) {
-                this.showNoResults();
-            } else {
-                this.hideNoResults();
             }
         }
+
 
         showNoResults() {
             let noResultsMsg = this.widget.querySelector('.no-results-msg');
@@ -136,15 +138,25 @@
         }
 
         updateHiddenSelect() {
-            const selectedValues = Array.from(this.checkboxes)
-                .filter(cb => cb.checked)
-                .map(cb => cb.value);
+            const selectedValuesSet = new Set(
+                Array.from(this.checkboxes)
+                    .filter(cb => cb.checked)
+                    .map(cb => cb.value)
+            );
+            
+            let changed = false;
             
             Array.from(this.hiddenSelect.options).forEach(opt => {
-                opt.selected = selectedValues.includes(opt.value);
+                const shouldBeSelected = selectedValuesSet.has(opt.value);
+                if (opt.selected !== shouldBeSelected) {
+                    opt.selected = shouldBeSelected;
+                    changed = true;
+                }
             });
             
-            this.hiddenSelect.dispatchEvent(new Event('change', { bubbles: true }));
+            if (changed) {
+                this.hiddenSelect.dispatchEvent(new Event('change', { bubbles: true }));
+            }
         }
     }
 
