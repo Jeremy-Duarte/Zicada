@@ -311,6 +311,14 @@ class ProductCheckboxSelectWidget(forms.Widget):
         self.editing = editing
         super().__init__(attrs)
     
+    def value_from_datadict(self, data, files, name):
+        """Extrae los valores seleccionados de los checkboxes."""
+        # data.getlist() captura todos los checkboxes seleccionados
+        selected = data.getlist(name)
+        if not selected:
+            return []
+        return [int(value) for value in selected if value]
+    
     def render(self, name, value, attrs=None, renderer=None):
         final_attrs = self.build_attrs(attrs, {'name': name, 'class': 'hidden product-select-input'})
         if value is None:
@@ -320,7 +328,6 @@ class ProductCheckboxSelectWidget(forms.Widget):
 
         selected_ids = [str(v) for v in value]
         
-        # Detectar automáticamente si es edición (si no se pasó explícitamente)
         if not self.editing and selected_ids:
             self.editing = True
         
