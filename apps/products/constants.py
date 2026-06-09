@@ -77,7 +77,7 @@ DATE_FORMAT_DAY_MONTH_YEAR = '%d/%m/%Y'
 # Template Paths
 TEMPLATE_STOCK_DASHBOARD = 'products/stock_dashboard.html'
 TEMPLATE_CATALOG = 'products/catalog.html'
-TEMPLATE_COLLECTIONS_LIST = 'products/collections_list.html'
+TEMPLATE_COLLECTIONS_LIST_PUBLIC = 'products/collections_list.html'
 TEMPLATE_COLLECTION_DETAIL = 'products/collection_detail.html'
 TEMPLATE_PRODUCT_DETAIL = 'products/product_detail.html'
 
@@ -118,6 +118,7 @@ TEMPLATE_PRODUCTVARIANT_CONFIRM_DELETE = 'backoffice/productvariant/productvaria
 TEMPLATE_PRODUCTVARIANT_RESTORE = 'backoffice/productvariant/productvariant_restore.html'
 TEMPLATE_PRODUCTVARIANT_TRASHCAN = 'backoffice/productvariant/productvariant_trashcan.html'
 
+TEMPLATE_COLLECTIONS_LIST = 'backoffice/collection/collection_list.html'
 TEMPLATE_COLLECTION_FORM = 'backoffice/collection/collection_form.html'
 TEMPLATE_COLLECTION_CONFIRM_DELETE = 'backoffice/collection/collection_confirm_delete.html'
 TEMPLATE_COLLECTION_RESTORE = 'backoffice/collection/collection_restore.html'

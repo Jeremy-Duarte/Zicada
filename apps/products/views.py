@@ -99,7 +99,7 @@ from .constants import (
     # Template Paths
     TEMPLATE_STOCK_DASHBOARD,
     TEMPLATE_CATALOG,
-    TEMPLATE_COLLECTIONS_LIST,
+    TEMPLATE_COLLECTIONS_LIST_PUBLIC,
     TEMPLATE_COLLECTION_DETAIL,
     TEMPLATE_PRODUCT_DETAIL,
     # Backoffice Templates
@@ -132,6 +132,7 @@ from .constants import (
     TEMPLATE_PRODUCTVARIANT_CONFIRM_DELETE,
     TEMPLATE_PRODUCTVARIANT_RESTORE,
     TEMPLATE_PRODUCTVARIANT_TRASHCAN,
+    TEMPLATE_COLLECTIONS_LIST, 
     TEMPLATE_COLLECTION_FORM,
     TEMPLATE_COLLECTION_CONFIRM_DELETE,
     TEMPLATE_COLLECTION_RESTORE,
@@ -437,10 +438,10 @@ class ProductCatalogView(PaginationMixin, FilterMixin, ListView):
         return context
 
 
-class CollectionListView(PaginationMixin, FilterMixin, ListView):
+class CollectionListViewPublic(PaginationMixin, FilterMixin, ListView):
     """Collection list view with advanced filters."""
     model = Collection
-    template_name = TEMPLATE_COLLECTIONS_LIST
+    template_name = TEMPLATE_COLLECTIONS_LIST_PUBLIC
     context_object_name = 'collections'
     paginate_by = PAGINATE_BY_COLLECTIONS
     
