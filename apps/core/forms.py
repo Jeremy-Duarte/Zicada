@@ -34,11 +34,13 @@ FALLBACK_BUTTON_SIZE = 'px-8 py-3 text-lg'
 FALLBACK_BUTTON_SHADOW = 'shadow-lg'
 FALLBACK_BUTTON_WIDTH = 'inline-block'
 
+
 # =============================================================================
 # HELPERS
 # =============================================================================
 
 def build_button_style(cleaned_data):
+    # HU-053 | ESCENARIO 1 | H | Construye clases CSS del botón a partir de campos individuales
     bg = cleaned_data['button_bg_color']
     hover = cleaned_data['button_hover_color']
     text = cleaned_data['button_text_color']
@@ -49,8 +51,19 @@ def build_button_style(cleaned_data):
     
     return f'{bg} {hover} {text} {rounded} {size} {shadow} {width} font-semibold transition-all duration-300 transform hover:scale-105 inline-block text-center'
 
+
+# =============================================================================
+# HU-051: CONTACT FORM
+# =============================================================================
+
 class ContactForm(FormStyleMixin, forms.Form):
+    """
+    HU-051: Enviar mensaje de contacto
+    Escenarios: H (formulario válido), A (campos inválidos), E (teléfono inválido)
+    """
     
+    # HU-051 | ESCENARIO 2 | H | Nombre válido (min 2, max 200 caracteres)
+    # HU-051 | ESCENARIO 4A | A | Nombre vacío → error 'required'
     name = forms.CharField(
         max_length=200,
         min_length=2,
@@ -62,6 +75,8 @@ class ContactForm(FormStyleMixin, forms.Form):
         }
     )
     
+    # HU-051 | ESCENARIO 2 | H | Email válido
+    # HU-051 | ESCENARIO 4C | A | Email inválido (falta @, dominio inválido) → error 'invalid'
     email = forms.EmailField(
         required=True,
         label='Correo electrónico',
@@ -71,12 +86,15 @@ class ContactForm(FormStyleMixin, forms.Form):
         }
     )
     
+    # HU-051 | ESCENARIO 4B | A | Teléfono con menos de 7 dígitos → error en clean_phone
     phone = forms.CharField(
         max_length=20,
         required=False,
         label='Teléfono',
     )
     
+    # HU-051 | ESCENARIO 2 | H | Asunto válido
+    # HU-051 | ESCENARIO 4A | A | Asunto vacío → error 'required'
     subject = forms.CharField(
         max_length=200,
         required=True,
@@ -86,6 +104,8 @@ class ContactForm(FormStyleMixin, forms.Form):
         }
     )
     
+    # HU-051 | ESCENARIO 2 | H | Mensaje válido
+    # HU-051 | ESCENARIO 4A | A | Mensaje vacío → error 'required'
     message = forms.CharField(
         required=True,
         label='Mensaje',
@@ -104,6 +124,10 @@ class ContactForm(FormStyleMixin, forms.Form):
         self.fields['message'].widget.attrs['placeholder'] = 'Cuéntanos en qué podemos ayudarte...'
     
     def clean_phone(self):
+        """
+        HU-051 | ESCENARIO 4B | A | Teléfono inválido (menos de 7 dígitos)
+        HU-051 | ESCENARIO 2 | H | Teléfono opcional válido (vacío o 7-15 dígitos)
+        """
         phone = self.cleaned_data.get('phone', '')
         if phone:
             digits = ''.join(c for c in phone if c.isdigit())
@@ -113,7 +137,16 @@ class ContactForm(FormStyleMixin, forms.Form):
         return ''
 
 
+# =============================================================================
+# HU-001 & HU-003: STAFF LOGIN FORM
+# =============================================================================
+
 class StaffLoginForm(FormStyleMixin, AuthenticationForm):
+    """
+    HU-001: Inicio de sesión
+    HU-003: Control de acceso por permisos
+    Escenarios: H (credenciales correctas + permisos), E (credenciales incorrectas, usuario inactivo, sin permisos)
+    """
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -121,12 +154,23 @@ class StaffLoginForm(FormStyleMixin, AuthenticationForm):
         self.fields['password'].widget.attrs['placeholder'] = 'Contraseña'
     
     def confirm_login_allowed(self, user):
+        """
+        HU-001 | ESCENARIO 3 | E | Credenciales incorrectas (validado en AuthenticationForm)
+        HU-001 | ESCENARIO 4 | E | Usuario inactivo (validado en AuthenticationForm)
+        HU-003 | ESCENARIO 3 | E | Usuario sin permisos (ni staff ni delivery)
+        HU-003 | ESCENARIO 1 y 2 | H | Usuario con permisos (staff o delivery)
+        """
         if not (user.is_staff or getattr(user, 'is_delivery', False)):
             raise forms.ValidationError(
                 'No tienes permisos para acceder a esta área.',
                 code='no_permission',
             )
         super().confirm_login_allowed(user)
+
+
+# =============================================================================
+# OPCIONES DE ESTILOS (sin HU específica, soporte para HU-053 a HU-056)
+# =============================================================================
 
 # Opciones de fuentes predefinidas
 FONT_FAMILY_CHOICES = [
@@ -187,6 +231,7 @@ LINE_HEIGHT_CHOICES = [
 # Opciones de margen
 MARGIN_CHOICES = SIZE_CHOICES
 
+# Opciones para botones (HU-053, HU-054)
 BUTTON_BG_CHOICES = [
     (DEFAULT_BUTTON_BG, '🔴 Rojo Zicada'),
     ('bg-black', '⚫ Negro'),
@@ -262,7 +307,11 @@ BUTTON_WIDTH_CHOICES = [
     ('w-64', 'Fijo (256px)'),
 ]
 
+
 def get_button_url_choices():
+    """
+    HU-053 | ESCENARIO 1 | H | Carga dinámica de opciones de URL para el botón
+    """
     choices = [
         (safe_reverse('products:catalog'), '📦 Catálogo general'),
         (safe_reverse('products:collections_list'), '🎨 Todas las colecciones'),
@@ -283,13 +332,22 @@ def get_button_url_choices():
     return choices
 
 
+# =============================================================================
+# HU-053: HERO CONFIG CREATE FORM
+# =============================================================================
+
 class HeroConfigCreateForm(FormStyleMixin, forms.ModelForm):
-    """Formulario para crear slides del hero (carrusel)"""
+    """
+    HU-053: Crear slide del hero
+    Escenarios: H (datos válidos), A (título vacío o sort_order duplicado), E (sin permisos)
+    """
     
     # Campo para URL del botón (usando la misma función)
+    # HU-053 | ESCENARIO 1 | H | URL válida seleccionada
     button_url = forms.ChoiceField(choices=[], required=True, label='Destino del botón', help_text='Selecciona a dónde irá el usuario')
     
     # Campos para construcción del botón
+    # HU-053 | ESCENARIO 1 | H | Estilos de botón configurados
     button_bg_color = forms.ChoiceField(choices=BUTTON_BG_CHOICES, required=True, label='Color de fondo')
     button_hover_color = forms.ChoiceField(choices=BUTTON_HOVER_CHOICES, required=True, label='Color al pasar el mouse')
     button_text_color = forms.ChoiceField(choices=BUTTON_TEXT_COLOR_CHOICES, required=True, label='Color del texto')
@@ -366,18 +424,27 @@ class HeroConfigCreateForm(FormStyleMixin, forms.ModelForm):
         self.fields['button_width'].initial = DEFAULT_BUTTON_WIDTH
     
     def clean_title_text(self):
+        """
+        HU-053 | ESCENARIO 1 | H | Título no vacío
+        HU-053 | ESCENARIO 2 | A | Título vacío → error
+        """
         title = self.cleaned_data.get('title_text', '').strip()
         if not title:
             raise ValidationError('El título es obligatorio.')
         return title
     
     def clean_sort_order(self):
+        """
+        HU-053 | ESCENARIO 1 | H | sort_order único
+        HU-053 | ESCENARIO 2 | A | sort_order duplicado → error
+        """
         sort_order = self.cleaned_data.get('sort_order', 0)
         if HeroConfig.objects.filter(sort_order=sort_order).exists():
             raise ValidationError(f'Ya existe un slide con el orden {sort_order}. Usa otro valor.')
         return sort_order
     
     def save(self, commit=True):
+        # HU-053 | ESCENARIO 1 | H | Guarda slide y construye button_style
         instance = super().save(commit=False)
         instance.button_style = build_button_style(self.cleaned_data)
         
@@ -386,7 +453,16 @@ class HeroConfigCreateForm(FormStyleMixin, forms.ModelForm):
         return instance
 
 
-class HeroConfigUpdateForm(FormStyleMixin, SortableUpdateMixin, forms.ModelForm):    
+# =============================================================================
+# HU-054: HERO CONFIG UPDATE FORM
+# =============================================================================
+
+class HeroConfigUpdateForm(FormStyleMixin, SortableUpdateMixin, forms.ModelForm):
+    """
+    HU-054: Editar slide del hero
+    Escenarios: H (datos válidos), A (datos inválidos), E (slide no existe)
+    """
+    
     # Definición de mapping para parseo de estilos
     BUTTON_STYLE_FIELDS = [
         ('button_bg_color', BUTTON_BG_CHOICES, FALLBACK_BUTTON_BG),
@@ -490,7 +566,9 @@ class HeroConfigUpdateForm(FormStyleMixin, SortableUpdateMixin, forms.ModelForm)
             self._parse_button_style(current_style)
     
     def _parse_button_style(self, style):
-        """Parsea el estilo del botón e inicializa los campos correspondientes."""
+        """
+        HU-054 | ESCENARIO 1 | H | Parsea el estilo del botón e inicializa los campos correspondientes
+        """
         for field_name, choices, fallback in self.BUTTON_STYLE_FIELDS:
             for choice_value, _ in choices:
                 if choice_value in style:
@@ -500,6 +578,7 @@ class HeroConfigUpdateForm(FormStyleMixin, SortableUpdateMixin, forms.ModelForm)
                 self.fields[field_name].initial = fallback
         
     def save(self, commit=True):
+        # HU-054 | ESCENARIO 1 | H | Guarda cambios del slide
         instance = super().save(commit=False)
         instance.section_height = self.cleaned_data['section_height']
         instance.title_font_size = self.cleaned_data['title_font_size']
@@ -515,7 +594,16 @@ class HeroConfigUpdateForm(FormStyleMixin, SortableUpdateMixin, forms.ModelForm)
             instance.save()
         return instance
 
+
+# =============================================================================
+# HU-055: HERO CONFIG DELETE FORM
+# =============================================================================
+
 class HeroConfigDeleteForm(FormStyleMixin, forms.Form):
+    """
+    HU-055: Archivar slide del hero (soft delete)
+    Escenarios: H (confirmación correcta), A (cancelar), E (sin permisos)
+    """
     confirm = forms.CharField(
         required=True,
         label='Escribe el nombre del slide para confirmar',
@@ -527,6 +615,10 @@ class HeroConfigDeleteForm(FormStyleMixin, forms.Form):
         super().__init__(*args, **kwargs)
     
     def clean_confirm(self):
+        """
+        HU-055 | ESCENARIO 1 | H | Confirmación correcta
+        HU-055 | ESCENARIO 2 | A | Confirmación incorrecta (nombre no coincide)
+        """
         value = self.cleaned_data.get('confirm', '').strip().lower()
         if not self.slide:
             raise ValidationError('Slide no especificado.')
@@ -535,7 +627,15 @@ class HeroConfigDeleteForm(FormStyleMixin, forms.Form):
         return value
 
 
+# =============================================================================
+# HU-056: HERO CONFIG RESTORE FORM
+# =============================================================================
+
 class HeroConfigRestoreForm(FormStyleMixin, forms.Form):
+    """
+    HU-056: Restaurar slide archivado
+    Escenarios: H (restauración válida), A (conflicto de orden o confirmación inválida), E (sin permisos)
+    """
     confirm = forms.BooleanField(required=True, label='Confirmo que deseo restaurar este slide')
     
     def __init__(self, *args, **kwargs):
@@ -543,11 +643,17 @@ class HeroConfigRestoreForm(FormStyleMixin, forms.Form):
         super().__init__(*args, **kwargs)
     
     def clean(self):
+        """
+        HU-056 | ESCENARIO 1 | H | Restauración válida
+        HU-056 | ESCENARIO 3 | A | Confirmación inválida o conflicto de orden
+        """
         cleaned_data = super().clean()
         if not self.slide:
             raise ValidationError('Slide no especificado.')
+        # HU-056 | ESCENARIO 3 | A | Conflicto de orden
         if HeroConfig.objects.filter(sort_order=self.slide.sort_order, is_active=True).exists():
             raise ValidationError(f'Ya existe un slide activo con el orden {self.slide.sort_order}. Cambia el orden antes de restaurar.')
+        # HU-056 | ESCENARIO 3 | A | Confirmación no marcada
         if not cleaned_data.get('confirm'):
             raise ValidationError('Debes confirmar la restauración.')
         return cleaned_data
