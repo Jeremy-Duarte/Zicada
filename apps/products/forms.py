@@ -111,9 +111,16 @@ LABEL_CARD_HOVER_SCALE = 'Escala al hover'
 LABEL_CARD_SHOW_CATEGORY = 'Mostrar categoría'
 LABEL_CARD_SHOW_STOCK_BADGE = 'Mostrar badge de stock'
 
-# ========== FORMULARIOS PARA CATÁLOGOS ESTÁTICOS ==========
+
+# =============================================================================
+# HU-059: SIZE CREATE FORM
+# =============================================================================
 
 class SizeCreateForm(FormStyleMixin, SortableCreateMixin, forms.ModelForm):
+    """
+    HU-059: Crear talla
+    Escenarios: H (nombre válido y único), A (nombre duplicado), E (sin permisos)
+    """
     class Meta:
         model = Size
         fields = ['name']
@@ -122,13 +129,25 @@ class SizeCreateForm(FormStyleMixin, SortableCreateMixin, forms.ModelForm):
         }
     
     def clean_name(self):
+        """
+        HU-059 | ESCENARIO 1 | H | Nombre de talla válido y único
+        HU-059 | ESCENARIO 2 | A | Nombre duplicado → error
+        """
         name = self.cleaned_data.get('name', '').upper().strip()
         if Size.objects.filter(name=name).exists():
             raise ValidationError(f'La talla "{name}" ya existe.')
         return name
 
 
+# =============================================================================
+# HU-060: SIZE UPDATE FORM
+# =============================================================================
+
 class SizeUpdateForm(FormStyleMixin, SortableUpdateMixin, forms.ModelForm):
+    """
+    HU-060: Editar talla
+    Escenarios: H (nombre válido y único), A (nombre duplicado), E (sin permisos, talla no existe)
+    """
     class Meta:
         model = Size
         fields = ['name']
@@ -147,6 +166,10 @@ class SizeUpdateForm(FormStyleMixin, SortableUpdateMixin, forms.ModelForm):
         self._setup_sortable_widget()
 
     def clean_name(self):
+        """
+        HU-060 | ESCENARIO 1 | H | Nombre de talla válido y único (excluyendo la actual)
+        HU-060 | ESCENARIO 2 | A | Nombre duplicado con otra talla → error
+        """
         name = self.cleaned_data.get('name', '').upper().strip()
         qs = Size.objects.filter(name=name)
         
@@ -159,7 +182,15 @@ class SizeUpdateForm(FormStyleMixin, SortableUpdateMixin, forms.ModelForm):
         return name
 
 
+# =============================================================================
+# HU-061: SIZE DELETE FORM
+# =============================================================================
+
 class SizeDeleteForm(FormStyleMixin, forms.Form):
+    """
+    HU-061: Eliminar talla
+    Escenarios: H (confirmación correcta y sin variantes), A (nombre no coincide, cancelar), E (sin permisos)
+    """
     confirm = forms.CharField(
         required=True,
         label=CONFIRM_DELETE_SIZE,
@@ -171,6 +202,11 @@ class SizeDeleteForm(FormStyleMixin, forms.Form):
         super().__init__(*args, **kwargs)
     
     def clean_confirm(self):
+        """
+        HU-061 | ESCENARIO 1 | H | Confirmación correcta y talla sin variantes
+        HU-061 | ESCENARIO 2 | A | Nombre no coincide → error
+        HU-061 | ESCENARIO 4 | A | Talla con variantes activas → error
+        """
         value = self.cleaned_data.get('confirm', '').upper().strip()
         
         if not self.size:
@@ -188,7 +224,15 @@ class SizeDeleteForm(FormStyleMixin, forms.Form):
         return value
 
 
+# =============================================================================
+# HU-064: CATEGORY CREATE FORM
+# =============================================================================
+
 class CategoryCreateForm(FormStyleMixin, SortableCreateMixin, forms.ModelForm):
+    """
+    HU-064: Crear categoría
+    Escenarios: H (nombre válido y único), A (nombre duplicado), E (sin permisos)
+    """
     class Meta:
         model = Category
         fields = ['name']
@@ -197,6 +241,10 @@ class CategoryCreateForm(FormStyleMixin, SortableCreateMixin, forms.ModelForm):
         }
     
     def clean_name(self):
+        """
+        HU-064 | ESCENARIO 1 | H | Nombre de categoría válido y único
+        HU-064 | ESCENARIO 2 | A | Nombre duplicado → error
+        """
         name = self.cleaned_data.get('name', '').strip()
         
         if Category.objects.filter(name__iexact=name).exists():
@@ -205,7 +253,15 @@ class CategoryCreateForm(FormStyleMixin, SortableCreateMixin, forms.ModelForm):
         return name
 
 
+# =============================================================================
+# HU-065: CATEGORY UPDATE FORM
+# =============================================================================
+
 class CategoryUpdateForm(FormStyleMixin, SortableUpdateMixin, forms.ModelForm):
+    """
+    HU-065: Editar categoría
+    Escenarios: H (nombre válido), A (nombre duplicado), E (sin permisos, categoría no existe)
+    """
     class Meta:
         model = Category
         fields = ['name']
@@ -224,6 +280,10 @@ class CategoryUpdateForm(FormStyleMixin, SortableUpdateMixin, forms.ModelForm):
         self._setup_sortable_widget()
 
     def clean_name(self):
+        """
+        HU-065 | ESCENARIO 1 | H | Nombre de categoría válido y único (excluyendo la actual)
+        HU-065 | ESCENARIO 2 | A | Nombre duplicado con otra categoría → error
+        """
         name = self.cleaned_data.get('name', '').strip()
         qs = Category.objects.filter(name__iexact=name)
         
@@ -236,6 +296,7 @@ class CategoryUpdateForm(FormStyleMixin, SortableUpdateMixin, forms.ModelForm):
         return name
     
     def save(self, commit=True):
+        # HU-065 | ESCENARIO 1 | H | Genera slug automáticamente al guardar
         instance = super().save(commit=False)
         instance.slug = slugify(instance.name)
         
@@ -245,7 +306,15 @@ class CategoryUpdateForm(FormStyleMixin, SortableUpdateMixin, forms.ModelForm):
         return instance
 
 
+# =============================================================================
+# HU-066: CATEGORY DELETE FORM
+# =============================================================================
+
 class CategoryDeleteForm(FormStyleMixin, forms.Form):
+    """
+    HU-066: Eliminar categoría
+    Escenarios: H (confirmación correcta y sin productos), A (nombre no coincide), E (sin permisos)
+    """
     confirm = forms.CharField(
         required=True,
         label=CONFIRM_DELETE_CATEGORY,
@@ -257,6 +326,11 @@ class CategoryDeleteForm(FormStyleMixin, forms.Form):
         super().__init__(*args, **kwargs)
     
     def clean_confirm(self):
+        """
+        HU-066 | ESCENARIO 1 | H | Confirmación correcta y categoría sin productos activos
+        HU-066 | ESCENARIO 2 | A | Nombre no coincide → error
+        HU-066 | ESCENARIO 4 | A | Categoría con productos activos → error
+        """
         value = self.cleaned_data.get('confirm', '').strip().lower()
         
         if not self.category:
@@ -275,19 +349,39 @@ class CategoryDeleteForm(FormStyleMixin, forms.Form):
         return value
 
 
+# =============================================================================
+# HU-067: CATEGORY IMPORT FORM (soporte para importación)
+# =============================================================================
+
 class CategoryImportForm(forms.ModelForm):
+    """
+    HU-067: Importar categorías (formulario base para cada fila)
+    Escenarios: H (nombre válido), A (nombre duplicado), E (sin permisos)
+    """
     class Meta:
         model = Category
         fields = ['name']
     
     def clean_name(self):
+        """
+        HU-067 | ESCENARIO 2 | H | Nombre válido para importación
+        HU-067 | ESCENARIO 3 | A | Nombre duplicado → error (fila no se importa)
+        """
         name = self.cleaned_data.get('name', '').strip()
         if Category.objects.filter(name__iexact=name).exists():
             raise ValidationError(f'La categoría "{name}" ya existe.')
         return name
 
 
+# =============================================================================
+# HU-069: COLOR CREATE FORM
+# =============================================================================
+
 class ColorCreateForm(FormStyleMixin, SortableCreateMixin, forms.ModelForm):
+    """
+    HU-069: Crear color
+    Escenarios: H (nombre y código válidos y únicos), A (nombre/código duplicado o código inválido), E (sin permisos)
+    """
     class Meta:
         model = Color
         fields = ['name', 'code']
@@ -297,12 +391,20 @@ class ColorCreateForm(FormStyleMixin, SortableCreateMixin, forms.ModelForm):
         }
     
     def clean_name(self):
+        """
+        HU-069 | ESCENARIO 1 | H | Nombre de color válido y único
+        HU-069 | ESCENARIO 2 | A | Nombre duplicado → error
+        """
         name = self.cleaned_data.get('name', '').strip().capitalize()
         if Color.objects.filter(name__iexact=name).exists():
             raise ValidationError(f'El color "{name}" ya existe.')
         return name
     
     def clean_code(self):
+        """
+        HU-069 | ESCENARIO 1 | H | Código hexadecimal válido y único
+        HU-069 | ESCENARIO 2 | A | Código inválido o duplicado → error
+        """
         code = self.cleaned_data.get('code', '').strip()
         if not code.startswith('#'):
             code = f'#{code}'
@@ -316,7 +418,15 @@ class ColorCreateForm(FormStyleMixin, SortableCreateMixin, forms.ModelForm):
         return code
 
 
+# =============================================================================
+# HU-070: COLOR UPDATE FORM
+# =============================================================================
+
 class ColorUpdateForm(FormStyleMixin, SortableUpdateMixin, forms.ModelForm):
+    """
+    HU-070: Editar color
+    Escenarios: H (nombre/código válidos), A (duplicado), E (sin permisos, color no existe)
+    """
     class Meta:
         model = Color
         fields = ['name', 'code']
@@ -336,6 +446,10 @@ class ColorUpdateForm(FormStyleMixin, SortableUpdateMixin, forms.ModelForm):
         self._setup_sortable_widget()
 
     def clean_name(self):
+        """
+        HU-070 | ESCENARIO 1 | H | Nombre de color válido y único (excluyendo el actual)
+        HU-070 | ESCENARIO 2 | A | Nombre duplicado con otro color → error
+        """
         name = self.cleaned_data.get('name', '').strip().capitalize()
         qs = Color.objects.filter(name__iexact=name)
         
@@ -348,6 +462,10 @@ class ColorUpdateForm(FormStyleMixin, SortableUpdateMixin, forms.ModelForm):
         return name
     
     def clean_code(self):
+        """
+        HU-070 | ESCENARIO 1 | H | Código hexadecimal válido y único (excluyendo el actual)
+        HU-070 | ESCENARIO 2 | A | Código inválido o duplicado con otro color → error
+        """
         code = self.cleaned_data.get('code', '').strip()
         if not code.startswith('#'):
             code = f'#{code}'
@@ -366,7 +484,15 @@ class ColorUpdateForm(FormStyleMixin, SortableUpdateMixin, forms.ModelForm):
         return code
 
 
+# =============================================================================
+# HU-071: COLOR DELETE FORM
+# =============================================================================
+
 class ColorDeleteForm(FormStyleMixin, forms.Form):
+    """
+    HU-071: Eliminar color
+    Escenarios: H (confirmación correcta y sin variantes), A (nombre no coincide), E (sin permisos)
+    """
     confirm = forms.CharField(
         required=True,
         label=CONFIRM_DELETE_COLOR,
@@ -378,6 +504,11 @@ class ColorDeleteForm(FormStyleMixin, forms.Form):
         super().__init__(*args, **kwargs)
     
     def clean_confirm(self):
+        """
+        HU-071 | ESCENARIO 1 | H | Confirmación correcta y color sin variantes
+        HU-071 | ESCENARIO 2 | A | Nombre no coincide → error
+        HU-071 | ESCENARIO 4 | A | Color con variantes activas → error
+        """
         value = self.cleaned_data.get('confirm', '').strip().capitalize()
         
         if not self.color:
@@ -396,18 +527,34 @@ class ColorDeleteForm(FormStyleMixin, forms.Form):
         return value
 
 
+# =============================================================================
+# HU-072: COLOR IMPORT FORM (soporte para importación)
+# =============================================================================
+
 class ColorImportForm(forms.ModelForm):
+    """
+    HU-072: Importar colores (formulario base para cada fila)
+    Escenarios: H (nombre/código válidos), A (duplicado o código inválido), E (sin permisos)
+    """
     class Meta:
         model = Color
         fields = ['name', 'code']
     
     def clean_name(self):
+        """
+        HU-072 | ESCENARIO 2 | H | Nombre válido para importación
+        HU-072 | ESCENARIO 3 | A | Nombre duplicado → error (fila no se importa)
+        """
         name = self.cleaned_data.get('name', '').capitalize().strip()
         if Color.objects.filter(name__iexact=name).exists():
             raise ValidationError(f'El color "{name}" ya existe.')
         return name
     
     def clean_code(self):
+        """
+        HU-072 | ESCENARIO 2 | H | Código válido para importación
+        HU-072 | ESCENARIO 3 | A | Código inválido o duplicado → error
+        """
         code = self.cleaned_data.get('code', '').strip()
         if not code.startswith('#'):
             code = f'#{code}'
@@ -418,7 +565,15 @@ class ColorImportForm(forms.ModelForm):
         return code
 
 
+# =============================================================================
+# HU-074: PRODUCT IMAGE CREATE FORM
+# =============================================================================
+
 class ProductImageCreateForm(FormStyleMixin, forms.ModelForm):
+    """
+    HU-074: Subir imagen de producto
+    Escenarios: H (imagen válida), A (tamaño excedido o formato no soportado), E (sin permisos)
+    """
     class Meta:
         model = ProductImage
         fields = ['image', 'alt_text']
@@ -428,6 +583,11 @@ class ProductImageCreateForm(FormStyleMixin, forms.ModelForm):
         }
     
     def clean_image(self):
+        """
+        HU-074 | ESCENARIO 1 | H | Imagen válida (tamaño y formato correctos)
+        HU-074 | ESCENARIO 2 | A | Tamaño excedido (max 5MB) → error
+        HU-074 | ESCENARIO 2 | A | Formato no soportado → error
+        """
         image = self.cleaned_data.get('image')
         
         if image:
@@ -442,7 +602,15 @@ class ProductImageCreateForm(FormStyleMixin, forms.ModelForm):
         return image
 
 
+# =============================================================================
+# HU-075: PRODUCT IMAGE UPDATE FORM
+# =============================================================================
+
 class ProductImageUpdateForm(FormStyleMixin, forms.ModelForm):
+    """
+    HU-075: Editar imagen de producto (texto alternativo)
+    Escenarios: H (alt_text válido), A (errores), E (sin permisos, imagen no existe)
+    """
     class Meta:
         model = ProductImage
         fields = ['alt_text']
@@ -451,7 +619,15 @@ class ProductImageUpdateForm(FormStyleMixin, forms.ModelForm):
         }
 
 
+# =============================================================================
+# HU-076: PRODUCT IMAGE DELETE FORM
+# =============================================================================
+
 class ProductImageDeleteForm(FormStyleMixin, forms.Form):
+    """
+    HU-076: Eliminar imagen de producto
+    Escenarios: H (confirmación correcta), A (cancelar), E (sin permisos, imagen no especificada)
+    """
     confirm = forms.BooleanField(
         required=True,
         label='Confirmo que deseo eliminar esta imagen permanentemente'
@@ -462,6 +638,10 @@ class ProductImageDeleteForm(FormStyleMixin, forms.Form):
         super().__init__(*args, **kwargs)
     
     def clean(self):
+        """
+        HU-076 | ESCENARIO 1 | H | Confirmación correcta
+        HU-076 | ESCENARIO 2 | A | Confirmación no marcada → error
+        """
         cleaned_data = super().clean()
         
         if not self.image:
@@ -474,7 +654,15 @@ class ProductImageDeleteForm(FormStyleMixin, forms.Form):
         return cleaned_data
 
 
+# =============================================================================
+# HU-010: PRODUCT CREATE FORM
+# =============================================================================
+
 class ProductCreateForm(FormStyleMixin, forms.ModelForm):
+    """
+    HU-010: Crear producto
+    Escenarios: H (datos válidos), A (errores en formulario), E (sin permisos)
+    """
     class Meta:
         model = Product
         fields = ['name', 'description', 'price', 'product_type', 'category']
@@ -487,6 +675,11 @@ class ProductCreateForm(FormStyleMixin, forms.ModelForm):
         }
     
     def clean_name(self):
+        """
+        HU-010 | ESCENARIO 1 | H | Nombre de producto válido y único
+        HU-010 | ESCENARIO 2 | A | Nombre vacío (error de required)
+        HU-010 | ESCENARIO 3 | A | Nombre duplicado (activo o eliminado) → error
+        """
         name = self.cleaned_data.get('name', '').strip()
         
         if Product.all_objects.filter(name__iexact=name).exists():
@@ -495,6 +688,10 @@ class ProductCreateForm(FormStyleMixin, forms.ModelForm):
         return name
     
     def clean_price(self):
+        """
+        HU-010 | ESCENARIO 1 | H | Precio válido (>0 y ≤ MAX_PRICE)
+        HU-010 | ESCENARIO 2 | A | Precio <= 0 o excede máximo → error
+        """
         price = self.cleaned_data.get('price', 0)
         
         if price <= 0:
@@ -506,7 +703,15 @@ class ProductCreateForm(FormStyleMixin, forms.ModelForm):
         return price
 
 
+# =============================================================================
+# HU-011: PRODUCT UPDATE FORM
+# =============================================================================
+
 class ProductUpdateForm(FormStyleMixin, forms.ModelForm):
+    """
+    HU-011: Editar producto
+    Escenarios: H (datos válidos), A (errores), E (sin permisos, producto no existe)
+    """
     class Meta:
         model = Product
         fields = ['name', 'description', 'price', 'product_type', 'category', 'is_active']
@@ -520,6 +725,10 @@ class ProductUpdateForm(FormStyleMixin, forms.ModelForm):
         }
     
     def clean_name(self):
+        """
+        HU-011 | ESCENARIO 1 | H | Nombre válido y único (excluyendo el actual)
+        HU-011 | ESCENARIO 2 | A | Nombre duplicado con otro producto activo → error
+        """
         name = self.cleaned_data.get('name', '').strip()
         qs = Product.objects.filter(name__iexact=name)
         
@@ -532,6 +741,10 @@ class ProductUpdateForm(FormStyleMixin, forms.ModelForm):
         return name
     
     def clean_price(self):
+        """
+        HU-011 | ESCENARIO 1 | H | Precio válido
+        HU-011 | ESCENARIO 2 | A | Precio <= 0 o excede máximo → error
+        """
         price = self.cleaned_data.get('price', 0)
         
         if price <= 0:
@@ -543,7 +756,15 @@ class ProductUpdateForm(FormStyleMixin, forms.ModelForm):
         return price
 
 
+# =============================================================================
+# HU-012: PRODUCT DELETE FORM
+# =============================================================================
+
 class ProductDeleteForm(FormStyleMixin, forms.Form):
+    """
+    HU-012: Eliminar producto (soft delete)
+    Escenarios: H (confirmación correcta), A (nombre no coincide), E (sin permisos, producto con pedidos)
+    """
     confirm = forms.CharField(
         required=True,
         label=CONFIRM_DELETE_PRODUCT,
@@ -555,6 +776,11 @@ class ProductDeleteForm(FormStyleMixin, forms.Form):
         super().__init__(*args, **kwargs)
     
     def clean_confirm(self):
+        """
+        HU-012 | ESCENARIO 1 | H | Confirmación correcta
+        HU-012 | ESCENARIO 2 | A | Producto con pedidos en curso → error
+        HU-012 | ESCENARIO 3 | A | Nombre no coincide → error
+        """
         value = self.cleaned_data.get('confirm', '').strip().lower()
         
         if not self.product:
@@ -576,7 +802,15 @@ class ProductDeleteForm(FormStyleMixin, forms.Form):
         return value
 
 
+# =============================================================================
+# HU-012 (PARTE): PRODUCT RESTORE FORM
+# =============================================================================
+
 class ProductRestoreForm(FormStyleMixin, forms.Form):
+    """
+    HU-012 | ESCENARIO 4 | H | Restaurar producto desde papelera
+    Escenarios: H (confirmación correcta), A (confirmación no marcada o nombre duplicado)
+    """
     confirm = forms.BooleanField(
         required=True,
         label='Confirmo que deseo restaurar este producto'
@@ -587,6 +821,11 @@ class ProductRestoreForm(FormStyleMixin, forms.Form):
         super().__init__(*args, **kwargs)
     
     def clean(self):
+        """
+        HU-012 | ESCENARIO 4 | H | Restauración válida
+        HU-012 | ESCENARIO 4 | A | Ya existe producto activo con ese nombre → error
+        HU-012 | ESCENARIO 4 | A | Confirmación no marcada → error
+        """
         cleaned_data = super().clean()
         
         if not self.product:
@@ -602,7 +841,15 @@ class ProductRestoreForm(FormStyleMixin, forms.Form):
         return cleaned_data
 
 
+# =============================================================================
+# HU-013 (PARTE): PRODUCT COLOR CREATE FORM
+# =============================================================================
+
 class ProductColorCreateForm(FormStyleMixin, SortableCreateMixin, forms.ModelForm):
+    """
+    HU-013 | ESCENARIO 1 | H | Asignar colores a un producto
+    Escenarios: H (color no asignado previamente), A (color ya asignado), E (sin permisos)
+    """
     class Meta:
         model = ProductColor
         fields = ['color', 'images', 'featured_image']
@@ -621,6 +868,11 @@ class ProductColorCreateForm(FormStyleMixin, SortableCreateMixin, forms.ModelFor
             self.fields['images'].queryset = ProductImage.objects.all()
     
     def clean(self):
+        """
+        HU-013 | ESCENARIO 1 | H | Color válido y no previamente asignado
+        HU-013 | ESCENARIO 3 | E | Color ya asignado a este producto → error
+        HU-013 | ESCENARIO 2 | A | Imagen destacada no está en imágenes seleccionadas → error
+        """
         cleaned_data = super().clean()
         
         if not self.product:
@@ -640,7 +892,15 @@ class ProductColorCreateForm(FormStyleMixin, SortableCreateMixin, forms.ModelFor
         return cleaned_data
 
 
+# =============================================================================
+# HU-013 (PARTE): PRODUCT COLOR UPDATE FORM
+# =============================================================================
+
 class ProductColorUpdateForm(FormStyleMixin, SortableUpdateMixin, forms.ModelForm):
+    """
+    HU-013 | ESCENARIO 2 | H | Actualizar imágenes y orden de colores del producto
+    Escenarios: H (datos válidos), A (imagen destacada no seleccionada), E (sin permisos)
+    """
     class Meta:
         model = ProductColor
         fields = ['images', 'featured_image', 'is_active']
@@ -678,6 +938,10 @@ class ProductColorUpdateForm(FormStyleMixin, SortableUpdateMixin, forms.ModelFor
             self._setup_sortable_widget()
 
     def clean(self):
+        """
+        HU-013 | ESCENARIO 2 | H | Actualización válida
+        HU-013 | ESCENARIO 2 | A | Imagen destacada no está en imágenes seleccionadas → error
+        """
         cleaned_data = super().clean()
         featured_image = cleaned_data.get('featured_image')
         images = cleaned_data.get('images', [])
@@ -686,7 +950,15 @@ class ProductColorUpdateForm(FormStyleMixin, SortableUpdateMixin, forms.ModelFor
         return cleaned_data
 
 
+# =============================================================================
+# HU-013 (PARTE): PRODUCT COLOR DELETE FORM
+# =============================================================================
+
 class ProductColorDeleteForm(FormStyleMixin, forms.Form):
+    """
+    HU-013 | ESCENARIO 4 | A | Deshabilitar/eliminar un color del producto
+    Escenarios: H (confirmación correcta y sin variantes), A (nombre no coincide o con variantes activas)
+    """
     confirm = forms.CharField(
         required=True,
         label=CONFIRM_DELETE_COLOR,
@@ -698,6 +970,11 @@ class ProductColorDeleteForm(FormStyleMixin, forms.Form):
         super().__init__(*args, **kwargs)
     
     def clean_confirm(self):
+        """
+        HU-013 | ESCENARIO 4 | A | Confirmación correcta y sin variantes activas
+        HU-013 | ESCENARIO 4 | A | Nombre no coincide → error
+        HU-013 | ESCENARIO 4 | A | Color con variantes activas → error
+        """
         value = self.cleaned_data.get('confirm', '').strip().lower()
         
         if not self.product_color:
@@ -716,7 +993,15 @@ class ProductColorDeleteForm(FormStyleMixin, forms.Form):
         return value
 
 
+# =============================================================================
+# HU-013 (PARTE): PRODUCT VARIANT CREATE FORM
+# =============================================================================
+
 class ProductVariantCreateForm(FormStyleMixin, forms.ModelForm):
+    """
+    HU-013 | ESCENARIO 1 | H | Asignar tallas y stock a un producto (crear variante)
+    Escenarios: H (combinación válida), A (variante ya existe), E (sin permisos)
+    """
     class Meta:
         model = ProductVariant
         fields = ['product_color', 'size', 'stock']
@@ -736,6 +1021,11 @@ class ProductVariantCreateForm(FormStyleMixin, forms.ModelForm):
             )
     
     def clean(self):
+        """
+        HU-013 | ESCENARIO 1 | H | Variante con combinación única
+        HU-013 | ESCENARIO 3 | E | Variante ya existe → error
+        HU-013 | ESCENARIO 3 | E | ProductColor no pertenece al producto → error
+        """
         cleaned_data = super().clean()
         
         if not self.product:
@@ -753,7 +1043,17 @@ class ProductVariantCreateForm(FormStyleMixin, forms.ModelForm):
         
         return cleaned_data
 
+
+# =============================================================================
+# HU-013 (PARTE): PRODUCT VARIANT UPDATE FORM
+# =============================================================================
+
 class ProductVariantUpdateForm(FormStyleMixin, forms.ModelForm):
+    """
+    HU-013 | ESCENARIO 2 | H | Actualizar stock de una talla
+    HU-013 | ESCENARIO 3 | E | Stock negativo no permitido
+    Escenarios: H (stock ≥ 0), E (stock negativo), E (sin permisos, variante no existe)
+    """
     class Meta:
         model = ProductVariant
         fields = ['stock', 'is_active']
@@ -767,6 +1067,10 @@ class ProductVariantUpdateForm(FormStyleMixin, forms.ModelForm):
         self.original_stock = self.instance.stock if self.instance else 0
     
     def clean_stock(self):
+        """
+        HU-013 | ESCENARIO 2 | H | Stock ≥ 0
+        HU-013 | ESCENARIO 3 | E | Stock negativo → error
+        """
         new_stock = self.cleaned_data.get('stock', 0)
         
         if new_stock < 0:
@@ -775,7 +1079,15 @@ class ProductVariantUpdateForm(FormStyleMixin, forms.ModelForm):
         return new_stock
 
 
+# =============================================================================
+# HU-013 (PARTE): PRODUCT VARIANT DELETE FORM
+# =============================================================================
+
 class ProductVariantDeleteForm(FormStyleMixin, forms.Form):
+    """
+    HU-013 | ESCENARIO 4 | A | Deshabilitar una talla (soft delete)
+    Escenarios: H (confirmación correcta), A (confirmación no coincide), E (con pedidos pendientes)
+    """
     confirm = forms.CharField(
         required=True,
         label=CONFIRM_DELETE_VARIANT,
@@ -787,6 +1099,11 @@ class ProductVariantDeleteForm(FormStyleMixin, forms.Form):
         super().__init__(*args, **kwargs)
     
     def clean_confirm(self):
+        """
+        HU-013 | ESCENARIO 4 | A | Confirmación "ELIMINAR" correcta
+        HU-013 | ESCENARIO 4 | A | Confirmación no coincide → error
+        HU-013 | ESCENARIO 4 | A | Variante con pedidos pendientes → error
+        """
         value = self.cleaned_data.get('confirm', '').upper().strip()
         
         if not self.variant:
@@ -807,7 +1124,15 @@ class ProductVariantDeleteForm(FormStyleMixin, forms.Form):
         return value
 
 
+# =============================================================================
+# HU-013 (PARTE): PRODUCT VARIANT RESTORE FORM
+# =============================================================================
+
 class ProductVariantRestoreForm(FormStyleMixin, forms.Form):
+    """
+    HU-013 | ESCENARIO 4 | A | Restaurar variante deshabilitada
+    Escenarios: H (restauración válida), A (combinación ya existe o confirmación no marcada)
+    """
     confirm = forms.BooleanField(
         required=True,
         label='Confirmo que deseo restaurar esta variante'
@@ -818,6 +1143,11 @@ class ProductVariantRestoreForm(FormStyleMixin, forms.Form):
         super().__init__(*args, **kwargs)
     
     def clean(self):
+        """
+        HU-013 | ESCENARIO 4 | A | Restauración válida
+        HU-013 | ESCENARIO 4 | A | Ya existe variante activa con esa combinación → error
+        HU-013 | ESCENARIO 4 | A | Confirmación no marcada → error
+        """
         cleaned_data = super().clean()
         
         if not self.variant:
@@ -838,6 +1168,10 @@ class ProductVariantRestoreForm(FormStyleMixin, forms.Form):
         
         return cleaned_data
 
+
+# =============================================================================
+# OPCIONES DE ESTILO (soporte para colecciones)
+# =============================================================================
 
 # Opciones de fuentes (limitadas a Tailwind + Google Fonts populares)
 FONT_FAMILY_CHOICES = [
@@ -879,9 +1213,15 @@ LINE_HEIGHT_CHOICES = [
 MARGIN_CHOICES = SIZE_CHOICES
 
 
-class CollectionCreateForm(FormStyleMixin, forms.ModelForm):
-    """Formulario para crear colecciones - SOLO campos básicos."""
+# =============================================================================
+# HU-015: COLLECTION CREATE FORM
+# =============================================================================
 
+class CollectionCreateForm(FormStyleMixin, forms.ModelForm):
+    """
+    HU-015: Crear colección
+    Escenarios: H (datos básicos válidos), A (errores), E (sin permisos)
+    """
     class Meta:
         model = Collection
         fields = [
@@ -921,6 +1261,7 @@ class CollectionCreateForm(FormStyleMixin, forms.ModelForm):
         self.fields['title_font'].required = False
 
     def save(self, commit=True):
+        # HU-015 | ESCENARIO 1 | H | Guarda colección en estado borrador
         instance = super().save(commit=False)
         instance.status = 'borrador'
         instance.slug = slugify(instance.name)
@@ -931,8 +1272,16 @@ class CollectionCreateForm(FormStyleMixin, forms.ModelForm):
         return instance
 
 
+# =============================================================================
+# HU-016 & HU-018: COLLECTION UPDATE FORM
+# =============================================================================
+
 class CollectionUpdateForm(FormStyleMixin, forms.ModelForm):
-    """Formulario para actualizar colecciones - TODOS los campos."""
+    """
+    HU-016: Editar colección
+    HU-018: Asignar productos a colección
+    Escenarios: H (datos válidos), A (fechas inválidas, sin productos si publicada), E (sin permisos)
+    """
     
     start_date = forms.DateTimeField(
         required=False,
@@ -971,6 +1320,7 @@ class CollectionUpdateForm(FormStyleMixin, forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # HU-018 | ESCENARIO 1 | H | Productos de fábrica y colección limitada disponibles
         self.fields['products'].queryset = Product.objects.filter(is_active=True)
         self.fields['primary_color'].required = False
         self.fields['secondary_color'].required = False
@@ -986,6 +1336,7 @@ class CollectionUpdateForm(FormStyleMixin, forms.ModelForm):
                 self.initial['end_date'] = self.instance.end_date.strftime('%Y-%m-%dT%H:%M')
 
     def save(self, commit=True):
+        # HU-016 | ESCENARIO 1 | H | Guarda cambios de colección
         instance = super().save(commit=False)
         instance.start_date = self.cleaned_data.get('start_date')
         instance.end_date = self.cleaned_data.get('end_date')
@@ -996,8 +1347,15 @@ class CollectionUpdateForm(FormStyleMixin, forms.ModelForm):
         return instance
 
 
+# =============================================================================
+# HU-017: COLLECTION DELETE FORM
+# =============================================================================
+
 class CollectionDeleteForm(FormStyleMixin, forms.Form):
-    """Formulario para soft-delete de colección."""
+    """
+    HU-017: Eliminar colección (soft delete)
+    Escenarios: H (confirmación correcta), A (nombre no coincide), E (sin permisos, con pedidos asociados)
+    """
 
     confirm = forms.CharField(
         required=True,
@@ -1010,6 +1368,11 @@ class CollectionDeleteForm(FormStyleMixin, forms.Form):
         super().__init__(*args, **kwargs)
 
     def clean_confirm(self):
+        """
+        HU-017 | ESCENARIO 1 | H | Confirmación correcta
+        HU-017 | ESCENARIO 2 | A | Colección con productos asignados (advertencia en template, pero permite archivar)
+        HU-017 | ESCENARIO 3 | A | Nombre no coincide → error
+        """
         value = self.cleaned_data.get('confirm', '').strip().lower()
 
         if not self.collection:
@@ -1031,8 +1394,15 @@ class CollectionDeleteForm(FormStyleMixin, forms.Form):
         return value
 
 
+# =============================================================================
+# HU-017 (PARTE): COLLECTION RESTORE FORM
+# =============================================================================
+
 class CollectionRestoreForm(FormStyleMixin, forms.Form):
-    """Formulario para restaurar colección eliminada."""
+    """
+    HU-017 | ESCENARIO 3 | H | Restaurar colección
+    Escenarios: H (restauración válida), A (slug duplicado o confirmación no marcada)
+    """
 
     confirm = forms.BooleanField(
         required=True,
@@ -1053,6 +1423,11 @@ class CollectionRestoreForm(FormStyleMixin, forms.Form):
         super().__init__(*args, **kwargs)
 
     def clean(self):
+        """
+        HU-017 | ESCENARIO 3 | H | Restauración válida
+        HU-017 | ESCENARIO 3 | A | Slug duplicado (ya existe colección activa) → error
+        HU-017 | ESCENARIO 3 | A | Confirmación no marcada → error
+        """
         cleaned_data = super().clean()
 
         if not self.collection:
@@ -1066,6 +1441,10 @@ class CollectionRestoreForm(FormStyleMixin, forms.Form):
 
         return cleaned_data
 
+
+# =============================================================================
+# EFECTOS PREDEFINIDOS (soporte para CollectionStyleForm)
+# =============================================================================
 
 LABEL_CARD_BG_COLOR = 'Color de fondo de tarjetas'
 LABEL_CARD_TITLE_COLOR = 'Color del título'
@@ -1182,8 +1561,16 @@ def get_effect_preset_description(preset_key):
     return EFFECT_PRESETS.get(preset_key, {}).get('description', '')
 
 
+# =============================================================================
+# HU-015 & HU-016 (PARTE): COLLECTION STYLE FORM
+# =============================================================================
+
 class CollectionStyleForm(FormStyleMixin, forms.ModelForm):
-    """Formulario para estilos y configuración de tarjetas de colección."""
+    """
+    HU-015 | ESCENARIO 4 | H | Estilos visuales personalizados
+    HU-016 (parte): Configuración de estilos de colección
+    Escenarios: H (estilos guardados correctamente), A (errores en configuración)
+    """
     
     # Selector rápido de paleta de colores
     color_palette = forms.ChoiceField(
@@ -1404,6 +1791,7 @@ class CollectionStyleForm(FormStyleMixin, forms.ModelForm):
         return style_config
     
     def save(self, commit=True):
+        # HU-015 | ESCENARIO 4 | H | Estilos visuales guardados exitosamente
         instance = super().save(commit=False)
         cleaned_data = self.cleaned_data
 
