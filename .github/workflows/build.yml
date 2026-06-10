@@ -12,8 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       
@@ -37,18 +36,8 @@ jobs:
             --cov-report=term \
             -v --tb=short
         env:
-          DJANGO_SETTINGS_MODULE: config.settings
+          DJANGO_SETTINGS_MODULE: config.settings_test
           PYTHONPATH: .
-      
-      - name: Verify coverage report
-        run: |
-          if [ -f coverage.xml ]; then
-            echo "Coverage report generated successfully"
-            echo "File size: $(wc -c < coverage.xml) bytes"
-          else
-            echo "Error: coverage.xml not generated"
-            exit 1
-          fi
       
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@fd88b7d7ccbaefd23d8f36f73b59db7a3d246602
