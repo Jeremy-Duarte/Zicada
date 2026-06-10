@@ -56,7 +56,13 @@ COMMON_PASSWORDS = ['password', '12345678', 'qwerty123']
 # =============================================================================
 
 def validate_phone(phone, instance=None):
-    """Valida y normaliza un número de teléfono."""
+    """
+    Valida y normaliza un número de teléfono.
+    Utilizado por: UserCreateForm, UserUpdateForm, UserProfileForm
+    HU-039 | ESCENARIO 2 | A | Teléfono inválido (menos de 7 o más de 15 dígitos)
+    HU-040 | ESCENARIO 2 | A | Teléfono inválido
+    HU-043 | ESCENARIO 2 | A | Teléfono inválido
+    """
     if not phone:
         return ''
     
@@ -77,7 +83,12 @@ def validate_phone(phone, instance=None):
 
 
 def validate_email(email, instance=None):
-    """Valida que el email no esté duplicado."""
+    """
+    Valida que el email no esté duplicado.
+    Utilizado por: UserCreateForm, UserUpdateForm, UserProfileForm
+    HU-039 | ESCENARIO 3 | E | Correo duplicado
+    HU-040 | ESCENARIO 3 | E | Correo duplicado al editar
+    """
     if not email:
         return email
     
@@ -93,7 +104,12 @@ def validate_email(email, instance=None):
 
 
 def validate_username(username, instance=None):
-    """Valida que el username no esté duplicado."""
+    """
+    Valida que el username no esté duplicado.
+    Utilizado por: UserCreateForm, UserUpdateForm
+    HU-039 | ESCENARIO 2 | A | Nombre de usuario duplicado
+    HU-040 | ESCENARIO 2 | A | Nombre de usuario duplicado al editar
+    """
     username = username.strip()
     qs = User.objects.filter(username__iexact=username)
     if instance and instance.pk:
@@ -106,7 +122,11 @@ def validate_username(username, instance=None):
 
 
 class BaseUserForm(FormStyleMixin):
-    """Clase base para formularios de usuario (Create y Update)."""
+    """
+    Clase base para formularios de usuario (Create y Update).
+    HU-039: Crear usuario
+    HU-040: Editar usuario
+    """
     
     class Meta:
         abstract = True
@@ -129,12 +149,15 @@ class BaseUserForm(FormStyleMixin):
         }
     
     def clean_phone(self):
+        """HU-039 | ESCENARIO 2 | A | Teléfono inválido"""
         return validate_phone(self.cleaned_data.get('phone', ''), self.instance)
     
     def clean_email(self):
+        """HU-039 | ESCENARIO 3 | E | Correo duplicado"""
         return validate_email(self.cleaned_data.get('email', ''), self.instance)
     
     def clean_username(self):
+        """HU-039 | ESCENARIO 2 | A | Nombre de usuario duplicado"""
         return validate_username(self.cleaned_data.get('username', ''), self.instance)
     
     def _handle_superuser_staff_logic(self, cleaned_data):
@@ -150,8 +173,15 @@ class BaseUserForm(FormStyleMixin):
         return user
 
 
+# =============================================================================
+# HU-039: USER CREATE FORM
+# =============================================================================
+
 class UserCreateForm(BaseUserForm, UserCreationForm):
-    """Formulario para crear usuarios."""
+    """
+    HU-039: Crear usuario (admin)
+    Escenarios: H (datos válidos), A (errores en formulario), E (correo duplicado, sin permisos)
+    """
     
     class Meta(BaseUserForm.Meta, UserCreationForm.Meta):
         abstract = False
@@ -167,10 +197,16 @@ class UserCreateForm(BaseUserForm, UserCreationForm):
         self.fields['groups'].help_text = 'Roles asignados al usuario'
     
     def clean(self):
+        """
+        HU-039 | ESCENARIO 1 | H | Datos válidos
+        HU-039 | ESCENARIO 2 | A | Errores en formulario
+        HU-039 | ESCENARIO 3 | E | Correo duplicado (en clean_email)
+        """
         cleaned_data = super().clean()
         return self._handle_superuser_staff_logic(cleaned_data)
     
     def save(self, commit=True):
+        # HU-039 | ESCENARIO 1 | H | Usuario creado exitosamente
         user = super().save(commit=False)
         user = self._ensure_staff_for_superuser(user)
         if commit:
@@ -179,8 +215,15 @@ class UserCreateForm(BaseUserForm, UserCreationForm):
         return user
 
 
+# =============================================================================
+# HU-040: USER UPDATE FORM
+# =============================================================================
+
 class UserUpdateForm(BaseUserForm, BaseUserChangeForm):
-    """Formulario para actualizar usuarios."""
+    """
+    HU-040: Editar usuario (admin)
+    Escenarios: H (datos válidos), A (errores), E (correo duplicado, usuario no existe, sin permisos)
+    """
     
     class Meta(BaseUserForm.Meta, BaseUserChangeForm.Meta):
         abstract = False
@@ -190,18 +233,25 @@ class UserUpdateForm(BaseUserForm, BaseUserChangeForm):
         super().__init__(*args, **kwargs)
         self.fields['groups'].queryset = Group.objects.all().order_by('name')
         
+        # HU-040 | ESCENARIO 4 | E | Último superusuario no puede ser desactivado
         if self.instance and self.instance.pk and self.instance.is_superuser:
             if User.objects.filter(is_superuser=True).count() == 1:
                 self.fields['is_superuser'].disabled = True
                 self.fields['is_superuser'].help_text = 'No puedes desactivar el único superusuario del sistema.'
     
     def clean(self):
+        """
+        HU-040 | ESCENARIO 1 | H | Datos válidos
+        HU-040 | ESCENARIO 2 | A | Errores en formulario
+        HU-040 | ESCENARIO 3 | E | Correo duplicado con otro usuario
+        """
         cleaned_data = super().clean()
         if cleaned_data.get('is_superuser'):
             cleaned_data['is_staff'] = True
         return cleaned_data
     
     def save(self, commit=True):
+        # HU-040 | ESCENARIO 1 | H | Usuario actualizado exitosamente
         user = super().save(commit=False)
         user = self._ensure_staff_for_superuser(user)
         if commit:
@@ -210,7 +260,15 @@ class UserUpdateForm(BaseUserForm, BaseUserChangeForm):
         return user
 
 
+# =============================================================================
+# HU-040 (PARTE): USER CHANGE PASSWORD FORM (admin)
+# =============================================================================
+
 class UserChangePasswordForm(FormStyleMixin, forms.Form):
+    """
+    HU-040 | ESCENARIO 2 | H | Cambiar contraseña (admin)
+    Escenarios: H (contraseña válida), A (contraseña débil o no coincide), E (usuario no especificado)
+    """
     password1 = forms.CharField(
         label=LABEL_NEW_PASSWORD,
         widget=forms.PasswordInput(),
@@ -228,6 +286,10 @@ class UserChangePasswordForm(FormStyleMixin, forms.Form):
         super().__init__(*args, **kwargs)
     
     def clean_password1(self):
+        """
+        HU-040 | ESCENARIO 2 | H | Contraseña válida
+        HU-040 | ESCENARIO 2 | A | Contraseña débil (menos de 8, solo números, común) → error
+        """
         password = self.cleaned_data.get('password1', '')
         if len(password) < 8:
             raise ValidationError(ERROR_PASSWORD_MIN_LENGTH)
@@ -238,6 +300,9 @@ class UserChangePasswordForm(FormStyleMixin, forms.Form):
         return password
     
     def clean_password2(self):
+        """
+        HU-040 | ESCENARIO 2 | A | Contraseñas no coinciden → error
+        """
         password1 = self.cleaned_data.get('password1')
         password2 = self.cleaned_data.get('password2')
         if password1 and password2 and password1 != password2:
@@ -257,7 +322,15 @@ class UserChangePasswordForm(FormStyleMixin, forms.Form):
         return self.user
 
 
+# =============================================================================
+# HU-041: USER DELETE FORM (archivar usuario)
+# =============================================================================
+
 class UserDeleteForm(FormStyleMixin, forms.Form):
+    """
+    HU-041: Archivar usuario (soft delete)
+    Escenarios: H (confirmación correcta), A (nombre no coincide), E (último superusuario, sin permisos)
+    """
     confirm = forms.CharField(
         required=True,
         label='Escribe el nombre de usuario para confirmar',
@@ -274,6 +347,11 @@ class UserDeleteForm(FormStyleMixin, forms.Form):
         super().__init__(*args, **kwargs)
     
     def clean_confirm(self):
+        """
+        HU-041 | ESCENARIO 1 | H | Confirmación correcta
+        HU-041 | ESCENARIO 3 | E | Archivar al último Administrador → error
+        HU-041 | ESCENARIO 4 | A | Nombre no coincide → error
+        """
         value = self.cleaned_data.get('confirm', '').strip().lower()
         if not self.user:
             raise ValidationError(ERROR_USER_NOT_SPECIFIED)
@@ -284,7 +362,15 @@ class UserDeleteForm(FormStyleMixin, forms.Form):
         return value
 
 
+# =============================================================================
+# HU-042: USER RESTORE FORM (reincorporar usuario)
+# =============================================================================
+
 class UserRestoreForm(FormStyleMixin, forms.Form):
+    """
+    HU-042: Reincorporar usuario (reactivar)
+    Escenarios: H (confirmación correcta), A (usuario ya activo), E (sin permisos)
+    """
     confirm = forms.BooleanField(
         required=True,
         label='Confirmo que deseo reactivar este usuario'
@@ -301,6 +387,11 @@ class UserRestoreForm(FormStyleMixin, forms.Form):
         super().__init__(*args, **kwargs)
     
     def clean(self):
+        """
+        HU-042 | ESCENARIO 1 | H | Restauración válida
+        HU-042 | ESCENARIO 2 | A | Usuario ya activo → error
+        HU-042 | ESCENARIO 2 | A | Confirmación no marcada → error
+        """
         cleaned_data = super().clean()
         if not self.user:
             raise ValidationError(ERROR_USER_NOT_SPECIFIED)
@@ -315,7 +406,12 @@ class UserRestoreForm(FormStyleMixin, forms.Form):
         return cleaned_data
 
 
+# =============================================================================
+# GROUP FORMS (SOPORTE - SIN HU ASIGNADA)
+# =============================================================================
+
 class GroupCreateForm(FormStyleMixin, forms.ModelForm):
+    """Soporte: Crear grupo/rol (no tiene HU asignada, necesario para HU-039)"""
     class Meta:
         model = Group
         fields = ['name']
@@ -329,6 +425,7 @@ class GroupCreateForm(FormStyleMixin, forms.ModelForm):
 
 
 class GroupUpdateForm(FormStyleMixin, forms.ModelForm):
+    """Soporte: Editar grupo/rol (no tiene HU asignada)"""
     class Meta:
         model = Group
         fields = ['name']
@@ -351,6 +448,7 @@ class GroupUpdateForm(FormStyleMixin, forms.ModelForm):
 
 
 class GroupDeleteForm(FormStyleMixin, forms.Form):
+    """Soporte: Eliminar grupo/rol (no tiene HU asignada)"""
     confirm = forms.CharField(
         required=True,
         label='Escribe el nombre del rol para confirmar',
@@ -375,7 +473,15 @@ class GroupDeleteForm(FormStyleMixin, forms.Form):
         return value
 
 
+# =============================================================================
+# HU-043: USER PROFILE FORM
+# =============================================================================
+
 class UserProfileForm(FormStyleMixin, forms.ModelForm):
+    """
+    HU-043: Ver/editar mi propio perfil (nombre, email, teléfono)
+    Escenarios: H (datos válidos), A (errores en formulario), E (email duplicado, teléfono inválido)
+    """
     class Meta:
         model = User
         fields = ['first_name', 'last_name', 'email', 'phone']
@@ -393,13 +499,33 @@ class UserProfileForm(FormStyleMixin, forms.ModelForm):
         self.fields['email'].required = False
     
     def clean_phone(self):
+        """
+        HU-043 | ESCENARIO 2 | H | Teléfono válido
+        HU-043 | ESCENARIO 2 | A | Teléfono inválido (menos de 7 dígitos, duplicado) → error
+        """
         return validate_phone(self.cleaned_data.get('phone', ''), self.instance)
     
     def clean_email(self):
+        """
+        HU-043 | ESCENARIO 2 | H | Email válido
+        HU-043 | ESCENARIO 2 | A | Email inválido o duplicado → error
+        """
         return validate_email(self.cleaned_data.get('email', ''), self.instance)
 
 
+# =============================================================================
+# HU-043 (PARTE): USER PROFILE PASSWORD FORM
+# =============================================================================
+
 class UserProfilePasswordForm(FormStyleMixin, forms.Form):
+    """
+    HU-043 | ESCENARIO 3,4,5,6 | H/A/E | Cambiar contraseña desde perfil
+    Escenarios:
+    - H (3): Contraseña cambiada exitosamente
+    - E (4): Contraseña actual incorrecta
+    - E (5): Nueva contraseña débil
+    - E (6): Nueva contraseña no coincide con confirmación
+    """
     current_password = forms.CharField(
         label=LABEL_CURRENT_PASSWORD,
         widget=forms.PasswordInput(attrs={'placeholder': CURRENT_PASSWORD_PLACEHOLDER}),
@@ -422,12 +548,20 @@ class UserProfilePasswordForm(FormStyleMixin, forms.Form):
         super().__init__(*args, **kwargs)
     
     def clean_current_password(self):
+        """
+        HU-043 | ESCENARIO 4 | E | Contraseña actual incorrecta → error
+        HU-043 | ESCENARIO 3 | H | Contraseña actual correcta
+        """
         current_password = self.cleaned_data.get('current_password')
         if self.user and not self.user.check_password(current_password):
             raise ValidationError(ERROR_CURRENT_PASSWORD_INCORRECT)
         return current_password
     
     def clean_new_password1(self):
+        """
+        HU-043 | ESCENARIO 5 | E | Nueva contraseña débil (menos de 8, solo números, común) → error
+        HU-043 | ESCENARIO 3 | H | Nueva contraseña válida
+        """
         password = self.cleaned_data.get('new_password1', '')
         if len(password) < 8:
             raise ValidationError(ERROR_PASSWORD_MIN_LENGTH)
@@ -440,6 +574,10 @@ class UserProfilePasswordForm(FormStyleMixin, forms.Form):
         return password
     
     def clean_new_password2(self):
+        """
+        HU-043 | ESCENARIO 6 | E | Contraseñas no coinciden → error
+        HU-043 | ESCENARIO 3 | H | Contraseñas coinciden
+        """
         password1 = self.cleaned_data.get('new_password1')
         password2 = self.cleaned_data.get('new_password2')
         if password1 and password2 and password1 != password2:
@@ -447,13 +585,21 @@ class UserProfilePasswordForm(FormStyleMixin, forms.Form):
         return password2
     
     def save(self):
+        # HU-043 | ESCENARIO 3 | H | Contraseña actualizada exitosamente
         password = self.cleaned_data.get('new_password1')
         self.user.set_password(password)
         self.user.save(update_fields=['password'])
         return self.user
 
 
+# =============================================================================
+# DELIVERY USER PROFILE FORM (SOPORTE)
+# =============================================================================
+
 class DeliveryUserProfileForm(FormStyleMixin, forms.ModelForm):
+    """
+    Soporte: Formulario para entregadores (no tiene HU asignada directamente)
+    """
     class Meta:
         model = User
         fields = ['phone']

@@ -5,8 +5,24 @@ from django.utils import timezone
 import uuid
 
 
+# =============================================================================
+# ORDER MODEL (HU-024, HU-026, HU-027, HU-028, HU-029, HU-030, HU-031, HU-032, HU-033, HU-034)
+# =============================================================================
+
 class Order(models.Model):
-    # Pedido de cliente
+    """
+    HU-024: Confirmar pedido
+    HU-025: Recibir confirmación de pedido
+    HU-026: Consultar estado del pedido
+    HU-027: Listar pedidos (admin)
+    HU-028: Ver detalle de pedido (admin)
+    HU-029: Cambiar estado de pedido
+    HU-030: Cancelar pedido
+    HU-031: Crear pedido manual (admin)
+    HU-032: Asignar repartidor
+    HU-033: Consultar pedidos del día (entregador)
+    HU-034: Marcar pedido como pagado/entregado
+    """
     
     STATUS_CHOICES = [
         ('pendiente', 'Pendiente'),
@@ -17,6 +33,10 @@ class Order(models.Model):
         ('entregado', 'Entregado'),
         ('cancelado', 'Cancelado'),
     ]
+    
+    # ======================================================================
+    # CAMPOS DEL MODELO
+    # ======================================================================
     
     # Identificación
     order_number = models.CharField(
@@ -146,7 +166,15 @@ class Order(models.Model):
         verbose_name = 'Pedido'
         verbose_name_plural = 'Pedidos'
     
+    # ======================================================================
+    # MÉTODOS DE NEGOCIO
+    # ======================================================================
+    
     def can_transition_to(self, new_status):
+        """
+        HU-029 | ESCENARIO 2 | H | Verifica si la transición de estado es permitida
+        HU-029 | ESCENARIO 3 | E | Transición no permitida → retorna False
+        """
         allowed = {
             'pendiente': ['confirmado', 'cancelado'],
             'confirmado': ['preparando', 'cancelado'],
@@ -159,7 +187,11 @@ class Order(models.Model):
         return new_status in allowed.get(self.status, [])
 
     def confirm(self, user=None):
-        """Cambia a confirmado y reduce stock."""
+        """
+        HU-024 | ESCENARIO 1 | H | Confirmar pedido (pendiente → confirmado)
+        HU-029 | ESCENARIO 1 | H | Cambio de estado exitoso
+        HU-013 | ESCENARIO 5 | H | Reduce stock automáticamente
+        """
         if not self.can_transition_to('confirmado'):
             raise ValidationError(f'No se puede confirmar un pedido en estado {self.status}.')
         self.status = 'confirmado'
@@ -176,7 +208,13 @@ class Order(models.Model):
             self.save(update_fields=['updated_by'])
 
     def cancel(self, reason, user=None):
-        # Cancela el pedido y libera stock
+        """
+        HU-030 | ESCENARIO 1 | H | Cancelación exitosa (libera stock)
+        HU-030 | ESCENARIO 2 | E | Pedido ya entregado no se puede cancelar
+        HU-030 | ESCENARIO 3 | H | Cancelación con motivo
+        HU-030 | ESCENARIO 4 | E | Pedido ya cancelado
+        HU-035 | ESCENARIO 1 | H | Registrar incidencia (motivo guardado en cancelled_reason)
+        """
         if self.status == 'entregado':
             raise ValidationError('No se puede cancelar un pedido ya entregado.')
         if not reason:
@@ -194,6 +232,9 @@ class Order(models.Model):
             self.save(update_fields=['updated_by'])
 
     def mark_as_ready(self, user=None):
+        """
+        HU-029 | ESCENARIO 2 | H | Cambiar estado de preparando a listo
+        """
         if not self.can_transition_to('listo'):
             raise ValidationError(f'No se puede marcar como listo un pedido en estado {self.status}.')
         self.status = 'listo'
@@ -203,6 +244,9 @@ class Order(models.Model):
             self.save(update_fields=['updated_by'])
 
     def mark_as_preparing(self, user=None):
+        """
+        HU-029 | ESCENARIO 2 | H | Cambiar estado de confirmado a preparando
+        """
         if not self.can_transition_to('preparando'):
             raise ValidationError(f'No se puede marcar como preparando un pedido en estado {self.status}.')
         self.status = 'preparando'
@@ -212,6 +256,11 @@ class Order(models.Model):
             self.save(update_fields=['updated_by'])
 
     def assign_delivery(self, delivery_user, user=None):
+        """
+        HU-032 | ESCENARIO 1 | H | Asignación exitosa (cambia estado a en_camino)
+        HU-032 | ESCENARIO 2 | A | Sin entregadores disponibles (validado en formulario)
+        HU-032 | ESCENARIO 3 | H | Reasignar entregador
+        """
         if self.status != 'listo':
             raise ValidationError('Solo se puede asignar un repartidor a pedidos listos.')
         self.assigned_delivery_user = delivery_user
@@ -222,6 +271,11 @@ class Order(models.Model):
             self.save(update_fields=['updated_by'])
 
     def mark_as_delivered(self, user=None):
+        """
+        HU-034 | ESCENARIO 1 | H | Marcar como entregado y pagado
+        HU-034 | ESCENARIO 3 | E | Pedido no está en camino
+        HU-034 | ESCENARIO 3 | E | Sin repartidor asignado (validado en formulario)
+        """
         if self.status != 'en_camino':
             raise ValidationError('Solo se puede entregar un pedido que está en camino.')
         self.status = 'entregado'
@@ -235,19 +289,26 @@ class Order(models.Model):
         return f"{self.order_number} - {self.customer_name}"
     
     def clean(self):
-            if self.subtotal < 0:
-                raise ValidationError({'subtotal': 'El subtotal no puede ser negativo.'})
-            
-            if self.shipping_cost < 0:
-                raise ValidationError({'shipping_cost': 'El costo de envío no puede ser negativo.'})
-            
-            if self.total_amount < 0:
-                raise ValidationError({'total_amount': 'El total no puede ser negativo.'})
-            
-            if self.status == 'entregado' and not self.is_paid:
-                raise ValidationError({'is_paid': 'Un pedido entregado debe estar marcado como pagado.'})
+        """
+        HU-024 | ESCENARIO 1 | H | Validaciones de integridad del pedido
+        HU-031 | ESCENARIO 1 | H | Validaciones para pedido manual
+        """
+        if self.subtotal < 0:
+            raise ValidationError({'subtotal': 'El subtotal no puede ser negativo.'})
+        
+        if self.shipping_cost < 0:
+            raise ValidationError({'shipping_cost': 'El costo de envío no puede ser negativo.'})
+        
+        if self.total_amount < 0:
+            raise ValidationError({'total_amount': 'El total no puede ser negativo.'})
+        
+        if self.status == 'entregado' and not self.is_paid:
+            raise ValidationError({'is_paid': 'Un pedido entregado debe estar marcado como pagado.'})
     
     def save(self, *args, **kwargs):
+        """
+        HU-024 | ESCENARIO 1 | H | Genera número de pedido automáticamente
+        """
         if not self.order_number:
             last_order = Order.objects.order_by('-id').first()
             if last_order and last_order.order_number:
@@ -264,9 +325,17 @@ class Order(models.Model):
         super().save(*args, **kwargs)
 
 
-class OrderItem(models.Model):
-    # Productos dentro de un pedido (relacionado con la variante)
+# =============================================================================
+# ORDER ITEM MODEL (HU-024, HU-028, HU-031)
+# =============================================================================
 
+class OrderItem(models.Model):
+    """
+    HU-024: Confirmar pedido (creación de items)
+    HU-028: Ver detalle de pedido (admin)
+    HU-031: Crear pedido manual (admin) - items asociados
+    """
+    
     order = models.ForeignKey(
         Order,
         on_delete=models.CASCADE,
@@ -317,6 +386,9 @@ class OrderItem(models.Model):
         return f"{self.order.order_number} - {self.product_name_snapshot} x{self.quantity}"
     
     def clean(self):
+        """
+        HU-031 | ESCENARIO 2 | A | Validaciones para items de pedido manual
+        """
         if self.quantity is not None and self.quantity <= 0:
             raise ValidationError({'quantity': 'La cantidad debe ser mayor a 0.'})
         
@@ -327,6 +399,9 @@ class OrderItem(models.Model):
             raise ValidationError({'stock_snapshot': 'El stock snapshot no puede ser negativo.'})
     
     def save(self, *args, **kwargs):
+        """
+        HU-024 | ESCENARIO 1 | H | Genera snapshots automáticamente desde la variante
+        """
         if self.variant:
             if not self.product_name_snapshot:
                 self.product_name_snapshot = self.variant.product.name

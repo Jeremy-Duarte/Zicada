@@ -29,7 +29,18 @@ DEFAULT_BACKGROUND_COLOR = '#ffffff'
 DEFAULT_TEXT_COLOR = '#1a1a1a'
 
 
+# =============================================================================
+# SIZE MODEL (HU-058 a HU-062)
+# =============================================================================
+
 class Size(models.Model):
+    """
+    HU-058: Listar tallas
+    HU-059: Crear talla
+    HU-060: Editar talla
+    HU-061: Eliminar talla
+    HU-062: Importar tallas
+    """
     name = models.CharField(
         max_length=10,
         unique=True,
@@ -51,7 +62,18 @@ class Size(models.Model):
         return self.name
 
 
+# =============================================================================
+# CATEGORY MODEL (HU-063 a HU-067)
+# =============================================================================
+
 class Category(models.Model):
+    """
+    HU-063: Listar categorías
+    HU-064: Crear categoría
+    HU-065: Editar categoría
+    HU-066: Eliminar categoría
+    HU-067: Importar categorías
+    """
     name = models.CharField(
         max_length=50,
         unique=True,
@@ -79,12 +101,24 @@ class Category(models.Model):
         return self.name
     
     def save(self, *args, **kwargs):
+        # HU-064 | ESCENARIO 1 | H | Guarda la categoría generando slug automáticamente
         if not self.slug:
             self.slug = slugify(self.name)
         super().save(*args, **kwargs)
 
 
+# =============================================================================
+# COLOR MODEL (HU-068 a HU-072)
+# =============================================================================
+
 class Color(models.Model):
+    """
+    HU-068: Listar colores
+    HU-069: Crear color
+    HU-070: Editar color
+    HU-071: Eliminar color
+    HU-072: Importar colores
+    """
     name = models.CharField(
         max_length=30,
         unique=True,
@@ -112,7 +146,17 @@ class Color(models.Model):
         return self.name
 
 
+# =============================================================================
+# PRODUCT IMAGE MODEL (HU-073 a HU-076)
+# =============================================================================
+
 class ProductImage(models.Model):
+    """
+    HU-073: Listar imágenes de producto
+    HU-074: Subir imagen de producto
+    HU-075: Editar imagen de producto
+    HU-076: Eliminar imagen de producto
+    """
     image = models.ImageField(
         upload_to='products/images/',
         verbose_name='Imagen'
@@ -135,7 +179,16 @@ class ProductImage(models.Model):
         return f"Imagen {self.id}"
 
 
+# =============================================================================
+# PRODUCT COLOR MODEL (HU-013 - Gestionar tallas y stock)
+# =============================================================================
+
 class ProductColor(BaseAuditModel):
+    """
+    HU-013 | ESCENARIO 1 | H | Asignar colores a un producto
+    HU-013 | ESCENARIO 2 | H | Actualizar imágenes y orden de colores
+    HU-013 | ESCENARIO 4 | A | Deshabilitar/eliminar un color del producto
+    """
     product = models.ForeignKey(
         'Product',
         on_delete=models.CASCADE,
@@ -171,13 +224,29 @@ class ProductColor(BaseAuditModel):
         return f"{self.product.name} - {self.color.name}"
 
     def get_images(self):
+        # HU-006 | ESCENARIO 1 | H | Obtiene imágenes del producto incluyendo la destacada primero
         qs = self.images.all()
         if self.featured_image and self.featured_image in qs:
             return [self.featured_image] + list(qs.exclude(id=self.featured_image.id))
         return list(qs)
 
 
+# =============================================================================
+# PRODUCT MODEL (HU-004 a HU-013)
+# =============================================================================
+
 class Product(BaseAuditModel):
+    """
+    HU-004: Consultar catálogo
+    HU-006: Consultar detalle de producto
+    HU-007: Filtrar productos
+    HU-008: Consultar disponibilidad de talla
+    HU-009: Listar productos (admin)
+    HU-010: Crear producto
+    HU-011: Editar producto
+    HU-012: Eliminar producto
+    HU-013: Gestionar tallas y stock
+    """
     PRODUCT_TYPES = [
         ('fabrica', 'Producto de fábrica'),
         ('coleccion_limitada', 'Colección limitada'),
@@ -227,9 +296,11 @@ class Product(BaseAuditModel):
         verbose_name_plural = 'Productos'
     
     def total_stock(self):
+        # HU-009 | ESCENARIO 1 | H | Calcula stock total del producto
         return sum(v.stock for v in self.variants.filter(is_active=True))
 
     def stock_by_size_color(self):
+        # HU-008 | ESCENARIO 1,2,3 | H/A | Retorna stock agrupado por talla y color
         result = {}
         for variant in self.variants.filter(is_active=True).select_related('size', 'color'):
             key = f"{variant.size.name}-{variant.color.name}"
@@ -237,9 +308,11 @@ class Product(BaseAuditModel):
         return result
 
     def available_variants(self):
+        # HU-008 | ESCENARIO 1 | H | Retorna variantes con stock disponible
         return self.variants.filter(is_active=True, stock__gt=0).select_related('size', 'color')
 
     def is_available(self):
+        # HU-006 | ESCENARIO 3 | A | Verifica si hay al menos una variante disponible
         return self.variants.filter(is_active=True, stock__gt=0).exists()
     
     def _get_featured_image_from_prefetched(self):
@@ -263,7 +336,7 @@ class Product(BaseAuditModel):
         return None
 
     def get_featured_image(self):
-        """Get featured image for product, using cache if available."""
+        # HU-006 | ESCENARIO 1 | H | Obtiene la imagen destacada del producto
         if hasattr(self, '_prefetched_objects_cache') and 'product_colors' in self._prefetched_objects_cache:
             return self._get_featured_image_from_prefetched()
         return self._get_featured_image_from_db()
@@ -272,27 +345,37 @@ class Product(BaseAuditModel):
         return self.name
     
     def clean(self):
+        # HU-010 | ESCENARIO 2 | A | Validación: precio mayor a 0
         if self.price <= 0:
             raise ValidationError({'price': 'El precio debe ser mayor a 0.'})
     
     def save(self, *args, **kwargs):
+        # HU-010 | ESCENARIO 1 | H | Guarda producto generando slug automáticamente
         if not self.slug:
             self.slug = slugify(self.name)
         self.full_clean()
         super().save(*args, **kwargs)
 
 
+# =============================================================================
+# PRODUCT VARIANT MANAGER (HU-008, HU-013)
+# =============================================================================
+
 class ProductVariantManager(models.Manager):
     def available(self):
+        # HU-008 | ESCENARIO 1 | H | Retorna variantes disponibles
         return self.filter(is_active=True, stock__gt=0)
     
     def in_stock(self):
+        # HU-008 | ESCENARIO 1 | H | Retorna variantes con stock > 0
         return self.filter(stock__gt=0)
     
     def out_of_stock(self):
+        # HU-008 | ESCENARIO 2 | A | Retorna variantes agotadas
         return self.filter(is_active=True, stock=0)
     
     def low_stock(self, threshold=STOCK_LOW_THRESHOLD):
+        # HU-008 | ESCENARIO 2 | A | Retorna variantes con stock bajo
         return self.filter(is_active=True, stock__gt=0, stock__lte=threshold)
     
     def for_product(self, product):
@@ -307,7 +390,19 @@ class ProductVariantManager(models.Manager):
         return qs
 
 
+# =============================================================================
+# PRODUCT VARIANT MODEL (HU-008, HU-013)
+# =============================================================================
+
 class ProductVariant(BaseAuditModel):
+    """
+    HU-008: Consultar disponibilidad de talla
+    HU-013 | ESCENARIO 1 | H | Asignar tallas y stock
+    HU-013 | ESCENARIO 2 | H | Actualizar stock
+    HU-013 | ESCENARIO 3 | E | Stock negativo no permitido
+    HU-013 | ESCENARIO 4 | A | Deshabilitar talla (soft delete)
+    HU-013 | ESCENARIO 5 | H | Stock automático al crear pedido
+    """
     product = models.ForeignKey(
         Product,
         on_delete=models.CASCADE,
@@ -375,6 +470,10 @@ class ProductVariant(BaseAuditModel):
 
     @property
     def stock_status(self):
+        """
+        HU-008 | ESCENARIO 1 | H | Stock disponible
+        HU-008 | ESCENARIO 2 | A | Stock agotado o bajo
+        """
         if not self.is_active:
             return 'discontinued'
         if self.stock == 0:
@@ -385,9 +484,11 @@ class ProductVariant(BaseAuditModel):
 
     @property
     def is_available(self):
+        # HU-008 | ESCENARIO 1 | H | Verifica disponibilidad
         return self.is_active and self.stock > 0
 
     def get_stock_display(self):
+        # HU-008 | ESCENARIO 1,2 | H/A | Retorna mensaje amigable de stock
         status = self.stock_status
         if status == 'available':
             return f"{self.stock} disponibles"
@@ -402,6 +503,10 @@ class ProductVariant(BaseAuditModel):
         return f"{self.product.name} - {self.product_color.color.name} - {self.size.name}"
 
     def clean(self):
+        """
+        HU-013 | ESCENARIO 3 | E | Stock negativo no permitido
+        HU-013 | ESCENARIO 3 | E | ProductColor no pertenece al producto
+        """
         if self.stock < 0:
             raise ValidationError({'stock': 'El stock no puede ser negativo.'})
         
@@ -411,6 +516,7 @@ class ProductVariant(BaseAuditModel):
             })
     
     def save(self, *args, **kwargs):
+        # HU-013 | ESCENARIO 1 | H | Genera SKU automáticamente
         if not self.sku:
             from datetime import datetime
             timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
@@ -420,7 +526,19 @@ class ProductVariant(BaseAuditModel):
         super().save(*args, **kwargs)
 
 
+# =============================================================================
+# COLLECTION MODEL (HU-005, HU-014 a HU-018)
+# =============================================================================
+
 class Collection(BaseAuditModel):
+    """
+    HU-005: Consultar colecciones (público)
+    HU-014: Listar colecciones (admin)
+    HU-015: Crear colección
+    HU-016: Editar colección
+    HU-017: Eliminar colección
+    HU-018: Asignar productos a colección
+    """
     STATUS_CHOICES = [
         ('borrador', 'Borrador'),
         ('publicada', 'Publicada'),
@@ -547,6 +665,7 @@ class Collection(BaseAuditModel):
         return self.name
     
     def get_style_config(self):
+        # HU-015 | ESCENARIO 4 | H | Obtiene configuración de estilos
         if self.style_config and not self._has_individual_styles():
             return self.style_config
         
@@ -601,6 +720,13 @@ class Collection(BaseAuditModel):
         ])
 
     def update_products_type(self):
+        """
+        HU-015 | ESCENARIO 1 | H | Actualiza tipo de productos al cambiar estado
+        HU-016 | ESCENARIO 2 | A | Actualiza tipo al modificar fechas
+        HU-017 | ESCENARIO 2 | A | Actualiza tipo al archivar
+        HU-017 | ESCENARIO 3 | H | Actualiza tipo al restaurar
+        HU-018 | ESCENARIO 4 | A | Previene asignación a múltiples colecciones limitadas
+        """
         for product in self.products.all():
             otras_publicadas = product.collections.filter(
                 status='publicada',
@@ -614,6 +740,10 @@ class Collection(BaseAuditModel):
             product.save(update_fields=['product_type'])
 
     def check_and_update_status(self):
+        """
+        HU-005 | ESCENARIO 2,3 | A | Actualiza automáticamente estado según fechas
+        HU-016 | ESCENARIO 3 | A | Colección expirada cambia a archivada
+        """
         changed = False
         hoy = timezone.now()
         
@@ -632,6 +762,11 @@ class Collection(BaseAuditModel):
         return changed
     
     def clean(self):
+        """
+        HU-015 | ESCENARIO 2 | E | Fechas inválidas (inicio > fin)
+        HU-015 | ESCENARIO 3 | E | Nombre duplicado
+        HU-015 | ESCENARIO 5 | E | Colección publicada sin productos
+        """
         if self.start_date and self.end_date:
             if self.start_date >= self.end_date:
                 raise ValidationError({
@@ -644,6 +779,7 @@ class Collection(BaseAuditModel):
             })
     
     def save(self, *args, **kwargs):
+        # HU-015 | ESCENARIO 1 | H | Guarda colección generando slug automáticamente
         if not self.slug:
             self.slug = slugify(self.name)
         

@@ -4,14 +4,22 @@ from django.utils import timezone
 
 
 class ActiveManager(models.Manager):
+    # HU-052, HU-057 | H | Manager que retorna solo registros activos
     def get_queryset(self):
         return super().get_queryset().filter(is_active=True)
+
 
 class BaseAuditModel(models.Model):
     """
     Modelo base para entidades que requieren:
     - Soft delete (is_active + deleted_at)
     - Auditoría de creación/modificación (created_by, updated_by)
+    
+    Este modelo es abstracto y sus métodos son utilizados por:
+    - HeroConfig (HU-055, HU-056)
+    - Product (HU-012)
+    - ProductVariant (HU-013)
+    - Collection (HU-017)
     """
     is_active = models.BooleanField(
         default=True,
@@ -57,6 +65,12 @@ class BaseAuditModel(models.Model):
         abstract = True
     
     def soft_delete(self, user=None):
+        """
+        HU-055 | ESCENARIO 1 | H | Soft delete (archivar) - HeroConfig
+        HU-012 | ESCENARIO 1 | H | Soft delete (archivar) - Product
+        HU-013 | ESCENARIO 4 | A | Soft delete (deshabilitar) - ProductVariant
+        HU-017 | ESCENARIO 1 | H | Soft delete (archivar) - Collection
+        """
         self.is_active = False
         self.deleted_at = timezone.now()
         
@@ -68,6 +82,12 @@ class BaseAuditModel(models.Model):
         self.save(update_fields=fields)
     
     def restore(self, user=None):
+        """
+        HU-056 | ESCENARIO 1 | H | Restaurar slide archivado - HeroConfig
+        HU-012 | ESCENARIO 4 | H | Restaurar producto archivado - Product
+        HU-013 | ESCENARIO 4 | A | Restaurar variante deshabilitada - ProductVariant
+        HU-017 | ESCENARIO 3 | H | Restaurar colección archivada - Collection
+        """
         self.is_active = True
         self.deleted_at = None
         
@@ -78,11 +98,18 @@ class BaseAuditModel(models.Model):
         
         self.save(update_fields=fields)
 
+
 class HeroConfig(BaseAuditModel):
     """
-    Configuración de la sección principal (hero) del landing page.
-    Solo debe existir un registro activo.
+    HU-050: Página de inicio personalizada (hero slides)
+    HU-052: Listar slides del hero
+    HU-053: Crear slide del hero
+    HU-054: Editar slide del hero
+    HU-055: Archivar slide del hero
+    HU-056: Restaurar slide del hero
+    HU-057: Ver papelera de slides
     """
+    
     background_image = models.ImageField(
         upload_to='landingpage/hero/',
         blank=True,
@@ -206,4 +233,8 @@ class HeroConfig(BaseAuditModel):
         return f"Hero: {self.title_text}"
     
     def save(self, *args, **kwargs):
+        """
+        HU-053 | ESCENARIO 1 | H | Guardado normal del slide
+        HU-054 | ESCENARIO 1 | H | Guardado al actualizar slide
+        """
         super().save(*args, **kwargs)
