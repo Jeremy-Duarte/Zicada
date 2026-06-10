@@ -904,85 +904,85 @@ class OrderDetailView(PermissionRequiredMixin, DetailView):
         return context
 
 
-class OrderConfirmView(PermissionRequiredMixin, FormView):
+class BaseOrderActionView(PermissionRequiredMixin, FormView):
+    """Clase base para vistas de acción sobre pedidos (confirmar, cancelar, asignar, entregar)."""
+    
+    permission_required = PERM_ORDER_CHANGE
+    
+    def dispatch(self, request, *args, **kwargs):
+        self.order = get_object_or_404(Order, pk=kwargs['pk'])
+        return super().dispatch(request, *args, **kwargs)
+    
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['order'] = self.order
+        return kwargs
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context[CONTEXT_ORDER] = self.order
+        context[CONTEXT_CANCEL_URL] = ORDERS_DETAIL
+        context[CONTEXT_CANCEL_ARGS] = [self.order.pk]
+        return context
+    
+    def get_success_message(self):
+        """Debe ser implementado por la subclase. Retorna el mensaje de éxito."""
+        raise NotImplementedError
+    
+    def perform_action(self, form):
+        """Debe ser implementado por la subclase. Ejecuta la acción específica."""
+        raise NotImplementedError
+    
+    def form_valid(self, form):
+        self.perform_action(form)
+        messages.success(self.request, self.get_success_message())
+        return redirect(ORDERS_DETAIL, pk=self.order.pk)
+
+
+class OrderConfirmView(BaseOrderActionView):
     form_class = OrderConfirmForm
     template_name = TEMPLATE_ORDER_CONFIRM
-    permission_required = PERM_ORDER_CHANGE
-
-    def dispatch(self, request, *args, **kwargs):
-        self.order = get_object_or_404(Order, pk=kwargs['pk'])
-        return super().dispatch(request, *args, **kwargs)
-
-    def get_form_kwargs(self):
-        kwargs = super().get_form_kwargs()
-        kwargs['order'] = self.order
-        return kwargs
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context[CONTEXT_ORDER] = self.order
-        context[CONTEXT_CANCEL_URL] = ORDERS_DETAIL
-        context[CONTEXT_CANCEL_ARGS] = [self.order.pk]
-        return context
-
-    def form_valid(self, form):
+    
+    def get_success_message(self):
+        return f'Pedido {self.order.order_number} confirmado exitosamente.'
+    
+    def perform_action(self, form):
         self.order.confirm(user=self.request.user)
-        messages.success(self.request, f'Pedido {self.order.order_number} confirmado exitosamente.')
-        return redirect(ORDERS_DETAIL, pk=self.order.pk)
 
 
-class OrderCancelView(PermissionRequiredMixin, FormView):
+class OrderCancelView(BaseOrderActionView):
     form_class = OrderCancelForm
     template_name = TEMPLATE_ORDER_CANCEL
-    permission_required = PERM_ORDER_CHANGE
-
-    def dispatch(self, request, *args, **kwargs):
-        self.order = get_object_or_404(Order, pk=kwargs['pk'])
-        return super().dispatch(request, *args, **kwargs)
-
-    def get_form_kwargs(self):
-        kwargs = super().get_form_kwargs()
-        kwargs['order'] = self.order
-        return kwargs
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context[CONTEXT_ORDER] = self.order
-        context[CONTEXT_CANCEL_URL] = ORDERS_DETAIL
-        context[CONTEXT_CANCEL_ARGS] = [self.order.pk]
-        return context
-
-    def form_valid(self, form):
+    
+    def get_success_message(self):
+        return f'Pedido {self.order.order_number} cancelado exitosamente.'
+    
+    def perform_action(self, form):
         reason = form.cleaned_data['reason']
         self.order.cancel(reason=reason, user=self.request.user)
-        messages.success(self.request, f'Pedido {self.order.order_number} cancelado exitosamente.')
-        return redirect(ORDERS_DETAIL, pk=self.order.pk)
 
 
-class OrderMarkPreparingView(PermissionRequiredMixin, View):
-    permission_required = PERM_ORDER_CHANGE
+class OrderAssignDeliveryView(BaseOrderActionView):
+    form_class = OrderAssignDeliveryForm
+    template_name = TEMPLATE_ORDER_ASSIGN_DELIVERY
+    
+    def get_success_message(self):
+        return f'Repartidor asignado al pedido {self.order.order_number}.'
+    
+    def perform_action(self, form):
+        delivery_user = form.cleaned_data['delivery_user']
+        self.order.assign_delivery(delivery_user, user=self.request.user)
 
-    def post(self, request, pk):
-        order = get_object_or_404(Order, pk=pk)
-        try:
-            order.mark_as_preparing(user=request.user)
-            messages.success(request, f'Pedido {order.order_number} marcado como en preparación.')
-        except ValidationError as e:
-            messages.error(request, str(e))
-        return redirect(ORDERS_DETAIL, pk=order.pk)
 
-
-class OrderMarkReadyView(PermissionRequiredMixin, View):
-    permission_required = PERM_ORDER_CHANGE
-
-    def post(self, request, pk):
-        order = get_object_or_404(Order, pk=pk)
-        try:
-            order.mark_as_ready(user=request.user)
-            messages.success(request, f'Pedido {order.order_number} marcado como listo para envío.')
-        except ValidationError as e:
-            messages.error(request, str(e))
-        return redirect(ORDERS_DETAIL, pk=order.pk)
+class OrderMarkAsDeliveredView(BaseOrderActionView):
+    form_class = OrderMarkAsDeliveredForm
+    template_name = TEMPLATE_ORDER_MARK_DELIVERED
+    
+    def get_success_message(self):
+        return f'Pedido {self.order.order_number} marcado como entregado.'
+    
+    def perform_action(self, form):
+        self.order.mark_as_delivered(user=self.request.user)
 
 
 class OrderAssignDeliveryView(PermissionRequiredMixin, FormView):

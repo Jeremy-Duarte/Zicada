@@ -351,7 +351,57 @@ def stock_dashboard(request):
     return render(request, TEMPLATE_STOCK_DASHBOARD, context)
 
 
-class ProductCatalogView(PaginationMixin, FilterMixin, ListView):
+class BaseProductListView(PaginationMixin, FilterMixin, ListView):
+    """Clase base para vistas que listan productos con filtros comunes."""
+    
+    def apply_search_filter(self, qs):
+        """Aplica filtro de búsqueda por nombre o descripción."""
+        search = self.request.GET.get(QUERY_PARAM_SEARCH, '')
+        if search:
+            qs = qs.filter(
+                Q(name__icontains=search) |
+                Q(description__icontains=search)
+            )
+        return qs
+    
+    def apply_price_range_filter(self, qs):
+        """Aplica filtro de rango de precios."""
+        min_price = self.request.GET.get(QUERY_PARAM_MIN_PRICE, '')
+        max_price = self.request.GET.get(QUERY_PARAM_MAX_PRICE, '')
+        
+        if min_price and min_price.isdigit():
+            qs = qs.filter(price__gte=int(min_price))
+        
+        if max_price and max_price.isdigit():
+            qs = qs.filter(price__lte=int(max_price))
+        
+        return qs
+    
+    def apply_ordering(self, qs, default_order=ORDER_BY_CREATED_AT):
+        """Aplica ordenamiento al queryset."""
+        order_by = self.request.GET.get(QUERY_PARAM_ORDER_BY, default_order)
+        allowed_orders = [choice[0] for choice in ORDER_CHOICES_CATALOG]
+        if order_by in allowed_orders:
+            return qs.order_by(order_by)
+        return qs.order_by(default_order)
+    
+    def get_base_queryset(self):
+        """Retorna el queryset base con prefetch relacionado."""
+        return super().get_queryset().filter(is_active=PRODUCT_FILTER_ACTIVE).select_related(
+            'category'
+        ).prefetch_related(
+            'product_colors', 'product_colors__images', 'variants', 'variants__size'
+        )
+    
+    def apply_common_filters(self, qs):
+        """Aplica todos los filtros comunes a un queryset."""
+        qs = self.apply_search_filter(qs)
+        qs = self.apply_price_range_filter(qs)
+        qs = self.apply_ordering(qs)
+        return qs
+    
+
+class ProductCatalogView(BaseProductListView):
     """Product catalog view with filters and pagination."""
     model = Product
     template_name = TEMPLATE_CATALOG
@@ -364,38 +414,8 @@ class ProductCatalogView(PaginationMixin, FilterMixin, ListView):
     ]
     
     def get_queryset(self):
-        qs = super().get_queryset().filter(is_active=PRODUCT_FILTER_ACTIVE)
-        
-        qs = qs.select_related('category').prefetch_related(
-            'product_colors', 'product_colors__images', 'variants', 'variants__size'
-        )
-        
-        # Search by name or description
-        search = self.request.GET.get(QUERY_PARAM_SEARCH, '')
-        if search:
-            qs = qs.filter(
-                Q(name__icontains=search) |
-                Q(description__icontains=search)
-            )
-        
-        # Filter by price range
-        min_price = self.request.GET.get(QUERY_PARAM_MIN_PRICE, '')
-        max_price = self.request.GET.get(QUERY_PARAM_MAX_PRICE, '')
-        
-        if min_price and min_price.isdigit():
-            qs = qs.filter(price__gte=int(min_price))
-        
-        if max_price and max_price.isdigit():
-            qs = qs.filter(price__lte=int(max_price))
-        
-        # Ordering
-        order_by = self.request.GET.get(QUERY_PARAM_ORDER_BY, ORDER_BY_CREATED_AT)
-        allowed_orders = [choice[0] for choice in ORDER_CHOICES_CATALOG]
-        if order_by in allowed_orders:
-            qs = qs.order_by(order_by)
-        else:
-            qs = qs.order_by(ORDER_BY_CREATED_AT)
-        
+        qs = self.get_base_queryset()
+        qs = self.apply_common_filters(qs)
         return qs
     
     def get_context_data(self, **kwargs):
@@ -626,7 +646,7 @@ class CollectionListViewPublic(PaginationMixin, FilterMixin, ListView):
         return context
 
 
-class CollectionDetailView(PaginationMixin, FilterMixin, ListView):
+class CollectionDetailView(BaseProductListView):
     """Collection detail view with products."""
     model = Product
     template_name = TEMPLATE_COLLECTION_DETAIL
@@ -649,30 +669,7 @@ class CollectionDetailView(PaginationMixin, FilterMixin, ListView):
     def get_queryset(self):
         qs = super().get_queryset().filter(is_active=PRODUCT_FILTER_ACTIVE)
         qs = qs.filter(collections=self.collection)
-        
-        search = self.request.GET.get(QUERY_PARAM_SEARCH, '')
-        if search:
-            qs = qs.filter(
-                Q(name__icontains=search) |
-                Q(description__icontains=search)
-            )
-        
-        min_price = self.request.GET.get(QUERY_PARAM_MIN_PRICE, '')
-        max_price = self.request.GET.get(QUERY_PARAM_MAX_PRICE, '')
-        
-        if min_price and min_price.isdigit():
-            qs = qs.filter(price__gte=int(min_price))
-        
-        if max_price and max_price.isdigit():
-            qs = qs.filter(price__lte=int(max_price))
-        
-        order_by = self.request.GET.get(QUERY_PARAM_ORDER_BY, ORDER_BY_CREATED_AT)
-        allowed_orders = [choice[0] for choice in ORDER_CHOICES_CATALOG]
-        if order_by in allowed_orders:
-            qs = qs.order_by(order_by)
-        else:
-            qs = qs.order_by(ORDER_BY_CREATED_AT)
-        
+        qs = self.apply_common_filters(qs)
         return qs
     
     def _sanitize_css(self, raw_css):
