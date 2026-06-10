@@ -28,27 +28,18 @@ jobs:
           pip install -r requirements.txt
           pip install pytest pytest-cov pytest-django
       
-      - name: Run migrations
-        run: python manage.py migrate
-        env:
-          DJANGO_SETTINGS_MODULE: config.settings_test
-          PYTHONPATH: .
-      
       - name: Run tests with coverage
-        run: pytest apps/ --cov=apps --cov-report=xml:coverage.xml --cov-report=term -v --tb=short
+        run: |
+          pytest apps/ \
+            --cov=apps \
+            --cov-report=xml:coverage.xml \
+            --cov-report=term \
+            -v --tb=short \
+            --create-db \
+            --nomigrations
         env:
           DJANGO_SETTINGS_MODULE: config.settings_test
           PYTHONPATH: .
-      
-      - name: Verify coverage report
-        run: |
-          if [ -f coverage.xml ]; then
-            echo "Coverage report generated successfully"
-            echo "File size: $(wc -c < coverage.xml) bytes"
-          else
-            echo "Error: coverage.xml not generated"
-            exit 1
-          fi
       
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@fd88b7d7ccbaefd23d8f36f73b59db7a3d246602
