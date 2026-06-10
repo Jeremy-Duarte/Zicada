@@ -43,13 +43,19 @@ ERROR_PRODUCT_ALREADY_IN_ORDER = 'El producto "{product}" - Talla {size} ya exis
 ERROR_CANNOT_MODIFY_ITEM_STATUS = 'Solo se pueden modificar items de pedidos pendientes o confirmados.'
 ERROR_ONLY_PENDING_CAN_PAY = 'Solo se pueden generar links de pago para pedidos pendientes. Estado actual: {status}'
 
+
 # =============================================================================
-# FORMULARIOS
+# HU-023: CHECKOUT ORDER FORM
 # =============================================================================
 
 class CheckoutOrderForm(FormStyleMixin, forms.Form):
-    """Formulario para la creación de un pedido en el checkout."""
+    """
+    HU-023: Completar formulario de envío
+    Escenarios: H (todos los campos válidos), A (campos obligatorios vacíos), E (teléfono inválido)
+    """
     
+    # HU-023 | ESCENARIO 1 | H | Nombre completo válido (min 3, max 200)
+    # HU-023 | ESCENARIO 2 | A | Nombre vacío → error 'required'
     customer_name = forms.CharField(
         max_length=200,
         min_length=3,
@@ -66,6 +72,8 @@ class CheckoutOrderForm(FormStyleMixin, forms.Form):
         }
     )
     
+    # HU-023 | ESCENARIO 1 | H | Teléfono válido (7-15 dígitos)
+    # HU-023 | ESCENARIO 3 | E | Teléfono inválido (formato incorrecto) → error en clean_customer_phone
     customer_phone = forms.CharField(
         max_length=20,
         required=True,
@@ -79,6 +87,7 @@ class CheckoutOrderForm(FormStyleMixin, forms.Form):
         }
     )
     
+    # HU-023 | ESCENARIO 4 | A | Email opcional, si se ingresa debe ser válido
     customer_email = forms.EmailField(
         required=False,
         label='Correo electrónico',
@@ -91,6 +100,8 @@ class CheckoutOrderForm(FormStyleMixin, forms.Form):
         }
     )
     
+    # HU-023 | ESCENARIO 1 | H | Dirección válida (min 5)
+    # HU-023 | ESCENARIO 2 | A | Dirección vacía → error 'required'
     shipping_address = forms.CharField(
         required=True,
         label='Dirección de envío',
@@ -105,6 +116,7 @@ class CheckoutOrderForm(FormStyleMixin, forms.Form):
         }
     )
     
+    # HU-023 | ESCENARIO 1 | H | Notas adicionales opcionales
     delivery_notes = forms.CharField(
         required=False,
         label='Notas adicionales',
@@ -116,6 +128,10 @@ class CheckoutOrderForm(FormStyleMixin, forms.Form):
     )
     
     def clean_customer_phone(self):
+        """
+        HU-023 | ESCENARIO 3 | E | Teléfono con menos de 7 o más de 15 dígitos → error
+        HU-023 | ESCENARIO 1 | H | Teléfono válido (7-15 dígitos)
+        """
         phone = self.cleaned_data.get('customer_phone', '')
         digits = ''.join(c for c in phone if c.isdigit())
         if len(digits) < 7 or len(digits) > 15:
@@ -123,8 +139,15 @@ class CheckoutOrderForm(FormStyleMixin, forms.Form):
         return digits
 
 
+# =============================================================================
+# HU-031: ORDER CREATE FORM (pedido manual)
+# =============================================================================
+
 class OrderCreateForm(FormStyleMixin, forms.ModelForm):
-    """Formulario para crear pedidos manuales desde backoffice."""
+    """
+    HU-031: Crear pedido manual (admin)
+    Escenarios: H (datos válidos), A (teléfono inválido, costo envío negativo), E (sin permisos)
+    """
     
     class Meta:
         model = Order
@@ -149,6 +172,10 @@ class OrderCreateForm(FormStyleMixin, forms.ModelForm):
         self.fields['is_paid'].help_text = 'Marcar como pagado si el cliente ya pagó (ej: contraentrega, transferencia)'
     
     def clean_customer_phone(self):
+        """
+        HU-031 | ESCENARIO 1 | H | Teléfono válido (7-15 dígitos)
+        HU-031 | ESCENARIO 2 | A | Teléfono inválido → error
+        """
         phone = self.cleaned_data.get('customer_phone', '')
         digits = ''.join(c for c in phone if c.isdigit())
         if len(digits) < 7:
@@ -158,14 +185,25 @@ class OrderCreateForm(FormStyleMixin, forms.ModelForm):
         return digits
     
     def clean_shipping_cost(self):
+        """
+        HU-031 | ESCENARIO 1 | H | Costo de envío ≥ 0
+        HU-031 | ESCENARIO 2 | A | Costo de envío negativo → error
+        """
         cost = self.cleaned_data.get('shipping_cost', 0)
         if cost < 0:
             raise ValidationError(ERROR_SHIPPING_NEGATIVE)
         return cost
 
 
+# =============================================================================
+# HU-031 (PARTE): ORDER UPDATE FORM
+# =============================================================================
+
 class OrderUpdateForm(FormStyleMixin, forms.ModelForm):
-    """Formulario para actualizar pedidos existentes desde backoffice."""
+    """
+    HU-031 (parte): Editar pedido manual (admin)
+    Escenarios: H (datos válidos), A (transición inválida, envío gratis violado, etc.), E (sin permisos)
+    """
     
     class Meta:
         model = Order
@@ -195,16 +233,22 @@ class OrderUpdateForm(FormStyleMixin, forms.ModelForm):
                 is_delivery=True
             ).order_by('username')
             
+            # HU-031 | ESCENARIO 4 | A | Pedido entregado o cancelado → campos deshabilitados
             if self.instance.status in ['entregado', 'cancelado']:
                 self.fields['status'].disabled = True
                 self.fields['assigned_delivery_user'].disabled = True
                 self.fields['shipping_cost'].disabled = True
                 
+            # HU-031 | ESCENARIO 4 | A | Pedido ya pagado → campo is_paid deshabilitado
             if self.instance.is_paid:
                 self.fields['is_paid'].disabled = True
                 self.fields['is_paid'].help_text = 'Este pedido ya está pagado y no puede modificarse.'
     
     def clean_status(self):
+        """
+        HU-029 | ESCENARIO 3 | E | Transición de estado inválida
+        HU-029 | ESCENARIO 1 | H | Transición válida
+        """
         new_status = self.cleaned_data.get('status')
         
         if self.instance and self.instance.pk:
@@ -218,6 +262,10 @@ class OrderUpdateForm(FormStyleMixin, forms.ModelForm):
         return new_status
     
     def clean_is_paid(self):
+        """
+        HU-031 | ESCENARIO 4 | E | No se puede desmarcar un pedido ya pagado
+        HU-034 | ESCENARIO 3 | E | Pedido entregado debe estar pagado
+        """
         is_paid = self.cleaned_data.get('is_paid')
         status = self.cleaned_data.get('status', self.instance.status if self.instance else 'pendiente')
         
@@ -230,6 +278,10 @@ class OrderUpdateForm(FormStyleMixin, forms.ModelForm):
         return is_paid
     
     def clean_shipping_cost(self):
+        """
+        HU-031 | ESCENARIO 2 | A | Envío gratis para subtotal >= FREE_SHIPPING_THRESHOLD
+        HU-031 | ESCENARIO 2 | A | Costo de envío negativo → error
+        """
         new_cost = self.cleaned_data.get('shipping_cost')
         subtotal = self.instance.subtotal if self.instance else 0
         
@@ -242,8 +294,15 @@ class OrderUpdateForm(FormStyleMixin, forms.ModelForm):
         return new_cost
 
 
+# =============================================================================
+# HU-029 (PARTE): ORDER CONFIRM FORM
+# =============================================================================
+
 class OrderConfirmForm(FormStyleMixin, forms.Form):
-    """Formulario específico para confirmar un pedido manualmente."""
+    """
+    HU-029: Confirmar pedido (cambiar estado de pendiente a confirmado)
+    Escenarios: H (confirmación válida y stock suficiente), A (sin items, stock insuficiente), E (estado incorrecto)
+    """
     
     confirm = forms.BooleanField(
         required=True,
@@ -256,6 +315,12 @@ class OrderConfirmForm(FormStyleMixin, forms.Form):
         super().__init__(*args, **kwargs)
     
     def clean(self):
+        """
+        HU-029 | ESCENARIO 1 | H | Confirmación válida (stock suficiente, items presentes, estado pendiente)
+        HU-029 | ESCENARIO 3 | E | Estado no es pendiente → error
+        HU-029 | ESCENARIO 3 | E | Sin items en el pedido → error
+        HU-029 | ESCENARIO 3 | E | Stock insuficiente → error
+        """
         cleaned_data = super().clean()
         
         if not self.order:
@@ -287,8 +352,16 @@ class OrderConfirmForm(FormStyleMixin, forms.Form):
         return cleaned_data
 
 
+# =============================================================================
+# HU-030 & HU-035: ORDER CANCEL FORM
+# =============================================================================
+
 class OrderCancelForm(FormStyleMixin, forms.Form):
-    """Formulario específico para cancelar pedidos."""
+    """
+    HU-030: Cancelar pedido (admin)
+    HU-035: Registrar incidencia (el motivo de cancelación actúa como incidencia)
+    Escenarios: H (motivo válido y confirmación), A (motivo demasiado corto), E (pedido entregado o ya cancelado)
+    """
     
     reason = forms.CharField(
         widget=forms.Textarea(attrs={'rows': 3, 'placeholder': 'Ej: Cliente solicitó cancelación, producto agotado, error en dirección...'}),
@@ -307,12 +380,24 @@ class OrderCancelForm(FormStyleMixin, forms.Form):
         super().__init__(*args, **kwargs)
     
     def clean_reason(self):
+        """
+        HU-030 | ESCENARIO 3 | H | Motivo de cancelación (incidencia) válido
+        HU-035 | ESCENARIO 1 | H | Incidencia registrada con motivo
+        HU-035 | ESCENARIO 2 | H | Tipos de incidencia disponibles (campo libre)
+        HU-030 | ESCENARIO 2 | E | Motivo demasiado corto (< 10 caracteres) → error
+        """
         reason = self.cleaned_data.get('reason', '').strip()
         if len(reason) < 10:
             raise ValidationError(ERROR_REASON_TOO_SHORT)
         return reason
     
     def clean(self):
+        """
+        HU-030 | ESCENARIO 1 | H | Cancelación válida
+        HU-030 | ESCENARIO 2 | E | Pedido ya entregado → error
+        HU-030 | ESCENARIO 4 | E | Pedido ya cancelado → error
+        HU-030 | ESCENARIO 3 | A | Confirmación no marcada → error
+        """
         cleaned_data = super().clean()
         
         if not self.order:
@@ -331,8 +416,15 @@ class OrderCancelForm(FormStyleMixin, forms.Form):
         return cleaned_data
 
 
+# =============================================================================
+# HU-029 (PARTE): ORDER CHANGE STATUS FORM (cambios rápidos de estado)
+# =============================================================================
+
 class OrderChangeStatusForm(FormStyleMixin, forms.Form):
-    """Formulario para cambios rápidos de estado."""
+    """
+    HU-029: Cambiar estado de pedido (cambios rápidos)
+    Escenarios: H (transición válida), E (transición inválida)
+    """
     
     new_status = forms.ChoiceField(
         choices=[],
@@ -351,6 +443,7 @@ class OrderChangeStatusForm(FormStyleMixin, forms.Form):
         super().__init__(*args, **kwargs)
         
         if self.order:
+            # HU-029 | ESCENARIO 2 | H | Muestra solo estados permitidos desde el estado actual
             choices = [
                 (status, label) for status, label in Order.STATUS_CHOICES
                 if self.order.can_transition_to(status)
@@ -362,6 +455,10 @@ class OrderChangeStatusForm(FormStyleMixin, forms.Form):
                 self.fields['new_status'].help_text = 'No hay transiciones disponibles para este estado.'
     
     def clean_new_status(self):
+        """
+        HU-029 | ESCENARIO 1 | H | Transición válida
+        HU-029 | ESCENARIO 3 | E | Transición no permitida → error
+        """
         new_status = self.cleaned_data.get('new_status')
         
         if not self.order:
@@ -377,8 +474,15 @@ class OrderChangeStatusForm(FormStyleMixin, forms.Form):
         return new_status
 
 
+# =============================================================================
+# HU-032: ORDER ASSIGN DELIVERY FORM
+# =============================================================================
+
 class OrderAssignDeliveryForm(FormStyleMixin, forms.Form):
-    """Formulario para asignar repartidor desde backoffice."""
+    """
+    HU-032: Asignar repartidor (admin)
+    Escenarios: H (repartidor asignado y confirmación), A (sin entregadores disponibles), E (pedido no está listo)
+    """
     
     delivery_user = forms.ModelChoiceField(
         queryset=None,
@@ -398,6 +502,7 @@ class OrderAssignDeliveryForm(FormStyleMixin, forms.Form):
         super().__init__(*args, **kwargs)
         
         user_model = get_user_model()
+        # HU-032 | ESCENARIO 2 | A | Sin entregadores disponibles → queryset vacío
         self.fields['delivery_user'].queryset = user_model.objects.filter(
             is_delivery=True, 
             is_active=True
@@ -411,6 +516,10 @@ class OrderAssignDeliveryForm(FormStyleMixin, forms.Form):
         self.fields['delivery_user'].help_text = "Selecciona el repartidor que realizará la entrega"
     
     def clean_delivery_user(self):
+        """
+        HU-032 | ESCENARIO 1 | H | Repartidor válido (activo y con rol de entregador)
+        HU-032 | ESCENARIO 2 | A | Repartidor inactivo → error
+        """
         delivery_user = self.cleaned_data.get('delivery_user')
         
         if delivery_user and not delivery_user.is_active:
@@ -422,6 +531,10 @@ class OrderAssignDeliveryForm(FormStyleMixin, forms.Form):
         return delivery_user
     
     def clean_confirm(self):
+        """
+        HU-032 | ESCENARIO 1 | H | Confirmación marcada
+        HU-032 | ESCENARIO 3 | A | Confirmación no marcada → error
+        """
         confirm = self.cleaned_data.get('confirm')
         
         if not confirm:
@@ -430,6 +543,10 @@ class OrderAssignDeliveryForm(FormStyleMixin, forms.Form):
         return confirm
     
     def clean(self):
+        """
+        HU-032 | ESCENARIO 1 | H | Pedido en estado 'listo'
+        HU-032 | ESCENARIO 3 | E | Pedido no está listo → error
+        """
         cleaned_data = super().clean()
         
         if not self.order:
@@ -441,8 +558,15 @@ class OrderAssignDeliveryForm(FormStyleMixin, forms.Form):
         return cleaned_data
 
 
+# =============================================================================
+# HU-034: ORDER MARK AS DELIVERED FORM
+# =============================================================================
+
 class OrderMarkAsDeliveredForm(FormStyleMixin, forms.Form):
-    """Formulario para marcar pedido como entregado."""
+    """
+    HU-034: Marcar pedido como pagado/entregado
+    Escenarios: H (confirmación válida), A (confirmación no marcada), E (pedido no está en camino, sin repartidor)
+    """
     
     confirm = forms.BooleanField(
         required=True,
@@ -461,6 +585,12 @@ class OrderMarkAsDeliveredForm(FormStyleMixin, forms.Form):
         super().__init__(*args, **kwargs)
     
     def clean(self):
+        """
+        HU-034 | ESCENARIO 1 | H | Entrega válida (pedido en camino, repartidor asignado)
+        HU-034 | ESCENARIO 2 | H | Confirmación requerida
+        HU-034 | ESCENARIO 3 | E | Pedido no está en camino → error
+        HU-034 | ESCENARIO 3 | E | Sin repartidor asignado → error
+        """
         cleaned_data = super().clean()
         
         if not self.order:
@@ -479,8 +609,15 @@ class OrderMarkAsDeliveredForm(FormStyleMixin, forms.Form):
         return cleaned_data
 
 
+# =============================================================================
+# HU-024 (PARTE): ORDER PAYMENT FORM (generar link de pago)
+# =============================================================================
+
 class OrderPaymentForm(FormStyleMixin, forms.Form):
-    """Formulario para generar un link de pago Stripe para pedidos pendientes."""
+    """
+    HU-024 (parte): Generar link de pago Stripe para pedidos pendientes
+    Escenarios: H (método de pago seleccionado), A (sin método seleccionado), E (pedido pagado o no pendiente)
+    """
     
     send_email = forms.BooleanField(
         required=False,
@@ -513,6 +650,12 @@ class OrderPaymentForm(FormStyleMixin, forms.Form):
             self.fields['send_email'].help_text = 'El cliente no tiene email registrado.'
     
     def clean(self):
+        """
+        HU-024 | ESCENARIO 1 | H | Método de pago seleccionado (email o WhatsApp)
+        HU-024 | ESCENARIO 2 | E | Pedido no está pendiente → error
+        HU-024 | ESCENARIO 2 | E | Pedido ya pagado → error
+        HU-024 | ESCENARIO 2 | A | Sin método de pago seleccionado → error
+        """
         cleaned_data = super().clean()
         
         if not self.order:
@@ -536,8 +679,15 @@ class OrderPaymentForm(FormStyleMixin, forms.Form):
         return cleaned_data
 
 
+# =============================================================================
+# HU-031 (PARTE): ORDER ITEM CREATE FORM
+# =============================================================================
+
 class OrderItemCreateForm(FormStyleMixin, forms.ModelForm):
-    """Formulario para agregar items a un pedido existente."""
+    """
+    HU-031 (parte): Agregar producto a pedido manual (admin)
+    Escenarios: H (producto no existente en pedido, stock suficiente), A (producto ya existe, stock insuficiente), E (pedido no editable)
+    """
     
     class Meta:
         model = OrderItem
@@ -558,6 +708,10 @@ class OrderItemCreateForm(FormStyleMixin, forms.ModelForm):
             ).select_related('product', 'size', 'product_color__color')
     
     def clean_quantity(self):
+        """
+        HU-031 | ESCENARIO 1 | H | Cantidad válida (1 - MAX_QUANTITY_PER_ITEM)
+        HU-031 | ESCENARIO 3 | E | Cantidad > stock disponible → error
+        """
         quantity = self.cleaned_data.get('quantity')
         
         if quantity <= 0:
@@ -573,6 +727,11 @@ class OrderItemCreateForm(FormStyleMixin, forms.ModelForm):
         return quantity
     
     def clean(self):
+        """
+        HU-031 | ESCENARIO 1 | H | Producto no existente en el pedido
+        HU-031 | ESCENARIO 3 | E | Producto ya existe en el pedido → error
+        HU-031 | ESCENARIO 3 | E | Pedido no está pendiente o confirmado → error
+        """
         cleaned_data = super().clean()
         
         if not self.order:
@@ -597,8 +756,15 @@ class OrderItemCreateForm(FormStyleMixin, forms.ModelForm):
         return instance
 
 
+# =============================================================================
+# HU-031 (PARTE): ORDER ITEM UPDATE FORM
+# =============================================================================
+
 class OrderItemUpdateForm(FormStyleMixin, forms.ModelForm):
-    """Formulario para actualizar cantidad de un item."""
+    """
+    HU-031 (parte): Modificar cantidad de producto en pedido manual
+    Escenarios: H (cantidad válida), A (stock insuficiente al aumentar), E (pedido no editable)
+    """
     
     class Meta:
         model = OrderItem
@@ -612,6 +778,10 @@ class OrderItemUpdateForm(FormStyleMixin, forms.ModelForm):
         self.original_quantity = self.instance.quantity if self.instance else 0
     
     def clean_quantity(self):
+        """
+        HU-031 | ESCENARIO 1 | H | Cantidad válida (1 - MAX_QUANTITY_PER_ITEM)
+        HU-031 | ESCENARIO 3 | E | Aumento de cantidad > stock disponible → error
+        """
         new_quantity = self.cleaned_data.get('quantity')
         
         if new_quantity <= 0:
@@ -629,6 +799,9 @@ class OrderItemUpdateForm(FormStyleMixin, forms.ModelForm):
         return new_quantity
     
     def clean(self):
+        """
+        HU-031 | ESCENARIO 3 | E | Pedido no está pendiente o confirmado → error
+        """
         cleaned_data = super().clean()
         
         if self.instance and self.instance.order:
@@ -638,8 +811,15 @@ class OrderItemUpdateForm(FormStyleMixin, forms.ModelForm):
         return cleaned_data
 
 
+# =============================================================================
+# HU-031 (PARTE): ORDER ITEM DELETE FORM
+# =============================================================================
+
 class OrderItemDeleteForm(FormStyleMixin, forms.Form):
-    """Formulario para eliminar un item del pedido."""
+    """
+    HU-031 (parte): Eliminar producto de pedido manual
+    Escenarios: H (confirmación "ELIMINAR"), A (confirmación incorrecta), E (pedido no editable)
+    """
     
     confirm = forms.CharField(
         required=True,
@@ -658,6 +838,11 @@ class OrderItemDeleteForm(FormStyleMixin, forms.Form):
             )
     
     def clean_confirm(self):
+        """
+        HU-031 | ESCENARIO 1 | H | Confirmación "ELIMINAR" correcta
+        HU-031 | ESCENARIO 3 | A | Confirmación incorrecta → error
+        HU-031 | ESCENARIO 3 | E | Pedido no está pendiente o confirmado → error
+        """
         value = self.cleaned_data.get('confirm', '').strip()
         
         if not self.order_item:
