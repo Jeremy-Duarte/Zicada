@@ -1,6 +1,6 @@
 import stripe
-from config.settings import STRIPE_SECRET_KEY
 
 def get_stripe():
-    stripe.api_key = STRIPE_SECRET_KEY
+    from django.conf import settings
+    stripe.api_key = getattr(settings, 'STRIPE_SECRET_KEY', 'sk_test_mock')
     return stripe
