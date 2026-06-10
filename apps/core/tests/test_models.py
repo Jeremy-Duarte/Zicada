@@ -8,11 +8,12 @@ Cubre:
 """
 
 from django.test import TestCase
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 from django.utils import timezone
-from datetime import timedelta
 
 from apps.core.models import HeroConfig, BaseAuditModel, ActiveManager
+
+User = get_user_model()
 
 
 # =============================================================================
@@ -214,7 +215,6 @@ class HeroConfigModelTest(TestCase):
         self.hero.refresh_from_db()
         self.assertGreaterEqual(self.hero.deleted_at, before)
         self.assertLessEqual(self.hero.deleted_at, after)
-
 
     def test_restore_clears_deleted_at(self):
         """Restaurar pone deleted_at en None."""

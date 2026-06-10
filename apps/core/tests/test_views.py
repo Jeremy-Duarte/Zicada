@@ -14,8 +14,9 @@ Covers:
 """
 
 from django.test import TestCase, Client, override_settings
-from django.contrib.auth.models import User, Permission
+from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
+from django.contrib.auth.models import Permission
 from django.urls import reverse
 from django.core import mail
 from unittest.mock import patch
@@ -44,6 +45,8 @@ from apps.core.url_names import (
     BACKOFFICE_DASHBOARD,
 )
 
+User = get_user_model()
+
 
 # =============================================================================
 # HELPERS
@@ -54,9 +57,16 @@ def _create_test_user(**kwargs):
     defaults = {'username': 'testuser', 'password': 'pass1234'}
     defaults.update(kwargs)
     password = defaults.pop('password')
+    is_delivery = defaults.pop('is_delivery', False)
+    
     user = User(**defaults)
     user.set_password(password)
     user.save()
+    
+    if is_delivery and hasattr(user, 'is_delivery'):
+        user.is_delivery = True
+        user.save()
+    
     return user
 
 
@@ -289,9 +299,7 @@ class StaffLoginViewTest(TestCase):
         self.client = Client()
         self.staff_user = _create_test_user(username='staff', is_staff=True)
         self.normal_user = _create_test_user(username='normal', is_staff=False)
-        self.delivery_user = _create_test_user(username='delivery')
-        self.delivery_user.is_delivery = True
-        self.delivery_user.save()
+        self.delivery_user = _create_test_user(username='delivery', is_delivery=True)
 
     def test_login_page_accessible(self):
         """HU-001 | H | Login page accessible without authentication"""

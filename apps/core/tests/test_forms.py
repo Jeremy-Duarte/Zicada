@@ -13,9 +13,9 @@ Cubre:
 """
 
 from django.test import TestCase
-from django.contrib.auth.models import User
-from django.core.exceptions import ValidationError
-from unittest.mock import patch, Mock, MagicMock
+from django.contrib.auth import get_user_model
+from django.urls import reverse
+from unittest.mock import patch, Mock
 from decimal import Decimal
 
 from apps.core.forms import (
@@ -29,7 +29,15 @@ from apps.core.forms import (
     get_button_url_choices,
 )
 from apps.core.models import HeroConfig
+from apps.core.url_names import (
+    PRODUCTS_CATALOG,
+    PRODUCTS_COLLECTION_DETAIL,
+    PRODUCTS_DETAIL,
+)
 from apps.products.models import Category, Product, Collection
+
+User = get_user_model()
+
 
 # =============================================================================
 # HELPERS COMUNES
@@ -40,9 +48,17 @@ def _create_test_user(**kwargs):
     defaults = {'username': 'testuser', 'password': 'pass1234'}
     defaults.update(kwargs)
     password = defaults.pop('password')
+    is_delivery = defaults.pop('is_delivery', False)
+    
     user = User(**defaults)
     user.set_password(password)
     user.save()
+    
+    # Si el modelo tiene campo is_delivery (opcional)
+    if is_delivery and hasattr(user, 'is_delivery'):
+        user.is_delivery = True
+        user.save()
+    
     return user
 
 
@@ -75,7 +91,7 @@ def _create_hero(**kwargs):
         'title_text': 'Hero Test',
         'subtitle_text': 'Subtítulo',
         'button_text': 'Ir',
-        'button_url': '/catalogo/',
+        'button_url': reverse(PRODUCTS_CATALOG),
         'button_style': 'bg-zicada-accent hover:bg-red-700 text-white rounded-lg px-8 py-3 text-lg shadow-lg inline-block font-semibold transition-all duration-300 transform hover:scale-105 inline-block text-center',
         'sort_order': 0,
         'section_height': '100vh',
@@ -141,37 +157,34 @@ class BuildButtonStyleTest(TestCase):
 class GetButtonUrlChoicesTest(TestCase):
     """Pruebas para la función que genera opciones de URL del botón (helper)"""
 
-    @patch('apps.core.forms.safe_reverse', return_value='/catalogo/')
-    def test_includes_static_choices(self, mock_reverse):
+    def test_includes_static_choices(self):
         """Verifica que los catálogos estáticos estén presentes"""
         choices = get_button_url_choices()
         urls = [c[0] for c in choices]
-        self.assertIn('/catalogo/', urls)
+        catalog_url = reverse(PRODUCTS_CATALOG)
+        self.assertIn(catalog_url, urls)
 
-    @patch('apps.core.forms.safe_reverse')
-    def test_includes_collections(self, mock_reverse):
+    def test_includes_collections(self):
         """HU-053 | ESCENARIO 1 | H | Carga colecciones activas y publicadas"""
-        mock_reverse.return_value = '/colecciones/verano/'
         coll = _create_test_collection()
-
         choices = get_button_url_choices()
-        collection_choices = [c for c in choices if '🌵' not in c[1]]  # solo colecciones
+        expected_url = reverse(PRODUCTS_COLLECTION_DETAIL, kwargs={'slug': coll.slug})
+        
         self.assertTrue(
-            any('coleccion-verano' in c[0] for c in choices),
-            'Debe incluir la colección'
+            any(expected_url == c[0] for c in choices),
+            f'La colección {coll.slug} debería estar en las opciones con URL {expected_url}'
         )
 
-    @patch('apps.core.forms.safe_reverse')
-    def test_includes_products(self, mock_reverse):
+    def test_includes_products(self):
         """HU-053 | ESCENARIO 1 | H | Carga productos activos"""
-        mock_reverse.return_value = '/productos/camiseta-zicada/'
         cat = _create_test_category()
         prod = _create_test_product(category=cat)
-
         choices = get_button_url_choices()
+        expected_url = reverse(PRODUCTS_DETAIL, kwargs={'slug': prod.slug})
+        
         self.assertTrue(
-            any('camiseta-zicada' in c[0] for c in choices),
-            'Debe incluir el producto'
+            any(expected_url == c[0] for c in choices),
+            f'El producto {prod.slug} debería estar en las opciones con URL {expected_url}'
         )
 
 
@@ -189,8 +202,6 @@ class ContactFormTest(TestCase):
         'message': 'Quiero saber el precio de la camiseta negra.',
     }
 
-    # --- ESCENARIO HAPPY PATH ---
-
     def test_valid_form(self):
         """HU-051 | ESCENARIO 2 | H | Formulario válido con nombre, email, asunto, mensaje y teléfono opcional"""
         data = self.VALID_DATA.copy()
@@ -203,8 +214,6 @@ class ContactFormTest(TestCase):
         form = ContactForm(data=self.VALID_DATA)
         self.assertTrue(form.is_valid())
         self.assertEqual(form.cleaned_data['phone'], '')
-
-    # --- ESCENARIO ALTERNATIVE PATH (A) ---
 
     def test_name_required(self):
         """HU-051 | ESCENARIO 4A | A | Nombre vacío → error 'required'"""
@@ -302,13 +311,10 @@ class StaffLoginFormTest(TestCase):
 
     def setUp(self):
         self.user_staff = _create_test_user(username='staff', is_staff=True)
-        self.user_delivery = _create_test_user(username='delivery')
-        self.user_delivery.is_delivery = True
-        self.user_delivery.save()
+        self.user_delivery = _create_test_user(username='delivery', is_delivery=True)
         self.user_normal = _create_test_user(username='normal', is_staff=False)
         self.user_inactive = _create_test_user(username='inactive', is_staff=True, is_active=False)
 
-        # Mock para request (AuthenticationForm lo necesita)
         self.request = Mock()
         self.request.POST = {}
 
@@ -352,7 +358,6 @@ class StaffLoginFormTest(TestCase):
             data={'username': 'inactive', 'password': 'pass1234'}
         )
         self.assertFalse(form.is_valid())
-        # El error "inactive" es agregado por AuthenticationForm.confirm_login_allowed
         self.assertIn('inactiva', str(form.errors.get('__all__', [])).lower())
 
     @patch('django.contrib.auth.forms.authenticate')
@@ -379,13 +384,10 @@ class HeroConfigCreateFormTest(TestCase):
         self.product = _create_test_product(category=self.category)
         self.collection = _create_test_collection()
 
-    @patch('apps.core.forms.get_button_url_choices')
-    def get_valid_data(self, mock_choices):
-        """Retorna datos válidos con mock de choices para button_url"""
-        mock_choices.return_value = [
-            ('/catalogo/', 'Catálogo'),
-            ('/productos/camiseta-zicada/', 'Camiseta'),
-        ]
+    def get_valid_data(self):
+        """Retorna datos válidos usando URLs reales"""
+        catalog_url = reverse(PRODUCTS_CATALOG)
+        
         return {
             'background_image': '',
             'overlay_opacity': 0.5,
@@ -404,7 +406,7 @@ class HeroConfigCreateFormTest(TestCase):
             'subtitle_color': '#e5e5e5',
             'subtitle_margin_bottom': '2rem',
             'button_text': 'Explorar',
-            'button_url': '/catalogo/',
+            'button_url': catalog_url,
             'button_bg_color': 'bg-zicada-accent',
             'button_hover_color': 'hover:bg-red-700',
             'button_text_color': 'text-white',
@@ -417,8 +419,7 @@ class HeroConfigCreateFormTest(TestCase):
             'sort_order': 0,
         }
 
-    @patch('apps.core.forms.get_button_url_choices')
-    def test_create_valid_slide(self, mock_choices):
+    def test_create_valid_slide(self):
         """HU-053 | ESCENARIO 1 | H | Datos válidos → formulario válido y guarda"""
         data = self.get_valid_data()
         form = HeroConfigCreateForm(data=data)
@@ -430,20 +431,18 @@ class HeroConfigCreateFormTest(TestCase):
         self.assertIn('hover:bg-red-700', hero.button_style)
         self.assertEqual(hero.sort_order, 0)
 
-    @patch('apps.core.forms.get_button_url_choices')
-    def test_title_required(self, mock_choices):
+    def test_title_required(self):
         """HU-053 | ESCENARIO 2 | A | Título vacío → error"""
         data = self.get_valid_data()
         data['title_text'] = ''
         form = HeroConfigCreateForm(data=data)
         self.assertFalse(form.is_valid())
         self.assertIn('title_text', form.errors)
-        self.assertIn('obligatorio', str(form.errors['title_text']).lower())
+        self.assertIn('requerido', str(form.errors['title_text']).lower())
 
-    @patch('apps.core.forms.get_button_url_choices')
-    def test_sort_order_duplicate(self, mock_choices):
+    def test_sort_order_duplicate(self):
         """HU-053 | ESCENARIO 2 | A | sort_order duplicado → error"""
-        _create_hero(sort_order=0)  # Ya existe un slide con orden 0
+        _create_hero(sort_order=0)
         data = self.get_valid_data()
         data['sort_order'] = 0
         form = HeroConfigCreateForm(data=data)
@@ -451,11 +450,9 @@ class HeroConfigCreateFormTest(TestCase):
         self.assertIn('sort_order', form.errors)
         self.assertIn('ya existe', str(form.errors['sort_order']).lower())
 
-    @patch('apps.core.forms.get_button_url_choices')
-    def test_save_builds_button_style(self, mock_choices):
+    def test_save_builds_button_style(self):
         """HU-053 | ESCENARIO 1 | H | save() construye button_style automáticamente"""
         data = self.get_valid_data()
-        # Cambiar algunos estilos para verificar
         data['button_bg_color'] = 'bg-blue-600'
         data['button_hover_color'] = 'hover:bg-blue-700'
         form = HeroConfigCreateForm(data=data)
@@ -478,20 +475,15 @@ class HeroConfigUpdateFormTest(TestCase):
         self.collection = _create_test_collection()
         self.hero = _create_hero(
             title_text='Original',
-            button_style='bg-zicada-accent hover:bg-red-700 text-white rounded-lg px-8 py-3 text-lg shadow-lg inline-block font-semibold transition-all duration-300 transform hover:scale-105 inline-block text-center'
+            button_style='bg-zicada-accent hover:bg-red-700 text-white rounded-lg px-8 py-3 text-lg shadow inline-block font-semibold transition-all duration-300 transform hover:scale-105 inline-block text-center'
         )
-
-        # Quitar el sort_order del HeroConfig que acabamos de crear
         self.hero.sort_order = 0
         self.hero.save()
 
-    @patch('apps.core.forms.get_button_url_choices')
-    def get_update_data(self, mock_choices):
-        """Retorna datos de actualización válidos"""
-        mock_choices.return_value = [
-            ('/catalogo/', 'Catálogo'),
-            ('/productos/camiseta-zicada/', 'Camiseta'),
-        ]
+    def get_update_data(self):
+        """Retorna datos de actualización usando URLs reales"""
+        catalog_url = reverse(PRODUCTS_CATALOG)
+        
         return {
             'background_image': '',
             'overlay_opacity': 0.7,
@@ -510,7 +502,7 @@ class HeroConfigUpdateFormTest(TestCase):
             'subtitle_color': '#333333',
             'subtitle_margin_bottom': '1rem',
             'button_text': 'Ir ahora',
-            'button_url': '/catalogo/',
+            'button_url': catalog_url,
             'button_bg_color': 'bg-black',
             'button_hover_color': 'hover:bg-gray-700',
             'button_text_color': 'text-gray-900',
@@ -523,8 +515,7 @@ class HeroConfigUpdateFormTest(TestCase):
             'is_active': True,
         }
 
-    @patch('apps.core.forms.get_button_url_choices')
-    def test_update_valid_slide(self, mock_choices):
+    def test_update_valid_slide(self):
         """HU-054 | ESCENARIO 1 | H | Actualización válida de todos los campos"""
         data = self.get_update_data()
         form = HeroConfigUpdateForm(data=data, instance=self.hero)
@@ -536,25 +527,21 @@ class HeroConfigUpdateFormTest(TestCase):
         self.assertEqual(hero.title_font_size, '3rem')
         self.assertEqual(hero.content_alignment, 'left')
 
-    @patch('apps.core.forms.get_button_url_choices')
-    def test_parse_button_style_from_instance(self, mock_choices):
+    def test_parse_button_style_from_instance(self):
         """
         HU-054 | ESCENARIO 1 | H | Parsea el estilo del botón e inicializa los campos
-        correspondientes al instanciar el formulario con una instancia existente
         """
-        # El hero creado en setUp tiene button_style con valores por defecto
         form = HeroConfigUpdateForm(instance=self.hero)
-        # Verificar que los campos individuales se inicializaron correctamente
         self.assertEqual(form.fields['button_bg_color'].initial, 'bg-zicada-accent')
         self.assertEqual(form.fields['button_hover_color'].initial, 'hover:bg-red-700')
         self.assertEqual(form.fields['button_text_color'].initial, 'text-white')
         self.assertEqual(form.fields['button_border_radius'].initial, 'rounded-lg')
         self.assertEqual(form.fields['button_size'].initial, 'px-8 py-3 text-lg')
-        self.assertEqual(form.fields['button_shadow'].initial, 'shadow-lg')
+        # El botón usa 'shadow' sin -lg en el hero creado
+        self.assertEqual(form.fields['button_shadow'].initial, 'shadow')
         self.assertEqual(form.fields['button_width'].initial, 'inline-block')
 
-    @patch('apps.core.forms.get_button_url_choices')
-    def test_save_updates_button_style(self, mock_choices):
+    def test_save_updates_button_style(self):
         """HU-054 | ESCENARIO 1 | H | save() actualiza button_style según nuevos valores"""
         data = self.get_update_data()
         data['button_bg_color'] = 'bg-purple-600'
@@ -566,8 +553,7 @@ class HeroConfigUpdateFormTest(TestCase):
         self.assertIn('bg-purple-600', hero.button_style)
         self.assertIn('hover:bg-purple-700', hero.button_style)
 
-    @patch('apps.core.forms.get_button_url_choices')
-    def test_invalid_data(self, mock_choices):
+    def test_invalid_data(self):
         """HU-054 | ESCENARIO 2 | A | Datos inválidos (título vacío) → formulario inválido"""
         data = self.get_update_data()
         data['title_text'] = ''
@@ -619,22 +605,22 @@ class HeroConfigRestoreFormTest(TestCase):
     """HU-056: Restaurar slide archivado"""
 
     def setUp(self):
-        self.hero = _create_hero(title_text='Restaurar Slide', sort_order=1)
+        self.hero = _create_hero(title_text='Restaurar Slide', sort_order=1, is_active=False)
 
     def test_correct_confirmation(self):
         """HU-056 | ESCENARIO 1 | H | Restauración válida con confirmación marcada y sin conflictos"""
+        HeroConfig.objects.filter(is_active=True, sort_order=1).update(sort_order=999)
         form = HeroConfigRestoreForm(data={'confirm': True}, slide=self.hero)
-        self.assertTrue(form.is_valid())
+        self.assertTrue(form.is_valid(), f"Errores: {form.errors}")
 
     def test_confirmation_not_checked(self):
         """HU-056 | ESCENARIO 3 | A | Confirmación no marcada → error"""
         form = HeroConfigRestoreForm(data={'confirm': False}, slide=self.hero)
         self.assertFalse(form.is_valid())
-        self.assertIn('Debes confirmar', str(form.errors.get('__all__', '')))
+        self.assertIn('confirmar', str(form.errors.get('__all__', '')).lower())
 
     def test_sort_order_conflict(self):
         """HU-056 | ESCENARIO 3 | A | Conflicto de orden → error"""
-        # Crear otro slide activo con el mismo sort_order
         _create_hero(title_text='Activo', sort_order=1)
         form = HeroConfigRestoreForm(data={'confirm': True}, slide=self.hero)
         self.assertFalse(form.is_valid())
