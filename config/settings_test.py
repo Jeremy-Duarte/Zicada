@@ -149,3 +149,9 @@ logging.disable(logging.CRITICAL)
 
 CRONJOBS = []
 CRONTAB_LOCK_JOBS = False
+
+MIGRATION_MODULES = {
+    'auth': None,
+    'contenttypes': None,
+    'sessions': None,
+}
