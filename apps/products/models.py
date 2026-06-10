@@ -773,7 +773,7 @@ class Collection(BaseAuditModel):
                     'end_date': 'La fecha de fin debe ser posterior a la fecha de inicio.'
                 })
         
-        if self.status == 'publicada' and not self.products.exists():
+        if self.pk and self.status == 'publicada' and not self.products.exists():
             raise ValidationError({
                 'status': 'Una colección publicada debe tener al menos un producto asignado.'
             })
