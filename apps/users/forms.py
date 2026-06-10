@@ -51,8 +51,65 @@ PROTECTED_GROUP_NAMES = ['admin', 'staff', 'delivery']
 COMMON_PASSWORDS = ['password', '12345678', 'qwerty123']
 
 
-class UserCreateForm(FormStyleMixin, UserCreationForm):
-    class Meta(UserCreationForm.Meta):
+# =============================================================================
+# HELPERS DE VALIDACIÓN
+# =============================================================================
+
+def validate_phone(phone, instance=None):
+    """Valida y normaliza un número de teléfono."""
+    if not phone:
+        return ''
+    
+    digits = ''.join(c for c in phone if c.isdigit())
+    if len(digits) < 7:
+        raise ValidationError(ERROR_PHONE_MIN_DIGITS)
+    if len(digits) > 15:
+        raise ValidationError(ERROR_PHONE_MAX_DIGITS)
+    
+    qs = User.objects.filter(phone=digits)
+    if instance and instance.pk:
+        qs = qs.exclude(pk=instance.pk)
+    
+    if qs.exists():
+        raise ValidationError(ERROR_PHONE_DUPLICATE)
+    
+    return digits
+
+
+def validate_email(email, instance=None):
+    """Valida que el email no esté duplicado."""
+    if not email:
+        return email
+    
+    email = email.strip().lower()
+    qs = User.objects.filter(email__iexact=email)
+    if instance and instance.pk:
+        qs = qs.exclude(pk=instance.pk)
+    
+    if qs.exists():
+        raise ValidationError(ERROR_EMAIL_EXISTS)
+    
+    return email
+
+
+def validate_username(username, instance=None):
+    """Valida que el username no esté duplicado."""
+    username = username.strip()
+    qs = User.objects.filter(username__iexact=username)
+    if instance and instance.pk:
+        qs = qs.exclude(pk=instance.pk)
+    
+    if qs.exists():
+        raise ValidationError(ERROR_USERNAME_EXISTS)
+    
+    return username
+
+
+class BaseUserForm(FormStyleMixin):
+    """Clase base para formularios de usuario (Create y Update)."""
+    
+    class Meta:
+        abstract = True
         model = User
         fields = [
             'username', 'first_name', 'last_name', 'email', 'phone',
@@ -70,6 +127,35 @@ class UserCreateForm(FormStyleMixin, UserCreationForm):
             'is_superuser': forms.CheckboxInput(),
             'groups': forms.SelectMultiple(attrs={'size': 5}),
         }
+    
+    def clean_phone(self):
+        return validate_phone(self.cleaned_data.get('phone', ''), self.instance)
+    
+    def clean_email(self):
+        return validate_email(self.cleaned_data.get('email', ''), self.instance)
+    
+    def clean_username(self):
+        return validate_username(self.cleaned_data.get('username', ''), self.instance)
+    
+    def _handle_superuser_staff_logic(self, cleaned_data):
+        """Asegura que los superusuarios sean también staff."""
+        if cleaned_data.get('is_superuser') and not cleaned_data.get('is_staff'):
+            cleaned_data['is_staff'] = True
+        return cleaned_data
+    
+    def _ensure_staff_for_superuser(self, user):
+        """Asegura que el usuario tenga is_staff=True si es superusuario."""
+        if user.is_superuser and not user.is_staff:
+            user.is_staff = True
+        return user
+
+
+class UserCreateForm(BaseUserForm, UserCreationForm):
+    """Formulario para crear usuarios."""
+    
+    class Meta(BaseUserForm.Meta, UserCreationForm.Meta):
+        abstract = False
+        fields = BaseUserForm.Meta.fields
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -80,101 +166,34 @@ class UserCreateForm(FormStyleMixin, UserCreationForm):
         self.fields['groups'].queryset = Group.objects.all().order_by('name')
         self.fields['groups'].help_text = 'Roles asignados al usuario'
     
-    def clean_username(self):
-        username = self.cleaned_data.get('username', '').strip()
-        if User.objects.filter(username__iexact=username).exists():
-            raise ValidationError(ERROR_USERNAME_EXISTS)
-        return username
-    
-    def clean_email(self):
-        email = self.cleaned_data.get('email', '').strip().lower()
-        if email and User.objects.filter(email__iexact=email).exists():
-            raise ValidationError(ERROR_EMAIL_EXISTS)
-        return email
-    
-    def clean_phone(self):
-        phone = self.cleaned_data.get('phone', '').strip()
-        if phone:
-            digits = ''.join(c for c in phone if c.isdigit())
-            if len(digits) < 7:
-                raise ValidationError(ERROR_PHONE_MIN_DIGITS)
-            if len(digits) > 15:
-                raise ValidationError(ERROR_PHONE_MAX_DIGITS)
-            return digits
-        return phone
-    
     def clean(self):
         cleaned_data = super().clean()
-        if cleaned_data.get('is_superuser') and not cleaned_data.get('is_staff'):
-            cleaned_data['is_staff'] = True
-        return cleaned_data
+        return self._handle_superuser_staff_logic(cleaned_data)
     
     def save(self, commit=True):
         user = super().save(commit=False)
-        if user.is_superuser and not user.is_staff:
-            user.is_staff = True
+        user = self._ensure_staff_for_superuser(user)
         if commit:
             user.save()
             self.save_m2m()
         return user
 
 
-class UserUpdateForm(FormStyleMixin, BaseUserChangeForm):
-    class Meta(BaseUserChangeForm.Meta):
-        model = User
-        fields = [
-            'username', 'first_name', 'last_name', 'email', 'phone',
-            'is_delivery', 'is_active', 'is_staff', 'is_superuser', 'groups',
-        ]
-        widgets = {
-            'username': forms.TextInput(),
-            'first_name': forms.TextInput(),
-            'last_name': forms.TextInput(),
-            'email': forms.EmailInput(),
-            'phone': forms.TextInput(attrs={'placeholder': PHONE_PLACEHOLDER}),
-            'is_delivery': forms.CheckboxInput(),
-            'is_active': forms.CheckboxInput(),
-            'is_staff': forms.CheckboxInput(),
-            'is_superuser': forms.CheckboxInput(),
-            'groups': forms.SelectMultiple(attrs={'size': 5}),
-        }
+class UserUpdateForm(BaseUserForm, BaseUserChangeForm):
+    """Formulario para actualizar usuarios."""
+    
+    class Meta(BaseUserForm.Meta, BaseUserChangeForm.Meta):
+        abstract = False
+        fields = BaseUserForm.Meta.fields
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['groups'].queryset = Group.objects.all().order_by('name')
+        
         if self.instance and self.instance.pk and self.instance.is_superuser:
             if User.objects.filter(is_superuser=True).count() == 1:
                 self.fields['is_superuser'].disabled = True
                 self.fields['is_superuser'].help_text = 'No puedes desactivar el único superusuario del sistema.'
-    
-    def clean_username(self):
-        username = self.cleaned_data.get('username', '').strip()
-        qs = User.objects.filter(username__iexact=username)
-        if self.instance and self.instance.pk:
-            qs = qs.exclude(pk=self.instance.pk)
-        if qs.exists():
-            raise ValidationError(ERROR_USERNAME_EXISTS)
-        return username
-    
-    def clean_email(self):
-        email = self.cleaned_data.get('email', '').strip().lower()
-        qs = User.objects.filter(email__iexact=email)
-        if self.instance and self.instance.pk:
-            qs = qs.exclude(pk=self.instance.pk)
-        if email and qs.exists():
-            raise ValidationError(ERROR_EMAIL_EXISTS)
-        return email
-    
-    def clean_phone(self):
-        phone = self.cleaned_data.get('phone', '').strip()
-        if phone:
-            digits = ''.join(c for c in phone if c.isdigit())
-            if len(digits) < 7:
-                raise ValidationError(ERROR_PHONE_MIN_DIGITS)
-            if len(digits) > 15:
-                raise ValidationError(ERROR_PHONE_MAX_DIGITS)
-            return digits
-        return phone
     
     def clean(self):
         cleaned_data = super().clean()
@@ -184,8 +203,7 @@ class UserUpdateForm(FormStyleMixin, BaseUserChangeForm):
     
     def save(self, commit=True):
         user = super().save(commit=False)
-        if user.is_superuser and not user.is_staff:
-            user.is_staff = True
+        user = self._ensure_staff_for_superuser(user)
         if commit:
             user.save()
             self.save_m2m()
@@ -375,30 +393,10 @@ class UserProfileForm(FormStyleMixin, forms.ModelForm):
         self.fields['email'].required = False
     
     def clean_phone(self):
-        phone = self.cleaned_data.get('phone', '')
-        if phone:
-            digits = ''.join(c for c in phone if c.isdigit())
-            if len(digits) < 7:
-                raise ValidationError(ERROR_PHONE_MIN_DIGITS)
-            if len(digits) > 15:
-                raise ValidationError(ERROR_PHONE_MAX_DIGITS)
-            qs = User.objects.filter(phone=digits)
-            if self.instance and self.instance.pk:
-                qs = qs.exclude(pk=self.instance.pk)
-            if qs.exists():
-                raise ValidationError(ERROR_PHONE_DUPLICATE)
-            return digits
-        return ''
+        return validate_phone(self.cleaned_data.get('phone', ''), self.instance)
     
     def clean_email(self):
-        email = self.cleaned_data.get('email', '').strip().lower()
-        if email:
-            qs = User.objects.filter(email__iexact=email)
-            if self.instance and self.instance.pk:
-                qs = qs.exclude(pk=self.instance.pk)
-            if qs.exists():
-                raise ValidationError(ERROR_EMAIL_EXISTS)
-        return email
+        return validate_email(self.cleaned_data.get('email', ''), self.instance)
 
 
 class UserProfilePasswordForm(FormStyleMixin, forms.Form):
