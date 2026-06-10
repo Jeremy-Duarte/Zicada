@@ -4,7 +4,6 @@ import tempfile
 import logging
 
 env = environ.Env()
-
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 if (BASE_DIR / '.env').exists():
@@ -18,6 +17,9 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': ':memory:',
+        'TEST': {
+            'MIGRATE': False,
+        }
     }
 }
 
@@ -87,10 +89,8 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / 'static'] if (BASE_DIR / 'static').exists() else []
 STATIC_ROOT = tempfile.mkdtemp()
-
 MEDIA_URL = '/media/'
 MEDIA_ROOT = tempfile.mkdtemp()
-
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 REST_FRAMEWORK = {
@@ -149,9 +149,3 @@ logging.disable(logging.CRITICAL)
 
 CRONJOBS = []
 CRONTAB_LOCK_JOBS = False
-
-MIGRATION_MODULES = {
-    'auth': None,
-    'contenttypes': None,
-    'sessions': None,
-}

@@ -34,12 +34,19 @@ jobs:
             --cov=apps \
             --cov-report=xml:coverage.xml \
             --cov-report=term \
-            -v --tb=short \
-            --create-db \
-            --nomigrations
+            -v --tb=short
         env:
           DJANGO_SETTINGS_MODULE: config.settings_test
           PYTHONPATH: .
+      
+      - name: Verify coverage report
+        run: |
+          if [ -f coverage.xml ]; then
+            echo "Coverage report generated successfully"
+          else
+            echo "Error: coverage.xml not generated"
+            exit 1
+          fi
       
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@fd88b7d7ccbaefd23d8f36f73b59db7a3d246602
