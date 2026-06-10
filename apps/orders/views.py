@@ -1071,6 +1071,30 @@ class OrderCancelView(BaseOrderActionView):
     # HU-030 | ESCENARIO 2 | E | Pedido ya entregado (validado en formulario)
     # HU-035 | ESCENARIO 3 | E | Notificación al administrador (PENDIENTE - se podría enviar email)
 
+class OrderMarkPreparingView(PermissionRequiredMixin, View):
+    permission_required = 'orders.change_order'
+
+    def post(self, request, pk):
+        order = get_object_or_404(Order, pk=pk)
+        try:
+            order.mark_as_preparing(user=request.user)
+            messages.success(request, f'Pedido {order.order_number} marcado como en preparación.')
+        except ValidationError as e:
+            messages.error(request, str(e))
+        return redirect(ORDER_DETAIL_ROUTE, pk=order.pk)
+
+
+class OrderMarkReadyView(PermissionRequiredMixin, View):
+    permission_required = 'orders.change_order'
+
+    def post(self, request, pk):
+        order = get_object_or_404(Order, pk=pk)
+        try:
+            order.mark_as_ready(user=request.user)
+            messages.success(request, f'Pedido {order.order_number} marcado como listo para envío.')
+        except ValidationError as e:
+            messages.error(request, str(e))
+        return redirect(ORDER_DETAIL_ROUTE, pk=order.pk)
 
 class OrderAssignDeliveryView(BaseOrderActionView):
     """
