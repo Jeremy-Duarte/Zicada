@@ -180,7 +180,6 @@ def delivery_dashboard(request):
 def take_order(request, order_id):
     """
     HU-033 (parte): Asignar pedido a repartidor
-    HU-034: Marcar pedido como pagado (no, esto es solo asignación)
     """
     # HU-033 | ESCENARIO 1 | H | Repartidor toma un pedido listo
     order = get_object_or_404(Order, id=order_id)
@@ -244,7 +243,7 @@ def cart_add(request):
     except (ValueError, TypeError):
         return JsonResponse({'error': MSG_INVALID_DATA}, status=400)
 
-    # HU-019 | ESCENARIO 2 | A | Sin talla seleccionada (no aplica, el frontenvía variant_id)
+    # HU-019 | ESCENARIO 2 | A | Sin talla seleccionada (no aplica, el front envía variant_id)
     if quantity < 1:
         return JsonResponse({'error': MSG_QUANTITY_MIN}, status=400)
     
@@ -1069,32 +1068,47 @@ class OrderCancelView(BaseOrderActionView):
         self.order.cancel(reason=reason, user=self.request.user)
         # HU-035 | ESCENARIO 3 | H | Notificación al administrador (no implementada explícitamente, pero el admin ve el motivo en el pedido)
     # HU-030 | ESCENARIO 2 | E | Pedido ya entregado (validado en formulario)
-    # HU-035 | ESCENARIO 3 | E | Notificación al administrador (PENDIENTE - se podría enviar email)
+
+
+# =============================================================================
+# ORDER STATUS PROGRESSION VIEWS (HU-029 - CAMBIOS DE ESTADO)
+# =============================================================================
 
 class OrderMarkPreparingView(PermissionRequiredMixin, View):
+    """
+    HU-029 | ESCENARIO 2 | H | Cambiar estado de confirmado a preparando
+    """
     permission_required = 'orders.change_order'
 
     def post(self, request, pk):
+        # HU-029 | ESCENARIO 1 | H | Transición válida (confirmado → preparando)
         order = get_object_or_404(Order, pk=pk)
         try:
             order.mark_as_preparing(user=request.user)
             messages.success(request, f'Pedido {order.order_number} marcado como en preparación.')
         except ValidationError as e:
+            # HU-029 | ESCENARIO 3 | E | Transición inválida (si el estado no lo permite)
             messages.error(request, str(e))
-        return redirect(ORDER_DETAIL_ROUTE, pk=order.pk)
+        return redirect(ORDERS_DETAIL, pk=order.pk)
 
 
 class OrderMarkReadyView(PermissionRequiredMixin, View):
+    """
+    HU-029 | ESCENARIO 2 | H | Cambiar estado de preparando a listo
+    """
     permission_required = 'orders.change_order'
 
     def post(self, request, pk):
+        # HU-029 | ESCENARIO 1 | H | Transición válida (preparando → listo)
         order = get_object_or_404(Order, pk=pk)
         try:
             order.mark_as_ready(user=request.user)
             messages.success(request, f'Pedido {order.order_number} marcado como listo para envío.')
         except ValidationError as e:
+            # HU-029 | ESCENARIO 3 | E | Transición inválida (si el estado no lo permite)
             messages.error(request, str(e))
-        return redirect(ORDER_DETAIL_ROUTE, pk=order.pk)
+        return redirect(ORDERS_DETAIL, pk=order.pk)
+
 
 class OrderAssignDeliveryView(BaseOrderActionView):
     """
