@@ -34,6 +34,21 @@ FALLBACK_BUTTON_SIZE = 'px-8 py-3 text-lg'
 FALLBACK_BUTTON_SHADOW = 'shadow-lg'
 FALLBACK_BUTTON_WIDTH = 'inline-block'
 
+# =============================================================================
+# HELPERS
+# =============================================================================
+
+def build_button_style(cleaned_data):
+    bg = cleaned_data['button_bg_color']
+    hover = cleaned_data['button_hover_color']
+    text = cleaned_data['button_text_color']
+    rounded = cleaned_data['button_border_radius']
+    size = cleaned_data['button_size']
+    shadow = cleaned_data['button_shadow']
+    width = cleaned_data['button_width']
+    
+    return f'{bg} {hover} {text} {rounded} {size} {shadow} {width} font-semibold transition-all duration-300 transform hover:scale-105 inline-block text-center'
+
 class ContactForm(FormStyleMixin, forms.Form):
     
     name = forms.CharField(
@@ -364,17 +379,7 @@ class HeroConfigCreateForm(FormStyleMixin, forms.ModelForm):
     
     def save(self, commit=True):
         instance = super().save(commit=False)
-        
-        # Construir button_style a partir de los campos individuales
-        bg = self.cleaned_data['button_bg_color']
-        hover = self.cleaned_data['button_hover_color']
-        text = self.cleaned_data['button_text_color']
-        rounded = self.cleaned_data['button_border_radius']
-        size = self.cleaned_data['button_size']
-        shadow = self.cleaned_data['button_shadow']
-        width = self.cleaned_data['button_width']
-        
-        instance.button_style = f'{bg} {hover} {text} {rounded} {size} {shadow} {width} font-semibold transition-all duration-300 transform hover:scale-105 inline-block text-center'
+        instance.button_style = build_button_style(self.cleaned_data)
         
         if commit:
             instance.save()
@@ -493,7 +498,7 @@ class HeroConfigUpdateForm(FormStyleMixin, SortableUpdateMixin, forms.ModelForm)
                     break
             else:
                 self.fields[field_name].initial = fallback
-    
+        
     def save(self, commit=True):
         instance = super().save(commit=False)
         instance.section_height = self.cleaned_data['section_height']
@@ -504,16 +509,7 @@ class HeroConfigUpdateForm(FormStyleMixin, SortableUpdateMixin, forms.ModelForm)
         instance.subtitle_line_height = self.cleaned_data['subtitle_line_height']
         instance.subtitle_margin_bottom = self.cleaned_data['subtitle_margin_bottom']
         instance.button_url = self.cleaned_data['button_url']
-        
-        bg = self.cleaned_data['button_bg_color']
-        hover = self.cleaned_data['button_hover_color']
-        text = self.cleaned_data['button_text_color']
-        rounded = self.cleaned_data['button_border_radius']
-        size = self.cleaned_data['button_size']
-        shadow = self.cleaned_data['button_shadow']
-        width = self.cleaned_data['button_width']
-        
-        instance.button_style = f'{bg} {hover} {text} {rounded} {size} {shadow} {width} font-semibold transition-all duration-300 transform hover:scale-105 inline-block text-center'
+        instance.button_style = build_button_style(self.cleaned_data)
         
         if commit:
             instance.save()
