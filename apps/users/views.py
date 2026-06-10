@@ -162,14 +162,17 @@ def get_status_badge(is_active: bool) -> str:
 
 
 # =============================================================================
-# USER CRUD VIEWS
+# USER CRUD VIEWS (HU-038, HU-039, HU-040, HU-041, HU-042)
 # =============================================================================
 
 class UserListView(PermissionRequiredMixin, PaginationMixin, FilterMixin, ListView):
+    """
+    HU-038: Listar usuarios (admin)
+    """
     model = User
     template_name = TEMPLATE_USER_LIST
     context_object_name = CONTEXT_USERS
-    permission_required = PERM_USER_VIEW
+    permission_required = PERM_USER_VIEW  # HU-038 | ESCENARIO 6 | E | Sin permisos
     paginate_by = PAGINATE_BY_DEFAULT
     
     filters = [
@@ -182,7 +185,11 @@ class UserListView(PermissionRequiredMixin, PaginationMixin, FilterMixin, ListVi
     ]
     
     def get_queryset(self):
+        # HU-038 | ESCENARIO 2 | H | Búsqueda por nombre o correo
+        # HU-038 | ESCENARIO 3 | H | Filtro por rol (is_delivery, is_staff, is_superuser)
+        # HU-038 | ESCENARIO 4 | H | Filtro por estado (is_active)
         qs = super().get_queryset()
+        # Excluir al propio usuario logueado de la lista
         qs = qs.exclude(pk=self.request.user.pk)
         search = self.request.GET.get(QUERY_PARAM_SEARCH, '')
         if search:
@@ -196,6 +203,8 @@ class UserListView(PermissionRequiredMixin, PaginationMixin, FilterMixin, ListVi
         return qs
     
     def get_context_data(self, **kwargs):
+        # HU-038 | ESCENARIO 1 | H | Lista de usuarios cargada exitosamente
+        # HU-038 | ESCENARIO 5 | A | Sin usuarios (excluyendo el actual) → template muestra mensaje
         context = super().get_context_data(**kwargs)
         rows = []
         
@@ -219,10 +228,13 @@ class UserListView(PermissionRequiredMixin, PaginationMixin, FilterMixin, ListVi
 
 
 class UserCreateView(PermissionRequiredMixin, CreateView):
+    """
+    HU-039: Crear usuario (admin)
+    """
     model = User
     form_class = UserCreateForm
     template_name = TEMPLATE_USER_FORM
-    permission_required = PERM_USER_ADD
+    permission_required = PERM_USER_ADD  # HU-039 | ESCENARIO 4 | E | Sin permisos
     success_url = reverse_lazy(USERS_LIST)
     
     def get_context_data(self, **kwargs):
@@ -232,30 +244,37 @@ class UserCreateView(PermissionRequiredMixin, CreateView):
         return context
     
     def form_valid(self, form):
+        # HU-039 | ESCENARIO 1 | H | Usuario creado exitosamente
         response = super().form_valid(form)
         messages.success(self.request, MSG_USER_CREATED.format(username=form.instance.username))
         return response
     
     def form_invalid(self, form):
+        # HU-039 | ESCENARIO 2 | A | Errores en el formulario
         messages.error(self.request, ERROR_USER_CREATE)
         return super().form_invalid(form)
+    # HU-039 | ESCENARIO 3 | E | Correo duplicado (validación en UserCreateForm.clean_email)
 
 
 class UserUpdateView(PermissionRequiredMixin, UpdateView):
+    """
+    HU-040: Editar usuario (admin)
+    """
     model = User
     form_class = UserUpdateForm
     template_name = TEMPLATE_USER_FORM
-    permission_required = PERM_USER_CHANGE
+    permission_required = PERM_USER_CHANGE  # HU-040 | ESCENARIO 5 | E | Sin permisos
     success_url = reverse_lazy(USERS_LIST)
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context[CONTEXT_CANCEL_URL] = USERS_LIST
         context[CONTEXT_TITLE] = TITLE_USER_UPDATE.format(username=self.object.username)
-        context[CONTEXT_SHOW_PASSWORD_CHANGE] = True
+        context[CONTEXT_SHOW_PASSWORD_CHANGE] = True  # HU-040 | ESCENARIO 2 | H | Cambiar contraseña
         return context
     
     def form_valid(self, form):
+        # HU-040 | ESCENARIO 1 | H | Usuario actualizado exitosamente
         response = super().form_valid(form)
         messages.success(self.request, MSG_USER_UPDATED.format(username=form.instance.username))
         return response
@@ -263,9 +282,14 @@ class UserUpdateView(PermissionRequiredMixin, UpdateView):
     def form_invalid(self, form):
         messages.error(self.request, ERROR_USER_UPDATE)
         return super().form_invalid(form)
+    # HU-040 | ESCENARIO 3 | E | Correo duplicado al editar (validación en UserUpdateForm)
+    # HU-040 | ESCENARIO 4 | E | Usuario no existe → 404
 
 
 class UserChangePasswordView(PermissionRequiredMixin, FormView):
+    """
+    HU-040 | ESCENARIO 2 | H | Cambiar contraseña (admin)
+    """
     form_class = UserChangePasswordForm
     template_name = TEMPLATE_USER_CHANGE_PASSWORD
     permission_required = PERM_USER_CHANGE
@@ -297,13 +321,17 @@ class UserChangePasswordView(PermissionRequiredMixin, FormView):
 
 
 class UserDeleteView(PermissionRequiredMixin, FormView):
+    """
+    HU-041: Archivar usuario (soft delete)
+    """
     form_class = UserDeleteForm
     template_name = TEMPLATE_USER_CONFIRM_DELETE
-    permission_required = PERM_USER_DELETE
+    permission_required = PERM_USER_DELETE  # HU-041 | ESCENARIO 5 | E | Sin permisos
     
     def dispatch(self, request, *args, **kwargs):
         self.user = get_object_or_404(User, pk=kwargs['pk'])
         
+        # HU-041 | ESCENARIO 2 | E | Archivar al propio usuario
         if self.user.pk == request.user.pk:
             messages.error(request, ERROR_SELF_DELETE)
             return redirect(USERS_LIST)
@@ -322,24 +350,31 @@ class UserDeleteView(PermissionRequiredMixin, FormView):
         return context
     
     def form_valid(self, form):
+        # HU-041 | ESCENARIO 1 | H | Usuario archivado exitosamente
         self.user.is_active = False
         self.user.save(update_fields=[FILTER_IS_ACTIVE])
         messages.success(self.request, MSG_USER_DELETED.format(username=self.user.username))
         return redirect(USERS_LIST)
+        # HU-041 | ESCENARIO 3 | E | Archivar al último Administrador (validación en UserDeleteForm)
     
     def form_invalid(self, form):
+        # HU-041 | ESCENARIO 4 | A | Cancelar archivación
         messages.error(self.request, ERROR_USER_DELETE)
         return super().form_invalid(form)
 
 
 class UserRestoreView(PermissionRequiredMixin, FormView):
+    """
+    HU-042: Reincorporar usuario (reactivar)
+    """
     form_class = UserRestoreForm
     template_name = TEMPLATE_USER_RESTORE
-    permission_required = PERM_USER_CHANGE
+    permission_required = PERM_USER_CHANGE  # HU-042 | ESCENARIO 3 | E | Sin permisos
     
     def dispatch(self, request, *args, **kwargs):
         self.user = get_object_or_404(User, pk=kwargs['pk'])
         
+        # HU-042 | ESCENARIO 2 | A | Usuario ya activo (redirige con advertencia)
         if self.user.is_active:
             messages.warning(request, MSG_USER_ALREADY_ACTIVE.format(username=self.user.username))
             return redirect(USERS_LIST)
@@ -358,6 +393,7 @@ class UserRestoreView(PermissionRequiredMixin, FormView):
         return context
     
     def form_valid(self, form):
+        # HU-042 | ESCENARIO 1 | H | Usuario reincorporado exitosamente
         self.user.is_active = True
         self.user.save(update_fields=[FILTER_IS_ACTIVE])
         messages.success(self.request, MSG_USER_RESTORED.format(username=self.user.username))
@@ -369,6 +405,9 @@ class UserRestoreView(PermissionRequiredMixin, FormView):
 
 
 class UserTrashcanView(PermissionRequiredMixin, PaginationMixin, ListView):
+    """
+    HU-041 (parte) + HU-042: Ver papelera de usuarios (usuarios archivados)
+    """
     model = User
     template_name = TEMPLATE_USER_TRASHCAN
     context_object_name = CONTEXT_USERS
@@ -376,6 +415,7 @@ class UserTrashcanView(PermissionRequiredMixin, PaginationMixin, ListView):
     paginate_by = PAGINATE_BY_DEFAULT
     
     def get_queryset(self):
+        # HU-041 | ESCENARIO 1,2,3 | A | Usuarios archivados visibles en papelera
         return User.objects.filter(is_active=False).order_by(ORDER_BY_USERNAME_DESC)
     
     def get_context_data(self, **kwargs):
@@ -400,10 +440,13 @@ class UserTrashcanView(PermissionRequiredMixin, PaginationMixin, ListView):
 
 
 # =============================================================================
-# GROUP CRUD VIEWS
+# GROUP CRUD VIEWS (Grupos/Roles - no están en HU originales, son soporte)
 # =============================================================================
 
 class GroupListView(PermissionRequiredMixin, PaginationMixin, FilterMixin, ListView):
+    """
+    Soporte: Listar grupos/roles (no tiene HU asignada, pero es necesario para HU-039)
+    """
     model = Group
     template_name = TEMPLATE_GROUP_LIST
     context_object_name = CONTEXT_GROUPS
@@ -441,6 +484,7 @@ class GroupListView(PermissionRequiredMixin, PaginationMixin, FilterMixin, ListV
 
 
 class GroupCreateView(PermissionRequiredMixin, CreateView):
+    """Soporte: Crear grupo/rol (no tiene HU asignada)"""
     model = Group
     form_class = GroupCreateForm
     template_name = TEMPLATE_GROUP_FORM
@@ -460,6 +504,7 @@ class GroupCreateView(PermissionRequiredMixin, CreateView):
 
 
 class GroupUpdateView(PermissionRequiredMixin, UpdateView):
+    """Soporte: Editar grupo/rol (no tiene HU asignada)"""
     model = Group
     form_class = GroupUpdateForm
     template_name = TEMPLATE_GROUP_FORM
@@ -479,6 +524,7 @@ class GroupUpdateView(PermissionRequiredMixin, UpdateView):
 
 
 class GroupDetailView(PermissionRequiredMixin, DetailView):
+    """Soporte: Ver detalle de grupo/rol (no tiene HU asignada)"""
     model = Group
     template_name = TEMPLATE_GROUP_DETAIL
     context_object_name = CONTEXT_GROUP
@@ -492,6 +538,7 @@ class GroupDetailView(PermissionRequiredMixin, DetailView):
 
 
 class GroupDeleteView(PermissionRequiredMixin, FormView):
+    """Soporte: Eliminar grupo/rol (no tiene HU asignada)"""
     form_class = GroupDeleteForm
     template_name = TEMPLATE_GROUP_CONFIRM_DELETE
     permission_required = PERM_GROUP_DELETE
@@ -524,15 +571,19 @@ class GroupDeleteView(PermissionRequiredMixin, FormView):
 
 
 # =============================================================================
-# USER PROFILE VIEWS
+# USER PROFILE VIEWS (HU-043)
 # =============================================================================
 
 class UserProfileView(DetailView):
+    """
+    HU-043: Ver/editar mi propio perfil (vista de detalle)
+    """
     model = User
     template_name = TEMPLATE_USER_PROFILE
     context_object_name = CONTEXT_USER_OBJ
     
     def get_object(self, queryset=None):
+        # HU-043 | ESCENARIO 1 | H | Perfil cargado exitosamente
         return self.request.user
     
     def get_context_data(self, **kwargs):
@@ -542,6 +593,9 @@ class UserProfileView(DetailView):
 
 
 class UserProfileUpdateView(UpdateView):
+    """
+    HU-043 | ESCENARIO 2 | H | Actualizar nombre y teléfono
+    """
     model = User
     form_class = UserProfileForm
     template_name = TEMPLATE_USER_PROFILE_EDIT
@@ -563,6 +617,9 @@ class UserProfileUpdateView(UpdateView):
 
 
 class UserProfilePasswordView(FormView):
+    """
+    HU-043 | ESCENARIO 3,4,5,6 | H/A/E | Cambiar contraseña desde perfil
+    """
     form_class = UserProfilePasswordForm
     template_name = TEMPLATE_USER_PROFILE_PASSWORD
     
@@ -577,10 +634,16 @@ class UserProfilePasswordView(FormView):
         return context
     
     def form_valid(self, form):
+        # HU-043 | ESCENARIO 3 | H | Contraseña cambiada exitosamente
         form.save()
         messages.success(self.request, MSG_PASSWORD_UPDATED)
         return redirect(USERS_PROFILE)
     
     def form_invalid(self, form):
+        # HU-043 | ESCENARIO 4 | E | Contraseña actual incorrecta
+        # HU-043 | ESCENARIO 5 | E | Nueva contraseña débil
+        # HU-043 | ESCENARIO 6 | E | Nueva contraseña no coincide con confirmación
         messages.error(self.request, ERROR_PASSWORD_UPDATE)
         return super().form_invalid(form)
+
+    # HU-043 | ESCENARIO 7 | E | Sin permisos (usuario no autenticado) - manejado por @login_required en URLs
