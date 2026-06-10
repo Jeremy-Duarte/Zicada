@@ -6,68 +6,203 @@ Estas opciones se usan en formularios de Hero, Colecciones, Productos, etc.
 from django.utils.translation import gettext_lazy as _
 
 # =============================================================================
+# ETIQUETAS DE UI
+# =============================================================================
+
+# Colores básicos
+LABEL_RED = '🔴 Rojo Zicada'
+LABEL_BLACK = '⚫ Negro'
+LABEL_WHITE = '⚪ Blanco'
+LABEL_DARK_GRAY = '🌑 Gris oscuro'
+LABEL_LIGHT_GRAY = '☁️ Gris claro'
+LABEL_BLUE = '💙 Azul'
+LABEL_GREEN = '💚 Verde'
+LABEL_PURPLE = '💜 Morado'
+LABEL_AMBER = '🟠 Ámbar'
+LABEL_TRANSPARENT = '✨ Transparente'
+
+# Colores hover
+LABEL_RED_DARKER = '🔴 Rojo más oscuro'
+LABEL_BLACK_DARKER = '⚫ Negro más oscuro'
+LABEL_BLUE_DARKER = '💙 Azul más oscuro'
+LABEL_GREEN_DARKER = '💚 Verde más oscuro'
+LABEL_PURPLE_DARKER = '💜 Morado más oscuro'
+LABEL_AMBER_DARKER = '🟠 Ámbar más oscuro'
+LABEL_DARK_INTENSE = '🌑 Negro intenso'
+
+# Efectos hover
+LABEL_OPACITY_90 = '🎨 90% opacidad'
+LABEL_SCALE_5 = '📏 Escalar 5%'
+LABEL_SCALE_10 = '📏 Escalar 10%'
+
+# Bordes
+LABEL_BORDER_NONE = '🔲 Cuadrado'
+LABEL_BORDER_SM = '📐 Ligeramente redondeado'
+LABEL_BORDER_MD = '📐 Medianamente redondeado'
+LABEL_BORDER_LG = '🟨 Redondeado'
+LABEL_BORDER_XL = '🟩 Muy redondeado'
+LABEL_BORDER_2XL = '🟢 Extra redondeado'
+LABEL_BORDER_FULL = '⚪ Círculo completo'
+
+# Sombras
+LABEL_SHADOW_NONE = 'Sin sombra'
+LABEL_SHADOW_SM = 'Sombra suave'
+LABEL_SHADOW_NORMAL = 'Sombra normal'
+LABEL_SHADOW_MD = 'Sombra media'
+LABEL_SHADOW_LG = 'Sombra grande'
+LABEL_SHADOW_XL = 'Sombra extra grande'
+LABEL_SHADOW_2XL = 'Sombra masiva'
+
+# Tamaños de botón
+LABEL_SIZE_XS = 'Extra pequeño'
+LABEL_SIZE_SM = 'Pequeño'
+LABEL_SIZE_MD = 'Mediano'
+LABEL_SIZE_MD_LG = 'Mediano-grande'
+LABEL_SIZE_LG = 'Grande (recomendado)'
+LABEL_SIZE_XL = 'Muy grande'
+LABEL_SIZE_2XL = 'Extra grande'
+
+# Tamaños de fuente
+LABEL_FONT_XS = 'XS - Extra pequeño (0.75rem)'
+LABEL_FONT_SM = 'SM - Pequeño (0.875rem)'
+LABEL_FONT_BASE = 'Base - Normal (1rem)'
+LABEL_FONT_LG = 'LG - Ligeramente grande (1.125rem)'
+LABEL_FONT_XL = 'XL - Grande (1.25rem)'
+LABEL_FONT_2XL = '2XL - Muy grande (1.5rem)'
+LABEL_FONT_3XL = '3XL - Extra grande (1.875rem)'
+LABEL_FONT_4XL = '4XL - Gigante (2.25rem)'
+LABEL_FONT_5XL = '5XL - Muy gigante (3rem)'
+LABEL_FONT_6XL = '6XL - Masivo (3.75rem)'
+LABEL_FONT_7XL = '7XL - Épico (4.5rem)'
+LABEL_FONT_8XL = '8XL - Colosal (6rem)'
+
+# Altura de línea
+LABEL_LINE_COMPACT = 'Compacto (1) - Sin espacio'
+LABEL_LINE_TIGHT = 'Apretado (1.2) - Poco espacio'
+LABEL_LINE_NORMAL = 'Normal (1.4) - Estándar'
+LABEL_LINE_SPACED = 'Espaciado (1.6) - Cómodo'
+LABEL_LINE_LOOSE = 'Muy espaciado (1.8) - Aireado'
+LABEL_LINE_DOUBLE = 'Doble (2) - Mucho espacio'
+
+# Márgenes
+LABEL_MARGIN_NONE = 'Ninguno (0)'
+LABEL_MARGIN_XS = 'Muy pequeño (0.25rem)'
+LABEL_MARGIN_SM = 'Pequeño (0.5rem)'
+LABEL_MARGIN_MD_SM = 'Mediano-pequeño (0.75rem)'
+LABEL_MARGIN_MD = 'Normal (1rem)'
+LABEL_MARGIN_MD_LG = 'Mediano (1.25rem)'
+LABEL_MARGIN_LG = 'Grande (1.5rem)'
+LABEL_MARGIN_XL = 'Muy grande (2rem)'
+LABEL_MARGIN_2XL = 'Extra grande (2.5rem)'
+LABEL_MARGIN_3XL = 'Gigante (3rem)'
+
+# Stock badges
+LABEL_STOCK_AVAILABLE = 'Disponible - Verde'
+LABEL_STOCK_LOW = 'Bajo stock - Naranja'
+LABEL_STOCK_OUT = 'Agotado - Rojo'
+LABEL_STOCK_INFO = 'Información - Azul'
+LABEL_STOCK_SPECIAL = 'Especial - Púrpura'
+
+# Fuentes
+LABEL_FONT_INTER = '🔤 Inter (Moderno)'
+LABEL_FONT_ROBOTO = '🔤 Roboto (Versátil)'
+LABEL_FONT_POPPINS = '🔤 Poppins (Geométrico)'
+LABEL_FONT_MONTSERRAT = '🔤 Montserrat (Elegante)'
+LABEL_FONT_OPEN_SANS = '🔤 Open Sans (Legible)'
+LABEL_FONT_PLAYFAIR = '✒️ Playfair Display (Clásico)'
+LABEL_FONT_MERRIWEATHER = '✒️ Merriweather (Serif)'
+LABEL_FONT_OSWALD = '🔤 Oswald (Impactante)'
+LABEL_FONT_RALEWAY = '🔤 Raleway (Delicado)'
+LABEL_FONT_LATO = '🔤 Lato (Amigable)'
+
+# Pesos de fuente
+LABEL_WEIGHT_LIGHT = 'Light (300) - Delgada'
+LABEL_WEIGHT_REGULAR = 'Regular (400) - Normal'
+LABEL_WEIGHT_MEDIUM = 'Medium (500) - Mediana'
+LABEL_WEIGHT_SEMI_BOLD = 'Semi Bold (600) - Seminegrita'
+LABEL_WEIGHT_BOLD = 'Bold (700) - Negrita'
+LABEL_WEIGHT_EXTRA_BOLD = 'Extra Bold (800) - Extranegrita'
+LABEL_WEIGHT_BLACK = 'Black (900) - Negra'
+
+# Alineación
+LABEL_ALIGN_CENTER = 'Centrado'
+LABEL_ALIGN_LEFT = 'Izquierda'
+LABEL_ALIGN_RIGHT = 'Derecha'
+LABEL_ALIGN_JUSTIFY = 'Justificado'
+
+# Escala hover
+LABEL_SCALE_NONE = 'Sin escala'
+LABEL_SCALE_VERY_SUBTLE = 'Muy sutil (2%)'
+LABEL_SCALE_SUBTLE = 'Sutil (5% - recomendado)'
+LABEL_SCALE_NOTICEABLE = 'Notable (8%)'
+LABEL_SCALE_STRONG = 'Fuerte (10%)'
+LABEL_SCALE_VERY_STRONG = 'Muy fuerte (15%)'
+
+
+# =============================================================================
 # TIPOGRAFÍA
 # =============================================================================
 
 FONT_FAMILY_CHOICES = [
-    ("'Inter', sans-serif", "🔤 Inter (Moderno)"),
-    ("'Roboto', sans-serif", "🔤 Roboto (Versátil)"),
-    ("'Poppins', sans-serif", "🔤 Poppins (Geométrico)"),
-    ("'Montserrat', sans-serif", "🔤 Montserrat (Elegante)"),
-    ("'Open Sans', sans-serif", "🔤 Open Sans (Legible)"),
-    ("'Playfair Display', serif", "✒️ Playfair Display (Clásico)"),
-    ("'Merriweather', serif", "✒️ Merriweather (Serif)"),
-    ("'Oswald', sans-serif", "🔤 Oswald (Impactante)"),
-    ("'Raleway', sans-serif", "🔤 Raleway (Delicado)"),
-    ("'Lato', sans-serif", "🔤 Lato (Amigable)"),
+    ("'Inter', sans-serif", LABEL_FONT_INTER),
+    ("'Roboto', sans-serif", LABEL_FONT_ROBOTO),
+    ("'Poppins', sans-serif", LABEL_FONT_POPPINS),
+    ("'Montserrat', sans-serif", LABEL_FONT_MONTSERRAT),
+    ("'Open Sans', sans-serif", LABEL_FONT_OPEN_SANS),
+    ("'Playfair Display', serif", LABEL_FONT_PLAYFAIR),
+    ("'Merriweather', serif", LABEL_FONT_MERRIWEATHER),
+    ("'Oswald', sans-serif", LABEL_FONT_OSWALD),
+    ("'Raleway', sans-serif", LABEL_FONT_RALEWAY),
+    ("'Lato', sans-serif", LABEL_FONT_LATO),
 ]
 
 FONT_WEIGHT_CHOICES = [
-    ('300', 'Light (300) - Delgada'),
-    ('400', 'Regular (400) - Normal'),
-    ('500', 'Medium (500) - Mediana'),
-    ('600', 'Semi Bold (600) - Seminegrita'),
-    ('700', 'Bold (700) - Negrita'),
-    ('800', 'Extra Bold (800) - Extranegrita'),
-    ('900', 'Black (900) - Negra'),
+    ('300', LABEL_WEIGHT_LIGHT),
+    ('400', LABEL_WEIGHT_REGULAR),
+    ('500', LABEL_WEIGHT_MEDIUM),
+    ('600', LABEL_WEIGHT_SEMI_BOLD),
+    ('700', LABEL_WEIGHT_BOLD),
+    ('800', LABEL_WEIGHT_EXTRA_BOLD),
+    ('900', LABEL_WEIGHT_BLACK),
 ]
 
 FONT_SIZE_CHOICES = [
-    ('0.75rem', 'XS - Extra pequeño (0.75rem)'),
-    ('0.875rem', 'SM - Pequeño (0.875rem)'),
-    ('1rem', 'Base - Normal (1rem)'),
-    ('1.125rem', 'LG - Ligeramente grande (1.125rem)'),
-    ('1.25rem', 'XL - Grande (1.25rem)'),
-    ('1.5rem', '2XL - Muy grande (1.5rem)'),
-    ('1.875rem', '3XL - Extra grande (1.875rem)'),
-    ('2.25rem', '4XL - Gigante (2.25rem)'),
-    ('3rem', '5XL - Muy gigante (3rem)'),
-    ('3.75rem', '6XL - Masivo (3.75rem)'),
-    ('4.5rem', '7XL - Épico (4.5rem)'),
-    ('6rem', '8XL - Colosal (6rem)'),
+    ('0.75rem', LABEL_FONT_XS),
+    ('0.875rem', LABEL_FONT_SM),
+    ('1rem', LABEL_FONT_BASE),
+    ('1.125rem', LABEL_FONT_LG),
+    ('1.25rem', LABEL_FONT_XL),
+    ('1.5rem', LABEL_FONT_2XL),
+    ('1.875rem', LABEL_FONT_3XL),
+    ('2.25rem', LABEL_FONT_4XL),
+    ('3rem', LABEL_FONT_5XL),
+    ('3.75rem', LABEL_FONT_6XL),
+    ('4.5rem', LABEL_FONT_7XL),
+    ('6rem', LABEL_FONT_8XL),
 ]
 
 LINE_HEIGHT_CHOICES = [
-    ('1', 'Compacto (1) - Sin espacio'),
-    ('1.2', 'Apretado (1.2) - Poco espacio'),
-    ('1.4', 'Normal (1.4) - Estándar'),
-    ('1.6', 'Espaciado (1.6) - Cómodo'),
-    ('1.8', 'Muy espaciado (1.8) - Aireado'),
-    ('2', 'Doble (2) - Mucho espacio'),
+    ('1', LABEL_LINE_COMPACT),
+    ('1.2', LABEL_LINE_TIGHT),
+    ('1.4', LABEL_LINE_NORMAL),
+    ('1.6', LABEL_LINE_SPACED),
+    ('1.8', LABEL_LINE_LOOSE),
+    ('2', LABEL_LINE_DOUBLE),
 ]
 
 MARGIN_CHOICES = [
-    ('0', 'Ninguno (0)'),
-    ('0.25rem', 'Muy pequeño (0.25rem)'),
-    ('0.5rem', 'Pequeño (0.5rem)'),
-    ('0.75rem', 'Mediano-pequeño (0.75rem)'),
-    ('1rem', 'Normal (1rem)'),
-    ('1.25rem', 'Mediano (1.25rem)'),
-    ('1.5rem', 'Grande (1.5rem)'),
-    ('2rem', 'Muy grande (2rem)'),
-    ('2.5rem', 'Extra grande (2.5rem)'),
-    ('3rem', 'Gigante (3rem)'),
+    ('0', LABEL_MARGIN_NONE),
+    ('0.25rem', LABEL_MARGIN_XS),
+    ('0.5rem', LABEL_MARGIN_SM),
+    ('0.75rem', LABEL_MARGIN_MD_SM),
+    ('1rem', LABEL_MARGIN_MD),
+    ('1.25rem', LABEL_MARGIN_MD_LG),
+    ('1.5rem', LABEL_MARGIN_LG),
+    ('2rem', LABEL_MARGIN_XL),
+    ('2.5rem', LABEL_MARGIN_2XL),
+    ('3rem', LABEL_MARGIN_3XL),
 ]
+
 
 # =============================================================================
 # COLORES
@@ -116,7 +251,6 @@ COLOR_PALETTES = {
     },
 }
 
-# Colores individuales (usando valores únicos, no duplicados de las paletas)
 PRIMARY_COLORS = [
     ('#c2a575', 'Oro Zicada'),
     ('#2d2d2d', 'Negro elegante'),
@@ -132,13 +266,13 @@ PRIMARY_COLORS = [
 
 SECONDARY_COLORS = [
     ('#8b5e3c', 'Marrón Zicada'),
-    ('#1a1a1a', 'Negro'),
+    ('#1a1a1a', LABEL_BLACK),
     ('#c1121f', 'Rojo intenso'),
     ('#00b4d8', 'Azul claro'),
     ('#40916c', 'Verde claro'),
     ('#9c7e2c', 'Dorado oscuro'),
     ('#e76f51', 'Terracota'),
-    ('#495057', 'Gris oscuro'),
+    ('#495057', LABEL_DARK_GRAY),
 ]
 
 BACKGROUND_COLORS = [
@@ -146,14 +280,14 @@ BACKGROUND_COLORS = [
     ('#fafafa', 'Gris muy claro'),
     ('#f0f8ff', 'Azul muy claro'),
     ('#f4f1de', 'Crema'),
-    ('#1a1a1a', 'Negro'),
-    ('#2d3436', 'Gris oscuro'),
+    ('#1a1a1a', LABEL_BLACK),
+    ('#2d3436', LABEL_DARK_GRAY),
     ('#fdf6e3', 'Beige'),
 ]
 
 TEXT_COLORS = [
-    ('#1a1a1a', 'Negro'),
-    ('#2d2d2d', 'Gris oscuro'),
+    ('#1a1a1a', LABEL_BLACK),
+    ('#2d2d2d', LABEL_DARK_GRAY),
     ('#1d3557', 'Azul noche'),
     ('#03045e', 'Azul profundo'),
     ('#212529', 'Gris carbón'),
@@ -161,75 +295,76 @@ TEXT_COLORS = [
     ('#e0e0e0', 'Gris claro (fondo oscuro)'),
 ]
 
+
 # =============================================================================
-# BOTONES - BASE (valores reutilizables)
+# BOTONES
 # =============================================================================
 
 BUTTON_BG_CHOICES = [
-    ('bg-zicada-accent', '🔴 Rojo Zicada'),
-    ('bg-black', '⚫ Negro'),
-    ('bg-white', '⚪ Blanco'),
-    ('bg-gray-800', '🌑 Gris oscuro'),
-    ('bg-gray-100', '☁️ Gris claro'),
-    ('bg-blue-600', '💙 Azul'),
-    ('bg-green-600', '💚 Verde'),
-    ('bg-purple-600', '💜 Morado'),
-    ('bg-amber-600', '🟠 Ámbar'),
-    ('bg-transparent', '✨ Transparente'),
+    ('bg-zicada-accent', LABEL_RED),
+    ('bg-black', LABEL_BLACK),
+    ('bg-white', LABEL_WHITE),
+    ('bg-gray-800', LABEL_DARK_GRAY),
+    ('bg-gray-100', LABEL_LIGHT_GRAY),
+    ('bg-blue-600', LABEL_BLUE),
+    ('bg-green-600', LABEL_GREEN),
+    ('bg-purple-600', LABEL_PURPLE),
+    ('bg-amber-600', LABEL_AMBER),
+    ('bg-transparent', LABEL_TRANSPARENT),
 ]
 
 BUTTON_HOVER_CHOICES = [
-    ('hover:bg-red-700', '🔴 Rojo más oscuro'),
-    ('hover:bg-gray-700', '⚫ Negro más oscuro'),
-    ('hover:bg-gray-100', '⚪ Gris claro'),
-    ('hover:bg-gray-900', '🌑 Negro intenso'),
-    ('hover:bg-blue-700', '💙 Azul más oscuro'),
-    ('hover:bg-green-700', '💚 Verde más oscuro'),
-    ('hover:bg-purple-700', '💜 Morado más oscuro'),
-    ('hover:bg-amber-700', '🟠 Ámbar más oscuro'),
-    ('hover:bg-white', '⚪ Blanco'),
-    ('hover:bg-opacity-90', '🎨 90% opacidad'),
-    ('hover:scale-105', '📏 Escalar 5%'),
-    ('hover:scale-110', '📏 Escalar 10%'),
+    ('hover:bg-red-700', LABEL_RED_DARKER),
+    ('hover:bg-gray-700', LABEL_BLACK_DARKER),
+    ('hover:bg-gray-100', LABEL_LIGHT_GRAY),
+    ('hover:bg-gray-900', LABEL_DARK_INTENSE),
+    ('hover:bg-blue-700', LABEL_BLUE_DARKER),
+    ('hover:bg-green-700', LABEL_GREEN_DARKER),
+    ('hover:bg-purple-700', LABEL_PURPLE_DARKER),
+    ('hover:bg-amber-700', LABEL_AMBER_DARKER),
+    ('hover:bg-white', LABEL_WHITE),
+    ('hover:bg-opacity-90', LABEL_OPACITY_90),
+    ('hover:scale-105', LABEL_SCALE_5),
+    ('hover:scale-110', LABEL_SCALE_10),
 ]
 
 BUTTON_TEXT_COLOR_CHOICES = [
-    ('text-white', '⚪ Blanco'),
-    ('text-gray-900', '⚫ Negro'),
-    ('text-gray-700', '🌑 Gris oscuro'),
+    ('text-white', LABEL_WHITE),
+    ('text-gray-900', LABEL_BLACK),
+    ('text-gray-700', LABEL_DARK_GRAY),
     ('text-gray-500', '🌫️ Gris medio'),
-    ('text-zicada-accent', '🔴 Rojo Zicada'),
-    ('text-blue-600', '💙 Azul'),
+    ('text-zicada-accent', LABEL_RED),
+    ('text-blue-600', LABEL_BLUE),
 ]
 
 BUTTON_BORDER_RADIUS_CHOICES = [
-    ('rounded-none', '🔲 Cuadrado'),
-    ('rounded-sm', '📐 Ligeramente redondeado'),
-    ('rounded-md', '📐 Medianamente redondeado'),
-    ('rounded-lg', '🟨 Redondeado'),
-    ('rounded-xl', '🟩 Muy redondeado'),
-    ('rounded-2xl', '🟢 Extra redondeado'),
-    ('rounded-full', '⚪ Círculo completo'),
+    ('rounded-none', LABEL_BORDER_NONE),
+    ('rounded-sm', LABEL_BORDER_SM),
+    ('rounded-md', LABEL_BORDER_MD),
+    ('rounded-lg', LABEL_BORDER_LG),
+    ('rounded-xl', LABEL_BORDER_XL),
+    ('rounded-2xl', LABEL_BORDER_2XL),
+    ('rounded-full', LABEL_BORDER_FULL),
 ]
 
 BUTTON_SIZE_CHOICES = [
-    ('px-2 py-1 text-xs', 'Extra pequeño'),
-    ('px-3 py-1.5 text-sm', 'Pequeño'),
-    ('px-4 py-2 text-base', 'Mediano'),
-    ('px-6 py-2.5 text-base', 'Mediano-grande'),
-    ('px-8 py-3 text-lg', 'Grande (recomendado)'),
-    ('px-10 py-4 text-xl', 'Muy grande'),
-    ('px-12 py-5 text-2xl', 'Extra grande'),
+    ('px-2 py-1 text-xs', LABEL_SIZE_XS),
+    ('px-3 py-1.5 text-sm', LABEL_SIZE_SM),
+    ('px-4 py-2 text-base', LABEL_SIZE_MD),
+    ('px-6 py-2.5 text-base', LABEL_SIZE_MD_LG),
+    ('px-8 py-3 text-lg', LABEL_SIZE_LG),
+    ('px-10 py-4 text-xl', LABEL_SIZE_XL),
+    ('px-12 py-5 text-2xl', LABEL_SIZE_2XL),
 ]
 
 BUTTON_SHADOW_CHOICES = [
-    ('shadow-none', 'Sin sombra'),
-    ('shadow-sm', 'Sombra suave'),
-    ('shadow', 'Sombra normal'),
-    ('shadow-md', 'Sombra media'),
-    ('shadow-lg', 'Sombra grande'),
-    ('shadow-xl', 'Sombra extra grande'),
-    ('shadow-2xl', 'Sombra masiva'),
+    ('shadow-none', LABEL_SHADOW_NONE),
+    ('shadow-sm', LABEL_SHADOW_SM),
+    ('shadow', LABEL_SHADOW_NORMAL),
+    ('shadow-md', LABEL_SHADOW_MD),
+    ('shadow-lg', LABEL_SHADOW_LG),
+    ('shadow-xl', LABEL_SHADOW_XL),
+    ('shadow-2xl', LABEL_SHADOW_2XL),
 ]
 
 BUTTON_WIDTH_CHOICES = [
@@ -243,47 +378,50 @@ BUTTON_WIDTH_CHOICES = [
     ('w-64', 'Fijo (256px)'),
 ]
 
+
 # =============================================================================
 # DISEÑO GENERAL
 # =============================================================================
 
 ALIGNMENT_CHOICES = [
-    ('center', 'Centrado'),
-    ('left', 'Izquierda'),
-    ('right', 'Derecha'),
-    ('justify', 'Justificado'),
+    ('center', LABEL_ALIGN_CENTER),
+    ('left', LABEL_ALIGN_LEFT),
+    ('right', LABEL_ALIGN_RIGHT),
+    ('justify', LABEL_ALIGN_JUSTIFY),
 ]
 
 SECTION_HEIGHT_CHOICES = [(f'{i}vh', f'{i}% de la pantalla') for i in range(10, 101, 10)]
 
+
 # =============================================================================
-# TARJETAS (usando valores existentes para evitar duplicación)
+# TARJETAS
 # =============================================================================
 
-# Reutilizamos choices existentes para tarjetas
 CARD_BORDER_RADIUS_CHOICES = BUTTON_BORDER_RADIUS_CHOICES
 CARD_SHADOW_CHOICES = BUTTON_SHADOW_CHOICES
 
 CARD_HOVER_SCALE_CHOICES = [
-    ('1.00', 'Sin escala'),
-    ('1.02', 'Muy sutil (2%)'),
-    ('1.05', 'Sutil (5% - recomendado)'),
-    ('1.08', 'Notable (8%)'),
-    ('1.10', 'Fuerte (10%)'),
-    ('1.15', 'Muy fuerte (15%)'),
+    ('1.00', LABEL_SCALE_NONE),
+    ('1.02', LABEL_SCALE_VERY_SUBTLE),
+    ('1.05', LABEL_SCALE_SUBTLE),
+    ('1.08', LABEL_SCALE_NOTICEABLE),
+    ('1.10', LABEL_SCALE_STRONG),
+    ('1.15', LABEL_SCALE_VERY_STRONG),
 ]
+
 
 # =============================================================================
 # BADGES
 # =============================================================================
 
 STOCK_BADGE_COLORS = [
-    ('bg-green-100 text-green-700', 'Disponible - Verde'),
-    ('bg-orange-100 text-orange-700', 'Bajo stock - Naranja'),
-    ('bg-red-100 text-red-700', 'Agotado - Rojo'),
-    ('bg-blue-100 text-blue-700', 'Información - Azul'),
-    ('bg-purple-100 text-purple-700', 'Especial - Púrpura'),
+    ('bg-green-100 text-green-700', LABEL_STOCK_AVAILABLE),
+    ('bg-orange-100 text-orange-700', LABEL_STOCK_LOW),
+    ('bg-red-100 text-red-700', LABEL_STOCK_OUT),
+    ('bg-blue-100 text-blue-700', LABEL_STOCK_INFO),
+    ('bg-purple-100 text-purple-700', LABEL_STOCK_SPECIAL),
 ]
+
 
 # =============================================================================
 # VALORES POR DEFECTO
@@ -301,6 +439,7 @@ DEFAULT_SHOW_CATEGORY = True
 DEFAULT_SHOW_STOCK_BADGE = True
 DEFAULT_BADGE_TEXT_COLOR = '#ffffff'
 
+
 # =============================================================================
 # HELPERS
 # =============================================================================
@@ -308,6 +447,7 @@ DEFAULT_BADGE_TEXT_COLOR = '#ffffff'
 def get_color_palette_choices():
     """Retorna las opciones de paletas de colores para selects rápidos"""
     return [(key, palette['name']) for key, palette in COLOR_PALETTES.items()]
+
 
 def apply_color_palette(instance, palette_key, save=False):
     """Aplica una paleta de colores predefinida a una instancia"""
