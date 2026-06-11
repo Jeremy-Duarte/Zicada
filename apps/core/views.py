@@ -11,11 +11,11 @@ from django.template.loader import render_to_string
 from django.urls import reverse, reverse_lazy
 from django.views.decorators.cache import never_cache
 from django.views.generic import CreateView, UpdateView, DeleteView, ListView, TemplateView
-from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.views.decorators.http import require_GET, require_http_methods, require_POST, require_safe
 
 from .models import HeroConfig
 from apps.products.models import Product, Collection, Category
+from apps.core.crud.mixins import StaffPermissionRequiredMixin
 from .forms import ContactForm, StaffLoginForm, HeroConfigCreateForm, HeroConfigUpdateForm, HeroConfigDeleteForm, HeroConfigRestoreForm
 from apps.products.views import (
     PAGINATE_BY_DEFAULT,
@@ -284,6 +284,9 @@ class StaffLoginView(LoginView):
         return super().form_invalid(form)
 
     def dispatch(self, request, *args, **kwargs):
+        from django.contrib.messages import get_messages
+        list(get_messages(request))
+        
         if request.user.is_authenticated:
             if not request.user.is_active:
                 messages.error(request, LOGIN_INACTIVE_MESSAGE)
@@ -292,7 +295,14 @@ class StaffLoginView(LoginView):
             if request.user.is_staff or getattr(request.user, 'is_delivery', False):
                 return redirect(BACKOFFICE_DASHBOARD)
             return redirect(PRODUCTS_CATALOG)
+        
         return super().dispatch(request, *args, **kwargs)
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        from django.contrib.messages import get_messages
+        context['messages'] = get_messages(self.request)
+        return context
 
 
 @require_http_methods(['GET', 'POST'])
@@ -303,7 +313,7 @@ def staff_logout(request):
     return redirect(CORE_STAFF_LOGIN)
 
 
-class HeroConfigListView(PermissionRequiredMixin, ListView):
+class HeroConfigListView(StaffPermissionRequiredMixin, ListView):
     """List active hero slides."""
     # HU-052 | ESCENARIO 1 | H | Lista slides activos
     model = HeroConfig
@@ -335,7 +345,7 @@ class HeroConfigListView(PermissionRequiredMixin, ListView):
         return context
 
 
-class HeroConfigCreateView(PermissionRequiredMixin, CreateView):
+class HeroConfigCreateView(StaffPermissionRequiredMixin, CreateView):
     """Create new hero slide."""
     # HU-053 | ESCENARIO 1 | H | Crear slide válido
     model = HeroConfig
@@ -361,7 +371,7 @@ class HeroConfigCreateView(PermissionRequiredMixin, CreateView):
     # HU-053 | ESCENARIO 2 | A | Formulario inválido (manejado por CreateView)
 
 
-class HeroConfigUpdateView(PermissionRequiredMixin, UpdateView):
+class HeroConfigUpdateView(StaffPermissionRequiredMixin, UpdateView):
     """Update existing hero slide."""
     # HU-054 | ESCENARIO 1 | H | Editar slide existente
     model = HeroConfig
@@ -391,7 +401,7 @@ class HeroConfigUpdateView(PermissionRequiredMixin, UpdateView):
     # HU-054 | ESCENARIO 4 | E | Slide no existe → HTTP 404
 
 
-class HeroConfigDeleteView(PermissionRequiredMixin, DeleteView):
+class HeroConfigDeleteView(StaffPermissionRequiredMixin, DeleteView):
     """Soft-delete hero slide (move to trashcan)."""
     # HU-055 | ESCENARIO 1 | H | Archivar slide
     model = HeroConfig
@@ -428,7 +438,7 @@ class HeroConfigDeleteView(PermissionRequiredMixin, DeleteView):
         return redirect(self.success_url)
 
 
-class HeroConfigRestoreView(PermissionRequiredMixin, TemplateView):
+class HeroConfigRestoreView(StaffPermissionRequiredMixin, TemplateView):
     """Restore soft-deleted hero slide."""
     # HU-056 | ESCENARIO 1 | H | Restaurar slide archivado
     model = HeroConfig
@@ -464,7 +474,7 @@ class HeroConfigRestoreView(PermissionRequiredMixin, TemplateView):
         return self.render_to_response(self.get_context_data(form=form))
 
 
-class HeroConfigTrashcanView(PermissionRequiredMixin, ListView):
+class HeroConfigTrashcanView(StaffPermissionRequiredMixin, ListView):
     """List soft-deleted hero slides (trashcan)."""
     # HU-057 | ESCENARIO 1 | H | Ver lista de slides archivados
     model = HeroConfig
