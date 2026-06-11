@@ -940,13 +940,13 @@ class StaffLogoutViewTest(TestCase):
         self.user = _create_test_user(username='staff', is_staff=True)
         self.client.force_login(self.user)
 
-    def test_logout_redirects_to_catalog(self):
+    def test_logout_redirects_to_login(self):
         """
         CP-107
         Logout redirects to catalog
         """
         response = self.client.post(reverse(CORE_STAFF_LOGOUT))
-        self.assertRedirects(response, reverse(PRODUCTS_CATALOG))
+        self.assertRedirects(response, reverse(CORE_STAFF_LOGIN))
 
         self.assertFalse(response.wsgi_request.user.is_authenticated)
 
