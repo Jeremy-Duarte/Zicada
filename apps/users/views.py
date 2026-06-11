@@ -3,7 +3,7 @@ from apps.core.crud.mixins import StaffPermissionRequiredMixin
 from django.views.generic import ListView, CreateView, UpdateView, FormView, DetailView
 from django.shortcuts import get_object_or_404, redirect
 from django.contrib import messages
-from django.contrib.auth import get_user_model
+from django.contrib.auth import get_user_model, update_session_auth_hash
 from django.db import models
 from django.utils.safestring import mark_safe
 
@@ -313,7 +313,7 @@ class UserChangePasswordView(StaffPermissionRequiredMixin, FormView):
     def form_valid(self, form):
         form.save()
         messages.success(self.request, MSG_PASSWORD_CHANGED.format(username=self.user.username))
-        return redirect(USERS_LIST, pk=self.user.pk)
+        return redirect(USERS_LIST)
     
     def form_invalid(self, form):
         messages.error(self.request, ERROR_PASSWORD_CHANGE)
@@ -622,6 +622,7 @@ class UserProfilePasswordView(FormView):
     """
     form_class = UserProfilePasswordForm
     template_name = TEMPLATE_USER_PROFILE_PASSWORD
+    success_url = reverse_lazy(USERS_PROFILE)
     
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
@@ -635,7 +636,8 @@ class UserProfilePasswordView(FormView):
     
     def form_valid(self, form):
         # HU-043 | ESCENARIO 3 | H | Contraseña cambiada exitosamente
-        form.save()
+        user = form.save()
+        update_session_auth_hash(self.request, user)
         messages.success(self.request, MSG_PASSWORD_UPDATED)
         return redirect(USERS_PROFILE)
     
