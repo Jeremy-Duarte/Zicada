@@ -5,6 +5,8 @@ Cubre:
 - BaseAuditModel (soft_delete, restore)
 - HeroConfig (creación, string representation, ordenamiento)
 - ActiveManager (filtro is_active)
+
+Casos de prueba: CP-039 a CP-059
 """
 
 from django.test import TestCase
@@ -59,6 +61,7 @@ class BaseAuditModelTest(TestCase):
     # soft_delete
     def test_soft_delete_sets_inactive_and_deleted_at(self):
         """
+        CP-039
         HU-055 | ESCENARIO 1 | H | Soft delete (archivar) - HeroConfig
         """
         self.hero.soft_delete(user=self.user)
@@ -67,13 +70,19 @@ class BaseAuditModelTest(TestCase):
         self.assertIsNotNone(self.hero.deleted_at)
 
     def test_soft_delete_sets_updated_by(self):
-        """Soft delete asigna updated_by si se proporciona usuario."""
+        """
+        CP-040
+        Soft delete asigna updated_by si se proporciona usuario.
+        """
         self.hero.soft_delete(user=self.user)
         self.hero.refresh_from_db()
         self.assertEqual(self.hero.updated_by, self.user)
 
     def test_soft_delete_without_user(self):
-        """Soft_delete funciona sin usuario (updated_by se queda como None)."""
+        """
+        CP-041
+        Soft_delete funciona sin usuario (updated_by se queda como None).
+        """
         self.hero.soft_delete()
         self.hero.refresh_from_db()
         self.assertFalse(self.hero.is_active)
@@ -83,6 +92,7 @@ class BaseAuditModelTest(TestCase):
     # restore
     def test_restore_sets_active_and_clears_deleted_at(self):
         """
+        CP-042
         HU-056 | ESCENARIO 1 | H | Restaurar slide archivado - HeroConfig
         """
         self.hero.soft_delete()
@@ -93,7 +103,10 @@ class BaseAuditModelTest(TestCase):
         self.assertIsNone(self.hero.deleted_at)
 
     def test_restore_sets_updated_by(self):
-        """Restore asigna updated_by si se proporciona usuario."""
+        """
+        CP-043
+        Restore asigna updated_by si se proporciona usuario.
+        """
         self.hero.soft_delete()
         self.hero.refresh_from_db()
         self.hero.restore(user=self.user)
@@ -101,7 +114,10 @@ class BaseAuditModelTest(TestCase):
         self.assertEqual(self.hero.updated_by, self.user)
 
     def test_restore_without_user(self):
-        """Restore funciona sin usuario."""
+        """
+        CP-044
+        Restore funciona sin usuario.
+        """
         self.hero.soft_delete()
         self.hero.refresh_from_db()
         self.hero.restore()
@@ -112,11 +128,17 @@ class BaseAuditModelTest(TestCase):
 
     # Fechas automáticas
     def test_created_at_is_set_on_creation(self):
-        """Al crear, created_at se establece automáticamente."""
+        """
+        CP-045
+        Al crear, created_at se establece automáticamente.
+        """
         self.assertIsNotNone(self.hero.created_at)
 
     def test_updated_at_changes_on_update(self):
-        """Al actualizar, updated_at cambia."""
+        """
+        CP-046
+        Al actualizar, updated_at cambia.
+        """
         old_updated = self.hero.updated_at
         self.hero.title_text = 'Nuevo título'
         self.hero.save()
@@ -137,6 +159,7 @@ class ActiveManagerTest(TestCase):
 
     def test_default_manager_returns_only_active(self):
         """
+        CP-047
         HU-052, HU-057 | H | Manager que retorna solo registros activos
         """
         qs = HeroConfig.objects.all()
@@ -144,7 +167,10 @@ class ActiveManagerTest(TestCase):
         self.assertNotIn(self.inactive, qs)
 
     def test_all_objects_returns_all(self):
-        """all_objects manager retorna todos, incluyendo inactivos."""
+        """
+        CP-048
+        all_objects manager retorna todos, incluyendo inactivos.
+        """
         qs = HeroConfig.all_objects.all()
         self.assertIn(self.active, qs)
         self.assertIn(self.inactive, qs)
@@ -161,11 +187,17 @@ class HeroConfigModelTest(TestCase):
         self.hero = _create_hero(title_text='Mi Hero', sort_order=5)
 
     def test_str_representation(self):
-        """__str__ retorna 'Hero: ' + title_text."""
+        """
+        CP-049
+        __str__ retorna 'Hero: ' + title_text.
+        """
         self.assertEqual(str(self.hero), 'Hero: Mi Hero')
 
     def test_default_ordering_by_sort_order(self):
-        """Meta.ordering = ['sort_order']"""
+        """
+        CP-050
+        Meta.ordering = ['sort_order']
+        """
         h1 = _create_hero(title_text='Primero', sort_order=1)
         h2 = _create_hero(title_text='Segundo', sort_order=2)
         h3 = _create_hero(title_text='Cero', sort_order=0)
@@ -176,6 +208,7 @@ class HeroConfigModelTest(TestCase):
 
     def test_save_does_not_alter_explicit_values(self):
         """
+        CP-051
         HU-053 | ESCENARIO 1 | H | Guardado normal del slide
         """
         hero = _create_hero(
@@ -192,7 +225,10 @@ class HeroConfigModelTest(TestCase):
         self.assertEqual(hero.section_height, '50vh')
 
     def test_default_values_on_creation(self):
-        """Valores por defecto cuando no se especifican."""
+        """
+        CP-052
+        Valores por defecto cuando no se especifican.
+        """
         hero = HeroConfig.objects.create(title_text='Default Test')
         self.assertEqual(hero.overlay_opacity, 0.5)
         self.assertEqual(hero.title_font_family, "'Inter', sans-serif")
@@ -207,6 +243,7 @@ class HeroConfigModelTest(TestCase):
 
     def test_soft_delete_updates_deleted_at_accurately(self):
         """
+        CP-053
         Verifica que deleted_at se establece con una hora cercana al momento de la llamada.
         """
         before = timezone.now()
@@ -217,7 +254,10 @@ class HeroConfigModelTest(TestCase):
         self.assertLessEqual(self.hero.deleted_at, after)
 
     def test_restore_clears_deleted_at(self):
-        """Restaurar pone deleted_at en None."""
+        """
+        CP-054
+        Restaurar pone deleted_at en None.
+        """
         self.hero.soft_delete()
         self.hero.refresh_from_db()
         self.hero.restore()
@@ -225,7 +265,10 @@ class HeroConfigModelTest(TestCase):
         self.assertIsNone(self.hero.deleted_at)
 
     def test_soft_delete_and_restore_preserves_other_fields(self):
-        """Los campos no relacionados con eliminación no se ven afectados."""
+        """
+        CP-055
+        Los campos no relacionados con eliminación no se ven afectados.
+        """
         original_title = self.hero.title_text
         original_section = self.hero.section_height
         self.hero.soft_delete()

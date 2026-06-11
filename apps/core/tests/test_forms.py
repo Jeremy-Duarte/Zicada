@@ -10,6 +10,8 @@ Cubre:
 - HU-056: HeroConfigRestoreForm
 - build_button_style (helper)
 - get_button_url_choices (helper)
+
+Casos de prueba: CP-001 a CP-038
 """
 
 from django.test import TestCase
@@ -54,7 +56,6 @@ def _create_test_user(**kwargs):
     user.set_password(password)
     user.save()
     
-    # Si el modelo tiene campo is_delivery (opcional)
     if is_delivery and hasattr(user, 'is_delivery'):
         user.is_delivery = True
         user.save()
@@ -115,7 +116,10 @@ class BuildButtonStyleTest(TestCase):
     """Pruebas unitarias para la función build_button_style (helper, no HU)"""
 
     def test_returns_correct_classes(self):
-        """HU-053 | ESCENARIO 1 | H | Construye clases CSS del botón a partir de campos individuales"""
+        """
+        CP-001
+        HU-053 | ESCENARIO 1 | H | Construye clases CSS del botón a partir de campos individuales
+        """
         data = {
             'button_bg_color': 'bg-zicada-accent',
             'button_hover_color': 'hover:bg-red-700',
@@ -130,7 +134,10 @@ class BuildButtonStyleTest(TestCase):
         self.assertEqual(result, expected)
 
     def test_custom_values(self):
-        """Verifica que valores personalizados se reflejen en el resultado"""
+        """
+        CP-002
+        Verifica que valores personalizados se reflejen en el resultado
+        """
         data = {
             'button_bg_color': 'bg-blue-600',
             'button_hover_color': 'hover:bg-blue-700',
@@ -158,14 +165,20 @@ class GetButtonUrlChoicesTest(TestCase):
     """Pruebas para la función que genera opciones de URL del botón (helper)"""
 
     def test_includes_static_choices(self):
-        """Verifica que los catálogos estáticos estén presentes"""
+        """
+        CP-003
+        Verifica que los catálogos estáticos estén presentes
+        """
         choices = get_button_url_choices()
         urls = [c[0] for c in choices]
         catalog_url = reverse(PRODUCTS_CATALOG)
         self.assertIn(catalog_url, urls)
 
     def test_includes_collections(self):
-        """HU-053 | ESCENARIO 1 | H | Carga colecciones activas y publicadas"""
+        """
+        CP-004
+        HU-053 | ESCENARIO 1 | H | Carga colecciones activas y publicadas
+        """
         coll = _create_test_collection()
         choices = get_button_url_choices()
         expected_url = reverse(PRODUCTS_COLLECTION_DETAIL, kwargs={'slug': coll.slug})
@@ -176,7 +189,10 @@ class GetButtonUrlChoicesTest(TestCase):
         )
 
     def test_includes_products(self):
-        """HU-053 | ESCENARIO 1 | H | Carga productos activos"""
+        """
+        CP-005
+        HU-053 | ESCENARIO 1 | H | Carga productos activos
+        """
         cat = _create_test_category()
         prod = _create_test_product(category=cat)
         choices = get_button_url_choices()
@@ -203,20 +219,29 @@ class ContactFormTest(TestCase):
     }
 
     def test_valid_form(self):
-        """HU-051 | ESCENARIO 2 | H | Formulario válido con nombre, email, asunto, mensaje y teléfono opcional"""
+        """
+        CP-006
+        HU-051 | ESCENARIO 2 | H | Formulario válido con nombre, email, asunto, mensaje y teléfono opcional
+        """
         data = self.VALID_DATA.copy()
         data['phone'] = '3001234567'
         form = ContactForm(data=data)
         self.assertTrue(form.is_valid())
 
     def test_valid_form_without_phone(self):
-        """HU-051 | ESCENARIO 2 | H | Formulario válido sin teléfono"""
+        """
+        CP-007
+        HU-051 | ESCENARIO 2 | H | Formulario válido sin teléfono
+        """
         form = ContactForm(data=self.VALID_DATA)
         self.assertTrue(form.is_valid())
         self.assertEqual(form.cleaned_data['phone'], '')
 
     def test_name_required(self):
-        """HU-051 | ESCENARIO 4A | A | Nombre vacío → error 'required'"""
+        """
+        CP-008
+        HU-051 | ESCENARIO 4A | A | Nombre vacío → error 'required'
+        """
         data = self.VALID_DATA.copy()
         data['name'] = ''
         form = ContactForm(data=data)
@@ -225,7 +250,10 @@ class ContactFormTest(TestCase):
         self.assertIn('Por favor ingresa tu nombre', str(form.errors['name']))
 
     def test_name_min_length(self):
-        """HU-051 | ESCENARIO 4A | A | Nombre con menos de 2 caracteres"""
+        """
+        CP-009
+        HU-051 | ESCENARIO 4A | A | Nombre con menos de 2 caracteres
+        """
         data = self.VALID_DATA.copy()
         data['name'] = 'A'
         form = ContactForm(data=data)
@@ -234,7 +262,10 @@ class ContactFormTest(TestCase):
         self.assertIn('al menos 2 caracteres', str(form.errors['name']))
 
     def test_email_required(self):
-        """HU-051 | ESCENARIO 4A | A | Email vacío → error 'required'"""
+        """
+        CP-010
+        HU-051 | ESCENARIO 4A | A | Email vacío → error 'required'
+        """
         data = self.VALID_DATA.copy()
         data['email'] = ''
         form = ContactForm(data=data)
@@ -242,7 +273,10 @@ class ContactFormTest(TestCase):
         self.assertIn('email', form.errors)
 
     def test_email_invalid_format(self):
-        """HU-051 | ESCENARIO 4C | A | Email inválido (falta @) → error 'invalid'"""
+        """
+        CP-011
+        HU-051 | ESCENARIO 4C | A | Email inválido (falta @) → error 'invalid'
+        """
         data = self.VALID_DATA.copy()
         data['email'] = 'correo-sin-arroba'
         form = ContactForm(data=data)
@@ -251,7 +285,10 @@ class ContactFormTest(TestCase):
         self.assertIn('válido', str(form.errors['email']).lower())
 
     def test_subject_required(self):
-        """HU-051 | ESCENARIO 4A | A | Asunto vacío → error 'required'"""
+        """
+        CP-012
+        HU-051 | ESCENARIO 4A | A | Asunto vacío → error 'required'
+        """
         data = self.VALID_DATA.copy()
         data['subject'] = ''
         form = ContactForm(data=data)
@@ -260,7 +297,10 @@ class ContactFormTest(TestCase):
         self.assertIn('asunto', str(form.errors['subject']).lower())
 
     def test_message_required(self):
-        """HU-051 | ESCENARIO 4A | A | Mensaje vacío → error 'required'"""
+        """
+        CP-013
+        HU-051 | ESCENARIO 4A | A | Mensaje vacío → error 'required'
+        """
         data = self.VALID_DATA.copy()
         data['message'] = ''
         form = ContactForm(data=data)
@@ -269,7 +309,10 @@ class ContactFormTest(TestCase):
         self.assertIn('mensaje', str(form.errors['message']).lower())
 
     def test_phone_too_short(self):
-        """HU-051 | ESCENARIO 4B | A | Teléfono con menos de 7 dígitos → error en clean_phone"""
+        """
+        CP-014
+        HU-051 | ESCENARIO 4B | A | Teléfono con menos de 7 dígitos → error en clean_phone
+        """
         data = self.VALID_DATA.copy()
         data['phone'] = '12345'
         form = ContactForm(data=data)
@@ -278,7 +321,10 @@ class ContactFormTest(TestCase):
         self.assertIn('al menos 7 dígitos', str(form.errors['phone']))
 
     def test_phone_only_digits_are_counted(self):
-        """HU-051 | ESCENARIO 4B | A | Teléfono con letras y dígitos insuficientes"""
+        """
+        CP-015
+        HU-051 | ESCENARIO 4B | A | Teléfono con letras y dígitos insuficientes
+        """
         data = self.VALID_DATA.copy()
         data['phone'] = 'abc 12 def 3'
         form = ContactForm(data=data)
@@ -286,7 +332,10 @@ class ContactFormTest(TestCase):
         self.assertIn('phone', form.errors)
 
     def test_phone_valid_with_7_digits(self):
-        """HU-051 | ESCENARIO 2 | H | Teléfono opcional válido con exactamente 7 dígitos"""
+        """
+        CP-016
+        HU-051 | ESCENARIO 2 | H | Teléfono opcional válido con exactamente 7 dígitos
+        """
         data = self.VALID_DATA.copy()
         data['phone'] = '3001234'
         form = ContactForm(data=data)
@@ -294,7 +343,10 @@ class ContactFormTest(TestCase):
         self.assertEqual(form.cleaned_data['phone'], '3001234')
 
     def test_phone_strips_non_digits(self):
-        """HU-051 | ESCENARIO 2 | H | Teléfono válido con guiones, espacios, etc."""
+        """
+        CP-017
+        HU-051 | ESCENARIO 2 | H | Teléfono válido con guiones, espacios, etc.
+        """
         data = self.VALID_DATA.copy()
         data['phone'] = '+57 (300) 123-4567'
         form = ContactForm(data=data)
@@ -320,7 +372,10 @@ class StaffLoginFormTest(TestCase):
 
     @patch('django.contrib.auth.forms.authenticate')
     def test_staff_user_allowed(self, mock_auth):
-        """HU-003 | ESCENARIO 1 | H | Usuario staff con permisos"""
+        """
+        CP-018
+        HU-003 | ESCENARIO 1 | H | Usuario staff con permisos
+        """
         mock_auth.return_value = self.user_staff
         form = StaffLoginForm(
             request=self.request,
@@ -330,7 +385,10 @@ class StaffLoginFormTest(TestCase):
 
     @patch('django.contrib.auth.forms.authenticate')
     def test_delivery_user_allowed(self, mock_auth):
-        """HU-003 | ESCENARIO 2 | H | Usuario delivery con permisos"""
+        """
+        CP-019
+        HU-003 | ESCENARIO 2 | H | Usuario delivery con permisos
+        """
         mock_auth.return_value = self.user_delivery
         form = StaffLoginForm(
             request=self.request,
@@ -340,7 +398,10 @@ class StaffLoginFormTest(TestCase):
 
     @patch('django.contrib.auth.forms.authenticate')
     def test_normal_user_denied(self, mock_auth):
-        """HU-003 | ESCENARIO 3 | E | Usuario sin permisos (ni staff ni delivery)"""
+        """
+        CP-020
+        HU-003 | ESCENARIO 3 | E | Usuario sin permisos (ni staff ni delivery)
+        """
         mock_auth.return_value = self.user_normal
         form = StaffLoginForm(
             request=self.request,
@@ -351,7 +412,10 @@ class StaffLoginFormTest(TestCase):
 
     @patch('django.contrib.auth.forms.authenticate')
     def test_inactive_user_denied(self, mock_auth):
-        """HU-001 | ESCENARIO 4 | E | Usuario inactivo"""
+        """
+        CP-021
+        HU-001 | ESCENARIO 4 | E | Usuario inactivo
+        """
         mock_auth.return_value = self.user_inactive
         form = StaffLoginForm(
             request=self.request,
@@ -362,7 +426,10 @@ class StaffLoginFormTest(TestCase):
 
     @patch('django.contrib.auth.forms.authenticate')
     def test_wrong_credentials(self, mock_auth):
-        """HU-001 | ESCENARIO 3 | E | Credenciales incorrectas (authenticate retorna None)"""
+        """
+        CP-022
+        HU-001 | ESCENARIO 3 | E | Credenciales incorrectas (authenticate retorna None)
+        """
         mock_auth.return_value = None
         form = StaffLoginForm(
             request=self.request,
@@ -420,7 +487,10 @@ class HeroConfigCreateFormTest(TestCase):
         }
 
     def test_create_valid_slide(self):
-        """HU-053 | ESCENARIO 1 | H | Datos válidos → formulario válido y guarda"""
+        """
+        CP-023
+        HU-053 | ESCENARIO 1 | H | Datos válidos → formulario válido y guarda
+        """
         data = self.get_valid_data()
         form = HeroConfigCreateForm(data=data)
         self.assertTrue(form.is_valid(), msg=f"Errores: {form.errors}")
@@ -432,7 +502,10 @@ class HeroConfigCreateFormTest(TestCase):
         self.assertEqual(hero.sort_order, 0)
 
     def test_title_required(self):
-        """HU-053 | ESCENARIO 2 | A | Título vacío → error"""
+        """
+        CP-024
+        HU-053 | ESCENARIO 2 | A | Título vacío → error
+        """
         data = self.get_valid_data()
         data['title_text'] = ''
         form = HeroConfigCreateForm(data=data)
@@ -441,7 +514,10 @@ class HeroConfigCreateFormTest(TestCase):
         self.assertIn('requerido', str(form.errors['title_text']).lower())
 
     def test_sort_order_duplicate(self):
-        """HU-053 | ESCENARIO 2 | A | sort_order duplicado → error"""
+        """
+        CP-025
+        HU-053 | ESCENARIO 2 | A | sort_order duplicado → error
+        """
         _create_hero(sort_order=0)
         data = self.get_valid_data()
         data['sort_order'] = 0
@@ -451,7 +527,10 @@ class HeroConfigCreateFormTest(TestCase):
         self.assertIn('ya existe', str(form.errors['sort_order']).lower())
 
     def test_save_builds_button_style(self):
-        """HU-053 | ESCENARIO 1 | H | save() construye button_style automáticamente"""
+        """
+        CP-026
+        HU-053 | ESCENARIO 1 | H | save() construye button_style automáticamente
+        """
         data = self.get_valid_data()
         data['button_bg_color'] = 'bg-blue-600'
         data['button_hover_color'] = 'hover:bg-blue-700'
@@ -516,7 +595,10 @@ class HeroConfigUpdateFormTest(TestCase):
         }
 
     def test_update_valid_slide(self):
-        """HU-054 | ESCENARIO 1 | H | Actualización válida de todos los campos"""
+        """
+        CP-027
+        HU-054 | ESCENARIO 1 | H | Actualización válida de todos los campos
+        """
         data = self.get_update_data()
         form = HeroConfigUpdateForm(data=data, instance=self.hero)
         self.assertTrue(form.is_valid(), msg=f"Errores: {form.errors}")
@@ -529,6 +611,7 @@ class HeroConfigUpdateFormTest(TestCase):
 
     def test_parse_button_style_from_instance(self):
         """
+        CP-028
         HU-054 | ESCENARIO 1 | H | Parsea el estilo del botón e inicializa los campos
         """
         form = HeroConfigUpdateForm(instance=self.hero)
@@ -537,12 +620,14 @@ class HeroConfigUpdateFormTest(TestCase):
         self.assertEqual(form.fields['button_text_color'].initial, 'text-white')
         self.assertEqual(form.fields['button_border_radius'].initial, 'rounded-lg')
         self.assertEqual(form.fields['button_size'].initial, 'px-8 py-3 text-lg')
-        # El botón usa 'shadow' sin -lg en el hero creado
         self.assertEqual(form.fields['button_shadow'].initial, 'shadow')
         self.assertEqual(form.fields['button_width'].initial, 'inline-block')
 
     def test_save_updates_button_style(self):
-        """HU-054 | ESCENARIO 1 | H | save() actualiza button_style según nuevos valores"""
+        """
+        CP-029
+        HU-054 | ESCENARIO 1 | H | save() actualiza button_style según nuevos valores
+        """
         data = self.get_update_data()
         data['button_bg_color'] = 'bg-purple-600'
         data['button_hover_color'] = 'hover:bg-purple-700'
@@ -554,7 +639,10 @@ class HeroConfigUpdateFormTest(TestCase):
         self.assertIn('hover:bg-purple-700', hero.button_style)
 
     def test_invalid_data(self):
-        """HU-054 | ESCENARIO 2 | A | Datos inválidos (título vacío) → formulario inválido"""
+        """
+        CP-030
+        HU-054 | ESCENARIO 2 | A | Datos inválidos (título vacío) → formulario inválido
+        """
         data = self.get_update_data()
         data['title_text'] = ''
         form = HeroConfigUpdateForm(data=data, instance=self.hero)
@@ -573,25 +661,37 @@ class HeroConfigDeleteFormTest(TestCase):
         self.hero = _create_hero(title_text='Eliminar Slide')
 
     def test_correct_confirmation(self):
-        """HU-055 | ESCENARIO 1 | H | Confirmación correcta → formulario válido"""
+        """
+        CP-031
+        HU-055 | ESCENARIO 1 | H | Confirmación correcta → formulario válido
+        """
         form = HeroConfigDeleteForm(data={'confirm': 'Eliminar Slide'}, slide=self.hero)
         self.assertTrue(form.is_valid())
         self.assertEqual(form.cleaned_data['confirm'], 'eliminar slide')
 
     def test_wrong_confirmation(self):
-        """HU-055 | ESCENARIO 2 | A | Confirmación incorrecta → error"""
+        """
+        CP-032
+        HU-055 | ESCENARIO 2 | A | Confirmación incorrecta → error
+        """
         form = HeroConfigDeleteForm(data={'confirm': 'Otro Nombre'}, slide=self.hero)
         self.assertFalse(form.is_valid())
         self.assertIn('confirm', form.errors)
         self.assertIn('no coincide', str(form.errors['confirm']).lower())
 
     def test_case_insensitive(self):
-        """HU-055 | ESCENARIO 1 | H | Confirmación con mayúsculas/minúsculas mezcladas"""
+        """
+        CP-033
+        HU-055 | ESCENARIO 1 | H | Confirmación con mayúsculas/minúsculas mezcladas
+        """
         form = HeroConfigDeleteForm(data={'confirm': 'eliminar slide'}, slide=self.hero)
         self.assertTrue(form.is_valid())
 
     def test_no_slide_provided(self):
-        """HU-055 | ESCENARIO 3 | E | Slide no especificado → error"""
+        """
+        CP-034
+        HU-055 | ESCENARIO 3 | E | Slide no especificado → error
+        """
         form = HeroConfigDeleteForm(data={'confirm': 'Eliminar Slide'})
         self.assertFalse(form.is_valid())
         self.assertIn('Slide no especificado', str(form.errors.get('confirm', '')))
@@ -608,26 +708,38 @@ class HeroConfigRestoreFormTest(TestCase):
         self.hero = _create_hero(title_text='Restaurar Slide', sort_order=1, is_active=False)
 
     def test_correct_confirmation(self):
-        """HU-056 | ESCENARIO 1 | H | Restauración válida con confirmación marcada y sin conflictos"""
+        """
+        CP-035
+        HU-056 | ESCENARIO 1 | H | Restauración válida con confirmación marcada y sin conflictos
+        """
         HeroConfig.objects.filter(is_active=True, sort_order=1).update(sort_order=999)
         form = HeroConfigRestoreForm(data={'confirm': True}, slide=self.hero)
         self.assertTrue(form.is_valid(), f"Errores: {form.errors}")
 
     def test_confirmation_not_checked(self):
-        """HU-056 | ESCENARIO 3 | A | Confirmación no marcada → error"""
+        """
+        CP-036
+        HU-056 | ESCENARIO 3 | A | Confirmación no marcada → error
+        """
         form = HeroConfigRestoreForm(data={'confirm': False}, slide=self.hero)
         self.assertFalse(form.is_valid())
         self.assertIn('confirmar', str(form.errors.get('__all__', '')).lower())
 
     def test_sort_order_conflict(self):
-        """HU-056 | ESCENARIO 3 | A | Conflicto de orden → error"""
+        """
+        CP-037
+        HU-056 | ESCENARIO 3 | A | Conflicto de orden → error
+        """
         _create_hero(title_text='Activo', sort_order=1)
         form = HeroConfigRestoreForm(data={'confirm': True}, slide=self.hero)
         self.assertFalse(form.is_valid())
         self.assertIn('Ya existe un slide activo', str(form.errors.get('__all__', '')))
 
     def test_no_slide_provided(self):
-        """HU-056 | ESCENARIO 4 | E | Slide no especificado → error"""
+        """
+        CP-038
+        HU-056 | ESCENARIO 4 | E | Slide no especificado → error
+        """
         form = HeroConfigRestoreForm(data={'confirm': True})
         self.assertFalse(form.is_valid())
         self.assertIn('Slide no especificado', str(form.errors.get('__all__', '')))

@@ -11,6 +11,8 @@ Covers:
 - HU-055: HeroConfigDeleteView
 - HU-056: HeroConfigRestoreView
 - HU-057: HeroConfigTrashcanView
+
+Casos de prueba: CP-056 a CP-104
 """
 
 from django.test import TestCase, Client, override_settings
@@ -136,12 +138,18 @@ class HomeViewTest(TestCase):
         self.hero = _create_hero()
 
     def test_home_returns_200(self):
-        """HU-050 | H | Home page loads correctly"""
+        """
+        CP-056
+        HU-050 | H | Home page loads correctly
+        """
         response = self.client.get('/')
         self.assertEqual(response.status_code, 200)
 
     def test_home_includes_hero_slides(self):
-        """HU-050 | H | Loads active slides ordered by sort_order"""
+        """
+        CP-057
+        HU-050 | H | Loads active slides ordered by sort_order
+        """
         response = self.client.get('/')
         self.assertIn('hero_slides', response.context)
         slides = list(response.context['hero_slides'])
@@ -149,43 +157,64 @@ class HomeViewTest(TestCase):
         self.assertEqual(slides[0].title_text, 'Hero Test')
 
     def test_home_includes_featured_collections(self):
-        """HU-050 | H | Loads published collections"""
+        """
+        CP-058
+        HU-050 | H | Loads published collections
+        """
         response = self.client.get('/')
         self.assertIn('featured_collections', response.context)
         self.assertEqual(len(response.context['featured_collections']), 1)
 
     def test_home_includes_latest_products(self):
-        """HU-050 | H | Loads active products"""
+        """
+        CP-059
+        HU-050 | H | Loads active products
+        """
         response = self.client.get('/')
         self.assertIn('latest_products', response.context)
         self.assertEqual(len(response.context['latest_products']), 1)
 
     def test_home_includes_categories(self):
-        """HU-050 | H | Loads categories"""
+        """
+        CP-060
+        HU-050 | H | Loads categories
+        """
         response = self.client.get('/')
         self.assertIn('categories', response.context)
         self.assertEqual(len(response.context['categories']), 1)
 
     def test_home_no_active_slides(self):
-        """HU-050-ALT-1: No active slides -> empty context"""
+        """
+        CP-061
+        HU-050-ALT-1: No active slides -> empty context
+        """
         HeroConfig.objects.all().delete()
         response = self.client.get('/')
         self.assertEqual(len(response.context['hero_slides']), 0)
 
     def test_home_no_collections(self):
-        """HU-050-ALT-2: No collections -> section hidden"""
+        """
+        CP-062
+        HU-050-ALT-2: No collections -> section hidden
+        """
         Collection.objects.all().delete()
         response = self.client.get('/')
         self.assertEqual(len(response.context['featured_collections']), 0)
 
     def test_home_no_products(self):
-        """HU-050-ALT-3: No products -> section hidden"""
+        """
+        CP-063
+        HU-050-ALT-3: No products -> section hidden
+        """
         Product.objects.all().delete()
         response = self.client.get('/')
         self.assertEqual(len(response.context['latest_products']), 0)
 
     def test_home_slides_order_by_sort_order(self):
-        """HU-050 | H | Slides ordered by sort_order"""
+        """
+        CP-064
+        HU-050 | H | Slides ordered by sort_order
+        """
         _create_hero(title_text='Segundo', sort_order=1)
         _create_hero(title_text='Cero', sort_order=0)
         response = self.client.get('/')
@@ -204,7 +233,10 @@ class ContactViewTest(TestCase):
         self.client = Client()
 
     def test_contact_get_returns_200(self):
-        """HU-051 | GET | Displays contact form"""
+        """
+        CP-065
+        HU-051 | GET | Displays contact form
+        """
         response = self.client.get(reverse(CORE_CONTACT))
         self.assertEqual(response.status_code, 200)
         self.assertIsInstance(response.context['form'], ContactForm)
@@ -223,7 +255,10 @@ class ContactSubmitViewTest(TestCase):
         }
 
     def test_get_redirects_to_contact(self):
-        """HU-051 | SCENARIO 1 | E | GET redirects to contact form"""
+        """
+        CP-066
+        HU-051 | SCENARIO 1 | E | GET redirects to contact form
+        """
         response = self.client.get(reverse(CORE_CONTACT_SUBMIT))
         self.assertRedirects(response, reverse(CORE_CONTACT))
 
@@ -232,7 +267,10 @@ class ContactSubmitViewTest(TestCase):
         SITE_URL='http://testserver',
     )
     def test_valid_form_sends_emails_and_redirects(self):
-        """HU-051 | SCENARIO 2 | H | Valid form sends emails and redirects to success"""
+        """
+        CP-067
+        HU-051 | SCENARIO 2 | H | Valid form sends emails and redirects to success
+        """
         response = self.client.post(reverse(CORE_CONTACT_SUBMIT), data=self.valid_data)
 
         self.assertEqual(len(mail.outbox), 2)
@@ -247,7 +285,10 @@ class ContactSubmitViewTest(TestCase):
         self.assertRedirects(response, reverse(CORE_CONTACT_SUCCESS))
 
     def test_invalid_form_redirects_with_errors(self):
-        """HU-051 | SCENARIO 4 | A | Invalid form redirects with errors"""
+        """
+        CP-068
+        HU-051 | SCENARIO 4 | A | Invalid form redirects with errors
+        """
         data = self.valid_data.copy()
         data['email'] = 'invalido'
         data['name'] = ''
@@ -265,7 +306,10 @@ class ContactSubmitViewTest(TestCase):
     )
     @patch('apps.core.views.EmailMultiAlternatives.send')
     def test_email_failure_shows_error(self, mock_send):
-        """HU-051 | SCENARIO 3 | E | Email failure shows error message"""
+        """
+        CP-069
+        HU-051 | SCENARIO 3 | E | Email failure shows error message
+        """
         mock_send.side_effect = Exception("SMTP connection error")
 
         response = self.client.post(reverse(CORE_CONTACT_SUBMIT), data=self.valid_data)
@@ -283,7 +327,10 @@ class ContactSuccessViewTest(TestCase):
         self.client = Client()
 
     def test_success_page_returns_200(self):
-        """HU-051 | H | Success page loads correctly"""
+        """
+        CP-070
+        HU-051 | H | Success page loads correctly
+        """
         response = self.client.get(reverse(CORE_CONTACT_SUCCESS))
         self.assertEqual(response.status_code, 200)
 
@@ -302,31 +349,46 @@ class StaffLoginViewTest(TestCase):
         self.delivery_user = _create_test_user(username='delivery', is_delivery=True)
 
     def test_login_page_accessible(self):
-        """HU-001 | H | Login page accessible without authentication"""
+        """
+        CP-071
+        HU-001 | H | Login page accessible without authentication
+        """
         self.client.logout()
         response = self.client.get(reverse(CORE_STAFF_LOGIN))
         self.assertEqual(response.status_code, 200)
 
     def test_staff_redirected_to_dashboard(self):
-        """HU-001 | SCENARIO 1 | H | Staff login redirects to dashboard"""
+        """
+        CP-072
+        HU-001 | SCENARIO 1 | H | Staff login redirects to dashboard
+        """
         self.client.login(username='staff', password='pass1234')
         response = self.client.get(reverse(CORE_STAFF_LOGIN))
         self.assertRedirects(response, reverse(BACKOFFICE_DASHBOARD))
 
     def test_delivery_redirected_to_dashboard(self):
-        """HU-001 | SCENARIO 2 | H | Delivery login redirects to dashboard"""
+        """
+        CP-073
+        HU-001 | SCENARIO 2 | H | Delivery login redirects to dashboard
+        """
         self.client.login(username='delivery', password='pass1234')
         response = self.client.get(reverse(CORE_STAFF_LOGIN))
         self.assertRedirects(response, reverse(BACKOFFICE_DASHBOARD))
 
     def test_normal_user_redirected_to_catalog(self):
-        """HU-003 | SCENARIO 3 | E | Normal user redirected to catalog"""
+        """
+        CP-074
+        HU-003 | SCENARIO 3 | E | Normal user redirected to catalog
+        """
         self.client.login(username='normal', password='pass1234')
         response = self.client.get(reverse(CORE_STAFF_LOGIN))
         self.assertRedirects(response, reverse(PRODUCTS_CATALOG))
 
     def test_inactive_user_error(self):
-        """HU-001 | SCENARIO 4 | E | Inactive user shows error"""
+        """
+        CP-075
+        HU-001 | SCENARIO 4 | E | Inactive user shows error
+        """
         _create_test_user(username='inactive', is_staff=True, is_active=False)
         response = self.client.post(reverse(CORE_STAFF_LOGIN), data={
             'username': 'inactive',
@@ -336,7 +398,10 @@ class StaffLoginViewTest(TestCase):
         self.assertIn('inactiva', response.content.decode().lower())
 
     def test_wrong_credentials_error(self):
-        """HU-001 | SCENARIO 3 | E | Wrong credentials show error"""
+        """
+        CP-076
+        HU-001 | SCENARIO 3 | E | Wrong credentials show error
+        """
         response = self.client.post(reverse(CORE_STAFF_LOGIN), data={
             'username': 'staff',
             'password': 'wrongpass'
@@ -362,26 +427,38 @@ class HeroConfigListViewTest(TestCase):
         self.hero2 = _create_hero(title_text='Segundo', sort_order=1)
 
     def test_list_active_slides(self):
-        """HU-052 | SCENARIO 1 | H | Lists active slides"""
+        """
+        CP-077
+        HU-052 | SCENARIO 1 | H | Lists active slides
+        """
         response = self.client.get(reverse(CORE_HERO_LIST))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.context['hero_slides']), 2)
 
     def test_list_excludes_inactive(self):
-        """HU-052 | SCENARIO 1 | H | Excludes inactive slides"""
+        """
+        CP-078
+        HU-052 | SCENARIO 1 | H | Excludes inactive slides
+        """
         _create_hero(title_text='Inactivo', is_active=False)
         response = self.client.get(reverse(CORE_HERO_LIST))
         self.assertEqual(len(response.context['hero_slides']), 2)
 
     def test_list_sorted_by_sort_order(self):
-        """HU-052 | H | Sorted by sort_order"""
+        """
+        CP-079
+        HU-052 | H | Sorted by sort_order
+        """
         response = self.client.get(reverse(CORE_HERO_LIST))
         slides = list(response.context['hero_slides'])
         self.assertEqual(slides[0].sort_order, 0)
         self.assertEqual(slides[1].sort_order, 1)
 
     def test_list_requires_permission(self):
-        """HU-052 | SCENARIO 2 | E | No permission redirects to login"""
+        """
+        CP-080
+        HU-052 | SCENARIO 2 | E | No permission redirects to login
+        """
         self.client.logout()
         normal_user = _create_test_user(username='normal', is_staff=False)
         self.client.force_login(normal_user)
@@ -389,7 +466,10 @@ class HeroConfigListViewTest(TestCase):
         self.assertEqual(response.status_code, 302)
 
     def test_list_context_headers(self):
-        """HU-052 | H | Includes headers in context"""
+        """
+        CP-081
+        HU-052 | H | Includes headers in context
+        """
         response = self.client.get(reverse(CORE_HERO_LIST))
         self.assertIn('headers', response.context)
         self.assertIn('rows', response.context)
@@ -444,12 +524,18 @@ class HeroConfigCreateViewTest(TestCase):
         }
 
     def test_get_create_form(self):
-        """HU-053 | GET | Displays create form"""
+        """
+        CP-082
+        HU-053 | GET | Displays create form
+        """
         response = self.client.get(reverse(CORE_HERO_CREATE))
         self.assertEqual(response.status_code, 200)
 
     def test_create_valid_slide(self):
-        """HU-053 | SCENARIO 1 | H | Valid slide creation"""
+        """
+        CP-083
+        HU-053 | SCENARIO 1 | H | Valid slide creation
+        """
         data = self.get_valid_data()
         response = self.client.post(reverse(CORE_HERO_CREATE), data=data)
 
@@ -460,7 +546,10 @@ class HeroConfigCreateViewTest(TestCase):
         self.assertEqual(hero.title_text, 'Nuevo Slide')
 
     def test_create_duplicate_sort_order(self):
-        """HU-053 | SCENARIO 2 | A | Duplicate sort_order shows error"""
+        """
+        CP-084
+        HU-053 | SCENARIO 2 | A | Duplicate sort_order shows error
+        """
         _create_hero(sort_order=0)
         data = self.get_valid_data()
         data['sort_order'] = 0
@@ -470,7 +559,10 @@ class HeroConfigCreateViewTest(TestCase):
         self.assertEqual(HeroConfig.objects.count(), 1)
 
     def test_create_empty_title(self):
-        """HU-053 | SCENARIO 2 | A | Empty title shows error"""
+        """
+        CP-085
+        HU-053 | SCENARIO 2 | A | Empty title shows error
+        """
         data = self.get_valid_data()
         data['title_text'] = ''
         response = self.client.post(reverse(CORE_HERO_CREATE), data=data)
@@ -479,7 +571,10 @@ class HeroConfigCreateViewTest(TestCase):
         self.assertEqual(HeroConfig.objects.count(), 0)
 
     def test_create_requires_permission(self):
-        """HU-053 | SCENARIO 3 | E | No permission redirects"""
+        """
+        CP-086
+        HU-053 | SCENARIO 3 | E | No permission redirects
+        """
         self.client.logout()
         normal_user = _create_test_user(username='normal', is_staff=False)
         self.client.force_login(normal_user)
@@ -537,12 +632,18 @@ class HeroConfigUpdateViewTest(TestCase):
         }
 
     def test_get_update_form(self):
-        """HU-054 | GET | Displays update form"""
+        """
+        CP-087
+        HU-054 | GET | Displays update form
+        """
         response = self.client.get(reverse(CORE_HERO_EDIT, kwargs={'pk': self.hero.pk}))
         self.assertEqual(response.status_code, 200)
 
     def test_update_valid_slide(self):
-        """HU-054 | SCENARIO 1 | H | Valid slide update"""
+        """
+        CP-088
+        HU-054 | SCENARIO 1 | H | Valid slide update
+        """
         data = self.get_valid_update_data()
         response = self.client.post(
             reverse(CORE_HERO_EDIT, kwargs={'pk': self.hero.pk}),
@@ -556,7 +657,10 @@ class HeroConfigUpdateViewTest(TestCase):
         self.assertEqual(self.hero.section_height, '90vh')
 
     def test_update_empty_title(self):
-        """HU-054 | SCENARIO 2 | A | Empty title shows error"""
+        """
+        CP-089
+        HU-054 | SCENARIO 2 | A | Empty title shows error
+        """
         data = self.get_valid_update_data()
         data['title_text'] = ''
         response = self.client.post(
@@ -569,12 +673,18 @@ class HeroConfigUpdateViewTest(TestCase):
         self.assertEqual(self.hero.title_text, 'Original')
 
     def test_update_nonexistent_slide(self):
-        """HU-054 | SCENARIO 4 | E | Nonexistent slide returns 404"""
+        """
+        CP-090
+        HU-054 | SCENARIO 4 | E | Nonexistent slide returns 404
+        """
         response = self.client.get(reverse(CORE_HERO_EDIT, kwargs={'pk': 9999}))
         self.assertEqual(response.status_code, 404)
 
     def test_update_requires_permission(self):
-        """HU-054 | SCENARIO 3 | E | No permission redirects"""
+        """
+        CP-091
+        HU-054 | SCENARIO 3 | E | No permission redirects
+        """
         self.client.logout()
         response = self.client.get(reverse(CORE_HERO_EDIT, kwargs={'pk': self.hero.pk}))
         self.assertEqual(response.status_code, 302)
@@ -596,12 +706,18 @@ class HeroConfigDeleteViewTest(TestCase):
         self.hero = _create_hero(title_text='Eliminar Slide')
 
     def test_get_delete_confirmation(self):
-        """HU-055 | GET | Displays delete confirmation page"""
+        """
+        CP-092
+        HU-055 | GET | Displays delete confirmation page
+        """
         response = self.client.get(reverse(CORE_HERO_DELETE, kwargs={'pk': self.hero.pk}))
         self.assertEqual(response.status_code, 200)
 
     def test_delete_with_correct_confirmation(self):
-        """HU-055 | SCENARIO 1 | H | Correct confirmation performs soft delete"""
+        """
+        CP-093
+        HU-055 | SCENARIO 1 | H | Correct confirmation performs soft delete
+        """
         response = self.client.post(
             reverse(CORE_HERO_DELETE, kwargs={'pk': self.hero.pk}),
             data={'confirm': 'Eliminar Slide'}
@@ -614,7 +730,10 @@ class HeroConfigDeleteViewTest(TestCase):
         self.assertIsNotNone(self.hero.deleted_at)
 
     def test_delete_wrong_confirmation(self):
-        """HU-055 | SCENARIO 2 | A | Wrong confirmation returns to form"""
+        """
+        CP-094
+        HU-055 | SCENARIO 2 | A | Wrong confirmation returns to form
+        """
         response = self.client.post(
             reverse(CORE_HERO_DELETE, kwargs={'pk': self.hero.pk}),
             data={'confirm': 'Otro Nombre'}
@@ -626,7 +745,10 @@ class HeroConfigDeleteViewTest(TestCase):
         self.assertTrue(self.hero.is_active)
 
     def test_delete_case_insensitive_confirmation(self):
-        """HU-055 | SCENARIO 1 | H | Case-insensitive confirmation works"""
+        """
+        CP-095
+        HU-055 | SCENARIO 1 | H | Case-insensitive confirmation works
+        """
         response = self.client.post(
             reverse(CORE_HERO_DELETE, kwargs={'pk': self.hero.pk}),
             data={'confirm': 'eliminar slide'}
@@ -637,7 +759,10 @@ class HeroConfigDeleteViewTest(TestCase):
         self.assertFalse(self.hero.is_active)
 
     def test_delete_requires_permission(self):
-        """HU-055 | SCENARIO 3 | E | No permission redirects"""
+        """
+        CP-096
+        HU-055 | SCENARIO 3 | E | No permission redirects
+        """
         self.client.logout()
         response = self.client.get(reverse(CORE_HERO_DELETE, kwargs={'pk': self.hero.pk}))
         self.assertEqual(response.status_code, 302)
@@ -659,12 +784,18 @@ class HeroConfigRestoreViewTest(TestCase):
         self.hero = _create_hero(title_text='Restaurar Slide', sort_order=1, is_active=False)
 
     def test_get_restore_page(self):
-        """HU-056 | GET | Displays restore page"""
+        """
+        CP-097
+        HU-056 | GET | Displays restore page
+        """
         response = self.client.get(reverse(CORE_HERO_RESTORE, kwargs={'pk': self.hero.pk}))
         self.assertEqual(response.status_code, 200)
 
     def test_restore_with_valid_confirmation(self):
-        """HU-056 | SCENARIO 1 | H | Valid confirmation restores slide"""
+        """
+        CP-098
+        HU-056 | SCENARIO 1 | H | Valid confirmation restores slide
+        """
         response = self.client.post(
             reverse(CORE_HERO_RESTORE, kwargs={'pk': self.hero.pk}),
             data={'confirm': True}
@@ -677,7 +808,10 @@ class HeroConfigRestoreViewTest(TestCase):
         self.assertIsNone(self.hero.deleted_at)
 
     def test_restore_without_confirmation(self):
-        """HU-056 | SCENARIO 3 | A | No confirmation returns to form"""
+        """
+        CP-099
+        HU-056 | SCENARIO 3 | A | No confirmation returns to form
+        """
         response = self.client.post(
             reverse(CORE_HERO_RESTORE, kwargs={'pk': self.hero.pk}),
             data={'confirm': False}
@@ -689,7 +823,10 @@ class HeroConfigRestoreViewTest(TestCase):
         self.assertFalse(self.hero.is_active)
 
     def test_restore_sort_order_conflict(self):
-        """HU-056 | SCENARIO 3 | A | Sort order conflict returns to form"""
+        """
+        CP-100
+        HU-056 | SCENARIO 3 | A | Sort order conflict returns to form
+        """
         _create_hero(title_text='Activo', sort_order=1)
 
         response = self.client.post(
@@ -702,12 +839,18 @@ class HeroConfigRestoreViewTest(TestCase):
         self.assertFalse(self.hero.is_active)
 
     def test_restore_nonexistent_slide(self):
-        """HU-056 | E | Nonexistent slide returns 404"""
+        """
+        CP-101
+        HU-056 | E | Nonexistent slide returns 404
+        """
         response = self.client.get(reverse(CORE_HERO_RESTORE, kwargs={'pk': 9999}))
         self.assertEqual(response.status_code, 404)
 
     def test_restore_requires_permission(self):
-        """HU-056 | SCENARIO 2 | E | No permission redirects"""
+        """
+        CP-102
+        HU-056 | SCENARIO 2 | E | No permission redirects
+        """
         self.client.logout()
         response = self.client.get(reverse(CORE_HERO_RESTORE, kwargs={'pk': self.hero.pk}))
         self.assertEqual(response.status_code, 302)
@@ -730,7 +873,10 @@ class HeroConfigTrashcanViewTest(TestCase):
         self.hero2 = _create_hero(title_text='Activo', is_active=True)
 
     def test_trashcan_shows_inactive_slides(self):
-        """HU-057 | SCENARIO 1 | H | Shows only inactive slides"""
+        """
+        CP-103
+        HU-057 | SCENARIO 1 | H | Shows only inactive slides
+        """
         response = self.client.get(reverse(CORE_HERO_TRASHCAN))
         self.assertEqual(response.status_code, 200)
 
@@ -739,20 +885,29 @@ class HeroConfigTrashcanViewTest(TestCase):
         self.assertEqual(slides[0].title_text, 'Eliminado 1')
 
     def test_trashcan_empty(self):
-        """HU-057 | SCENARIO 3 | A | Empty trashcan"""
+        """
+        CP-104
+        HU-057 | SCENARIO 3 | A | Empty trashcan
+        """
         HeroConfig.all_objects.filter(is_active=False).delete()
         response = self.client.get(reverse(CORE_HERO_TRASHCAN))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.context['hero_slides']), 0)
 
     def test_trashcan_context_headers(self):
-        """HU-057 | H | Includes headers in context"""
+        """
+        CP-105
+        HU-057 | H | Includes headers in context
+        """
         response = self.client.get(reverse(CORE_HERO_TRASHCAN))
         self.assertIn('headers', response.context)
         self.assertIn('rows', response.context)
 
     def test_trashcan_requires_permission(self):
-        """HU-057 | SCENARIO 2 | E | No permission redirects"""
+        """
+        CP-106
+        HU-057 | SCENARIO 2 | E | No permission redirects
+        """
         self.client.logout()
         response = self.client.get(reverse(CORE_HERO_TRASHCAN))
         self.assertEqual(response.status_code, 302)
@@ -771,7 +926,10 @@ class StaffLogoutViewTest(TestCase):
         self.client.force_login(self.user)
 
     def test_logout_redirects_to_catalog(self):
-        """Logout redirects to catalog"""
+        """
+        CP-107
+        Logout redirects to catalog
+        """
         response = self.client.post(reverse(CORE_STAFF_LOGOUT))
         self.assertRedirects(response, reverse(PRODUCTS_CATALOG))
 
@@ -789,22 +947,34 @@ class StaticPagesViewTest(TestCase):
         self.client = Client()
 
     def test_about_page(self):
-        """About page"""
+        """
+        CP-108
+        About page
+        """
         response = self.client.get(reverse(CORE_ABOUT))
         self.assertEqual(response.status_code, 200)
 
     def test_returns_page(self):
-        """Returns policy page"""
+        """
+        CP-109
+        Returns policy page
+        """
         response = self.client.get(reverse(CORE_RETURNS_POLICY))
         self.assertEqual(response.status_code, 200)
 
     def test_privacy_page(self):
-        """Privacy policy page"""
+        """
+        CP-110
+        Privacy policy page
+        """
         response = self.client.get(reverse(CORE_PRIVACY_POLICY))
         self.assertEqual(response.status_code, 200)
 
     def test_terms_page(self):
-        """Terms and conditions page"""
+        """
+        CP-111
+        Terms and conditions page
+        """
         response = self.client.get(reverse(CORE_TERMS))
         self.assertEqual(response.status_code, 200)
 
@@ -820,7 +990,10 @@ class PWAManifestViewTest(TestCase):
         self.client = Client()
 
     def test_manifest_returns_json(self):
-        """PWA manifest returns JSON"""
+        """
+        CP-112
+        PWA manifest returns JSON
+        """
         response = self.client.get(reverse('pwa_manifest'))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response['Content-Type'], 'application/json')
