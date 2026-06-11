@@ -10,7 +10,6 @@ BACKOFFICE_IMPORTERS_DASHBOARD = 'backoffice:importers_dashboard'
 # Core URLs
 CORE_ABOUT = 'core:about'
 CORE_CONTACT = 'core:contact'
-CORE_CONTACT_SUBMIT = 'core:contact_submit'
 CORE_CONTACT_SUCCESS = 'core:contact_success'
 CORE_RETURNS_POLICY = 'core:returns_policy'
 CORE_PRIVACY_POLICY = 'core:privacy_policy'

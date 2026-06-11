@@ -169,85 +169,78 @@ def about(request):
     return render(request, TEMPLATE_ABOUT)
 
 
-@require_GET
+@require_http_methods(['GET', 'POST'])
 def contact(request):
-    """Contact page view with form."""
+    """
+    HU-051: Página de contacto con manejo de formulario.
+    GET: Muestra formulario vacío.
+    POST: Procesa el formulario.
+    """
+    # HU-051 | ESCENARIO 1 | E | Método GET muestra formulario
+    if request.method == 'POST':
+        form = ContactForm(request.POST)
+
+        # HU-051 | ESCENARIO 2 | H | Formulario válido, procesar envío
+        if form.is_valid():
+            name = form.cleaned_data[CONTACT_FIELD_NAME]
+            email = form.cleaned_data[CONTACT_FIELD_EMAIL]
+            phone = form.cleaned_data[CONTACT_FIELD_PHONE]
+            subject = form.cleaned_data[CONTACT_FIELD_SUBJECT]
+            message = form.cleaned_data[CONTACT_FIELD_MESSAGE]
+
+            context = {
+                CONTACT_FIELD_NAME: name,
+                CONTACT_FIELD_EMAIL: email,
+                CONTACT_FIELD_PHONE: phone,
+                CONTACT_FIELD_SUBJECT: subject,
+                CONTACT_FIELD_MESSAGE: message,
+                'site_url': settings.SITE_URL,
+            }
+
+            try:
+                # HU-051 | ESCENARIO 2A | H | Enviar notificación al administrador
+                admin_subject = f"{EMAIL_SUBJECT_PREFIX}{subject}"
+                admin_html = render_to_string('emails/contact/admin_notification.html', context)
+                admin_text = render_to_string('emails/contact/admin_notification.txt', context)
+
+                admin_email = EmailMultiAlternatives(
+                    subject=admin_subject,
+                    body=admin_text,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    to=[settings.DEFAULT_FROM_EMAIL],
+                )
+                admin_email.attach_alternative(admin_html, "text/html")
+                admin_email.send()
+
+                # HU-051 | ESCENARIO 2B | H | Enviar confirmación al usuario
+                user_html = render_to_string('emails/contact/user_confirmation.html', context)
+                user_text = render_to_string('emails/contact/user_confirmation.txt', context)
+
+                user_email = EmailMultiAlternatives(
+                    subject=EMAIL_USER_SUBJECT,
+                    body=user_text,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    to=[email],
+                )
+                user_email.attach_alternative(user_html, "text/html")
+                user_email.send(fail_silently=True)
+
+                # HU-051 | ESCENARIO 2C | H | Mensaje de éxito y redirección
+                messages.success(request, CONTACT_SUCCESS_MESSAGE)
+                return redirect(CORE_CONTACT_SUCCESS)
+
+            # HU-051 | ESCENARIO 3 | E | Error al enviar emails
+            except Exception as e:
+                logger.exception(f"Error al enviar correo de contacto: {str(e)}")
+                messages.error(request, CONTACT_ERROR_MESSAGE)
+                return render(request, TEMPLATE_CONTACT, {'form': form})
+
+        # HU-051 | ESCENARIO 4 | A | Formulario inválido, mostrar errores campo por campo
+        # El template se encarga de mostrar form.errors junto a cada campo
+        return render(request, TEMPLATE_CONTACT, {'form': form})
+
     form = ContactForm()
     return render(request, TEMPLATE_CONTACT, {'form': form})
-
-
-@require_http_methods(['GET', 'POST'])
-def contact_submit(request):
-    """Handle contact form submission and send emails."""
-    # HU-051 | ESCENARIO 1 | E | Método GET redirige al formulario
-    if request.method != 'POST':
-        return redirect(CORE_CONTACT)
-
-    form = ContactForm(request.POST)
-
-    # HU-051 | ESCENARIO 2 | H | Formulario válido, procesar envío
-    if form.is_valid():
-        name = form.cleaned_data[CONTACT_FIELD_NAME]
-        email = form.cleaned_data[CONTACT_FIELD_EMAIL]
-        phone = form.cleaned_data[CONTACT_FIELD_PHONE]
-        subject = form.cleaned_data[CONTACT_FIELD_SUBJECT]
-        message = form.cleaned_data[CONTACT_FIELD_MESSAGE]
-
-        context = {
-            CONTACT_FIELD_NAME: name,
-            CONTACT_FIELD_EMAIL: email,
-            CONTACT_FIELD_PHONE: phone,
-            CONTACT_FIELD_SUBJECT: subject,
-            CONTACT_FIELD_MESSAGE: message,
-            'site_url': settings.SITE_URL,
-        }
-
-        try:
-            # HU-051 | ESCENARIO 2A | H | Enviar notificación al administrador
-            admin_subject = f"{EMAIL_SUBJECT_PREFIX}{subject}"
-            admin_html = render_to_string('emails/contact/admin_notification.html', context)
-            admin_text = render_to_string('emails/contact/admin_notification.txt', context)
-
-            admin_email = EmailMultiAlternatives(
-                subject=admin_subject,
-                body=admin_text,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                to=[settings.DEFAULT_FROM_EMAIL],
-            )
-            admin_email.attach_alternative(admin_html, "text/html")
-            admin_email.send()
-
-            # HU-051 | ESCENARIO 2B | H | Enviar confirmación al usuario
-            user_html = render_to_string('emails/contact/user_confirmation.html', context)
-            user_text = render_to_string('emails/contact/user_confirmation.txt', context)
-
-            user_email = EmailMultiAlternatives(
-                subject=EMAIL_USER_SUBJECT,
-                body=user_text,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                to=[email],
-            )
-            user_email.attach_alternative(user_html, "text/html")
-            user_email.send(fail_silently=True)
-
-            # HU-051 | ESCENARIO 2C | H | Mensaje de éxito y redirección
-            messages.success(request, CONTACT_SUCCESS_MESSAGE)
-            return redirect(CORE_CONTACT_SUCCESS)
-
-        # HU-051 | ESCENARIO 3 | E | Error al enviar emails
-        except Exception as e:
-            logger.exception(f"Error al enviar correo de contacto: {str(e)}")
-            messages.error(request, CONTACT_ERROR_MESSAGE)
-            return redirect(CORE_CONTACT)
-
-    # HU-051 | ESCENARIO 4 | A | Formulario inválido, mostrar errores
-    else:
-        # HU-051 | ESCENARIO 4A | A | Mostrar errores campo por campo
-        for field, errors in form.errors.items():
-            for error in errors:
-                field_label = form.fields[field].label if field in form.fields else field
-                messages.error(request, f'{field_label}: {error}')
-        return redirect(CORE_CONTACT)
 
 
 @require_GET

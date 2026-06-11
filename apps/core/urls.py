@@ -15,7 +15,6 @@ admin_patterns = [
 urlpatterns = [
     path('nosotros/', views.about, name='about'),
     path('contacto/', views.contact, name='contact'),
-    path('contacto/submit/', views.contact_submit, name='contact_submit'),
     path('contacto/success/', views.contact_success, name='contact_success'),
     path('cambios/', views.returns_policy, name='returns_policy'),
     path('privacidad/', views.privacy_policy, name='privacy_policy'),
