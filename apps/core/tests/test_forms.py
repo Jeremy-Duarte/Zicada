@@ -18,6 +18,7 @@ from django.test import TestCase
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from unittest.mock import patch, Mock
+from django.http import HttpRequest
 from decimal import Decimal
 
 from apps.core.forms import (
@@ -35,6 +36,10 @@ from apps.core.url_names import (
     PRODUCTS_CATALOG,
     PRODUCTS_COLLECTION_DETAIL,
     PRODUCTS_DETAIL,
+)
+from apps.core.constants import (
+    LOGIN_ERROR_MESSAGE,
+    LOGIN_INACTIVE_MESSAGE,
 )
 from apps.products.models import Category, Product, Collection
 
@@ -367,7 +372,7 @@ class StaffLoginFormTest(TestCase):
         self.user_normal = _create_test_user(username='normal', is_staff=False)
         self.user_inactive = _create_test_user(username='inactive', is_staff=True, is_active=False)
 
-        self.request = Mock()
+        self.request = Mock(spec=HttpRequest)
         self.request.POST = {}
 
     @patch('django.contrib.auth.forms.authenticate')
@@ -381,7 +386,9 @@ class StaffLoginFormTest(TestCase):
             request=self.request,
             data={'username': 'staff', 'password': 'pass1234'}
         )
+        
         self.assertTrue(form.is_valid())
+        self.assertEqual(form.user_cache, self.user_staff)
 
     @patch('django.contrib.auth.forms.authenticate')
     def test_delivery_user_allowed(self, mock_auth):
@@ -394,7 +401,9 @@ class StaffLoginFormTest(TestCase):
             request=self.request,
             data={'username': 'delivery', 'password': 'pass1234'}
         )
+        
         self.assertTrue(form.is_valid())
+        self.assertEqual(form.user_cache, self.user_delivery)
 
     @patch('django.contrib.auth.forms.authenticate')
     def test_normal_user_denied(self, mock_auth):
@@ -407,8 +416,15 @@ class StaffLoginFormTest(TestCase):
             request=self.request,
             data={'username': 'normal', 'password': 'pass1234'}
         )
+        
         self.assertFalse(form.is_valid())
-        self.assertIn('No tienes permisos', str(form.errors.get('__all__', [])))
+        
+        # Verificar mensaje de error de permisos
+        non_field_errors = form.non_field_errors()
+        self.assertTrue(
+            any('permisos' in str(error).lower() for error in non_field_errors),
+            f"Mensaje esperado sobre permisos no encontrado en: {non_field_errors}"
+        )
 
     @patch('django.contrib.auth.forms.authenticate')
     def test_inactive_user_denied(self, mock_auth):
@@ -421,8 +437,14 @@ class StaffLoginFormTest(TestCase):
             request=self.request,
             data={'username': 'inactive', 'password': 'pass1234'}
         )
+        
         self.assertFalse(form.is_valid())
-        self.assertIn('inactiva', str(form.errors.get('__all__', [])).lower())
+        
+        non_field_errors = form.non_field_errors()
+        self.assertTrue(
+            any(LOGIN_INACTIVE_MESSAGE.lower() in str(error).lower() for error in non_field_errors),
+            f"Mensaje '{LOGIN_INACTIVE_MESSAGE}' no encontrado en: {non_field_errors}"
+        )
 
     @patch('django.contrib.auth.forms.authenticate')
     def test_wrong_credentials(self, mock_auth):
@@ -435,8 +457,67 @@ class StaffLoginFormTest(TestCase):
             request=self.request,
             data={'username': 'staff', 'password': 'wrong'}
         )
+        
         self.assertFalse(form.is_valid())
-        self.assertIn('usuario y contraseña', str(form.errors.get('__all__', [])).lower())
+        
+        # Verificar mensaje de error de credenciales usando constante
+        non_field_errors = form.non_field_errors()
+        self.assertTrue(
+            any(LOGIN_ERROR_MESSAGE.lower() in str(error).lower() for error in non_field_errors),
+            f"Mensaje '{LOGIN_ERROR_MESSAGE}' no encontrado en: {non_field_errors}"
+        )
+
+    @patch('django.contrib.auth.forms.authenticate')
+    def test_empty_username(self, mock_auth):
+        """
+        CP-113
+        HU-001 | SCENARIO 3 | E | Username vacío muestra error
+        """
+        mock_auth.return_value = None
+        form = StaffLoginForm(
+            request=self.request,
+            data={'username': '', 'password': 'pass1234'}
+        )
+        
+        self.assertFalse(form.is_valid())
+        self.assertIn('username', form.errors)
+        self.assertIn('requerido', str(form.errors['username']).lower())
+
+    @patch('django.contrib.auth.forms.authenticate')
+    def test_empty_password(self, mock_auth):
+        """
+        CP-114
+        HU-001 | SCENARIO 3 | E | Password vacío muestra error
+        """
+        mock_auth.return_value = None
+        form = StaffLoginForm(
+            request=self.request,
+            data={'username': 'staff', 'password': ''}
+        )
+        
+        self.assertFalse(form.is_valid())
+        self.assertIn('password', form.errors)
+        self.assertIn('requerido', str(form.errors['password']).lower())
+
+    @patch('django.contrib.auth.forms.authenticate')
+    def test_nonexistent_user(self, mock_auth):
+        """
+        CP-115
+        HU-001 | SCENARIO 3 | E | Usuario no existente
+        """
+        mock_auth.return_value = None
+        form = StaffLoginForm(
+            request=self.request,
+            data={'username': 'nonexistent', 'password': 'pass1234'}
+        )
+        
+        self.assertFalse(form.is_valid())
+        
+        non_field_errors = form.non_field_errors()
+        self.assertTrue(
+            any(LOGIN_ERROR_MESSAGE.lower() in str(error).lower() for error in non_field_errors),
+            f"Mensaje '{LOGIN_ERROR_MESSAGE}' no encontrado en: {non_field_errors}"
+        )
 
 
 # =============================================================================

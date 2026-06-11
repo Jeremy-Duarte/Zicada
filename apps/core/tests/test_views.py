@@ -47,6 +47,11 @@ from apps.core.url_names import (
     BACKOFFICE_DASHBOARD,
 )
 
+from apps.core.constants import (
+    LOGIN_ERROR_MESSAGE,
+    LOGIN_INACTIVE_MESSAGE,
+)
+
 User = get_user_model()
 
 
@@ -395,7 +400,7 @@ class StaffLoginViewTest(TestCase):
             'password': 'pass1234'
         })
         self.assertEqual(response.status_code, 200)
-        self.assertIn('inactiva', response.content.decode().lower())
+        self.assertContains(response, LOGIN_INACTIVE_MESSAGE)
 
     def test_wrong_credentials_error(self):
         """
@@ -407,7 +412,7 @@ class StaffLoginViewTest(TestCase):
             'password': 'wrongpass'
         })
         self.assertEqual(response.status_code, 200)
-        self.assertIn('error', response.content.decode().lower())
+        self.assertContains(response, LOGIN_ERROR_MESSAGE)
 
 
 # =============================================================================
