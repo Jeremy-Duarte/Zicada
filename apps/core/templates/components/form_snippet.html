@@ -1,4 +1,21 @@
 {% load static %}
+
+{% if form.non_field_errors %}
+<div class="mb-4 p-4 rounded-lg bg-red-100 text-red-700 border-l-4 border-red-500">
+    {% for error in form.non_field_errors %}
+        <p class="text-sm">{{ error }}</p>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% if messages %}
+    {% for message in messages %}
+        <div class="mb-4 p-4 rounded-lg {% if message.tags == 'error' %}bg-red-100 text-red-700 border-l-4 border-red-500{% elif message.tags == 'success' %}bg-green-100 text-green-700 border-l-4 border-green-500{% else %}bg-blue-100 text-blue-700 border-l-4 border-blue-500{% endif %}">
+            <p class="text-sm">{{ message }}</p>
+        </div>
+    {% endfor %}
+{% endif %}
+
 <div class="space-y-5">
     {% for field in form %}
     <div>

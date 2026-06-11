@@ -33,6 +33,7 @@ from apps.core.url_names import (
     CORE_CONTACT_SUCCESS,
     CORE_HERO_LIST,
     CORE_HERO_TRASHCAN,
+    CORE_STAFF_LOGIN,
     PRODUCTS_CATALOG,
     BACKOFFICE_DASHBOARD,
 )
@@ -73,6 +74,7 @@ from .constants import (
     LOGIN_ERROR_MESSAGE,
     LOGOUT_SUCCESS_MESSAGE,
     LOGIN_WELCOME_MESSAGE,
+    LOGIN_INACTIVE_MESSAGE,
     # Status Labels
     STATUS_ACTIVE_LABEL,
     STATUS_INACTIVE_LABEL,
@@ -273,43 +275,34 @@ def terms(request):
 
 
 class StaffLoginView(LoginView):
-    """
-    HU-001: Inicio de sesión
-    HU-003: Control de acceso por permisos
-    """
     template_name = TEMPLATE_STAFF_LOGIN
     authentication_form = StaffLoginForm
     redirect_authenticated_user = True
 
     def get_success_url(self):
-        # HU-001 | ESCENARIO 1 y 2 | H | Usuario autenticado redirige según rol
         return reverse_lazy(BACKOFFICE_DASHBOARD)
 
     def form_valid(self, form):
-        # HU-001 | ESCENARIO 1 | H | Login exitoso Administrador
-        # HU-001 | ESCENARIO 2 | H | Login exitoso Entregador
         response = super().form_valid(form)
         messages.success(self.request, LOGIN_WELCOME_MESSAGE.format(username=self.request.user.username))
         return response
 
     def form_invalid(self, form):
-        # HU-001 | ESCENARIO 3 | E | Credenciales incorrectas
-        messages.error(self.request, LOGIN_ERROR_MESSAGE)
         return super().form_invalid(form)
 
     def dispatch(self, request, *args, **kwargs):
-        # HU-001 | ESCENARIO 4 | E | Usuario inactivo (manejado por AuthenticationForm)
-        # HU-003 | ESCENARIO 4 | E | Redirección por falta de autenticación
         if request.user.is_authenticated:
+            if not request.user.is_active:
+                messages.error(request, LOGIN_INACTIVE_MESSAGE)
+                return redirect(CORE_STAFF_LOGIN)
+            
             if request.user.is_staff or getattr(request.user, 'is_delivery', False):
-                # HU-003 | ESCENARIO 1 y 2 | H | Acceso permitido según rol
                 return redirect(BACKOFFICE_DASHBOARD)
-            # HU-003 | ESCENARIO 3 | E | Entregador a panel admin (denegado)
             return redirect(PRODUCTS_CATALOG)
         return super().dispatch(request, *args, **kwargs)
 
 
-@require_POST
+@require_http_methods(['GET', 'POST'])
 def staff_logout(request):
     """Staff logout view."""
     logout(request)
