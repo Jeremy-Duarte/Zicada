@@ -300,7 +300,7 @@ def staff_logout(request):
     """Staff logout view."""
     logout(request)
     messages.info(request, LOGOUT_SUCCESS_MESSAGE)
-    return redirect(PRODUCTS_CATALOG)
+    return redirect(CORE_STAFF_LOGIN)
 
 
 class HeroConfigListView(PermissionRequiredMixin, ListView):
