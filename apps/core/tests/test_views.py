@@ -30,7 +30,6 @@ from apps.core.forms import ContactForm
 from apps.core.url_names import (
     CORE_ABOUT,
     CORE_CONTACT,
-    CORE_CONTACT_SUBMIT,
     CORE_CONTACT_SUCCESS,
     CORE_RETURNS_POLICY,
     CORE_PRIVACY_POLICY,
@@ -259,13 +258,14 @@ class ContactSubmitViewTest(TestCase):
             'message': 'Mensaje de prueba.',
         }
 
-    def test_get_redirects_to_contact(self):
+    def test_get_returns_200_with_form(self):
         """
         CP-066
-        HU-051 | SCENARIO 1 | E | GET redirects to contact form
+        HU-051 | SCENARIO 1 | H | GET returns contact page with form
         """
-        response = self.client.get(reverse(CORE_CONTACT_SUBMIT))
-        self.assertRedirects(response, reverse(CORE_CONTACT))
+        response = self.client.get(reverse(CORE_CONTACT))
+        self.assertEqual(response.status_code, 200)
+        self.assertIsInstance(response.context['form'], ContactForm)
 
     @override_settings(
         DEFAULT_FROM_EMAIL='tienda@zicada.com',
@@ -276,7 +276,7 @@ class ContactSubmitViewTest(TestCase):
         CP-067
         HU-051 | SCENARIO 2 | H | Valid form sends emails and redirects to success
         """
-        response = self.client.post(reverse(CORE_CONTACT_SUBMIT), data=self.valid_data)
+        response = self.client.post(reverse(CORE_CONTACT), data=self.valid_data)
 
         self.assertEqual(len(mail.outbox), 2)
 
@@ -289,21 +289,30 @@ class ContactSubmitViewTest(TestCase):
 
         self.assertRedirects(response, reverse(CORE_CONTACT_SUCCESS))
 
-    def test_invalid_form_redirects_with_errors(self):
+    def test_invalid_form_shows_errors(self):
         """
         CP-068
-        HU-051 | SCENARIO 4 | A | Invalid form redirects with errors
+        HU-051 | SCENARIO 4 | A | Invalid form shows errors in template
         """
         data = self.valid_data.copy()
         data['email'] = 'invalido'
         data['name'] = ''
-        response = self.client.post(reverse(CORE_CONTACT_SUBMIT), data=data)
+        
+        response = self.client.post(reverse(CORE_CONTACT), data=data)
+        
+        self.assertEqual(response.status_code, 200)
 
-        self.assertRedirects(response, reverse(CORE_CONTACT))
-
-        messages = list(response.wsgi_request._messages)
-        self.assertTrue(any('obligatorio' in str(m).lower() for m in messages))
-        self.assertTrue(any('valido' in str(m).lower() for m in messages))
+        self.assertTemplateUsed(response, 'contact.html')
+        
+        form = response.context.get('form')
+        self.assertIsNotNone(form)
+        self.assertFalse(form.is_valid())
+        
+        self.assertIn('name', form.errors, f"Error name no encontrado. Errores: {form.errors}")
+        self.assertIn('email', form.errors, f"Error email no encontrado. Errores: {form.errors}")
+        
+        self.assertIn('Por favor ingresa tu nombre', str(form.errors['name']))
+        self.assertIn('correo electrónico válido', str(form.errors['email']).lower())
 
     @override_settings(
         DEFAULT_FROM_EMAIL='tienda@zicada.com',
@@ -317,13 +326,16 @@ class ContactSubmitViewTest(TestCase):
         """
         mock_send.side_effect = Exception("SMTP connection error")
 
-        response = self.client.post(reverse(CORE_CONTACT_SUBMIT), data=self.valid_data)
-
-        self.assertRedirects(response, reverse(CORE_CONTACT))
-
-        messages = list(response.wsgi_request._messages)
-        self.assertTrue(any('error' in str(m).lower() for m in messages))
-
+        response = self.client.post(reverse(CORE_CONTACT), data=self.valid_data)
+        self.assertEqual(response.status_code, 200)
+        
+        messages_list = list(response.context.get('messages', []))
+        self.assertTrue(len(messages_list) > 0, "No se encontraron mensajes de error")
+        self.assertTrue(any('error' in str(m.message).lower() for m in messages_list))
+        
+        form = response.context.get('form')
+        self.assertIsNotNone(form)
+        self.assertEqual(form.cleaned_data.get('name'), 'Juan Perez')
 
 class ContactSuccessViewTest(TestCase):
     """HU-051: Contact success page"""
@@ -338,8 +350,6 @@ class ContactSuccessViewTest(TestCase):
         """
         response = self.client.get(reverse(CORE_CONTACT_SUCCESS))
         self.assertEqual(response.status_code, 200)
-
-
 # =============================================================================
 # TESTS: HU-001 & HU-003 StaffLoginView
 # =============================================================================
