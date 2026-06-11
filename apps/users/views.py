@@ -1,5 +1,5 @@
 from django.urls import reverse_lazy
-from django.contrib.auth.mixins import PermissionRequiredMixin
+from apps.core.crud.mixins import StaffPermissionRequiredMixin
 from django.views.generic import ListView, CreateView, UpdateView, FormView, DetailView
 from django.shortcuts import get_object_or_404, redirect
 from django.contrib import messages
@@ -165,7 +165,7 @@ def get_status_badge(is_active: bool) -> str:
 # USER CRUD VIEWS (HU-038, HU-039, HU-040, HU-041, HU-042)
 # =============================================================================
 
-class UserListView(PermissionRequiredMixin, PaginationMixin, FilterMixin, ListView):
+class UserListView(StaffPermissionRequiredMixin, PaginationMixin, FilterMixin, ListView):
     """
     HU-038: Listar usuarios (admin)
     """
@@ -227,7 +227,7 @@ class UserListView(PermissionRequiredMixin, PaginationMixin, FilterMixin, ListVi
         return context
 
 
-class UserCreateView(PermissionRequiredMixin, CreateView):
+class UserCreateView(StaffPermissionRequiredMixin, CreateView):
     """
     HU-039: Crear usuario (admin)
     """
@@ -256,7 +256,7 @@ class UserCreateView(PermissionRequiredMixin, CreateView):
     # HU-039 | ESCENARIO 3 | E | Correo duplicado (validación en UserCreateForm.clean_email)
 
 
-class UserUpdateView(PermissionRequiredMixin, UpdateView):
+class UserUpdateView(StaffPermissionRequiredMixin, UpdateView):
     """
     HU-040: Editar usuario (admin)
     """
@@ -286,7 +286,7 @@ class UserUpdateView(PermissionRequiredMixin, UpdateView):
     # HU-040 | ESCENARIO 4 | E | Usuario no existe → 404
 
 
-class UserChangePasswordView(PermissionRequiredMixin, FormView):
+class UserChangePasswordView(StaffPermissionRequiredMixin, FormView):
     """
     HU-040 | ESCENARIO 2 | H | Cambiar contraseña (admin)
     """
@@ -320,7 +320,7 @@ class UserChangePasswordView(PermissionRequiredMixin, FormView):
         return super().form_invalid(form)
 
 
-class UserDeleteView(PermissionRequiredMixin, FormView):
+class UserDeleteView(StaffPermissionRequiredMixin, FormView):
     """
     HU-041: Archivar usuario (soft delete)
     """
@@ -363,7 +363,7 @@ class UserDeleteView(PermissionRequiredMixin, FormView):
         return super().form_invalid(form)
 
 
-class UserRestoreView(PermissionRequiredMixin, FormView):
+class UserRestoreView(StaffPermissionRequiredMixin, FormView):
     """
     HU-042: Reincorporar usuario (reactivar)
     """
@@ -404,7 +404,7 @@ class UserRestoreView(PermissionRequiredMixin, FormView):
         return super().form_invalid(form)
 
 
-class UserTrashcanView(PermissionRequiredMixin, PaginationMixin, ListView):
+class UserTrashcanView(StaffPermissionRequiredMixin, PaginationMixin, ListView):
     """
     HU-041 (parte) + HU-042: Ver papelera de usuarios (usuarios archivados)
     """
@@ -443,7 +443,7 @@ class UserTrashcanView(PermissionRequiredMixin, PaginationMixin, ListView):
 # GROUP CRUD VIEWS (Grupos/Roles - no están en HU originales, son soporte)
 # =============================================================================
 
-class GroupListView(PermissionRequiredMixin, PaginationMixin, FilterMixin, ListView):
+class GroupListView(StaffPermissionRequiredMixin, PaginationMixin, FilterMixin, ListView):
     """
     Soporte: Listar grupos/roles (no tiene HU asignada, pero es necesario para HU-039)
     """
@@ -483,7 +483,7 @@ class GroupListView(PermissionRequiredMixin, PaginationMixin, FilterMixin, ListV
         return context
 
 
-class GroupCreateView(PermissionRequiredMixin, CreateView):
+class GroupCreateView(StaffPermissionRequiredMixin, CreateView):
     """Soporte: Crear grupo/rol (no tiene HU asignada)"""
     model = Group
     form_class = GroupCreateForm
@@ -503,7 +503,7 @@ class GroupCreateView(PermissionRequiredMixin, CreateView):
         return response
 
 
-class GroupUpdateView(PermissionRequiredMixin, UpdateView):
+class GroupUpdateView(StaffPermissionRequiredMixin, UpdateView):
     """Soporte: Editar grupo/rol (no tiene HU asignada)"""
     model = Group
     form_class = GroupUpdateForm
@@ -523,7 +523,7 @@ class GroupUpdateView(PermissionRequiredMixin, UpdateView):
         return response
 
 
-class GroupDetailView(PermissionRequiredMixin, DetailView):
+class GroupDetailView(StaffPermissionRequiredMixin, DetailView):
     """Soporte: Ver detalle de grupo/rol (no tiene HU asignada)"""
     model = Group
     template_name = TEMPLATE_GROUP_DETAIL
@@ -537,7 +537,7 @@ class GroupDetailView(PermissionRequiredMixin, DetailView):
         return context
 
 
-class GroupDeleteView(PermissionRequiredMixin, FormView):
+class GroupDeleteView(StaffPermissionRequiredMixin, FormView):
     """Soporte: Eliminar grupo/rol (no tiene HU asignada)"""
     form_class = GroupDeleteForm
     template_name = TEMPLATE_GROUP_CONFIRM_DELETE

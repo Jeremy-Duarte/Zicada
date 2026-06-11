@@ -5,16 +5,60 @@ on:
       - main
   pull_request:
     types: [opened, synchronize, reopened]
+
 jobs:
   sonarqube:
-    name: SonarQube
+    name: SonarQube Analysis
     runs-on: ubuntu-latest
+    
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+          fetch-depth: 0
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov pytest-django
+      
+      - name: Run tests with coverage
+        run: |
+          pytest apps/ \
+            --cov=apps \
+            --cov-report=xml:coverage.xml \
+            --cov-report=term \
+            -v --tb=short
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings_test
+          PYTHONPATH: .
+      
+      - name: Verify coverage report
+        run: |
+          if [ -f coverage.xml ]; then
+            echo "Coverage report generated successfully"
+          else
+            echo "Error: coverage.xml not generated"
+            exit 1
+          fi
+      
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@fd88b7d7ccbaefd23d8f36f73b59db7a3d246602
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: >
+            -Dsonar.python.coverage.reportPaths=coverage.xml
+            -Dsonar.projectKey=Jeremy-Duarte_Zicada
+            -Dsonar.organization=jeremy-duarte
+            -Dsonar.sources=apps
+            -Dsonar.exclusions=**/migrations/**,**/tests/**,**/admin.py,**/apps.py,**/settings.py,**/urls.py
+            -Dsonar.tests=apps/core/tests,apps/products/tests,apps/orders/tests
+            -Dsonar.python.version=3.12

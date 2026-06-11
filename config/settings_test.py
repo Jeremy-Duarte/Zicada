@@ -1,19 +1,24 @@
-"""
-Django settings for Zicada project.
-"""
-
 import environ
 from pathlib import Path
+import tempfile
+import logging
 
 env = environ.Env()
-
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-environ.Env.read_env(BASE_DIR / '.env')
+if (BASE_DIR / '.env').exists():
+    environ.Env.read_env(BASE_DIR / '.env')
 
-SECRET_KEY = env('DJANGO_SECRET_KEY')
-DEBUG = env.bool('DJANGO_DEBUG', default=False)
-ALLOWED_HOSTS = env.list('DJANGO_ALLOWED_HOSTS', default=['localhost', '127.0.0.1'])
+SECRET_KEY = 'django-insecure-test-key-for-ci-only-2024'
+DEBUG = False
+ALLOWED_HOSTS = ['*']
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': ':memory:',
+    }
+}
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -22,12 +27,10 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    # Vendor Apps
     'rest_framework',
     'cloudinary',
     'cloudinary_storage',
     'django_crontab',
-    # Zicada Apps
     'apps.core',
     'apps.users',
     'apps.products',
@@ -46,8 +49,7 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'config.urls'
-
-SITE_URL = 'http://localhost:8000'
+SITE_URL = 'http://testserver'
 
 TEMPLATES = [
     {
@@ -69,19 +71,8 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'config.wsgi.application'
-
-DATABASES = {
-    'default': env.db(default='sqlite:///db.sqlite3')
-}
-
 AUTH_USER_MODEL = 'users.User'
-
-AUTH_PASSWORD_VALIDATORS = [
-    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
-]
+AUTH_PASSWORD_VALIDATORS = []
 
 LOGIN_URL = '/core/staff/login/'
 LOGIN_REDIRECT_URL = '/'
@@ -93,12 +84,10 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = '/static/'
-STATICFILES_DIRS = [BASE_DIR / 'static']
-STATIC_ROOT = BASE_DIR / 'staticfiles'
-
+STATICFILES_DIRS = [BASE_DIR / 'static'] if (BASE_DIR / 'static').exists() else []
+STATIC_ROOT = tempfile.mkdtemp()
 MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
-
+MEDIA_ROOT = tempfile.mkdtemp()
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 REST_FRAMEWORK = {
@@ -110,31 +99,24 @@ REST_FRAMEWORK = {
     ],
 }
 
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = env('EMAIL_HOST')
-EMAIL_PORT = env.int('EMAIL_PORT')
-EMAIL_USE_TLS = env.bool('EMAIL_USE_TLS')
-EMAIL_HOST_USER = env('EMAIL_HOST_USER')
-EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD')
-DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL')
+EMAIL_BACKEND = 'django.core.mail.backends.locmem.EmailBackend'
+DEFAULT_FROM_EMAIL = 'test@zicada.com'
+FROM_EMAIL_NO_REPLY = 'noreply@test.zicada.com'
+FROM_EMAIL_ORDERS = 'orders@test.zicada.com'
+FROM_EMAIL_SUPPORT = 'support@test.zicada.com'
 
-FROM_EMAIL_NO_REPLY = env('FROM_EMAIL_NO_REPLY', default=DEFAULT_FROM_EMAIL)
-FROM_EMAIL_ORDERS = env('FROM_EMAIL_ORDERS', default=DEFAULT_FROM_EMAIL)
-FROM_EMAIL_SUPPORT = env('FROM_EMAIL_SUPPORT', default=DEFAULT_FROM_EMAIL)
-# Configuracion de API cloudinary
 import cloudinary
-
 cloudinary.config(
-    cloud_name=env('CLOUDINARY_CLOUD_NAME'),
-    api_key=env('CLOUDINARY_API_KEY'),
-    api_secret=env('CLOUDINARY_API_SECRET'),
+    cloud_name='test_cloud_name',
+    api_key='test_key',
+    api_secret='test_secret',
     secure=True
 )
 
 CLOUDINARY_STORAGE = {
-    'CLOUD_NAME': env('CLOUDINARY_CLOUD_NAME'),
-    'API_KEY': env('CLOUDINARY_API_KEY'),
-    'API_SECRET': env('CLOUDINARY_API_SECRET'),
+    'CLOUD_NAME': 'test_cloud_name',
+    'API_KEY': 'test_key',
+    'API_SECRET': 'test_secret',
 }
 
 STORAGES = {
@@ -146,18 +128,21 @@ STORAGES = {
     },
 }
 
-CRONJOBS = [
-    # Actualizar colecciones: cada domingo a las 2:00 AM
-    ('0 2 * * 0', 'django.core.management.call_command', ['update_collections_status']),
+STRIPE_PUBLISHABLE_KEY = 'pk_test_mock_key'
+STRIPE_SECRET_KEY = 'sk_test_mock_key'
+STRIPE_WEBHOOK_KEY = 'whsec_mock_key'
+
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.dummy.DummyCache',
+    }
+}
+
+PASSWORD_HASHERS = [
+    'django.contrib.auth.hashers.MD5PasswordHasher',
 ]
 
-CRONTAB_LOCK_JOBS = True
+logging.disable(logging.CRITICAL)
 
-CRONTAB_COMMAND_PREFIX = 'TZ=America/Bogota'
-
-CRONTAB_DJANGO_SETTINGS_MODULE = 'config.settings'
-
-# Configuración API stripe pasarela de pagos
-STRIPE_PUBLISHABLE_KEY= env("STRIPE_PUBLISHABLE_KEY")
-STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY")
-STRIPE_WEBHOOK_KEY= env("STRIPE_WEBHOOK_KEY")
+CRONJOBS = []
+CRONTAB_LOCK_JOBS = False

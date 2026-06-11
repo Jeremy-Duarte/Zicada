@@ -12,7 +12,7 @@ from django.core.management import call_command
 from django.urls import reverse, reverse_lazy
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView, TemplateView, FormView
 from django.views import View
-from django.contrib.auth.mixins import PermissionRequiredMixin
+from apps.core.crud.mixins import StaffPermissionRequiredMixin
 from django.utils.safestring import mark_safe
 from django.views.decorators.http import require_GET, require_POST, require_http_methods
 from django.http import HttpResponse
@@ -894,7 +894,7 @@ def get_related_products(product, limit=PRODUCT_LIMIT_RELATED):
 # SIZE CRUD VIEWS (HU-058 a HU-062)
 # =============================================================================
 
-class SizeListView(PermissionRequiredMixin, PaginationMixin, FilterMixin, ListView):
+class SizeListView(StaffPermissionRequiredMixin, PaginationMixin, FilterMixin, ListView):
     """
     HU-058: Listar tallas
     """
@@ -924,7 +924,7 @@ class SizeListView(PermissionRequiredMixin, PaginationMixin, FilterMixin, ListVi
         return context
 
 
-class SizeCreateView(PermissionRequiredMixin, CreateView):
+class SizeCreateView(StaffPermissionRequiredMixin, CreateView):
     """
     HU-059: Crear talla
     """
@@ -941,7 +941,7 @@ class SizeCreateView(PermissionRequiredMixin, CreateView):
     # HU-059 | ESCENARIO 2 | A | Errores en formulario (manejado por CreateView)
 
 
-class SizeUpdateView(PermissionRequiredMixin, UpdateView):
+class SizeUpdateView(StaffPermissionRequiredMixin, UpdateView):
     """
     HU-060: Editar talla
     """
@@ -959,7 +959,7 @@ class SizeUpdateView(PermissionRequiredMixin, UpdateView):
     # HU-060 | ESCENARIO 4 | E | Talla no existe → HTTP 404
 
 
-class SizeDeleteView(PermissionRequiredMixin, SortableDeleteMixin, DeleteView):
+class SizeDeleteView(StaffPermissionRequiredMixin, SortableDeleteMixin, DeleteView):
     """
     HU-061: Eliminar talla
     """
@@ -992,7 +992,7 @@ class SizeDeleteView(PermissionRequiredMixin, SortableDeleteMixin, DeleteView):
     # HU-061 | ESCENARIO 4 | A | Talla con variantes activas → validación en form
 
 
-class SizeImportView(PermissionRequiredMixin, View):
+class SizeImportView(StaffPermissionRequiredMixin, View):
     """
     HU-062: Importar tallas desde CSV/Excel
     """
@@ -1044,7 +1044,7 @@ def size_template(request):
 # CATEGORY CRUD VIEWS (HU-063 a HU-067)
 # =============================================================================
 
-class CategoryListView(PermissionRequiredMixin, PaginationMixin, FilterMixin, ListView):
+class CategoryListView(StaffPermissionRequiredMixin, PaginationMixin, FilterMixin, ListView):
     """
     HU-063: Listar categorías
     """
@@ -1075,7 +1075,7 @@ class CategoryListView(PermissionRequiredMixin, PaginationMixin, FilterMixin, Li
         return context
 
 
-class CategoryCreateView(PermissionRequiredMixin, CreateView):
+class CategoryCreateView(StaffPermissionRequiredMixin, CreateView):
     """
     HU-064: Crear categoría
     """
@@ -1092,7 +1092,7 @@ class CategoryCreateView(PermissionRequiredMixin, CreateView):
     # HU-064 | ESCENARIO 2 | A | Errores en formulario
 
 
-class CategoryUpdateView(PermissionRequiredMixin, UpdateView):
+class CategoryUpdateView(StaffPermissionRequiredMixin, UpdateView):
     """
     HU-065: Editar categoría
     """
@@ -1110,7 +1110,7 @@ class CategoryUpdateView(PermissionRequiredMixin, UpdateView):
     # HU-065 | ESCENARIO 4 | E | Categoría no existe → HTTP 404
 
 
-class CategoryDeleteView(PermissionRequiredMixin, DeleteView):
+class CategoryDeleteView(StaffPermissionRequiredMixin, DeleteView):
     """
     HU-066: Eliminar categoría
     """
@@ -1143,7 +1143,7 @@ class CategoryDeleteView(PermissionRequiredMixin, DeleteView):
     # HU-066 | ESCENARIO 4 | A | Categoría con productos activos → validación en form
 
 
-class CategoryImportView(PermissionRequiredMixin, View):
+class CategoryImportView(StaffPermissionRequiredMixin, View):
     """
     HU-067: Importar categorías desde CSV/Excel
     """
@@ -1194,7 +1194,7 @@ def category_template(request):
 # COLOR CRUD VIEWS (HU-068 a HU-072)
 # =============================================================================
 
-class ColorListView(PermissionRequiredMixin, PaginationMixin, FilterMixin, ListView):
+class ColorListView(StaffPermissionRequiredMixin, PaginationMixin, FilterMixin, ListView):
     """
     HU-068: Listar colores
     """
@@ -1234,7 +1234,7 @@ class ColorListView(PermissionRequiredMixin, PaginationMixin, FilterMixin, ListV
         return context
 
 
-class ColorCreateView(PermissionRequiredMixin, CreateView):
+class ColorCreateView(StaffPermissionRequiredMixin, CreateView):
     """
     HU-069: Crear color
     """
@@ -1256,7 +1256,7 @@ class ColorCreateView(PermissionRequiredMixin, CreateView):
     # HU-069 | ESCENARIO 2 | A | Errores en formulario (nombre duplicado, código inválido)
 
 
-class ColorUpdateView(PermissionRequiredMixin, UpdateView):
+class ColorUpdateView(StaffPermissionRequiredMixin, UpdateView):
     """
     HU-070: Editar color
     """
@@ -1279,7 +1279,7 @@ class ColorUpdateView(PermissionRequiredMixin, UpdateView):
     # HU-070 | ESCENARIO 4 | E | Color no existe → HTTP 404
 
 
-class ColorDeleteView(PermissionRequiredMixin, SortableDeleteMixin, DeleteView):
+class ColorDeleteView(StaffPermissionRequiredMixin, SortableDeleteMixin, DeleteView):
     """
     HU-071: Eliminar color
     """
@@ -1319,7 +1319,7 @@ class ColorDeleteView(PermissionRequiredMixin, SortableDeleteMixin, DeleteView):
     # HU-071 | ESCENARIO 4 | A | Color con variantes activas → validación en form
 
 
-class ColorImportView(PermissionRequiredMixin, View):
+class ColorImportView(StaffPermissionRequiredMixin, View):
     """
     HU-072: Importar colores desde CSV/Excel
     """
@@ -1370,7 +1370,7 @@ def color_template(request):
 # PRODUCT IMAGE CRUD VIEWS (HU-073 a HU-076)
 # =============================================================================
 
-class ProductImageListView(PermissionRequiredMixin, PaginationMixin, FilterMixin, ListView):
+class ProductImageListView(StaffPermissionRequiredMixin, PaginationMixin, FilterMixin, ListView):
     """
     HU-073: Listar imágenes de producto
     """
@@ -1405,7 +1405,7 @@ class ProductImageListView(PermissionRequiredMixin, PaginationMixin, FilterMixin
         return context
 
 
-class ProductImageCreateView(PermissionRequiredMixin, CreateView):
+class ProductImageCreateView(StaffPermissionRequiredMixin, CreateView):
     """
     HU-074: Subir imagen de producto
     """
@@ -1428,7 +1428,7 @@ class ProductImageCreateView(PermissionRequiredMixin, CreateView):
     # HU-074 | ESCENARIO 2 | A | Errores en formulario (formato inválido, tamaño excedido)
 
 
-class ProductImageUpdateView(PermissionRequiredMixin, UpdateView):
+class ProductImageUpdateView(StaffPermissionRequiredMixin, UpdateView):
     """
     HU-075: Editar imagen de producto (texto alternativo)
     """
@@ -1452,7 +1452,7 @@ class ProductImageUpdateView(PermissionRequiredMixin, UpdateView):
     # HU-075 | ESCENARIO 4 | E | Imagen no existe → HTTP 404
 
 
-class ProductImageDeleteView(PermissionRequiredMixin, DeleteView):
+class ProductImageDeleteView(StaffPermissionRequiredMixin, DeleteView):
     """
     HU-076: Eliminar imagen de producto
     """
@@ -1498,7 +1498,7 @@ class ProductImageDeleteView(PermissionRequiredMixin, DeleteView):
 # PRODUCT CRUD VIEWS (HU-009, HU-010, HU-011, HU-012, HU-013)
 # =============================================================================
 
-class ProductListView(PermissionRequiredMixin, PaginationMixin, FilterMixin, ListView):
+class ProductListView(StaffPermissionRequiredMixin, PaginationMixin, FilterMixin, ListView):
     """
     HU-009: Listar productos (admin)
     """
@@ -1567,7 +1567,7 @@ class ProductListView(PermissionRequiredMixin, PaginationMixin, FilterMixin, Lis
         return context
 
 
-class ProductCreateView(PermissionRequiredMixin, CreateView):
+class ProductCreateView(StaffPermissionRequiredMixin, CreateView):
     """
     HU-010: Crear producto
     """
@@ -1595,7 +1595,7 @@ class ProductCreateView(PermissionRequiredMixin, CreateView):
     # HU-010 | ESCENARIO 3 | A | Nombre duplicado (validación en ProductCreateForm.clean_name)
 
 
-class ProductUpdateView(PermissionRequiredMixin, UpdateView):
+class ProductUpdateView(StaffPermissionRequiredMixin, UpdateView):
     """
     HU-011: Editar producto
     """
@@ -1622,7 +1622,7 @@ class ProductUpdateView(PermissionRequiredMixin, UpdateView):
     # HU-011 | ESCENARIO 3 | E | Producto no existe → HTTP 404
 
 
-class ProductDeleteView(PermissionRequiredMixin, DeleteView):
+class ProductDeleteView(StaffPermissionRequiredMixin, DeleteView):
     """
     HU-012: Eliminar producto (soft delete)
     """
@@ -1662,7 +1662,7 @@ class ProductDeleteView(PermissionRequiredMixin, DeleteView):
     # HU-012 | ESCENARIO 2 | A | Producto con pedidos asociados (validación en ProductDeleteForm)
 
 
-class ProductRestoreView(PermissionRequiredMixin, TemplateView):
+class ProductRestoreView(StaffPermissionRequiredMixin, TemplateView):
     """
     HU-012 | ESCENARIO 4 | H | Restaurar producto desde papelera
     """
@@ -1699,7 +1699,7 @@ class ProductRestoreView(PermissionRequiredMixin, TemplateView):
         return self.render_to_response(self.get_context_data(form=form))
 
 
-class ProductTrashcanView(PermissionRequiredMixin, ListView):
+class ProductTrashcanView(StaffPermissionRequiredMixin, ListView):
     """
     HU-012 (parte): Ver papelera de productos
     """
@@ -1735,7 +1735,7 @@ class ProductTrashcanView(PermissionRequiredMixin, ListView):
 # PRODUCT COLOR CRUD VIEWS (HU-013: Gestionar tallas y stock - colores como parte de variantes)
 # =============================================================================
 
-class ProductColorCreateView(PermissionRequiredMixin, CreateView):
+class ProductColorCreateView(StaffPermissionRequiredMixin, CreateView):
     """
     HU-013 | ESCENARIO 1 | H | Asignar colores a un producto (parte de gestión de variantes)
     """
@@ -1770,7 +1770,7 @@ class ProductColorCreateView(PermissionRequiredMixin, CreateView):
     # HU-013 | ESCENARIO 3 | E | Color ya existe para este producto (validación en form)
 
 
-class ProductColorUpdateView(PermissionRequiredMixin, UpdateView):
+class ProductColorUpdateView(StaffPermissionRequiredMixin, UpdateView):
     """
     HU-013 | ESCENARIO 2 | H | Actualizar imágenes y orden de colores del producto
     """
@@ -1796,7 +1796,7 @@ class ProductColorUpdateView(PermissionRequiredMixin, UpdateView):
     # HU-013 | ESCENARIO 2 | A | Imagen destacada no está en imágenes seleccionadas (validación en form)
 
 
-class ProductColorDeleteView(PermissionRequiredMixin, SortableDeleteMixin, DeleteView):
+class ProductColorDeleteView(StaffPermissionRequiredMixin, SortableDeleteMixin, DeleteView):
     """
     HU-013 | ESCENARIO 4 | A | Deshabilitar/eliminar un color del producto
     """
@@ -1844,7 +1844,7 @@ class ProductColorDeleteView(PermissionRequiredMixin, SortableDeleteMixin, Delet
 # PRODUCT VARIANT CRUD VIEWS (HU-013: Gestionar tallas y stock)
 # =============================================================================
 
-class ProductVariantCreateView(PermissionRequiredMixin, CreateView):
+class ProductVariantCreateView(StaffPermissionRequiredMixin, CreateView):
     """
     HU-013 | ESCENARIO 1 | H | Asignar tallas y stock a un producto (crear variante)
     """
@@ -1888,7 +1888,7 @@ class ProductVariantCreateView(PermissionRequiredMixin, CreateView):
     # HU-013 | ESCENARIO 3 | E | ProductColor no pertenece al producto (validación en form)
 
 
-class ProductVariantUpdateView(PermissionRequiredMixin, UpdateView):
+class ProductVariantUpdateView(StaffPermissionRequiredMixin, UpdateView):
     """
     HU-013 | ESCENARIO 2 | H | Actualizar stock de una talla
     HU-013 | ESCENARIO 3 | E | Stock negativo no permitido
@@ -1916,7 +1916,7 @@ class ProductVariantUpdateView(PermissionRequiredMixin, UpdateView):
     # HU-013 | ESCENARIO 4 | E | Variante no existe → HTTP 404
 
 
-class ProductVariantDeleteView(PermissionRequiredMixin, DeleteView):
+class ProductVariantDeleteView(StaffPermissionRequiredMixin, DeleteView):
     """
     HU-013 | ESCENARIO 4 | A | Deshabilitar una talla (soft delete)
     """
@@ -1959,7 +1959,7 @@ class ProductVariantDeleteView(PermissionRequiredMixin, DeleteView):
     # HU-013 | ESCENARIO 4 | A | Variante con pedidos pendientes (validación en form)
 
 
-class ProductVariantRestoreView(PermissionRequiredMixin, FormView):
+class ProductVariantRestoreView(StaffPermissionRequiredMixin, FormView):
     """
     HU-013 | ESCENARIO 4 | A | Restaurar variante deshabilitada
     """
@@ -1997,7 +1997,7 @@ class ProductVariantRestoreView(PermissionRequiredMixin, FormView):
         return self.render_to_response(self.get_context_data(form=form))
 
 
-class ProductVariantTrashcanView(PermissionRequiredMixin, ListView):
+class ProductVariantTrashcanView(StaffPermissionRequiredMixin, ListView):
     """
     HU-013 (parte): Ver variantes deshabilitadas (papelera)
     """
@@ -2027,7 +2027,7 @@ class ProductVariantTrashcanView(PermissionRequiredMixin, ListView):
 # COLLECTION CRUD VIEWS (HU-014, HU-015, HU-016, HU-017, HU-018)
 # =============================================================================
 
-class CollectionListView(PermissionRequiredMixin, PaginationMixin, FilterMixin, ListView):
+class CollectionListView(StaffPermissionRequiredMixin, PaginationMixin, FilterMixin, ListView):
     """
     HU-014: Listar colecciones (admin)
     """
@@ -2191,7 +2191,7 @@ class CollectionListView(PermissionRequiredMixin, PaginationMixin, FilterMixin, 
         return redirect(request.META.get('HTTP_REFERER', reverse('products:collection_list')))
 
 
-class CollectionCreateView(PermissionRequiredMixin, CreateView):
+class CollectionCreateView(StaffPermissionRequiredMixin, CreateView):
     """
     HU-015: Crear colección
     """
@@ -2220,7 +2220,7 @@ class CollectionCreateView(PermissionRequiredMixin, CreateView):
     # HU-015 | ESCENARIO 4 | H | Estilos visuales personalizados (campos en el formulario)
 
 
-class CollectionUpdateView(PermissionRequiredMixin, UpdateView):
+class CollectionUpdateView(StaffPermissionRequiredMixin, UpdateView):
     """
     HU-016: Editar colección
     HU-018: Asignar productos a colección
@@ -2254,7 +2254,7 @@ class CollectionUpdateView(PermissionRequiredMixin, UpdateView):
     # HU-018 | ESCENARIO 4 | A | Producto ya asignado a otra colección limitada (validación en modelo)
 
 
-class CollectionDeleteView(PermissionRequiredMixin, DeleteView):
+class CollectionDeleteView(StaffPermissionRequiredMixin, DeleteView):
     """
     HU-017: Eliminar colección (soft delete)
     """
@@ -2296,7 +2296,7 @@ class CollectionDeleteView(PermissionRequiredMixin, DeleteView):
     # HU-017 | ESCENARIO 2 | A | Colección con productos asignados (advertencia en template/form)
 
 
-class CollectionRestoreView(PermissionRequiredMixin, TemplateView):
+class CollectionRestoreView(StaffPermissionRequiredMixin, TemplateView):
     """
     HU-017 | ESCENARIO 3 | H | Restaurar colección
     """
@@ -2339,7 +2339,7 @@ class CollectionRestoreView(PermissionRequiredMixin, TemplateView):
     # HU-017 | ESCENARIO 3 | A | Conflicto al restaurar (slug duplicado) - validación en form
 
 
-class CollectionTrashcanView(PermissionRequiredMixin, ListView):
+class CollectionTrashcanView(StaffPermissionRequiredMixin, ListView):
     """
     HU-017 (parte): Ver papelera de colecciones
     """
@@ -2373,7 +2373,7 @@ class CollectionTrashcanView(PermissionRequiredMixin, ListView):
         return context
 
 
-class CollectionStyleView(PermissionRequiredMixin, UpdateView):
+class CollectionStyleView(StaffPermissionRequiredMixin, UpdateView):
     """
     HU-016 (parte): Configuración de estilos de colección
     HU-015 | ESCENARIO 4 | H | Estilos visuales personalizados

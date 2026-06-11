@@ -11,11 +11,11 @@ from django.template.loader import render_to_string
 from django.urls import reverse, reverse_lazy
 from django.views.decorators.cache import never_cache
 from django.views.generic import CreateView, UpdateView, DeleteView, ListView, TemplateView
-from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.views.decorators.http import require_GET, require_http_methods, require_POST, require_safe
 
 from .models import HeroConfig
 from apps.products.models import Product, Collection, Category
+from apps.core.crud.mixins import StaffPermissionRequiredMixin
 from .forms import ContactForm, StaffLoginForm, HeroConfigCreateForm, HeroConfigUpdateForm, HeroConfigDeleteForm, HeroConfigRestoreForm
 from apps.products.views import (
     PAGINATE_BY_DEFAULT,
@@ -33,6 +33,7 @@ from apps.core.url_names import (
     CORE_CONTACT_SUCCESS,
     CORE_HERO_LIST,
     CORE_HERO_TRASHCAN,
+    CORE_STAFF_LOGIN,
     PRODUCTS_CATALOG,
     BACKOFFICE_DASHBOARD,
 )
@@ -73,6 +74,7 @@ from .constants import (
     LOGIN_ERROR_MESSAGE,
     LOGOUT_SUCCESS_MESSAGE,
     LOGIN_WELCOME_MESSAGE,
+    LOGIN_INACTIVE_MESSAGE,
     # Status Labels
     STATUS_ACTIVE_LABEL,
     STATUS_INACTIVE_LABEL,
@@ -167,85 +169,78 @@ def about(request):
     return render(request, TEMPLATE_ABOUT)
 
 
-@require_GET
+@require_http_methods(['GET', 'POST'])
 def contact(request):
-    """Contact page view with form."""
+    """
+    HU-051: Página de contacto con manejo de formulario.
+    GET: Muestra formulario vacío.
+    POST: Procesa el formulario.
+    """
+    # HU-051 | ESCENARIO 1 | E | Método GET muestra formulario
+    if request.method == 'POST':
+        form = ContactForm(request.POST)
+
+        # HU-051 | ESCENARIO 2 | H | Formulario válido, procesar envío
+        if form.is_valid():
+            name = form.cleaned_data[CONTACT_FIELD_NAME]
+            email = form.cleaned_data[CONTACT_FIELD_EMAIL]
+            phone = form.cleaned_data[CONTACT_FIELD_PHONE]
+            subject = form.cleaned_data[CONTACT_FIELD_SUBJECT]
+            message = form.cleaned_data[CONTACT_FIELD_MESSAGE]
+
+            context = {
+                CONTACT_FIELD_NAME: name,
+                CONTACT_FIELD_EMAIL: email,
+                CONTACT_FIELD_PHONE: phone,
+                CONTACT_FIELD_SUBJECT: subject,
+                CONTACT_FIELD_MESSAGE: message,
+                'site_url': settings.SITE_URL,
+            }
+
+            try:
+                # HU-051 | ESCENARIO 2A | H | Enviar notificación al administrador
+                admin_subject = f"{EMAIL_SUBJECT_PREFIX}{subject}"
+                admin_html = render_to_string('emails/contact/admin_notification.html', context)
+                admin_text = render_to_string('emails/contact/admin_notification.txt', context)
+
+                admin_email = EmailMultiAlternatives(
+                    subject=admin_subject,
+                    body=admin_text,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    to=[settings.DEFAULT_FROM_EMAIL],
+                )
+                admin_email.attach_alternative(admin_html, "text/html")
+                admin_email.send()
+
+                # HU-051 | ESCENARIO 2B | H | Enviar confirmación al usuario
+                user_html = render_to_string('emails/contact/user_confirmation.html', context)
+                user_text = render_to_string('emails/contact/user_confirmation.txt', context)
+
+                user_email = EmailMultiAlternatives(
+                    subject=EMAIL_USER_SUBJECT,
+                    body=user_text,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    to=[email],
+                )
+                user_email.attach_alternative(user_html, "text/html")
+                user_email.send(fail_silently=True)
+
+                # HU-051 | ESCENARIO 2C | H | Mensaje de éxito y redirección
+                messages.success(request, CONTACT_SUCCESS_MESSAGE)
+                return redirect(CORE_CONTACT_SUCCESS)
+
+            # HU-051 | ESCENARIO 3 | E | Error al enviar emails
+            except Exception as e:
+                logger.exception(f"Error al enviar correo de contacto: {str(e)}")
+                messages.error(request, CONTACT_ERROR_MESSAGE)
+                return render(request, TEMPLATE_CONTACT, {'form': form})
+
+        # HU-051 | ESCENARIO 4 | A | Formulario inválido, mostrar errores campo por campo
+        # El template se encarga de mostrar form.errors junto a cada campo
+        return render(request, TEMPLATE_CONTACT, {'form': form})
+
     form = ContactForm()
     return render(request, TEMPLATE_CONTACT, {'form': form})
-
-
-@require_http_methods(['GET', 'POST'])
-def contact_submit(request):
-    """Handle contact form submission and send emails."""
-    # HU-051 | ESCENARIO 1 | E | Método GET redirige al formulario
-    if request.method != 'POST':
-        return redirect(CORE_CONTACT)
-
-    form = ContactForm(request.POST)
-
-    # HU-051 | ESCENARIO 2 | H | Formulario válido, procesar envío
-    if form.is_valid():
-        name = form.cleaned_data[CONTACT_FIELD_NAME]
-        email = form.cleaned_data[CONTACT_FIELD_EMAIL]
-        phone = form.cleaned_data[CONTACT_FIELD_PHONE]
-        subject = form.cleaned_data[CONTACT_FIELD_SUBJECT]
-        message = form.cleaned_data[CONTACT_FIELD_MESSAGE]
-
-        context = {
-            CONTACT_FIELD_NAME: name,
-            CONTACT_FIELD_EMAIL: email,
-            CONTACT_FIELD_PHONE: phone,
-            CONTACT_FIELD_SUBJECT: subject,
-            CONTACT_FIELD_MESSAGE: message,
-            'site_url': settings.SITE_URL,
-        }
-
-        try:
-            # HU-051 | ESCENARIO 2A | H | Enviar notificación al administrador
-            admin_subject = f"{EMAIL_SUBJECT_PREFIX}{subject}"
-            admin_html = render_to_string('emails/contact/admin_notification.html', context)
-            admin_text = render_to_string('emails/contact/admin_notification.txt', context)
-
-            admin_email = EmailMultiAlternatives(
-                subject=admin_subject,
-                body=admin_text,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                to=[settings.DEFAULT_FROM_EMAIL],
-            )
-            admin_email.attach_alternative(admin_html, "text/html")
-            admin_email.send()
-
-            # HU-051 | ESCENARIO 2B | H | Enviar confirmación al usuario
-            user_html = render_to_string('emails/contact/user_confirmation.html', context)
-            user_text = render_to_string('emails/contact/user_confirmation.txt', context)
-
-            user_email = EmailMultiAlternatives(
-                subject=EMAIL_USER_SUBJECT,
-                body=user_text,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                to=[email],
-            )
-            user_email.attach_alternative(user_html, "text/html")
-            user_email.send(fail_silently=True)
-
-            # HU-051 | ESCENARIO 2C | H | Mensaje de éxito y redirección
-            messages.success(request, CONTACT_SUCCESS_MESSAGE)
-            return redirect(CORE_CONTACT_SUCCESS)
-
-        # HU-051 | ESCENARIO 3 | E | Error al enviar emails
-        except Exception as e:
-            logger.exception(f"Error al enviar correo de contacto: {str(e)}")
-            messages.error(request, CONTACT_ERROR_MESSAGE)
-            return redirect(CORE_CONTACT)
-
-    # HU-051 | ESCENARIO 4 | A | Formulario inválido, mostrar errores
-    else:
-        # HU-051 | ESCENARIO 4A | A | Mostrar errores campo por campo
-        for field, errors in form.errors.items():
-            for error in errors:
-                field_label = form.fields[field].label if field in form.fields else field
-                messages.error(request, f'{field_label}: {error}')
-        return redirect(CORE_CONTACT)
 
 
 @require_GET
@@ -273,51 +268,52 @@ def terms(request):
 
 
 class StaffLoginView(LoginView):
-    """
-    HU-001: Inicio de sesión
-    HU-003: Control de acceso por permisos
-    """
     template_name = TEMPLATE_STAFF_LOGIN
     authentication_form = StaffLoginForm
     redirect_authenticated_user = True
 
     def get_success_url(self):
-        # HU-001 | ESCENARIO 1 y 2 | H | Usuario autenticado redirige según rol
         return reverse_lazy(BACKOFFICE_DASHBOARD)
 
     def form_valid(self, form):
-        # HU-001 | ESCENARIO 1 | H | Login exitoso Administrador
-        # HU-001 | ESCENARIO 2 | H | Login exitoso Entregador
         response = super().form_valid(form)
         messages.success(self.request, LOGIN_WELCOME_MESSAGE.format(username=self.request.user.username))
         return response
 
     def form_invalid(self, form):
-        # HU-001 | ESCENARIO 3 | E | Credenciales incorrectas
-        messages.error(self.request, LOGIN_ERROR_MESSAGE)
         return super().form_invalid(form)
 
     def dispatch(self, request, *args, **kwargs):
-        # HU-001 | ESCENARIO 4 | E | Usuario inactivo (manejado por AuthenticationForm)
-        # HU-003 | ESCENARIO 4 | E | Redirección por falta de autenticación
+        from django.contrib.messages import get_messages
+        list(get_messages(request))
+        
         if request.user.is_authenticated:
+            if not request.user.is_active:
+                messages.error(request, LOGIN_INACTIVE_MESSAGE)
+                return redirect(CORE_STAFF_LOGIN)
+            
             if request.user.is_staff or getattr(request.user, 'is_delivery', False):
-                # HU-003 | ESCENARIO 1 y 2 | H | Acceso permitido según rol
                 return redirect(BACKOFFICE_DASHBOARD)
-            # HU-003 | ESCENARIO 3 | E | Entregador a panel admin (denegado)
             return redirect(PRODUCTS_CATALOG)
+        
         return super().dispatch(request, *args, **kwargs)
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        from django.contrib.messages import get_messages
+        context['messages'] = get_messages(self.request)
+        return context
 
 
-@require_POST
+@require_http_methods(['GET', 'POST'])
 def staff_logout(request):
     """Staff logout view."""
     logout(request)
     messages.info(request, LOGOUT_SUCCESS_MESSAGE)
-    return redirect(PRODUCTS_CATALOG)
+    return redirect(CORE_STAFF_LOGIN)
 
 
-class HeroConfigListView(PermissionRequiredMixin, ListView):
+class HeroConfigListView(StaffPermissionRequiredMixin, ListView):
     """List active hero slides."""
     # HU-052 | ESCENARIO 1 | H | Lista slides activos
     model = HeroConfig
@@ -349,7 +345,7 @@ class HeroConfigListView(PermissionRequiredMixin, ListView):
         return context
 
 
-class HeroConfigCreateView(PermissionRequiredMixin, CreateView):
+class HeroConfigCreateView(StaffPermissionRequiredMixin, CreateView):
     """Create new hero slide."""
     # HU-053 | ESCENARIO 1 | H | Crear slide válido
     model = HeroConfig
@@ -375,7 +371,7 @@ class HeroConfigCreateView(PermissionRequiredMixin, CreateView):
     # HU-053 | ESCENARIO 2 | A | Formulario inválido (manejado por CreateView)
 
 
-class HeroConfigUpdateView(PermissionRequiredMixin, UpdateView):
+class HeroConfigUpdateView(StaffPermissionRequiredMixin, UpdateView):
     """Update existing hero slide."""
     # HU-054 | ESCENARIO 1 | H | Editar slide existente
     model = HeroConfig
@@ -405,7 +401,7 @@ class HeroConfigUpdateView(PermissionRequiredMixin, UpdateView):
     # HU-054 | ESCENARIO 4 | E | Slide no existe → HTTP 404
 
 
-class HeroConfigDeleteView(PermissionRequiredMixin, DeleteView):
+class HeroConfigDeleteView(StaffPermissionRequiredMixin, DeleteView):
     """Soft-delete hero slide (move to trashcan)."""
     # HU-055 | ESCENARIO 1 | H | Archivar slide
     model = HeroConfig
@@ -442,7 +438,7 @@ class HeroConfigDeleteView(PermissionRequiredMixin, DeleteView):
         return redirect(self.success_url)
 
 
-class HeroConfigRestoreView(PermissionRequiredMixin, TemplateView):
+class HeroConfigRestoreView(StaffPermissionRequiredMixin, TemplateView):
     """Restore soft-deleted hero slide."""
     # HU-056 | ESCENARIO 1 | H | Restaurar slide archivado
     model = HeroConfig
@@ -478,7 +474,7 @@ class HeroConfigRestoreView(PermissionRequiredMixin, TemplateView):
         return self.render_to_response(self.get_context_data(form=form))
 
 
-class HeroConfigTrashcanView(PermissionRequiredMixin, ListView):
+class HeroConfigTrashcanView(StaffPermissionRequiredMixin, ListView):
     """List soft-deleted hero slides (trashcan)."""
     # HU-057 | ESCENARIO 1 | H | Ver lista de slides archivados
     model = HeroConfig

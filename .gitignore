@@ -18,3 +18,17 @@ Thumbs.db
 
 # Binding
 .vscode
+
+# Coverage reports
+reports/
+htmlcov/
+.coverage
+coverage.xml
+.coverage.*
+*.cover
+.coverage.*
+*.py,cover
+
+# Test logs
+reports/logs/
+*.log

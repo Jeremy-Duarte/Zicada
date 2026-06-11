@@ -6,6 +6,8 @@ from .models import HeroConfig
 from apps.products.models import Collection, Product
 from apps.core.crud.widgets import CloudinarySingleImageWidget, SortableOrderWidget
 from apps.core.utils import safe_reverse
+from django.contrib.auth import get_user_model
+from .constants import LOGIN_ERROR_MESSAGE, LOGIN_INACTIVE_MESSAGE
 
 # =============================================================================
 # CONSTANTS
@@ -145,26 +147,60 @@ class StaffLoginForm(FormStyleMixin, AuthenticationForm):
     """
     HU-001: Inicio de sesión
     HU-003: Control de acceso por permisos
-    Escenarios: H (credenciales correctas + permisos), E (credenciales incorrectas, usuario inactivo, sin permisos)
     """
+    
+    # Diccionario de mensajes de error personalizados
+    error_messages = {
+        'invalid_login': LOGIN_ERROR_MESSAGE,
+        'inactive': LOGIN_INACTIVE_MESSAGE,
+        'no_permission': 'No tienes permisos para acceder a esta área.',
+    }
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['username'].widget.attrs['placeholder'] = 'Usuario'
         self.fields['password'].widget.attrs['placeholder'] = 'Contraseña'
     
+    def clean(self):
+        """
+        Sobrescribir clean para manejar usuarios inactivos y sin permisos
+        ANTES de que AuthenticationForm los convierta en invalid_login
+        """
+        username = self.cleaned_data.get('username')
+        password = self.cleaned_data.get('password')
+        
+        if username and password:
+            # Intentar obtener el usuario primero
+            try:
+                attempt_user = get_user_model()
+                user = attempt_user.objects.get_by_natural_key(username)
+            except attempt_user.DoesNotExist:
+                return super().clean()
+            
+            if not user.is_active:
+                raise forms.ValidationError(
+                    self.error_messages['inactive'],
+                    code='inactive',
+                )
+            
+            if not user.check_password(password):
+                raise forms.ValidationError(
+                    self.error_messages['invalid_login'],
+                    code='invalid_login',
+                )
+            
+            if not (user.is_staff or getattr(user, 'is_delivery', False)):
+                raise forms.ValidationError(
+                    self.error_messages['no_permission'],
+                    code='no_permission',
+                )
+            
+            self.user_cache = user
+            self.confirmed_login_allowed = True
+        
+        return self.cleaned_data
+    
     def confirm_login_allowed(self, user):
-        """
-        HU-001 | ESCENARIO 3 | E | Credenciales incorrectas (validado en AuthenticationForm)
-        HU-001 | ESCENARIO 4 | E | Usuario inactivo (validado en AuthenticationForm)
-        HU-003 | ESCENARIO 3 | E | Usuario sin permisos (ni staff ni delivery)
-        HU-003 | ESCENARIO 1 y 2 | H | Usuario con permisos (staff o delivery)
-        """
-        if not (user.is_staff or getattr(user, 'is_delivery', False)):
-            raise forms.ValidationError(
-                'No tienes permisos para acceder a esta área.',
-                code='no_permission',
-            )
         super().confirm_login_allowed(user)
 
 

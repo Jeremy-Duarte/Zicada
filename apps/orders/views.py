@@ -6,7 +6,7 @@ from decimal import Decimal
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
-from django.contrib.auth.mixins import PermissionRequiredMixin
+from apps.core.crud.mixins import StaffPermissionRequiredMixin
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.http import HttpResponse, JsonResponse
@@ -854,7 +854,7 @@ def stripe_webhook(request):
 # BACKOFFICE ORDER VIEWS (HU-027, HU-028, HU-029, HU-030, HU-031, HU-032, HU-034)
 # =============================================================================
 
-class OrderListView(PermissionRequiredMixin, PaginationMixin, FilterMixin, ListView):
+class OrderListView(StaffPermissionRequiredMixin, PaginationMixin, FilterMixin, ListView):
     """
     HU-027: Listar pedidos (admin)
     """
@@ -913,7 +913,7 @@ class OrderListView(PermissionRequiredMixin, PaginationMixin, FilterMixin, ListV
         return context
 
 
-class OrderCreateView(PermissionRequiredMixin, CreateView):
+class OrderCreateView(StaffPermissionRequiredMixin, CreateView):
     """
     HU-031: Crear pedido manual (admin)
     """
@@ -940,7 +940,7 @@ class OrderCreateView(PermissionRequiredMixin, CreateView):
     # HU-031 | ESCENARIO 2 | H | Buscar productos para agregar (se hace mediante OrderItemCreateView)
 
 
-class OrderUpdateView(PermissionRequiredMixin, UpdateView):
+class OrderUpdateView(StaffPermissionRequiredMixin, UpdateView):
     """
     HU-031 (parte): Editar pedido manual (admin)
     """
@@ -963,7 +963,7 @@ class OrderUpdateView(PermissionRequiredMixin, UpdateView):
         return response
 
 
-class OrderDetailView(PermissionRequiredMixin, DetailView):
+class OrderDetailView(StaffPermissionRequiredMixin, DetailView):
     """
     HU-028: Ver detalle de pedido (admin)
     """
@@ -999,7 +999,7 @@ class OrderDetailView(PermissionRequiredMixin, DetailView):
         return context
 
 
-class BaseOrderActionView(PermissionRequiredMixin, FormView):
+class BaseOrderActionView(StaffPermissionRequiredMixin, FormView):
     """Clase base para vistas de acción sobre pedidos (confirmar, cancelar, asignar, entregar)."""
     
     permission_required = PERM_ORDER_CHANGE  # E | Sin permisos para todas
@@ -1074,7 +1074,7 @@ class OrderCancelView(BaseOrderActionView):
 # ORDER STATUS PROGRESSION VIEWS (HU-029 - CAMBIOS DE ESTADO)
 # =============================================================================
 
-class OrderMarkPreparingView(PermissionRequiredMixin, View):
+class OrderMarkPreparingView(StaffPermissionRequiredMixin, View):
     """
     HU-029 | ESCENARIO 2 | H | Cambiar estado de confirmado a preparando
     """
@@ -1092,7 +1092,7 @@ class OrderMarkPreparingView(PermissionRequiredMixin, View):
         return redirect(ORDERS_DETAIL, pk=order.pk)
 
 
-class OrderMarkReadyView(PermissionRequiredMixin, View):
+class OrderMarkReadyView(StaffPermissionRequiredMixin, View):
     """
     HU-029 | ESCENARIO 2 | H | Cambiar estado de preparando a listo
     """
@@ -1145,7 +1145,7 @@ class OrderMarkAsDeliveredView(BaseOrderActionView):
     # HU-034 | ESCENARIO 3 | E | Pedido ya pagado (validado en modelo)
 
 
-class OrderItemCreateView(PermissionRequiredMixin, CreateView):
+class OrderItemCreateView(StaffPermissionRequiredMixin, CreateView):
     """
     HU-031 (parte): Agregar producto a pedido manual (admin)
     """
@@ -1179,7 +1179,7 @@ class OrderItemCreateView(PermissionRequiredMixin, CreateView):
     # HU-031 | ESCENARIO 3 | E | Stock insuficiente (validado en form)
 
 
-class OrderItemUpdateView(PermissionRequiredMixin, UpdateView):
+class OrderItemUpdateView(StaffPermissionRequiredMixin, UpdateView):
     """
     HU-031 (parte): Modificar cantidad de producto en pedido manual
     """
@@ -1206,7 +1206,7 @@ class OrderItemUpdateView(PermissionRequiredMixin, UpdateView):
         return response
 
 
-class OrderItemDeleteView(PermissionRequiredMixin, FormView):
+class OrderItemDeleteView(StaffPermissionRequiredMixin, FormView):
     """
     HU-031 (parte): Eliminar producto de pedido manual
     """

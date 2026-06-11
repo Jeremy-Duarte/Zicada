@@ -3,8 +3,15 @@ from django.shortcuts import get_object_or_404, redirect
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import F, Max
-import json
 from apps.core.crud.widgets import SortableOrderWidget
+from django.contrib import messages
+from django.contrib.auth.mixins import PermissionRequiredMixin as BasePermissionRequiredMixin
+from django.urls import reverse
+from django.core.exceptions import ImproperlyConfigured
+
+from apps.core.url_names import CORE_STAFF_LOGIN, PRODUCTS_CATALOG
+
+import json
 
 class AuditMixin:
     """Maneja campos de auditoría (created_by, updated_by)"""
@@ -305,3 +312,18 @@ class SortableDeleteMixin:
         self.reorder_after_delete(deleted_order)
 
         return response
+
+
+class StaffPermissionRequiredMixin(BasePermissionRequiredMixin):
+    
+    permission_denied_message = 'No tienes permisos para acceder a esta sección. Por favor, contacta al administrador.'
+    authentication_required_message = 'Debes iniciar sesión para acceder a esta sección.'
+    
+    def handle_no_permission(self):
+        """Maneja la falta de permisos de manera amigable."""
+        if not self.request.user.is_authenticated:
+            messages.error(self.request, self.authentication_required_message)
+            return redirect(f'{reverse(CORE_STAFF_LOGIN)}?next={self.request.path}')
+        
+        messages.error(self.request, self.permission_denied_message)
+        return redirect(reverse(PRODUCTS_CATALOG))

@@ -40,6 +40,7 @@ URL_HOME = 'home'
 LOGIN_ERROR_MESSAGE = 'Usuario o contraseña incorrectos'
 LOGOUT_SUCCESS_MESSAGE = 'Sesión cerrada correctamente'
 LOGIN_WELCOME_MESSAGE = 'Bienvenido {username}'
+LOGIN_INACTIVE_MESSAGE = "Esta cuenta está inactiva. Por favor, contacta al administrador."
 
 # Status Labels
 STATUS_ACTIVE_LABEL = 'Activo'
