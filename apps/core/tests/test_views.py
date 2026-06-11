@@ -521,11 +521,30 @@ class HeroConfigCreateViewTest(TestCase):
         self.collection = _create_test_collection()
 
     def get_valid_data(self):
+        catalog_url = reverse(PRODUCTS_CATALOG)
         return {
+            # Campos del modelo
+            'background_image': '',
+            'overlay_opacity': 0.5,
             'title_text': 'Nuevo Slide',
-            'subtitle_text': 'Subtitulo',
+            'title_font_family': "'Inter', sans-serif",
+            'title_font_size': '4rem',
+            'title_font_weight': '800',
+            'title_line_height': '1.2',
+            'title_color': '#ffffff',
+            'title_margin_bottom': '1rem',
+            'subtitle_text': 'Subtitulo de prueba',
+            'subtitle_font_family': "'Inter', sans-serif",
+            'subtitle_font_size': '1.25rem',
+            'subtitle_font_weight': '400',
+            'subtitle_line_height': '1.5',
+            'subtitle_color': '#e5e5e5',
+            'subtitle_margin_bottom': '2rem',
             'button_text': 'Explorar',
-            'button_url': '/catalogo/',
+            'button_url': catalog_url,
+            'content_alignment': 'center',
+            'section_height': '100vh',
+            'sort_order': 0,            
             'button_bg_color': 'bg-zicada-accent',
             'button_hover_color': 'hover:bg-red-700',
             'button_text_color': 'text-white',
@@ -533,22 +552,6 @@ class HeroConfigCreateViewTest(TestCase):
             'button_size': 'px-8 py-3 text-lg',
             'button_shadow': 'shadow-lg',
             'button_width': 'inline-block',
-            'content_alignment': 'center',
-            'section_height': '100vh',
-            'sort_order': 0,
-            'overlay_opacity': 0.5,
-            'title_font_family': "'Inter', sans-serif",
-            'title_font_size': '4rem',
-            'title_font_weight': '800',
-            'title_line_height': '1.2',
-            'title_color': '#ffffff',
-            'title_margin_bottom': '1rem',
-            'subtitle_font_family': "'Inter', sans-serif",
-            'subtitle_font_size': '1.25rem',
-            'subtitle_font_weight': '400',
-            'subtitle_line_height': '1.5',
-            'subtitle_color': '#e5e5e5',
-            'subtitle_margin_bottom': '2rem',
         }
 
     def test_get_create_form(self):
@@ -564,7 +567,11 @@ class HeroConfigCreateViewTest(TestCase):
         CP-083
         HU-053 | SCENARIO 1 | H | Valid slide creation
         """
+        HeroConfig.objects.all().delete()
+        
         data = self.get_valid_data()
+        data['sort_order'] = 0
+        
         response = self.client.post(reverse(CORE_HERO_CREATE), data=data)
         
         self.assertRedirects(response, reverse(CORE_HERO_LIST))
