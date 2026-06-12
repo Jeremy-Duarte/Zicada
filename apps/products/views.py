@@ -563,7 +563,7 @@ class CollectionListViewPublic(PaginationMixin, FilterMixin, ListView):
         # HU-005 | ESCENARIO 1 | H | Listado de colecciones activas cargado
         # HU-005 | ESCENARIO 4 | A | Sin colecciones activas → template muestra mensaje
         qs = super().get_queryset()
-        qs = qs.filter(is_active=True)
+        qs = qs.filter(is_active=True, status=STATUS_PUBLISHED)
         
         qs = self._apply_search_filter(qs)
         qs = self._apply_status_filter(qs)
