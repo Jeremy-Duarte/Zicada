@@ -1,9 +1,10 @@
 from django.urls import reverse_lazy
 from apps.core.crud.mixins import StaffPermissionRequiredMixin
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import ListView, CreateView, UpdateView, FormView, DetailView
 from django.shortcuts import get_object_or_404, redirect
 from django.contrib import messages
-from django.contrib.auth import get_user_model
+from django.contrib.auth import get_user_model, update_session_auth_hash
 from django.db import models
 from django.utils.safestring import mark_safe
 
@@ -307,13 +308,13 @@ class UserChangePasswordView(StaffPermissionRequiredMixin, FormView):
         context = super().get_context_data(**kwargs)
         context[CONTEXT_USER_OBJ] = self.user
         context[CONTEXT_CANCEL_URL] = USERS_LIST
-        context[CONTEXT_CANCEL_ARGS] = [self.user.pk]
+        context[CONTEXT_CANCEL_ARGS] = []
         return context
     
     def form_valid(self, form):
         form.save()
         messages.success(self.request, MSG_PASSWORD_CHANGED.format(username=self.user.username))
-        return redirect(USERS_LIST, pk=self.user.pk)
+        return redirect(USERS_LIST)
     
     def form_invalid(self, form):
         messages.error(self.request, ERROR_PASSWORD_CHANGE)
@@ -326,7 +327,7 @@ class UserDeleteView(StaffPermissionRequiredMixin, FormView):
     """
     form_class = UserDeleteForm
     template_name = TEMPLATE_USER_CONFIRM_DELETE
-    permission_required = PERM_USER_DELETE  # HU-041 | ESCENARIO 5 | E | Sin permisos
+    permission_required = PERM_USER_DELETE
     
     def dispatch(self, request, *args, **kwargs):
         self.user = get_object_or_404(User, pk=kwargs['pk'])
@@ -347,20 +348,20 @@ class UserDeleteView(StaffPermissionRequiredMixin, FormView):
         context = super().get_context_data(**kwargs)
         context[CONTEXT_USER_OBJ] = self.user
         context[CONTEXT_CANCEL_URL] = USERS_LIST
+        context[CONTEXT_CANCEL_ARGS] = []
         return context
     
     def form_valid(self, form):
         # HU-041 | ESCENARIO 1 | H | Usuario archivado exitosamente
         self.user.is_active = False
-        self.user.save(update_fields=[FILTER_IS_ACTIVE])
+        self.user.save(update_fields=['is_active'])
         messages.success(self.request, MSG_USER_DELETED.format(username=self.user.username))
         return redirect(USERS_LIST)
-        # HU-041 | ESCENARIO 3 | E | Archivar al último Administrador (validación en UserDeleteForm)
     
     def form_invalid(self, form):
         # HU-041 | ESCENARIO 4 | A | Cancelar archivación
         messages.error(self.request, ERROR_USER_DELETE)
-        return super().form_invalid(form)
+        return self.render_to_response(self.get_context_data(form=form))
 
 
 class UserRestoreView(StaffPermissionRequiredMixin, FormView):
@@ -574,9 +575,10 @@ class GroupDeleteView(StaffPermissionRequiredMixin, FormView):
 # USER PROFILE VIEWS (HU-043)
 # =============================================================================
 
-class UserProfileView(DetailView):
+class UserProfileView(LoginRequiredMixin, DetailView):
     """
     HU-043: Ver/editar mi propio perfil (vista de detalle)
+    HU-043 | ESCENARIO 7 | E | Sin permisos (usuario no autenticado) - redirige al login
     """
     model = User
     template_name = TEMPLATE_USER_PROFILE
@@ -592,13 +594,15 @@ class UserProfileView(DetailView):
         return context
 
 
-class UserProfileUpdateView(UpdateView):
+class UserProfileUpdateView(LoginRequiredMixin, UpdateView):
     """
     HU-043 | ESCENARIO 2 | H | Actualizar nombre y teléfono
+    HU-043 | ESCENARIO 7 | E | Sin permisos (usuario no autenticado) - redirige al login
     """
     model = User
     form_class = UserProfileForm
     template_name = TEMPLATE_USER_PROFILE_EDIT
+    success_url = reverse_lazy(USERS_PROFILE)
     
     def get_object(self, queryset=None):
         return self.request.user
@@ -609,6 +613,7 @@ class UserProfileUpdateView(UpdateView):
         return context
     
     def form_valid(self, form):
+        form.save()
         messages.success(self.request, MSG_PROFILE_UPDATED)
         return redirect(USERS_PROFILE)
     
@@ -616,12 +621,14 @@ class UserProfileUpdateView(UpdateView):
         return reverse_lazy(USERS_PROFILE)
 
 
-class UserProfilePasswordView(FormView):
+class UserProfilePasswordView(LoginRequiredMixin, FormView):
     """
     HU-043 | ESCENARIO 3,4,5,6 | H/A/E | Cambiar contraseña desde perfil
+    HU-043 | ESCENARIO 7 | E | Sin permisos (usuario no autenticado) - redirige al login
     """
     form_class = UserProfilePasswordForm
     template_name = TEMPLATE_USER_PROFILE_PASSWORD
+    success_url = reverse_lazy(USERS_PROFILE)
     
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
@@ -635,7 +642,8 @@ class UserProfilePasswordView(FormView):
     
     def form_valid(self, form):
         # HU-043 | ESCENARIO 3 | H | Contraseña cambiada exitosamente
-        form.save()
+        user = form.save()
+        update_session_auth_hash(self.request, user)
         messages.success(self.request, MSG_PASSWORD_UPDATED)
         return redirect(USERS_PROFILE)
     
@@ -645,5 +653,3 @@ class UserProfilePasswordView(FormView):
         # HU-043 | ESCENARIO 6 | E | Nueva contraseña no coincide con confirmación
         messages.error(self.request, ERROR_PASSWORD_UPDATE)
         return super().form_invalid(form)
-
-    # HU-043 | ESCENARIO 7 | E | Sin permisos (usuario no autenticado) - manejado por @login_required en URLs
