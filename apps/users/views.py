@@ -326,7 +326,7 @@ class UserDeleteView(StaffPermissionRequiredMixin, FormView):
     """
     form_class = UserDeleteForm
     template_name = TEMPLATE_USER_CONFIRM_DELETE
-    permission_required = PERM_USER_DELETE  # HU-041 | ESCENARIO 5 | E | Sin permisos
+    permission_required = PERM_USER_DELETE
     
     def dispatch(self, request, *args, **kwargs):
         self.user = get_object_or_404(User, pk=kwargs['pk'])
@@ -347,20 +347,20 @@ class UserDeleteView(StaffPermissionRequiredMixin, FormView):
         context = super().get_context_data(**kwargs)
         context[CONTEXT_USER_OBJ] = self.user
         context[CONTEXT_CANCEL_URL] = USERS_LIST
+        context[CONTEXT_CANCEL_ARGS] = []
         return context
     
     def form_valid(self, form):
         # HU-041 | ESCENARIO 1 | H | Usuario archivado exitosamente
         self.user.is_active = False
-        self.user.save(update_fields=[FILTER_IS_ACTIVE])
+        self.user.save(update_fields=['is_active'])
         messages.success(self.request, MSG_USER_DELETED.format(username=self.user.username))
         return redirect(USERS_LIST)
-        # HU-041 | ESCENARIO 3 | E | Archivar al último Administrador (validación en UserDeleteForm)
     
     def form_invalid(self, form):
         # HU-041 | ESCENARIO 4 | A | Cancelar archivación
         messages.error(self.request, ERROR_USER_DELETE)
-        return super().form_invalid(form)
+        return self.render_to_response(self.get_context_data(form=form))
 
 
 class UserRestoreView(StaffPermissionRequiredMixin, FormView):
