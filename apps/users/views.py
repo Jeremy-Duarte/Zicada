@@ -307,7 +307,7 @@ class UserChangePasswordView(StaffPermissionRequiredMixin, FormView):
         context = super().get_context_data(**kwargs)
         context[CONTEXT_USER_OBJ] = self.user
         context[CONTEXT_CANCEL_URL] = USERS_LIST
-        context[CONTEXT_CANCEL_ARGS] = [self.user.pk]
+        context[CONTEXT_CANCEL_ARGS] = []
         return context
     
     def form_valid(self, form):
