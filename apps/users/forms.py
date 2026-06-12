@@ -397,8 +397,6 @@ class UserRestoreForm(FormStyleMixin, forms.Form):
             raise ValidationError(ERROR_USER_NOT_SPECIFIED)
         if self.user.is_active:
             raise ValidationError(ERROR_USER_ALREADY_ACTIVE)
-        if User.objects.filter(username__iexact=self.user.username).exclude(pk=self.user.pk).exists():
-            raise ValidationError('Ya existe un usuario activo con este nombre de usuario.')
         if self.user.email and User.objects.filter(email__iexact=self.user.email).exclude(pk=self.user.pk).exists():
             raise ValidationError('Ya existe un usuario activo con este correo electrónico.')
         if not cleaned_data.get('confirm'):
