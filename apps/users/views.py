@@ -599,6 +599,7 @@ class UserProfileUpdateView(UpdateView):
     model = User
     form_class = UserProfileForm
     template_name = TEMPLATE_USER_PROFILE_EDIT
+    success_url = reverse_lazy(USERS_PROFILE)
     
     def get_object(self, queryset=None):
         return self.request.user
