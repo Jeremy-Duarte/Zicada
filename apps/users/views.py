@@ -1,5 +1,6 @@
 from django.urls import reverse_lazy
 from apps.core.crud.mixins import StaffPermissionRequiredMixin
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import ListView, CreateView, UpdateView, FormView, DetailView
 from django.shortcuts import get_object_or_404, redirect
 from django.contrib import messages
@@ -574,9 +575,10 @@ class GroupDeleteView(StaffPermissionRequiredMixin, FormView):
 # USER PROFILE VIEWS (HU-043)
 # =============================================================================
 
-class UserProfileView(DetailView):
+class UserProfileView(LoginRequiredMixin, DetailView):
     """
     HU-043: Ver/editar mi propio perfil (vista de detalle)
+    HU-043 | ESCENARIO 7 | E | Sin permisos (usuario no autenticado) - redirige al login
     """
     model = User
     template_name = TEMPLATE_USER_PROFILE
@@ -592,9 +594,10 @@ class UserProfileView(DetailView):
         return context
 
 
-class UserProfileUpdateView(UpdateView):
+class UserProfileUpdateView(LoginRequiredMixin, UpdateView):
     """
     HU-043 | ESCENARIO 2 | H | Actualizar nombre y teléfono
+    HU-043 | ESCENARIO 7 | E | Sin permisos (usuario no autenticado) - redirige al login
     """
     model = User
     form_class = UserProfileForm
@@ -610,6 +613,7 @@ class UserProfileUpdateView(UpdateView):
         return context
     
     def form_valid(self, form):
+        form.save()
         messages.success(self.request, MSG_PROFILE_UPDATED)
         return redirect(USERS_PROFILE)
     
@@ -617,9 +621,10 @@ class UserProfileUpdateView(UpdateView):
         return reverse_lazy(USERS_PROFILE)
 
 
-class UserProfilePasswordView(FormView):
+class UserProfilePasswordView(LoginRequiredMixin, FormView):
     """
     HU-043 | ESCENARIO 3,4,5,6 | H/A/E | Cambiar contraseña desde perfil
+    HU-043 | ESCENARIO 7 | E | Sin permisos (usuario no autenticado) - redirige al login
     """
     form_class = UserProfilePasswordForm
     template_name = TEMPLATE_USER_PROFILE_PASSWORD
@@ -648,5 +653,3 @@ class UserProfilePasswordView(FormView):
         # HU-043 | ESCENARIO 6 | E | Nueva contraseña no coincide con confirmación
         messages.error(self.request, ERROR_PASSWORD_UPDATE)
         return super().form_invalid(form)
-
-    # HU-043 | ESCENARIO 7 | E | Sin permisos (usuario no autenticado) - manejado por @login_required en URLs
