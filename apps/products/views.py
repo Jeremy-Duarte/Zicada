@@ -536,6 +536,7 @@ class CollectionListViewPublic(PaginationMixin, FilterMixin, ListView):
         # HU-005 | ESCENARIO 3 | A | Filtro por fecha de inicio (colecciones recientes)
         date_filter = self.request.GET.get(QUERY_PARAM_DATE_FILTER, '')
         now = timezone.now()
+        hoy = now.date()
         
         if date_filter == DATE_FILTER_LAST_MONTH:
             qs = qs.filter(start_date__gte=now - timedelta(days=30))
@@ -546,7 +547,11 @@ class CollectionListViewPublic(PaginationMixin, FilterMixin, ListView):
         elif date_filter == DATE_FILTER_LAST_YEAR:
             qs = qs.filter(start_date__gte=now - timedelta(days=365))
         elif date_filter == DATE_FILTER_UPCOMING:
-            qs = qs.filter(start_date__gt=now, status=STATUS_DRAFT)
+            qs = qs.filter(
+                start_date__date__gt=hoy,
+                is_active=True,
+                status=STATUS_DRAFT
+            )
         
         return qs
     
@@ -563,10 +568,24 @@ class CollectionListViewPublic(PaginationMixin, FilterMixin, ListView):
         # HU-005 | ESCENARIO 1 | H | Listado de colecciones activas cargado
         # HU-005 | ESCENARIO 4 | A | Sin colecciones activas → template muestra mensaje
         qs = super().get_queryset()
-        qs = qs.filter(is_active=True, status=STATUS_PUBLISHED)
+        hoy = timezone.now().date()
+        qs = qs.filter(is_active=True)
+    
+        date_filter = self.request.GET.get(QUERY_PARAM_DATE_FILTER, '')
+        
+        if date_filter == DATE_FILTER_UPCOMING:
+            qs = qs.filter(
+                status=STATUS_DRAFT,
+                start_date__date__gt=hoy
+            )
+        else:
+            qs = qs.filter(status=STATUS_PUBLISHED)
+            qs = qs.filter(
+                Q(start_date__isnull=True) |
+                Q(start_date__date__lte=hoy)
+            )
         
         qs = self._apply_search_filter(qs)
-        qs = self._apply_status_filter(qs)
         qs = self._apply_price_range_filter(qs)
         qs = self._apply_product_count_filter(qs)
         qs = self._apply_date_filter(qs)
@@ -2346,7 +2365,7 @@ class CollectionTrashcanView(StaffPermissionRequiredMixin, ListView):
     model = Collection
     template_name = TEMPLATE_COLLECTION_TRASHCAN
     context_object_name = 'collections'
-    permission_required = 'products.view_collection'  # HU-017 | ESCENARIO 4 | E | Sin permisos
+    permission_required = PERM_COLLECTION_VIEW  # HU-017 | ESCENARIO 4 | E | Sin permisos
     paginate_by = PAGINATE_BY_DEFAULT
     
     def get_queryset(self):
