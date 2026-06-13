@@ -1260,6 +1260,12 @@ class CollectionCreateForm(FormStyleMixin, forms.ModelForm):
         self.fields['text_color'].required = False
         self.fields['title_font'].required = False
 
+    def clean_name(self):
+        name = self.cleaned_data.get('name', '').strip()
+        if Collection.objects.filter(name__iexact=name).exists():
+            raise ValidationError('Ya existe una colección con este nombre.')
+        return name
+
     def save(self, commit=True):
         # HU-015 | ESCENARIO 1 | H | Guarda colección en estado borrador
         instance = super().save(commit=False)
@@ -1334,6 +1340,34 @@ class CollectionUpdateForm(FormStyleMixin, forms.ModelForm):
                 self.initial['start_date'] = self.instance.start_date.strftime('%Y-%m-%dT%H:%M')
             if self.instance.end_date:
                 self.initial['end_date'] = self.instance.end_date.strftime('%Y-%m-%dT%H:%M')
+
+    def clean_name(self):
+        name = self.cleaned_data.get('name', '').strip()
+        qs = Collection.objects.filter(name__iexact=name)
+        if self.instance and self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise ValidationError('Ya existe otra colección con este nombre.')
+        return name
+
+    def clean(self):
+        cleaned_data = super().clean()
+        
+        start_date = cleaned_data.get('start_date')
+        end_date = cleaned_data.get('end_date')
+        
+        if start_date and end_date and start_date >= end_date:
+            raise ValidationError({
+                'end_date': 'La fecha de fin debe ser posterior a la fecha de inicio.'
+            })
+        
+        if cleaned_data.get('is_active') and cleaned_data.get('status') == 'publicada':
+            if not cleaned_data.get('products'):
+                raise ValidationError({
+                    'products': 'Una colección publicada debe tener al menos un producto asignado.'
+                })
+        
+        return cleaned_data
 
     def save(self, commit=True):
         # HU-016 | ESCENARIO 1 | H | Guarda cambios de colección
