@@ -302,14 +302,14 @@ class Product(BaseAuditModel):
     def stock_by_size_color(self):
         # HU-008 | ESCENARIO 1,2,3 | H/A | Retorna stock agrupado por talla y color
         result = {}
-        for variant in self.variants.filter(is_active=True).select_related('size', 'color'):
+        for variant in self.variants.filter(is_active=True).select_related('size', 'product_color__color'):
             key = f"{variant.size.name}-{variant.color.name}"
             result[key] = variant.stock
         return result
 
     def available_variants(self):
         # HU-008 | ESCENARIO 1 | H | Retorna variantes con stock disponible
-        return self.variants.filter(is_active=True, stock__gt=0).select_related('size', 'color')
+        return self.variants.filter(is_active=True, stock__gt=0).select_related('size', 'product_color__color')
 
     def is_available(self):
         # HU-006 | ESCENARIO 3 | A | Verifica si hay al menos una variante disponible
@@ -379,14 +379,14 @@ class ProductVariantManager(models.Manager):
         return self.filter(is_active=True, stock__gt=0, stock__lte=threshold)
     
     def for_product(self, product):
-        return self.filter(product=product).select_related('size', 'color')
+        return self.filter(product=product).select_related('size', 'product_color__color')
     
     def by_size_color(self, size_id=None, color_id=None):
         qs = self.all()
         if size_id:
             qs = qs.filter(size_id=size_id)
         if color_id:
-            qs = qs.filter(color_id=color_id)
+             qs = qs.filter(product_color__color_id=color_id)
         return qs
 
 
