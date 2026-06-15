@@ -87,8 +87,52 @@ User = get_user_model()
 # HELPERS
 # =============================================================================
 
-def _create_user(**kwargs):
-    defaults = {'username': 'testuser', 'password': 'pass1234', 'is_active': True}
+def _create_admin_user(**kwargs):
+    """Create an admin user with Administrador role."""
+    from django.contrib.auth.models import Group as AuthGroup
+    
+    defaults = {'username': 'admin', 'password': 'pass1234', 'is_staff': True}
+    defaults.update(kwargs)
+    password = defaults.pop('password')
+    is_delivery = defaults.pop('is_delivery', False)
+
+    user = User(**defaults)
+    user.set_password(password)
+    user.save()
+
+    if is_delivery and hasattr(user, 'is_delivery'):
+        user.is_delivery = True
+        user.save(update_fields=['is_delivery'])
+
+    # Assign Administrador role
+    admin_group, _ = AuthGroup.objects.get_or_create(name='Administrador')
+    user.groups.add(admin_group)
+
+    return user
+
+
+def _create_delivery_user(**kwargs):
+    """Create a delivery user with Entregador role."""
+    from django.contrib.auth.models import Group as AuthGroup
+    
+    defaults = {'username': 'delivery', 'password': 'pass1234', 'is_delivery': True}
+    defaults.update(kwargs)
+    password = defaults.pop('password')
+
+    user = User(**defaults)
+    user.set_password(password)
+    user.save()
+
+    # Assign Entregador role
+    delivery_group, _ = AuthGroup.objects.get_or_create(name='Entregador')
+    user.groups.add(delivery_group)
+
+    return user
+
+
+def _create_normal_user(**kwargs):
+    """Create a normal user without special roles."""
+    defaults = {'username': 'normal', 'password': 'pass1234', 'is_staff': False}
     defaults.update(kwargs)
     password = defaults.pop('password')
     is_delivery = defaults.pop('is_delivery', False)
@@ -102,12 +146,6 @@ def _create_user(**kwargs):
         user.save(update_fields=['is_delivery'])
 
     return user
-
-
-def _create_staff_user(**kwargs):
-    defaults = {'is_staff': True}
-    defaults.update(kwargs)
-    return _create_user(**defaults)
 
 
 def _add_user_permissions(user):
@@ -149,13 +187,13 @@ class UserListViewTest(TestCase):
 
     def setUp(self):
         self.client = Client()
-        self.admin = _create_staff_user(username='admin')
+        self.admin = _create_admin_user(username='admin')
         self.admin = _add_user_permissions(self.admin)
         self.client.force_login(self.admin)
 
-        self.user1 = _create_user(username='juan', first_name='Juan', last_name='Perez')
-        self.user2 = _create_user(username='maria', first_name='Maria', email='maria@test.com')
-        self.user3 = _create_user(username='delivery1', is_delivery=True)
+        self.user1 = _create_normal_user(username='juan', first_name='Juan', last_name='Perez')
+        self.user2 = _create_normal_user(username='maria', first_name='Maria', email='maria@test.com')
+        self.user3 = _create_delivery_user(username='delivery1')
 
     def test_list_returns_200(self):
         """CP-116 | HU-038 | ESCENARIO 1 | H | Lista de usuarios cargada exitosamente"""
@@ -221,7 +259,7 @@ class UserListViewTest(TestCase):
 
     def test_list_requires_permission(self):
         """CP-124b | HU-038 | ESCENARIO 6 | E | Usuario autenticado sin permiso -> catálogo"""
-        normal_user = _create_user(username='normal')
+        normal_user = _create_normal_user(username='normal')
         self.client.force_login(normal_user)
         response = self.client.get(reverse(USERS_LIST))
         self.assertRedirects(response, reverse(PRODUCTS_CATALOG))
@@ -241,7 +279,7 @@ class UserCreateViewTest(TestCase):
 
     def setUp(self):
         self.client = Client()
-        self.admin = _create_staff_user(username='admin')
+        self.admin = _create_admin_user(username='admin')
         self.admin = _add_user_permissions(self.admin)
         self.client.force_login(self.admin)
 
@@ -272,7 +310,7 @@ class UserCreateViewTest(TestCase):
 
     def test_create_duplicate_email(self):
         """CP-128 | HU-039 | ESCENARIO 3 | E | Correo duplicado"""
-        _create_user(email='nuevo@test.com')
+        _create_normal_user(email='nuevo@test.com')
         data = self.get_valid_data()
         response = self.client.post(reverse(USERS_CREATE), data=data)
         self.assertEqual(response.status_code, 200)
@@ -294,7 +332,7 @@ class UserCreateViewTest(TestCase):
 
     def test_create_requires_permission(self):
         """CP-130b | HU-039 | ESCENARIO 4 | E | Usuario autenticado sin permiso -> catálogo"""
-        normal_user = _create_user(username='normal')
+        normal_user = _create_normal_user(username='normal')
         self.client.force_login(normal_user)
         response = self.client.get(reverse(USERS_CREATE))
         self.assertRedirects(response, reverse(PRODUCTS_CATALOG))
@@ -309,10 +347,10 @@ class UserUpdateViewTest(TestCase):
 
     def setUp(self):
         self.client = Client()
-        self.admin = _create_staff_user(username='admin')
+        self.admin = _create_admin_user(username='admin')
         self.admin = _add_user_permissions(self.admin)
         self.client.force_login(self.admin)
-        self.target_user = _create_user(username='target', first_name='Original')
+        self.target_user = _create_normal_user(username='target', first_name='Original')
 
     def get_valid_data(self):
         return {
@@ -345,7 +383,7 @@ class UserUpdateViewTest(TestCase):
 
     def test_update_duplicate_email(self):
         """CP-134 | HU-040 | ESCENARIO 3 | E | Correo duplicado al editar"""
-        _create_user(email='target@updated.com')
+        _create_normal_user(email='target@updated.com')
         data = self.get_valid_data()
         response = self.client.post(reverse(USERS_EDIT, kwargs={'pk': self.target_user.pk}), data=data)
         self.assertEqual(response.status_code, 200)
@@ -365,7 +403,7 @@ class UserUpdateViewTest(TestCase):
 
     def test_update_requires_permission(self):
         """CP-136b | HU-040 | ESCENARIO 5 | E | Usuario autenticado sin permiso -> catálogo"""
-        normal_user = _create_user(username='normal')
+        normal_user = _create_normal_user(username='normal')
         self.client.force_login(normal_user)
         response = self.client.get(reverse(USERS_EDIT, kwargs={'pk': self.target_user.pk}))
         self.assertRedirects(response, reverse(PRODUCTS_CATALOG))
@@ -389,10 +427,10 @@ class UserChangePasswordViewTest(TestCase):
 
     def setUp(self):
         self.client = Client()
-        self.admin = _create_staff_user(username='admin')
+        self.admin = _create_admin_user(username='admin')
         self.admin = _add_user_permissions(self.admin)
         self.client.force_login(self.admin)
-        self.target_user = _create_user(username='target', password='OldPass123!')
+        self.target_user = _create_normal_user(username='target', password='OldPass123!')
 
     def test_get_change_password_form(self):
         """CP-138 | HU-040 | GET | Muestra formulario de cambio de contraseña"""
@@ -437,10 +475,10 @@ class UserDeleteViewTest(TestCase):
 
     def setUp(self):
         self.client = Client()
-        self.admin = _create_staff_user(username='admin')
+        self.admin = _create_admin_user(username='admin')
         self.admin = _add_user_permissions(self.admin)
         self.client.force_login(self.admin)
-        self.target = _create_user(username='target')
+        self.target = _create_normal_user(username='target')
 
     def test_get_delete_confirmation(self):
         """CP-142 | HU-041 | GET | Muestra pantalla de confirmación"""
@@ -452,7 +490,7 @@ class UserDeleteViewTest(TestCase):
         """CP-143 | HU-041 | ESCENARIO 1 | H | Usuario archivado exitosamente"""
         response = self.client.post(
             reverse(USERS_DELETE, kwargs={'pk': self.target.pk}), 
-            {'confirm': 'target'}  # ← Nombre de usuario correcto
+            {'confirm': 'target'}
         )
         self.assertRedirects(response, reverse(USERS_LIST))
         self.target.refresh_from_db()
@@ -472,7 +510,7 @@ class UserDeleteViewTest(TestCase):
         """CP-145 | HU-041 | ESCENARIO 4 | A | Cancelar archivación"""
         response = self.client.post(
             reverse(USERS_DELETE, kwargs={'pk': self.target.pk}), 
-            {'confirm': 'wrong_name'}  # ← Nombre incorrecto
+            {'confirm': 'wrong_name'}
         )
         self.assertEqual(response.status_code, 200)
         self.target.refresh_from_db()
@@ -489,7 +527,7 @@ class UserDeleteViewTest(TestCase):
 
     def test_delete_requires_permission(self):
         """CP-146b | HU-041 | ESCENARIO 5 | E | Usuario autenticado sin permiso -> catálogo"""
-        normal_user = _create_user(username='normal')
+        normal_user = _create_normal_user(username='normal')
         self.client.force_login(normal_user)
         response = self.client.get(reverse(USERS_DELETE, kwargs={'pk': self.target.pk}))
         self.assertRedirects(response, reverse(PRODUCTS_CATALOG))
@@ -504,10 +542,10 @@ class UserRestoreViewTest(TestCase):
 
     def setUp(self):
         self.client = Client()
-        self.admin = _create_staff_user(username='admin')
+        self.admin = _create_admin_user(username='admin')
         self.admin = _add_user_permissions(self.admin)
         self.client.force_login(self.admin)
-        self.target = _create_user(username='target', is_active=False)
+        self.target = _create_normal_user(username='target', is_active=False)
 
     def test_get_restore_confirmation(self):
         """CP-147 | HU-042 | GET | Muestra pantalla de restauración"""
@@ -524,7 +562,7 @@ class UserRestoreViewTest(TestCase):
 
     def test_restore_already_active(self):
         """CP-149 | HU-042 | ESCENARIO 2 | A | Usuario ya activo -> redirige"""
-        active_user = _create_user(username='active_user')
+        active_user = _create_normal_user(username='active_user')
         response = self.client.get(reverse(USERS_RESTORE, kwargs={'pk': active_user.pk}))
         self.assertEqual(response.status_code, 302)
         active_user.refresh_from_db()
@@ -538,7 +576,7 @@ class UserRestoreViewTest(TestCase):
 
     def test_restore_requires_permission(self):
         """CP-150b | HU-042 | ESCENARIO 3 | E | Usuario autenticado sin permiso -> catálogo"""
-        normal_user = _create_user(username='normal')
+        normal_user = _create_normal_user(username='normal')
         self.client.force_login(normal_user)
         response = self.client.get(reverse(USERS_RESTORE, kwargs={'pk': self.target.pk}))
         self.assertRedirects(response, reverse(PRODUCTS_CATALOG))
@@ -553,13 +591,13 @@ class UserTrashcanViewTest(TestCase):
 
     def setUp(self):
         self.client = Client()
-        self.admin = _create_staff_user(username='admin')
+        self.admin = _create_admin_user(username='admin')
         self.admin = _add_user_permissions(self.admin)
         self.client.force_login(self.admin)
 
-        self.inactive1 = _create_user(username='deleted1', is_active=False)
-        self.inactive2 = _create_user(username='deleted2', is_active=False)
-        self.active = _create_user(username='active', is_active=True)
+        self.inactive1 = _create_normal_user(username='deleted1', is_active=False)
+        self.inactive2 = _create_normal_user(username='deleted2', is_active=False)
+        self.active = _create_normal_user(username='active', is_active=True)
 
     def test_trashcan_shows_only_inactive(self):
         """CP-151 | HU-041 | A | Papelera muestra solo usuarios inactivos"""
@@ -590,7 +628,7 @@ class UserTrashcanViewTest(TestCase):
 
     def test_trashcan_requires_permission(self):
         """CP-154b | HU-041 | E | Usuario autenticado sin permiso -> catálogo"""
-        normal_user = _create_user(username='normal')
+        normal_user = _create_normal_user(username='normal')
         self.client.force_login(normal_user)
         response = self.client.get(reverse(USERS_TRASHCAN))
         self.assertRedirects(response, reverse(PRODUCTS_CATALOG))
@@ -605,7 +643,7 @@ class UserProfileViewTest(TestCase):
 
     def setUp(self):
         self.client = Client()
-        self.user = _create_user(username='profile_user', first_name='Perfil')
+        self.user = _create_normal_user(username='profile_user', first_name='Perfil')
         self.client.force_login(self.user)
 
     def test_profile_returns_200(self):
@@ -627,7 +665,7 @@ class UserProfileUpdateViewTest(TestCase):
 
     def setUp(self):
         self.client = Client()
-        self.user = _create_user(username='profile_user', first_name='Original')
+        self.user = _create_normal_user(username='profile_user', first_name='Original')
         self.client.force_login(self.user)
 
     def test_get_profile_edit_form(self):
@@ -650,7 +688,7 @@ class UserProfilePasswordViewTest(TestCase):
 
     def setUp(self):
         self.client = Client()
-        self.user = _create_user(username='profile_user', password='OldPass123!')
+        self.user = _create_normal_user(username='profile_user', password='OldPass123!')
         self.client.force_login(self.user)
 
     def test_get_password_form(self):
@@ -725,6 +763,7 @@ class UserProfilePasswordViewTest(TestCase):
         self.user.refresh_from_db()
         self.assertTrue(self.user.check_password('OldPass123!'))
 
+
 # =============================================================================
 # TESTS: Group CRUD Views (Soporte)
 # =============================================================================
@@ -750,7 +789,7 @@ class GroupListViewTest(TestCase):
 
     def setUp(self):
         self.client = Client()
-        self.admin = _create_staff_user(username='admin')
+        self.admin = _create_admin_user(username='admin')
         self.admin = _add_group_permissions(self.admin)
         self.client.force_login(self.admin)
         self.group1 = _create_group(name='Admin Group')
@@ -802,7 +841,7 @@ class GroupCreateViewTest(TestCase):
 
     def setUp(self):
         self.client = Client()
-        self.admin = _create_staff_user(username='admin')
+        self.admin = _create_admin_user(username='admin')
         self.admin = _add_group_permissions(self.admin)
         self.client.force_login(self.admin)
 
@@ -840,7 +879,7 @@ class GroupUpdateViewTest(TestCase):
 
     def setUp(self):
         self.client = Client()
-        self.admin = _create_staff_user(username='admin')
+        self.admin = _create_admin_user(username='admin')
         self.admin = _add_group_permissions(self.admin)
         self.client.force_login(self.admin)
         self.group = _create_group(name='Original Group')
@@ -880,7 +919,7 @@ class GroupDetailViewTest(TestCase):
 
     def setUp(self):
         self.client = Client()
-        self.admin = _create_staff_user(username='admin')
+        self.admin = _create_admin_user(username='admin')
         self.admin = _add_group_permissions(self.admin)
         self.client.force_login(self.admin)
         self.group = _create_group(name='Detail Group')
@@ -913,7 +952,7 @@ class GroupDeleteViewTest(TestCase):
 
     def setUp(self):
         self.client = Client()
-        self.admin = _create_staff_user(username='admin')
+        self.admin = _create_admin_user(username='admin')
         self.admin = _add_group_permissions(self.admin)
         self.client.force_login(self.admin)
         self.group = _create_group(name='Delete Group')
@@ -935,7 +974,7 @@ class GroupDeleteViewTest(TestCase):
 
     def test_delete_group_with_users(self):
         """CP-174 | Group: Eliminar grupo que tiene usuarios asignados - debe mostrar error"""
-        user = _create_user(username='member')
+        user = _create_normal_user(username='member')
         user.groups.add(self.group)
         self.assertTrue(self.group.user_set.count() > 0)
         
@@ -947,7 +986,6 @@ class GroupDeleteViewTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(Group.objects.filter(pk=self.group.pk).exists())
         
-        # ✅ Verificar que el mensaje es ERROR_GROUP_DELETE
         messages_list = list(response.context.get('messages', []))
         self.assertTrue(
             any(ERROR_GROUP_DELETE.lower() in str(m.message).lower() for m in messages_list),
@@ -965,7 +1003,7 @@ class GroupDeleteViewTest(TestCase):
 
     def test_delete_requires_permission(self):
         """CP-175b | Group: Usuario autenticado sin permiso -> catálogo"""
-        normal_user = _create_user(username='normal')
+        normal_user = _create_normal_user(username='normal')
         self.client.force_login(normal_user)
         response = self.client.get(reverse(USERS_GROUP_DELETE, kwargs={'pk': self.group.pk}))
         self.assertRedirects(response, reverse(PRODUCTS_CATALOG))

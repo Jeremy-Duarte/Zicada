@@ -18,7 +18,7 @@ Casos de prueba: CP-056 a CP-104
 from django.test import TestCase, Client, override_settings
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
-from django.contrib.auth.models import Permission
+from django.contrib.auth.models import Permission, Group
 from django.urls import reverse
 from django.core import mail
 from unittest.mock import patch
@@ -58,20 +58,49 @@ User = get_user_model()
 # HELPERS
 # =============================================================================
 
-def _create_test_user(**kwargs):
-    """Create a test user with optional attributes."""
-    defaults = {'username': 'testuser', 'password': 'pass1234'}
+def _create_admin_user(**kwargs):
+    """Create an admin user with Administrador role."""
+    defaults = {'username': 'admin', 'password': 'pass1234', 'is_staff': True}
     defaults.update(kwargs)
     password = defaults.pop('password')
-    is_delivery = defaults.pop('is_delivery', False)
     
     user = User(**defaults)
     user.set_password(password)
     user.save()
     
-    if is_delivery and hasattr(user, 'is_delivery'):
-        user.is_delivery = True
-        user.save()
+    # Assign Administrador role
+    admin_group, _ = Group.objects.get_or_create(name='Administrador')
+    user.groups.add(admin_group)
+    
+    return user
+
+
+def _create_delivery_user(**kwargs):
+    """Create a delivery user with Entregador role."""
+    defaults = {'username': 'delivery', 'password': 'pass1234', 'is_delivery': True}
+    defaults.update(kwargs)
+    password = defaults.pop('password')
+    
+    user = User(**defaults)
+    user.set_password(password)
+    user.save()
+    
+    # Assign Entregador role
+    delivery_group, _ = Group.objects.get_or_create(name='Entregador')
+    user.groups.add(delivery_group)
+    
+    return user
+
+
+def _create_normal_user(**kwargs):
+    """Create a normal user without special roles."""
+    defaults = {'username': 'normal', 'password': 'pass1234', 'is_staff': False}
+    defaults.update(kwargs)
+    password = defaults.pop('password')
+    
+    user = User(**defaults)
+    user.set_password(password)
+    user.save()
     
     return user
 
@@ -337,6 +366,7 @@ class ContactSubmitViewTest(TestCase):
         self.assertIsNotNone(form)
         self.assertEqual(form.cleaned_data.get('name'), 'Juan Perez')
 
+
 class ContactSuccessViewTest(TestCase):
     """HU-051: Contact success page"""
 
@@ -350,6 +380,8 @@ class ContactSuccessViewTest(TestCase):
         """
         response = self.client.get(reverse(CORE_CONTACT_SUCCESS))
         self.assertEqual(response.status_code, 200)
+
+
 # =============================================================================
 # TESTS: HU-001 & HU-003 StaffLoginView
 # =============================================================================
@@ -359,9 +391,9 @@ class StaffLoginViewTest(TestCase):
 
     def setUp(self):
         self.client = Client()
-        self.staff_user = _create_test_user(username='staff', is_staff=True)
-        self.normal_user = _create_test_user(username='normal', is_staff=False)
-        self.delivery_user = _create_test_user(username='delivery', is_delivery=True)
+        self.staff_user = _create_admin_user(username='staff')
+        self.normal_user = _create_normal_user(username='normal')
+        self.delivery_user = _create_delivery_user(username='delivery')
 
     def test_login_page_accessible(self):
         """
@@ -389,9 +421,6 @@ class StaffLoginViewTest(TestCase):
         # TODO: Implementar cuando el rol de delivery esté completo
         # Por ahora, test comentado
         pass
-        # self.client.login(username='delivery', password='pass1234')
-        # response = self.client.get(reverse(CORE_STAFF_LOGIN))
-        # self.assertRedirects(response, reverse(BACKOFFICE_DASHBOARD), fetch_redirect_response=False)
 
     def test_normal_user_redirected_to_catalog(self):
         """
@@ -407,7 +436,7 @@ class StaffLoginViewTest(TestCase):
         CP-075
         HU-001 | SCENARIO 4 | E | Inactive user shows error
         """
-        _create_test_user(username='inactive', is_staff=True, is_active=False)
+        inactive_user = _create_normal_user(username='inactive', is_active=False)
         response = self.client.post(reverse(CORE_STAFF_LOGIN), data={
             'username': 'inactive',
             'password': 'pass1234'
@@ -437,7 +466,7 @@ class HeroConfigListViewTest(TestCase):
 
     def setUp(self):
         self.client = Client()
-        self.user = _create_test_user(username='admin', is_staff=True)
+        self.user = _create_admin_user(username='admin')
         self.user = _add_hero_permissions(self.user)
         self.client.force_login(self.user)
 
@@ -479,18 +508,16 @@ class HeroConfigListViewTest(TestCase):
         """
         self.client.logout()
         response = self.client.get(reverse(CORE_HERO_LIST))
-        
         self.assertRedirects(response, f'{reverse(CORE_STAFF_LOGIN)}?next={reverse(CORE_HERO_LIST)}')
 
     def test_list_requires_permission(self):
         """
         CP-080b
-        HU-052 | SCENARIO 2 | E | Authenticated user without permission redirects to catalog with message
+        HU-052 | SCENARIO 2 | E | Authenticated user without permission redirects to catalog
         """
-        normal_user = _create_test_user(username='normal', is_staff=False)
+        normal_user = _create_normal_user(username='normal')
         self.client.force_login(normal_user)
         response = self.client.get(reverse(CORE_HERO_LIST))
-        
         self.assertRedirects(response, reverse(PRODUCTS_CATALOG))
 
     def test_list_context_headers(self):
@@ -512,7 +539,7 @@ class HeroConfigCreateViewTest(TestCase):
 
     def setUp(self):
         self.client = Client()
-        self.user = _create_test_user(username='admin', is_staff=True)
+        self.user = _create_admin_user(username='admin')
         self.user = _add_hero_permissions(self.user)
         self.client.force_login(self.user)
 
@@ -523,7 +550,6 @@ class HeroConfigCreateViewTest(TestCase):
     def get_valid_data(self):
         catalog_url = reverse(PRODUCTS_CATALOG)
         return {
-            # Campos del modelo
             'background_image': '',
             'overlay_opacity': 0.5,
             'title_text': 'Nuevo Slide',
@@ -568,15 +594,10 @@ class HeroConfigCreateViewTest(TestCase):
         HU-053 | SCENARIO 1 | H | Valid slide creation
         """
         HeroConfig.objects.all().delete()
-        
         data = self.get_valid_data()
-        data['sort_order'] = 0
-        
         response = self.client.post(reverse(CORE_HERO_CREATE), data=data)
-        
         self.assertRedirects(response, reverse(CORE_HERO_LIST))
         self.assertEqual(HeroConfig.objects.count(), 1)
-        
         hero = HeroConfig.objects.first()
         self.assertEqual(hero.title_text, 'Nuevo Slide')
 
@@ -588,7 +609,6 @@ class HeroConfigCreateViewTest(TestCase):
         data = self.get_valid_data()
         data['title_text'] = ''
         response = self.client.post(reverse(CORE_HERO_CREATE), data=data)
-
         self.assertEqual(response.status_code, 200)
         self.assertEqual(HeroConfig.objects.count(), 0)
 
@@ -599,7 +619,6 @@ class HeroConfigCreateViewTest(TestCase):
         """
         self.client.logout()
         response = self.client.get(reverse(CORE_HERO_CREATE))
-        
         self.assertRedirects(response, f'{reverse(CORE_STAFF_LOGIN)}?next={reverse(CORE_HERO_CREATE)}')
 
     def test_create_requires_permission(self):
@@ -607,11 +626,9 @@ class HeroConfigCreateViewTest(TestCase):
         CP-086b
         HU-053 | SCENARIO 3 | E | Authenticated user without permission redirects to catalog
         """
-        normal_user = _create_test_user(username='normal', is_staff=False)
+        normal_user = _create_normal_user(username='normal')
         self.client.force_login(normal_user)
-        
         response = self.client.get(reverse(CORE_HERO_CREATE))
-        
         self.assertRedirects(response, reverse(PRODUCTS_CATALOG))
 
 
@@ -624,7 +641,7 @@ class HeroConfigUpdateViewTest(TestCase):
 
     def setUp(self):
         self.client = Client()
-        self.user = _create_test_user(username='admin', is_staff=True)
+        self.user = _create_admin_user(username='admin')
         self.user = _add_hero_permissions(self.user)
         self.client.force_login(self.user)
 
@@ -681,9 +698,7 @@ class HeroConfigUpdateViewTest(TestCase):
             reverse(CORE_HERO_EDIT, kwargs={'pk': self.hero.pk}),
             data=data
         )
-
         self.assertRedirects(response, reverse(CORE_HERO_LIST))
-
         self.hero.refresh_from_db()
         self.assertEqual(self.hero.title_text, 'Actualizado')
         self.assertEqual(self.hero.section_height, '90vh')
@@ -699,7 +714,6 @@ class HeroConfigUpdateViewTest(TestCase):
             reverse(CORE_HERO_EDIT, kwargs={'pk': self.hero.pk}),
             data=data
         )
-
         self.assertEqual(response.status_code, 200)
         self.hero.refresh_from_db()
         self.assertEqual(self.hero.title_text, 'Original')
@@ -726,10 +740,9 @@ class HeroConfigUpdateViewTest(TestCase):
         CP-091b
         HU-054 | SCENARIO 3 | E | Authenticated user without permission redirects to catalog
         """
-        normal_user = _create_test_user(username='normal', is_staff=False)
+        normal_user = _create_normal_user(username='normal')
         self.client.force_login(normal_user)
         response = self.client.get(reverse(CORE_HERO_EDIT, kwargs={'pk': self.hero.pk}))
-        
         self.assertRedirects(response, reverse(PRODUCTS_CATALOG))
 
 
@@ -742,7 +755,7 @@ class HeroConfigDeleteViewTest(TestCase):
 
     def setUp(self):
         self.client = Client()
-        self.user = _create_test_user(username='admin', is_staff=True)
+        self.user = _create_admin_user(username='admin')
         self.user = _add_hero_permissions(self.user)
         self.client.force_login(self.user)
 
@@ -765,9 +778,7 @@ class HeroConfigDeleteViewTest(TestCase):
             reverse(CORE_HERO_DELETE, kwargs={'pk': self.hero.pk}),
             data={'confirm': 'Eliminar Slide'}
         )
-
         self.assertRedirects(response, reverse(CORE_HERO_LIST))
-
         self.hero.refresh_from_db()
         self.assertFalse(self.hero.is_active)
         self.assertIsNotNone(self.hero.deleted_at)
@@ -781,9 +792,7 @@ class HeroConfigDeleteViewTest(TestCase):
             reverse(CORE_HERO_DELETE, kwargs={'pk': self.hero.pk}),
             data={'confirm': 'Otro Nombre'}
         )
-
         self.assertEqual(response.status_code, 200)
-
         self.hero.refresh_from_db()
         self.assertTrue(self.hero.is_active)
 
@@ -797,7 +806,6 @@ class HeroConfigDeleteViewTest(TestCase):
             data={'confirm': 'eliminar slide'}
         )
         self.assertRedirects(response, reverse(CORE_HERO_LIST))
-
         self.hero.refresh_from_db()
         self.assertFalse(self.hero.is_active)
 
@@ -815,10 +823,9 @@ class HeroConfigDeleteViewTest(TestCase):
         CP-096b
         HU-055 | SCENARIO 3 | E | Authenticated user without permission redirects to catalog
         """
-        normal_user = _create_test_user(username='normal', is_staff=False)
+        normal_user = _create_normal_user(username='normal')
         self.client.force_login(normal_user)
         response = self.client.get(reverse(CORE_HERO_DELETE, kwargs={'pk': self.hero.pk}))
-        
         self.assertRedirects(response, reverse(PRODUCTS_CATALOG))
 
 
@@ -831,7 +838,7 @@ class HeroConfigRestoreViewTest(TestCase):
 
     def setUp(self):
         self.client = Client()
-        self.user = _create_test_user(username='admin', is_staff=True)
+        self.user = _create_admin_user(username='admin')
         self.user = _add_hero_permissions(self.user)
         self.client.force_login(self.user)
 
@@ -854,9 +861,7 @@ class HeroConfigRestoreViewTest(TestCase):
             reverse(CORE_HERO_RESTORE, kwargs={'pk': self.hero.pk}),
             data={'confirm': True}
         )
-
         self.assertRedirects(response, reverse(CORE_HERO_LIST))
-
         self.hero.refresh_from_db()
         self.assertTrue(self.hero.is_active)
         self.assertIsNone(self.hero.deleted_at)
@@ -870,9 +875,7 @@ class HeroConfigRestoreViewTest(TestCase):
             reverse(CORE_HERO_RESTORE, kwargs={'pk': self.hero.pk}),
             data={'confirm': False}
         )
-
         self.assertEqual(response.status_code, 200)
-
         self.hero.refresh_from_db()
         self.assertFalse(self.hero.is_active)
 
@@ -882,12 +885,10 @@ class HeroConfigRestoreViewTest(TestCase):
         HU-056 | SCENARIO 3 | A | Sort order conflict returns to form
         """
         _create_hero(title_text='Activo', sort_order=1)
-
         response = self.client.post(
             reverse(CORE_HERO_RESTORE, kwargs={'pk': self.hero.pk}),
             data={'confirm': True}
         )
-
         self.assertEqual(response.status_code, 200)
         self.hero.refresh_from_db()
         self.assertFalse(self.hero.is_active)
@@ -914,10 +915,9 @@ class HeroConfigRestoreViewTest(TestCase):
         CP-102b
         HU-056 | SCENARIO 2 | E | Authenticated user without permission redirects to catalog
         """
-        normal_user = _create_test_user(username='normal', is_staff=False)
+        normal_user = _create_normal_user(username='normal')
         self.client.force_login(normal_user)
         response = self.client.get(reverse(CORE_HERO_RESTORE, kwargs={'pk': self.hero.pk}))
-        
         self.assertRedirects(response, reverse(PRODUCTS_CATALOG))
 
 
@@ -930,7 +930,7 @@ class HeroConfigTrashcanViewTest(TestCase):
 
     def setUp(self):
         self.client = Client()
-        self.user = _create_test_user(username='admin', is_staff=True)
+        self.user = _create_admin_user(username='admin')
         self.user = _add_hero_permissions(self.user)
         self.client.force_login(self.user)
 
@@ -944,7 +944,6 @@ class HeroConfigTrashcanViewTest(TestCase):
         """
         response = self.client.get(reverse(CORE_HERO_TRASHCAN))
         self.assertEqual(response.status_code, 200)
-
         slides = list(response.context['hero_slides'])
         self.assertEqual(len(slides), 1)
         self.assertEqual(slides[0].title_text, 'Eliminado 1')
@@ -982,10 +981,9 @@ class HeroConfigTrashcanViewTest(TestCase):
         CP-106b
         HU-057 | SCENARIO 2 | E | Authenticated user without permission redirects to catalog
         """
-        normal_user = _create_test_user(username='normal', is_staff=False)
+        normal_user = _create_normal_user(username='normal')
         self.client.force_login(normal_user)
         response = self.client.get(reverse(CORE_HERO_TRASHCAN))
-        
         self.assertRedirects(response, reverse(PRODUCTS_CATALOG))
 
 
@@ -998,7 +996,7 @@ class StaffLogoutViewTest(TestCase):
 
     def setUp(self):
         self.client = Client()
-        self.user = _create_test_user(username='staff', is_staff=True)
+        self.user = _create_admin_user(username='staff')
         self.client.force_login(self.user)
 
     def test_logout_redirects_to_login(self):
@@ -1008,7 +1006,6 @@ class StaffLogoutViewTest(TestCase):
         """
         response = self.client.post(reverse(CORE_STAFF_LOGOUT))
         self.assertRedirects(response, reverse(CORE_STAFF_LOGIN))
-
         self.assertFalse(response.wsgi_request.user.is_authenticated)
 
 
