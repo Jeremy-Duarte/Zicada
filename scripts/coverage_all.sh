@@ -33,6 +33,9 @@ case "$TARGET" in
     users)
         pytest apps/users/tests/ --cov=apps.users --cov-append
         ;;
+    backoffice)
+        pytest apps/backoffice/tests/ --cov=apps.backoffice --cov-append
+        ;;
     all)
         pytest apps/ --cov=apps --cov-append
         ;;

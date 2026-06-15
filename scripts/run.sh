@@ -1,7 +1,7 @@
 # scripts/run.sh (versión final)
 #!/bin/bash
 # Main runner script
-# Usage: ./scripts/run.sh [core|products|orders|users|all|coverage|clean|full]
+# Usage: ./scripts/run.sh [core|products|orders|users|backoffice|all|coverage|clean|full]
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -13,6 +13,7 @@ show_help() {
     echo "  products  - Run tests for apps.products"
     echo "  orders    - Run tests for apps.orders"
     echo "  users     - Run tests for apps.users"
+    echo "  backoffice     - Run tests for apps.backoffice"
     echo "  all       - Run all tests"
     echo "  coverage  - Generate reports from existing .coverage"
     echo "  full      - Run all tests + generate full reports"

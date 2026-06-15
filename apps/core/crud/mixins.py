@@ -315,15 +315,39 @@ class SortableDeleteMixin:
 
 
 class StaffPermissionRequiredMixin(BasePermissionRequiredMixin):
+    """
+    Mixin que verifica:
+    1. Usuario autenticado
+    2. Usuario tiene permisos requeridos
+    3. Usuario tiene rol Administrador (is_staff o grupo Administrador)    
+    """
     
     permission_denied_message = 'No tienes permisos para acceder a esta sección. Por favor, contacta al administrador.'
     authentication_required_message = 'Debes iniciar sesión para acceder a esta sección.'
     
+    def has_permission(self):
+        has_perm = super().has_permission()
+        
+        if has_perm:
+            return True
+        
+        user = self.request.user
+        if user.is_authenticated and user.is_staff:
+            return True
+        
+        if user.is_authenticated and user.groups.filter(name='Administrador').exists():
+            return True
+        
+        return False
+    
     def handle_no_permission(self):
-        """Maneja la falta de permisos de manera amigable."""
         if not self.request.user.is_authenticated:
             messages.error(self.request, self.authentication_required_message)
             return redirect(f'{reverse(CORE_STAFF_LOGIN)}?next={self.request.path}')
         
         messages.error(self.request, self.permission_denied_message)
+        
+        if self.request.user.groups.filter(name='Entregador').exists():
+            return redirect(reverse(CORE_STAFF_LOGIN)) #TODO cambiar ruta a delivery dashboard cuando exista
+        
         return redirect(reverse(PRODUCTS_CATALOG))
