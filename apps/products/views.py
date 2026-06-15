@@ -1002,6 +1002,14 @@ class SizeDeleteView(StaffPermissionRequiredMixin, SortableDeleteMixin, DeleteVi
         kwargs['size'] = self.get_object()
         return kwargs
     
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        size = self.get_object()
+        context['object_name'] = 'Talla'
+        context['object_display'] = size.name if size else ''
+        context['cancel_url'] = PRODUCTS_SIZE_LIST
+        return context
+
     def post(self, request, *args, **kwargs):
         self.object = self.get_object()
         form = self.get_form()
