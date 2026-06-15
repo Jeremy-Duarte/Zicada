@@ -1,3 +1,8 @@
-{% extends "backoffice/layouts/backoffice_base.html" %} {% load static %} {% block title %}Eliminar producto - Zicada{% endblock %} {% block content %}
+{% extends "backoffice/layouts/backoffice_base.html" %}
+{% load static %}
+
+{% block title %}Eliminar producto - Pedido {{ order.order_number }} - Zicada{% endblock %}
+
+{% block content %}
 {% include 'backoffice/components/crud/confirm_delete.html' with form=form object_name="Producto" object_display=order_item.product_name_snapshot cancel_url="orders:order_detail" cancel_args=order.pk warning="Esta acción eliminará el producto del pedido y liberará el stock asociado." %}
 {% endblock %}

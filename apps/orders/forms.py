@@ -283,8 +283,7 @@ class OrderUpdateForm(FormStyleMixin, forms.ModelForm):
         HU-031 | ESCENARIO 2 | A | Costo de envío negativo → error
         """
         new_cost = self.cleaned_data.get('shipping_cost')
-        subtotal = self.instance.subtotal if self.instance else 0
-        
+        subtotal = self.instance.subtotal if self.instance else 0        
         if new_cost < 0:
             raise ValidationError(ERROR_SHIPPING_NEGATIVE)
         
@@ -454,24 +453,27 @@ class OrderChangeStatusForm(FormStyleMixin, forms.Form):
                 self.fields['new_status'].disabled = True
                 self.fields['new_status'].help_text = 'No hay transiciones disponibles para este estado.'
     
-    def clean_new_status(self):
+    def clean(self):
         """
         HU-029 | ESCENARIO 1 | H | Transición válida
         HU-029 | ESCENARIO 3 | E | Transición no permitida → error
         """
-        new_status = self.cleaned_data.get('new_status')
+        cleaned_data = super().clean()
         
+        # Mover la validación del pedido aquí
         if not self.order:
             raise ValidationError(ERROR_ORDER_NOT_SPECIFIED)
         
-        if not self.order.can_transition_to(new_status):
+        new_status = cleaned_data.get('new_status')
+        
+        if new_status and not self.order.can_transition_to(new_status):
             from_status = self.order.get_status_display()
             to_status = dict(Order.STATUS_CHOICES).get(new_status, new_status)
             raise ValidationError(ERROR_INVALID_STATUS_TRANSITION.format(
                 from_status=from_status, to_status=to_status
             ))
         
-        return new_status
+        return cleaned_data
 
 
 # =============================================================================
@@ -686,7 +688,12 @@ class OrderPaymentForm(FormStyleMixin, forms.Form):
 class OrderItemCreateForm(FormStyleMixin, forms.ModelForm):
     """
     HU-031 (parte): Agregar producto a pedido manual (admin)
-    Escenarios: H (producto no existente en pedido, stock suficiente), A (producto ya existe, stock insuficiente), E (pedido no editable)
+    HU-031 | ESCENARIO 1 | H | Producto agregado exitosamente
+    HU-031 | ESCENARIO 2 | H | Buscar productos para agregar (formulario con variantes)
+    HU-031 | ESCENARIO 3 | E | Stock insuficiente (validado en form)
+    HU-031 | ESCENARIO 3 | E | Producto ya existe en el pedido (validado en form)
+    HU-031 | ESCENARIO 3 | E | Pedido no está pendiente o confirmado (validado en form)
+    HU-024 (parte) | H | Al agregar producto, se actualiza subtotal y se aplica regla de envío gratis
     """
     
     class Meta:
@@ -701,11 +708,18 @@ class OrderItemCreateForm(FormStyleMixin, forms.ModelForm):
         self.order = kwargs.pop('order', None)
         super().__init__(*args, **kwargs)
         
+        # HU-031 | ESCENARIO 2 | H | Filtrar variantes activas
         if self.order:
             self.fields['variant'].queryset = ProductVariant.objects.filter(
                 is_active=True,
                 product__is_active=True
             ).select_related('product', 'size', 'product_color__color')
+            
+            # Personalizar la representación de las variantes en el select
+            self.fields['variant'].label_from_instance = lambda v: (
+                f"{v.product.name} - {v.color_name} - {v.size.name} "
+                f"(Stock: {v.stock})"
+            )
     
     def clean_quantity(self):
         """
@@ -714,15 +728,21 @@ class OrderItemCreateForm(FormStyleMixin, forms.ModelForm):
         """
         quantity = self.cleaned_data.get('quantity')
         
-        if quantity <= 0:
+        if quantity is None or quantity <= 0:
             raise ValidationError(ERROR_INVALID_QUANTITY)
         
         if quantity > MAX_QUANTITY_PER_ITEM:
             raise ValidationError(ERROR_MAX_QUANTITY_EXCEEDED)
         
         variant = self.cleaned_data.get('variant')
-        if variant and quantity > variant.stock:
-            raise ValidationError(ERROR_STOCK_INSUFFICIENT.format(stock=variant.stock))
+        if variant:
+            # Obtener stock actualizado desde BD
+            variant.refresh_from_db()
+            if quantity > variant.stock:
+                raise ValidationError(
+                    f'Stock insuficiente. Solo hay {variant.stock} unidades disponibles '
+                    f'de "{variant.product.name} - {variant.color_name} - {variant.size.name}".'
+                )
         
         return quantity
     
@@ -737,22 +757,60 @@ class OrderItemCreateForm(FormStyleMixin, forms.ModelForm):
         if not self.order:
             raise ValidationError(ERROR_ORDER_NOT_SPECIFIED)
         
-        variant = cleaned_data.get('variant')
-        if variant and self.order.items.filter(variant=variant).exists():
-            raise ValidationError(ERROR_PRODUCT_ALREADY_IN_ORDER.format(
-                product=variant.product.name, size=variant.size.name
-            ))
-        
+        # HU-031 | ESCENARIO 3 | E | Validar estado del pedido
         if self.order.status not in ['pendiente', 'confirmado']:
             raise ValidationError(ERROR_ONLY_PENDING_OR_CONFIRMED_CAN_ADD_ITEMS)
+        
+        # HU-031 | ESCENARIO 3 | E | Validar producto duplicado
+        variant = cleaned_data.get('variant')
+        if variant and self.order.items.filter(variant=variant).exists():
+            raise ValidationError(
+                ERROR_PRODUCT_ALREADY_IN_ORDER.format(
+                    product=variant.product.name, 
+                    size=variant.size.name
+                )
+            )
         
         return cleaned_data
     
     def save(self, commit=True):
+        """
+        HU-031 | ESCENARIO 1 | H | Guardar OrderItem y reducir stock automáticamente
+        HU-024 (parte) | H | Actualiza subtotal del pedido (la señal se encarga del resto)
+        """
         instance = super().save(commit=False)
         instance.order = self.order
+        
         if commit:
+            # Obtener la variante con stock actualizado
+            variant = instance.variant
+            if variant:
+                variant.refresh_from_db()
+                
+                # Verificar stock nuevamente antes de guardar
+                if instance.quantity > variant.stock:
+                    raise ValidationError(
+                        f'Stock insuficiente. Solo hay {variant.stock} unidades disponibles.'
+                    )
+                
+                # Establecer snapshots
+                instance.product_name_snapshot = variant.product.name
+                instance.size_snapshot = variant.size.name
+                instance.unit_price = variant.product.price
+                instance.stock_snapshot = variant.stock - instance.quantity
+                instance.subtotal = instance.unit_price * instance.quantity
+                
+                # Reducir stock
+                variant.stock -= instance.quantity
+                variant.save(update_fields=['stock'])
+            
             instance.save()
+            
+            # NOTA: La señal post_save de OrderItem actualizará automáticamente:
+            # - subtotal del pedido (suma de subtotales)
+            # - total_amount (subtotal + shipping_cost)
+            # La regla de envío gratis se aplica en la señal o en el modelo Order.save()
+        
         return instance
 
 
@@ -761,55 +819,70 @@ class OrderItemCreateForm(FormStyleMixin, forms.ModelForm):
 # =============================================================================
 
 class OrderItemUpdateForm(FormStyleMixin, forms.ModelForm):
-    """
-    HU-031 (parte): Modificar cantidad de producto en pedido manual
-    Escenarios: H (cantidad válida), A (stock insuficiente al aumentar), E (pedido no editable)
-    """
-    
     class Meta:
         model = OrderItem
         fields = ['quantity']
         widgets = {
             'quantity': forms.NumberInput(attrs={'min': 1, 'max': MAX_QUANTITY_PER_ITEM}),
         }
-    
+
     def __init__(self, *args, **kwargs):
+        self.original_quantity = kwargs.pop('original_quantity', 0)
         super().__init__(*args, **kwargs)
-        self.original_quantity = self.instance.quantity if self.instance else 0
-    
+
     def clean_quantity(self):
-        """
-        HU-031 | ESCENARIO 1 | H | Cantidad válida (1 - MAX_QUANTITY_PER_ITEM)
-        HU-031 | ESCENARIO 3 | E | Aumento de cantidad > stock disponible → error
-        """
         new_quantity = self.cleaned_data.get('quantity')
-        
-        if new_quantity <= 0:
+        if new_quantity is None or new_quantity <= 0:
             raise ValidationError(ERROR_INVALID_QUANTITY)
-        
         if new_quantity > MAX_QUANTITY_PER_ITEM:
             raise ValidationError(ERROR_MAX_QUANTITY_EXCEEDED)
-        
-        if self.instance and self.instance.variant:
-            if new_quantity > self.original_quantity:
+
+        if self.instance.variant and new_quantity > self.original_quantity:
+            try:
+                variant = ProductVariant.objects.get(id=self.instance.variant.id)
                 increase = new_quantity - self.original_quantity
-                if increase > self.instance.variant.stock:
-                    raise ValidationError(ERROR_STOCK_INSUFFICIENT.format(stock=self.instance.variant.stock))
-        
+                if increase > variant.stock:
+                    raise ValidationError(
+                        f'Stock insuficiente. Solo hay {variant.stock} unidades disponibles. '
+                        f'No puedes aumentar {increase} unidades más.'
+                    )
+            except ProductVariant.DoesNotExist:
+                raise ValidationError('El producto asociado ya no está disponible.')
         return new_quantity
-    
+
     def clean(self):
-        """
-        HU-031 | ESCENARIO 3 | E | Pedido no está pendiente o confirmado → error
-        """
         cleaned_data = super().clean()
-        
-        if self.instance and self.instance.order:
-            if self.instance.order.status not in ['pendiente', 'confirmado']:
-                raise ValidationError(ERROR_CANNOT_MODIFY_ITEM_STATUS)
-        
+        if self.instance.order.status not in ['pendiente', 'confirmado']:
+            raise ValidationError(ERROR_CANNOT_MODIFY_ITEM_STATUS)
         return cleaned_data
 
+    def save(self, commit=True):
+        instance = self.instance
+        new_quantity = self.cleaned_data['quantity']
+        old_quantity = self.original_quantity
+
+        if new_quantity == old_quantity:
+            return instance
+
+        variant = instance.variant
+        if variant:
+            variant.refresh_from_db()
+            if new_quantity > old_quantity:
+                increase = new_quantity - old_quantity
+                variant.stock -= increase
+            else:
+                decrease = old_quantity - new_quantity
+                variant.stock += decrease
+            variant.save(update_fields=['stock'])
+            instance.stock_snapshot = variant.stock
+
+        instance.quantity = new_quantity
+        instance.subtotal = instance.unit_price * new_quantity
+
+        if commit:
+            instance.save(update_fields=['quantity', 'subtotal', 'stock_snapshot'])
+
+        return instance
 
 # =============================================================================
 # HU-031 (PARTE): ORDER ITEM DELETE FORM

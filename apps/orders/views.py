@@ -1000,9 +1000,9 @@ class OrderDetailView(StaffPermissionRequiredMixin, DetailView):
 
 
 class BaseOrderActionView(StaffPermissionRequiredMixin, FormView):
-    """Clase base para vistas de acción sobre pedidos (confirmar, cancelar, asignar, entregar)."""
+    """Clase base para vistas de acción sobre pedidos."""
     
-    permission_required = PERM_ORDER_CHANGE  # E | Sin permisos para todas
+    permission_required = PERM_ORDER_CHANGE
     
     def dispatch(self, request, *args, **kwargs):
         self.order = get_object_or_404(Order, pk=kwargs['pk'])
@@ -1027,9 +1027,20 @@ class BaseOrderActionView(StaffPermissionRequiredMixin, FormView):
         raise NotImplementedError
     
     def form_valid(self, form):
-        self.perform_action(form)
-        messages.success(self.request, self.get_success_message())
+        try:
+            self.perform_action(form)
+            messages.success(self.request, self.get_success_message())
+        except ValidationError as e:
+            messages.error(self.request, str(e))
+            return redirect(ORDERS_DETAIL, pk=self.order.pk)
+        
         return redirect(ORDERS_DETAIL, pk=self.order.pk)
+    
+    def form_invalid(self, form):
+        for field, errors in form.errors.items():
+            for error in errors:
+                messages.error(self.request, f'{field}: {error}')
+        return self.render_to_response(self.get_context_data(form=form))
 
 
 class OrderConfirmView(BaseOrderActionView):
@@ -1156,6 +1167,14 @@ class OrderItemCreateView(StaffPermissionRequiredMixin, CreateView):
 
     def dispatch(self, request, *args, **kwargs):
         self.order = get_object_or_404(Order, pk=kwargs['order_pk'])
+        
+        if self.order.status not in ['pendiente', 'confirmado']:
+            messages.error(
+                request, 
+                f'No se pueden agregar productos a pedidos en estado "{self.order.get_status_display()}".'
+            )
+            return redirect(ORDERS_DETAIL, pk=self.order.pk)
+        
         return super().dispatch(request, *args, **kwargs)
 
     def get_form_kwargs(self):
@@ -1167,43 +1186,116 @@ class OrderItemCreateView(StaffPermissionRequiredMixin, CreateView):
         context = super().get_context_data(**kwargs)
         context[CONTEXT_ORDER] = self.order
         context[CONTEXT_CANCEL_URL] = ORDERS_DETAIL
-        context[CONTEXT_CANCEL_ARGS] = [self.order.pk] if self.order and self.order.pk else []
+        context[CONTEXT_CANCEL_ARGS] = [self.order.pk]
+        context['submit_label'] = 'Agregar producto'
+        
+        from apps.orders.constants import MAX_QUANTITY_PER_ITEM
+        context['MAX_QUANTITY_PER_ITEM'] = MAX_QUANTITY_PER_ITEM
+        
         return context
 
     def form_valid(self, form):
-        form.instance.order = self.order
-        self.order.save()
-        # HU-031 | ESCENARIO 2 | H | Buscar productos para agregar (formulario con variantes)
-        messages.success(self.request, f'Producto agregado al pedido {self.order.order_number}.')
-        return redirect(ORDERS_DETAIL, pk=self.order.pk)
-    # HU-031 | ESCENARIO 3 | E | Stock insuficiente (validado en form)
+        try:
+            order_item = form.save()
+            self.order.save(update_fields=['updated_at'])
+            messages.success(
+                self.request, 
+                f'Producto "{order_item.product_name_snapshot}" (x{order_item.quantity}) '
+                f'agregado al pedido {self.order.order_number}.'
+            )
+            return redirect(ORDERS_DETAIL, pk=self.order.pk)
+        except ValidationError as e:
+            messages.error(self.request, str(e))
+            return self.form_invalid(form)
+    
+    def form_invalid(self, form):
+        for field, errors in form.errors.items():
+            for error in errors:
+                messages.error(self.request, f'{field}: {error}')
+        return super().form_invalid(form)
 
 
 class OrderItemUpdateView(StaffPermissionRequiredMixin, UpdateView):
-    """
-    HU-031 (parte): Modificar cantidad de producto en pedido manual
-    """
     model = OrderItem
     form_class = OrderItemUpdateForm
     template_name = TEMPLATE_ORDER_ITEM_FORM
     permission_required = PERM_ORDER_CHANGE
+    context_object_name = 'order_item'
+
+    def get_object(self, queryset=None):
+        """Asegura que se obtiene el objeto correcto por su pk."""
+        obj = super().get_object(queryset)
+        # Forzar recarga desde BD para evitar datos obsoletos
+        obj.refresh_from_db()
+        # Guardar el valor viejo AQUÍ, antes de cualquier modificación
+        self.old_quantity = obj.quantity
+        self.product_name = obj.product_name_snapshot
+        self.size = obj.size_snapshot
+        self.color = obj.variant.color_name if obj.variant else 'N/A'
+        return obj
+
+    def dispatch(self, request, *args, **kwargs):
+        # Obtener el objeto (esto ejecuta get_object y guarda old_quantity)
+        self.object = self.get_object()
+        
+        if self.object.order.status not in ['pendiente', 'confirmado']:
+            messages.error(request, f'No se pueden modificar productos de pedidos en estado "{self.object.order.get_status_display()}".')
+            return redirect(ORDERS_DETAIL, pk=self.object.order.pk)
+        
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['instance'] = self.object
+        kwargs['original_quantity'] = self.old_quantity
+        return kwargs
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context[CONTEXT_ORDER] = self.object.order
         context[CONTEXT_CANCEL_URL] = ORDERS_DETAIL
-        context[CONTEXT_CANCEL_ARGS] = [self.object.order.pk] if self.object.order and self.object.order.pk else []
-        context[CONTEXT_TITLE] = 'Editar cantidad'
+        context[CONTEXT_CANCEL_ARGS] = [self.object.order.pk]
+        context['submit_label'] = 'Guardar cambios'
+
+        from apps.orders.constants import MAX_QUANTITY_PER_ITEM
+        context['MAX_QUANTITY_PER_ITEM'] = MAX_QUANTITY_PER_ITEM
+
+        if self.object.variant:
+            try:
+                variant = ProductVariant.objects.get(id=self.object.variant.id)
+                context['current_stock'] = variant.stock
+                context['max_allowed'] = min(MAX_QUANTITY_PER_ITEM, self.object.quantity + variant.stock)
+                context['color_code'] = variant.color_code
+                context['color_name'] = variant.color_name
+            except ProductVariant.DoesNotExist:
+                context['current_stock'] = 0
+                context['max_allowed'] = MAX_QUANTITY_PER_ITEM
         return context
 
-    def get_success_url(self):
-        return reverse_lazy(ORDERS_DETAIL, kwargs={'pk': self.object.order.pk})
-
     def form_valid(self, form):
-        response = super().form_valid(form)
-        self.object.order.save()
-        messages.success(self.request, f'Cantidad actualizada en pedido {self.object.order.order_number}.')
-        return response
+        try:
+            form.save()
+            new_quantity = self.object.quantity
+            
+            if new_quantity != self.old_quantity:
+                messages.success(
+                    self.request, 
+                    f'Cantidad de "{self.product_name}" ({self.size}, {self.color}) actualizada: {self.old_quantity} → {new_quantity}.'
+                )
+            else:
+                messages.info(self.request, f'La cantidad de "{self.product_name}" ({self.size}, {self.color}) no ha cambiado.')
+
+            return redirect(ORDERS_DETAIL, pk=self.object.order.pk)
+
+        except ValidationError as e:
+            messages.error(self.request, str(e))
+            return self.form_invalid(form)
+
+    def form_invalid(self, form):
+        for field, errors in form.errors.items():
+            for error in errors:
+                messages.error(self.request, f'{field}: {error}')
+        return super().form_invalid(form)
 
 
 class OrderItemDeleteView(StaffPermissionRequiredMixin, FormView):
@@ -1216,6 +1308,14 @@ class OrderItemDeleteView(StaffPermissionRequiredMixin, FormView):
 
     def dispatch(self, request, *args, **kwargs):
         self.order_item = get_object_or_404(OrderItem, pk=kwargs['pk'])
+        
+        if self.order_item.order.status not in ['pendiente', 'confirmado']:
+            messages.error(
+                request, 
+                f'No se pueden eliminar productos de pedidos en estado "{self.order_item.order.get_status_display()}".'
+            )
+            return redirect(ORDERS_DETAIL, pk=self.order_item.order.pk)
+        
         return super().dispatch(request, *args, **kwargs)
 
     def get_form_kwargs(self):
@@ -1228,21 +1328,39 @@ class OrderItemDeleteView(StaffPermissionRequiredMixin, FormView):
         context[CONTEXT_ORDER] = self.order_item.order
         context['order_item'] = self.order_item
         context[CONTEXT_CANCEL_URL] = ORDERS_DETAIL
-        context[CONTEXT_CANCEL_ARGS] = [self.order_item.order.pk] if self.order_item.order and self.order_item.order.pk else []
+        context[CONTEXT_CANCEL_ARGS] = [self.order_item.order.pk]
         return context
 
     def form_valid(self, form):
-        order_pk = self.order_item.order.pk
-        self.order_item.delete()
-        order = Order.objects.get(pk=order_pk)
-        order.save()
-        messages.success(self.request, f'Producto eliminado del pedido {order.order_number}.')
-        return redirect(ORDERS_DETAIL, pk=order_pk)
-
-
-# =============================================================================
-# HU-037: Exportar pedidos (NO IMPLEMENTADO)
-# =============================================================================
-# PENDIENTE: HU-037 - Exportar pedidos a Excel/PDF
-# Motivo: Funcionalidad no implementada porque el cliente no la ha solicitado explícitamente.
-# Decisión: Se marca como pendiente para futuras versiones.
+        try:
+            order_pk = self.order_item.order.pk
+            order_number = self.order_item.order.order_number
+            product_name = self.order_item.product_name_snapshot
+            quantity = self.order_item.quantity
+            
+            variant = self.order_item.variant
+            if variant and self.order_item.order.status == 'confirmado':
+                variant.refresh_from_db()
+                variant.stock += quantity
+                variant.save(update_fields=['stock'])
+            
+            self.order_item.delete()
+            
+            order = Order.objects.get(pk=order_pk)
+            order.save(update_fields=['updated_at'])
+            
+            messages.success(
+                self.request, 
+                f'Producto "{product_name}" (x{quantity}) eliminado del pedido {order_number}.'
+            )
+            return redirect(ORDERS_DETAIL, pk=order_pk)
+            
+        except Exception as e:
+            messages.error(self.request, f'Error al eliminar: {str(e)}')
+            return redirect(ORDERS_DETAIL, pk=self.order_item.order.pk)
+    
+    def form_invalid(self, form):
+        for field, errors in form.errors.items():
+            for error in errors:
+                messages.error(self.request, f'{field}: {error}')
+        return super().form_invalid(form)
