@@ -1,4 +1,6 @@
 from datetime import timezone
+from decimal import Decimal
+import decimal
 
 from django import forms
 from django.core.exceptions import ValidationError
@@ -692,16 +694,26 @@ class ProductCreateForm(FormStyleMixin, forms.ModelForm):
         HU-010 | ESCENARIO 1 | H | Precio válido (>0 y ≤ MAX_PRICE)
         HU-010 | ESCENARIO 2 | A | Precio <= 0 o excede máximo → error
         """
-        price = self.cleaned_data.get('price', 0)
+        price = self.cleaned_data.get('price')
+        
+        if price is None or price == '':
+            raise ValidationError('El precio es obligatorio.')
+        
+        try:
+            if isinstance(price, str):
+                price = Decimal(price)
+            elif isinstance(price, (int, float)):
+                price = Decimal(str(price))
+        except (ValueError, TypeError):
+            raise ValidationError('Ingrese un precio válido.')
         
         if price <= 0:
-            raise ValidationError(PRICE_ERROR_POSITIVE)
+            raise ValidationError('El precio debe ser mayor a 0.')
         
         if price > MAX_PRICE:
-            raise ValidationError(PRICE_ERROR_MAX)
+            raise ValidationError(f'El precio no puede superar los ${MAX_PRICE:,.0f} COP.')
         
         return price
-
 
 # =============================================================================
 # HU-011: PRODUCT UPDATE FORM

@@ -346,7 +346,7 @@ class Product(BaseAuditModel):
     
     def clean(self):
         # HU-010 | ESCENARIO 2 | A | Validación: precio mayor a 0
-        if self.price <= 0:
+        if self.price is not None and self.price <= 0:
             raise ValidationError({'price': 'El precio debe ser mayor a 0.'})
     
     def save(self, *args, **kwargs):
