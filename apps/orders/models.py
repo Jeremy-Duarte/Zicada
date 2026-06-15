@@ -194,15 +194,19 @@ class Order(models.Model):
         """
         if not self.can_transition_to('confirmado'):
             raise ValidationError(f'No se puede confirmar un pedido en estado {self.status}.')
+        
+        for item in self.items.all():
+            if item.variant and item.variant.stock < item.quantity:
+                raise ValidationError(f'Stock insuficiente para {item.product_name_snapshot}')
+        
         self.status = 'confirmado'
         self.save()
-        # Reducir stock de cada variante
+        
         for item in self.items.all():
             if item.variant:
-                if item.variant.stock < item.quantity:
-                    raise ValidationError(f'Stock insuficiente para {item.product_name_snapshot}')
                 item.variant.stock -= item.quantity
                 item.variant.save()
+        
         if user:
             self.updated_by = user
             self.save(update_fields=['updated_by'])
@@ -221,14 +225,16 @@ class Order(models.Model):
             raise ValidationError('No se puede cancelar un pedido ya entregado.')
         if not reason:
             raise ValidationError('Debe indicar un motivo de cancelación.')
+        
         self.status = 'cancelado'
         self.cancelled_reason = reason
         self.save()
-        # Liberar stock
+        
         for item in self.items.all():
             if item.variant:
                 item.variant.stock += item.quantity
                 item.variant.save()
+        
         if user:
             self.updated_by = user
             self.save(update_fields=['updated_by'])
@@ -323,7 +329,11 @@ class Order(models.Model):
                 self.order_number = "ZCD-0001"
         
         self.total_amount = self.subtotal + self.shipping_cost
-        self.full_clean()
+        
+        skip_validation = kwargs.pop('skip_validation', False)
+        if not skip_validation:
+            self.full_clean()
+        
         super().save(*args, **kwargs)
 
 
@@ -348,6 +358,7 @@ class OrderItem(models.Model):
         'products.ProductVariant',
         on_delete=models.SET_NULL,
         null=True,
+        blank=True,
         related_name='order_items',
         verbose_name='Variante',
         help_text='Producto + talla al momento de la compra'
@@ -370,7 +381,9 @@ class OrderItem(models.Model):
     )
     stock_snapshot = models.PositiveIntegerField(
         verbose_name='Stock en el momento',
-        help_text='Para auditoría'
+        help_text='Para auditoría',
+        null=True,
+        blank=True,
     )
     subtotal = models.DecimalField(
         max_digits=10,
@@ -400,23 +413,47 @@ class OrderItem(models.Model):
         if self.stock_snapshot is not None and self.stock_snapshot < 0:
             raise ValidationError({'stock_snapshot': 'El stock snapshot no puede ser negativo.'})
     
+    def _set_snapshot_from_variant(self):
+        if not self.product_name_snapshot:
+            self.product_name_snapshot = self.variant.product.name
+        if not self.size_snapshot:
+            self.size_snapshot = self.variant.size.name
+        if not self.unit_price:
+            self.unit_price = self.variant.product.price
+        if not self.stock_snapshot:
+            self.stock_snapshot = self.variant.stock
+
+    def _set_default_snapshot_values(self):
+        if not self.product_name_snapshot:
+            self.product_name_snapshot = "Producto manual"
+        if not self.size_snapshot:
+            self.size_snapshot = "N/A"
+        if not self.unit_price:
+            self.unit_price = 0
+        if self.stock_snapshot is None:
+            self.stock_snapshot = 0
+
+    def _ensure_numeric_fields(self):
+        self.unit_price = self.unit_price or 0
+        self.quantity = self.quantity or 0
+        self.subtotal = self.unit_price * self.quantity
+
+    def _should_skip_validation(self, kwargs):
+        return kwargs.pop('skip_validation', False)
+
     def save(self, *args, **kwargs):
         """
         HU-024 | ESCENARIO 1 | H | Genera snapshots automáticamente desde la variante
         """
         if self.variant:
-            if not self.product_name_snapshot:
-                self.product_name_snapshot = self.variant.product.name
-            if not self.size_snapshot:
-                self.size_snapshot = self.variant.size.name
-            if not self.unit_price:
-                self.unit_price = self.variant.product.price
-            if not self.stock_snapshot:
-                self.stock_snapshot = self.variant.stock
+            self._set_snapshot_from_variant()
+        else:
+            self._set_default_snapshot_values()
         
-        self.unit_price = self.unit_price or 0
-        self.quantity = self.quantity or 0
-        self.subtotal = self.unit_price * self.quantity
+        self._ensure_numeric_fields()
         
-        self.full_clean()
+        skip_validation = self._should_skip_validation(kwargs)
+        if not skip_validation:
+            self.full_clean()
+        
         super().save(*args, **kwargs)
