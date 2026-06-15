@@ -1046,11 +1046,16 @@ class ProductVariantCreateForm(FormStyleMixin, forms.ModelForm):
         product_color = cleaned_data.get('product_color')
         size = cleaned_data.get('size')
         
-        if product_color and size and ProductVariant.all_objects.filter(
-            product=self.product, product_color=product_color, size=size).exists():
+        if product_color and product_color.product_id != self.product.id:
             raise ValidationError(
-                f'Ya existe una variante para {product_color.color.name} - Talla {size.name}. '
-                f'Use el formulario de actualización para modificar el stock.'
+                'El color seleccionado no pertenece a este producto.'
+            )
+        
+        if product_color and size and ProductVariant.all_objects.filter(
+            product=self.product, product_color=product_color, size=size
+        ).exists():
+            raise ValidationError(
+                f'Ya existe una variante para {product_color.color.name} - Talla {size.name}.'
             )
         
         return cleaned_data

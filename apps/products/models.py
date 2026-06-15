@@ -509,11 +509,6 @@ class ProductVariant(BaseAuditModel):
         """
         if self.stock < 0:
             raise ValidationError({'stock': 'El stock no puede ser negativo.'})
-        
-        if self.product_color.product_id != self.product.id:
-            raise ValidationError({
-                'product_color': 'El color seleccionado no pertenece a este producto.'
-            })
     
     def save(self, *args, **kwargs):
         # HU-013 | ESCENARIO 1 | H | Genera SKU automáticamente
