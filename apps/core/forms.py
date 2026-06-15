@@ -415,7 +415,6 @@ class HeroConfigCreateForm(FormStyleMixin, forms.ModelForm):
             'button_url',
             'content_alignment',
             'section_height',
-            'sort_order',
         ]
         widgets = {
             'background_image': CloudinarySingleImageWidget(),
@@ -437,7 +436,6 @@ class HeroConfigCreateForm(FormStyleMixin, forms.ModelForm):
             'button_text': forms.TextInput(attrs={'placeholder': 'Explorar Catálogo'}),
             'content_alignment': forms.RadioSelect(choices=ALIGNMENT_CHOICES),
             'section_height': forms.Select(choices=SECTION_HEIGHT_CHOICES),
-            'sort_order': forms.NumberInput(attrs={'min': 0}),
         }
     
     def __init__(self, *args, **kwargs):

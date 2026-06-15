@@ -263,11 +263,13 @@
             </div>
 
             <!-- Orden de slides -->
+            {% if form.instance.pk %}
             <div class="border-b border-gray-200 pb-4">
                 <h2 class="text-lg font-semibold text-gray-800">Orden de los slides</h2>
                 <p class="text-sm text-gray-500">Arrastra los slides para cambiar su orden en el carrusel</p>
             </div>
             <div>{{ form.hero_order }}</div>
+            {% endif %}
 
             <!-- BOTONES DE ACCIÓN DENTRO DEL FORMULARIO -->
             <div class="flex justify-end gap-3 pt-4 border-t border-gray-200">
