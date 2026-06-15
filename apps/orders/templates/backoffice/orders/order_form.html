@@ -1,8 +1,63 @@
-{% extends "backoffice/layouts/backoffice_base.html" %} {% load static %} {% block title %}{{ title|default:"Pedido" }} - Zicada{% endblock %} {% block content %}
-<div class="max-w-4xl mx-auto">
+{% extends "backoffice/layouts/backoffice_base.html" %}
+{% load static %}
+
+{% block title %}{{ title }} - Zicada{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
     <div class="bg-white rounded-xl shadow-sm p-6">
-        <h1 class="text-2xl font-bold text-gray-800 mb-6">{{ title|default:"Gestión de pedido" }}</h1>
-        {% include 'backoffice/components/crud/form_fields.html' with form=form cancel_url="orders:order_list" submit_label="Guardar" %}
+        <h1 class="text-2xl font-bold text-gray-800 mb-6">{{ title }}</h1>
+        
+        <form method="post">
+            {% csrf_token %}
+            
+            {% if form.non_field_errors %}
+                <div class="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                    {% for error in form.non_field_errors %}
+                        <p class="text-red-600 text-sm">{{ error }}</p>
+                    {% endfor %}
+                </div>
+            {% endif %}
+            
+            {% for field in form %}
+                {% if field.name != 'assigned_delivery_user' %}
+                <div class="mb-4">
+                    <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                        {{ field.label }}{% if field.field.required %} <span class="text-red-500">*</span>{% endif %}
+                    </label>
+                    {{ field }}
+                    {% if field.help_text %}
+                        <p class="text-xs text-gray-400 mt-1">{{ field.help_text }}</p>
+                    {% endif %}
+                    {% for error in field.errors %}
+                        <p class="text-red-500 text-xs mt-1">{{ error }}</p>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            {% endfor %}
+            
+            <!-- assigned_delivery_user solo en edición -->
+            {% if form.instance.pk and form.assigned_delivery_user %}
+            <div class="mb-4">
+                <label for="{{ form.assigned_delivery_user.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                    {{ form.assigned_delivery_user.label }}
+                </label>
+                {{ form.assigned_delivery_user }}
+                {% if form.assigned_delivery_user.errors %}
+                    <p class="text-red-500 text-xs mt-1">{{ form.assigned_delivery_user.errors.0 }}</p>
+                {% endif %}
+            </div>
+            {% endif %}
+            
+            <div class="flex justify-end gap-3 pt-4">
+                {% if cancel_args %}
+                <a href="{% url cancel_url cancel_args.0 %}" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition">Cancelar</a>
+                {% else %}
+                <a href="{% url cancel_url %}" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition">Cancelar</a>
+                {% endif %}
+                <button type="submit" class="bg-zicada-accent hover:bg-red-700 text-white px-5 py-2 rounded-lg transition">Guardar</button>
+            </div>
+        </form>
     </div>
 </div>
 {% endblock %}

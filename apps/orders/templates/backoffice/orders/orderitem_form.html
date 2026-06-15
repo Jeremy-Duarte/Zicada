@@ -1,22 +1,96 @@
 {% extends "backoffice/layouts/backoffice_base.html" %}
 {% load static %}
 
-{% block title %}Agregar producto al pedido {{ order.order_number }} - Zicada{% endblock %}
+{% block title %}
+    {% if form.instance.pk %}
+        Editar cantidad - Pedido {{ order.order_number }}
+    {% else %}
+        Agregar producto al pedido {{ order.order_number }}
+    {% endif %}
+{% endblock %}
 
 {% block content %}
 <div class="max-w-2xl mx-auto">
     <div class="bg-white rounded-xl shadow-sm p-6">
-        <h1 class="text-2xl font-bold text-gray-800 mb-2">
-            Agregar producto al pedido {{ order.order_number }}
+        <h1 class="text-2xl font-bold text-gray-800 mb-6">
+            {% if form.instance.pk %}
+                Editar cantidad
+            {% else %}
+                Agregar producto al pedido {{ order.order_number }}
+            {% endif %}
         </h1>
-        <p class="text-gray-500 text-sm mb-6">
-            Selecciona un producto y la cantidad
-        </p>
         
-        <form method="post">
-            {% csrf_token %}
-            {% include 'backoffice/components/crud/form_fields.html' with form=form cancel_url=cancel_url cancel_args=cancel_args submit_label="Agregar producto" %}
-        </form>
+        <!-- Información adicional en modo edición -->
+        {% if form.instance.pk %}
+        <div class="bg-gray-50 rounded-lg p-4 mb-6">
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <p class="text-xs text-gray-500">Producto</p>
+                    <p class="font-medium">{{ form.instance.product_name_snapshot }}</p>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-500">Talla</p>
+                    <p class="font-medium">{{ form.instance.size_snapshot }}</p>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-500">Color</p>
+                    <p class="font-medium flex items-center gap-2">
+                        <span class="w-4 h-4 rounded-full border" 
+                              style="background-color: {{ color_code|default:'#cccccc' }}"></span>
+                        <span>{{ color_name|default:form.instance.variant.color_name|default:'N/A' }}</span>
+                    </p>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-500">Precio unitario</p>
+                    <p class="font-medium">${{ form.instance.unit_price|floatformat:0 }}</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Stock disponible info -->
+        {% if current_stock is not None %}
+        <div class="mb-4 p-3 {% if current_stock <= 5 %}bg-red-50{% else %}bg-yellow-50{% endif %} rounded-lg">
+            <p class="text-sm">
+                <span class="font-medium">Stock disponible actual:</span> 
+                <span class="{% if current_stock <= 5 %}text-red-600 font-bold{% else %}text-orange-600{% endif %}">
+                    {{ current_stock }} unidades
+                </span>
+            </p>
+            <p class="text-xs text-gray-500 mt-1">
+                Cantidad actual en pedido: {{ form.instance.quantity }} | 
+                Máximo permitido: {{ max_allowed|default:form.instance.quantity }}
+            </p>
+        </div>
+        {% endif %}
+        {% endif %}
+        
+        <!-- Estado del pedido en modo creación -->
+        {% if not form.instance.pk %}
+        <p class="text-gray-500 text-sm mb-6">
+            Estado del pedido: <span class="font-semibold">{{ order.get_status_display }}</span>
+        </p>
+        {% endif %}
+        
+        <!-- Advertencia si no se puede agregar items -->
+        {% if not form.instance.pk and order.status != 'pendiente' and order.status != 'confirmado' %}
+        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+            <p class="text-yellow-700">
+                ⚠️ No se pueden agregar productos a pedidos en estado "{{ order.get_status_display }}". 
+                Solo pedidos pendientes o confirmados permiten agregar items.
+            </p>
+            <a href="{% url 'orders:order_detail' order.pk %}" 
+               class="mt-3 inline-block text-sm text-zicada-accent hover:underline">
+                ← Volver al detalle del pedido
+            </a>
+        </div>
+        {% endif %}
+        
+        <!-- Formulario -->
+        {% if not form.instance.pk and order.status != 'pendiente' and order.status != 'confirmado' %}
+            <!-- No mostrar formulario si no se puede agregar -->
+        {% else %}
+            {% include 'backoffice/components/crud/form_fields.html' with form=form cancel_url=cancel_url cancel_args=cancel_args submit_label=submit_label %}
+        {% endif %}
     </div>
 </div>
 {% endblock %}

@@ -77,10 +77,18 @@
     <!-- Botones de acción según estado -->
     <div class="flex flex-wrap gap-3 pt-4">
         {% if order.status == 'pendiente' %}
-            <a href="{% url 'orders:order_confirm' order.pk %}" 
-            class="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg transition flex items-center gap-2">
-                <i class="fas fa-check-circle"></i> Confirmar pedido
-            </a>
+            {% if order.is_paid %}
+                <a href="{% url 'orders:order_confirm' order.pk %}" 
+                class="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg transition flex items-center gap-2">
+                    <i class="fas fa-check-circle"></i> Confirmar pedido
+                </a>
+            {% else %}
+                <div class="bg-yellow-50 text-yellow-700 p-3 rounded-lg text-sm flex items-center gap-2">
+                    <i class="fas fa-exclamation-triangle"></i> 
+                    Este pedido debe estar pagado antes de poder confirmarlo y descontar stock.
+                </div>
+            {% endif %}
+            
             <a href="{% url 'orders:order_cancel' order.pk %}" 
             class="bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded-lg transition flex items-center gap-2">
                 <i class="fas fa-times-circle"></i> Cancelar pedido

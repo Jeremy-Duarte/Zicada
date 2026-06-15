@@ -14,35 +14,18 @@
         <p class="text-gray-600 mb-4">
             ¿Estás seguro de que deseas confirmar el pedido <strong>"{{ order.order_number }}"</strong>?
         </p>
-        <p class="text-sm text-gray-500 mb-4{% if show_warning %} bg-yellow-50 p-3 rounded-lg{% endif %}">
-            {% if show_warning %}⚠️ {% endif %}Esta acción reducirá el stock de los productos asociados.
+        <p class="text-sm text-gray-500 mb-4 bg-yellow-50 p-3 rounded-lg">
+            ⚠️ Esta acción reducirá el stock de los productos asociados.
         </p>
         
         <form method="post">
             {% csrf_token %}
             
-            {% if new_status_value %}
-            <input type="hidden" name="new_status" value="{{ new_status_value }}">
+            {{ form.confirm }}
+            <label for="{{ form.confirm.id_for_label }}">{{ form.confirm.label }}</label>
+            {% if form.confirm.errors %}
+                <p class="text-red-500 text-xs mt-1">{{ form.confirm.errors.0 }}</p>
             {% endif %}
-            
-            {% for field in form %}
-                {% if exclude_fields and field.name in exclude_fields %}
-                    {# Skip #}
-                {% elif field.name != 'new_status' %}
-                <div class="mb-4 text-left">
-                    <label for="{{ field.id_for_label }}" class="flex items-center gap-2 cursor-pointer">
-                        {{ field }}
-                        <span class="text-sm text-gray-700">{{ field.label }}</span>
-                    </label>
-                    {% if field.help_text %}
-                    <p class="text-xs text-gray-400 mt-1">{{ field.help_text }}</p>
-                    {% endif %}
-                    {% if field.errors %}
-                    <p class="text-red-500 text-xs mt-1">{{ field.errors.0 }}</p>
-                    {% endif %}
-                </div>
-                {% endif %}
-            {% endfor %}
             
             <div class="flex justify-center gap-3 mt-6">
                 <a href="{% url 'orders:order_detail' order.pk %}" 
