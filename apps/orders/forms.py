@@ -453,24 +453,27 @@ class OrderChangeStatusForm(FormStyleMixin, forms.Form):
                 self.fields['new_status'].disabled = True
                 self.fields['new_status'].help_text = 'No hay transiciones disponibles para este estado.'
     
-    def clean_new_status(self):
+    def clean(self):
         """
         HU-029 | ESCENARIO 1 | H | Transición válida
         HU-029 | ESCENARIO 3 | E | Transición no permitida → error
         """
-        new_status = self.cleaned_data.get('new_status')
+        cleaned_data = super().clean()
         
+        # Mover la validación del pedido aquí
         if not self.order:
             raise ValidationError(ERROR_ORDER_NOT_SPECIFIED)
         
-        if not self.order.can_transition_to(new_status):
+        new_status = cleaned_data.get('new_status')
+        
+        if new_status and not self.order.can_transition_to(new_status):
             from_status = self.order.get_status_display()
             to_status = dict(Order.STATUS_CHOICES).get(new_status, new_status)
             raise ValidationError(ERROR_INVALID_STATUS_TRANSITION.format(
                 from_status=from_status, to_status=to_status
             ))
         
-        return new_status
+        return cleaned_data
 
 
 # =============================================================================
