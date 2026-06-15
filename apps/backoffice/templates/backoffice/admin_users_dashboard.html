@@ -11,13 +11,13 @@
     </div>
 
     <div class="grid grid-cols-2 md:grid-cols-4 gap-5">
-        {% include 'backoffice/components/widgets/stat_card_link.html' with title="Entregadores" value=stats.total_entregadores url=urls.total icon="users" border_color="gray-500" icon_bg="gray-100" icon_color="gray-500" link_text="Ver todos" link_color="zicada-accent" %}
+        {% include 'backoffice/components/widgets/stat_card_link.html' with title="Entregadores" value=delivery_stats.total url=urls.total icon="users" border_color="gray-500" icon_bg="gray-100" icon_color="gray-500" link_text="Ver todos" link_color="zicada-accent" %}
         
-        {% include 'backoffice/components/widgets/stat_card_link.html' with title="Por entregar" value=stats.pedidos_por_entregar url=urls.pedidos_listos icon="clock" border_color="yellow-500" icon_bg="yellow-50" icon_color="yellow-500" link_text="Asignar" link_color="yellow-600" %}
+        {% include 'backoffice/components/widgets/stat_card_link.html' with title="Por entregar" value=pending_orders url=urls.pedidos_listos icon="clock" border_color="yellow-500" icon_bg="yellow-50" icon_color="yellow-500" link_text="Asignar" link_color="yellow-600" %}
         
-        {% include 'backoffice/components/widgets/stat_card_link.html' with title="En camino" value=stats.pedidos_en_camino url=urls.pedidos_camino icon="truck" border_color="blue-500" icon_bg="blue-50" icon_color="blue-500" link_text="Seguir" link_color="blue-600" %}
+        {% include 'backoffice/components/widgets/stat_card_link.html' with title="En camino" value=orders_on_the_way url=urls.pedidos_camino icon="truck" border_color="blue-500" icon_bg="blue-50" icon_color="blue-500" link_text="Seguir" link_color="blue-600" %}
         
-        {% include 'backoffice/components/widgets/stat_card_link.html' with title="Entregados hoy" value=stats.entregados_hoy url="#" icon="check-circle" border_color="green-500" icon_bg="green-50" icon_color="green-500" link_text="Historial" link_color="green-600" %}
+        {% include 'backoffice/components/widgets/stat_card_link.html' with title="Entregados hoy" value=delivery_stats.delivered_today url="#" icon="check-circle" border_color="green-500" icon_bg="green-50" icon_color="green-500" link_text="Historial" link_color="green-600" %}
     </div>
 
     <div class="flex flex-wrap gap-4 justify-center my-8">
