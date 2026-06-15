@@ -661,6 +661,7 @@ class AdminUsersDashboardView(BaseDashboardView):
             'only_deliveries': users_url + QUERY_IS_DELIVERY.format(QUERY_VALUE_ACTIVE),
             'ready_orders': reverse(ORDERS_LIST) + QUERY_STATUS.format(ORDER_STATUS_READY),
             'on_the_way_orders': reverse(ORDERS_LIST) + QUERY_STATUS.format(ORDER_STATUS_ON_THE_WAY),
+            'delivered_today' : reverse(ORDERS_LIST) + QUERY_STATUS.format(ORDER_STATUS_DELIVERED),
         }
 
         action_buttons = [
