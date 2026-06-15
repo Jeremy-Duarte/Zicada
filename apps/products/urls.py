@@ -50,7 +50,7 @@ admin_patterns = [
 ]
 
 urlpatterns = [
-    path('stock-dashboard/', views.stock_dashboard, name='stock_dashboard'),
+    path('stock-dashboard/', views.StockDashboardView.as_view(), name='stock_dashboard'),
     path('', views.ProductCatalogView.as_view(), name='catalog'),
     path('colecciones/', views.CollectionListViewPublic.as_view(), name='collections_list'),
     path('colecciones/<slug:slug>/', views.CollectionDetailView.as_view(), name='collection_detail'),

@@ -1,4 +1,6 @@
 from datetime import timezone
+from decimal import Decimal
+import decimal
 
 from django import forms
 from django.core.exceptions import ValidationError
@@ -20,6 +22,10 @@ from apps.core.design_options import (
     DEFAULT_BADGE_TEXT_COLOR, DEFAULT_PRIMARY_COLOR, DEFAULT_SECONDARY_COLOR,
     DEFAULT_BACKGROUND_COLOR, DEFAULT_TEXT_COLOR, DEFAULT_TITLE_FONT, COLOR_PALETTES,
     get_color_palette_choices, apply_color_palette
+)
+
+from apps.products.constants import (
+    MSG_VARIANT_CREATED
 )
 
 # =============================================================================
@@ -692,16 +698,26 @@ class ProductCreateForm(FormStyleMixin, forms.ModelForm):
         HU-010 | ESCENARIO 1 | H | Precio válido (>0 y ≤ MAX_PRICE)
         HU-010 | ESCENARIO 2 | A | Precio <= 0 o excede máximo → error
         """
-        price = self.cleaned_data.get('price', 0)
+        price = self.cleaned_data.get('price')
+        
+        if price is None or price == '':
+            raise ValidationError('El precio es obligatorio.')
+        
+        try:
+            if isinstance(price, str):
+                price = Decimal(price)
+            elif isinstance(price, (int, float)):
+                price = Decimal(str(price))
+        except (ValueError, TypeError):
+            raise ValidationError('Ingrese un precio válido.')
         
         if price <= 0:
-            raise ValidationError(PRICE_ERROR_POSITIVE)
+            raise ValidationError('El precio debe ser mayor a 0.')
         
         if price > MAX_PRICE:
-            raise ValidationError(PRICE_ERROR_MAX)
+            raise ValidationError(f'El precio no puede superar los ${MAX_PRICE:,.0f} COP.')
         
         return price
-
 
 # =============================================================================
 # HU-011: PRODUCT UPDATE FORM
@@ -1022,9 +1038,9 @@ class ProductVariantCreateForm(FormStyleMixin, forms.ModelForm):
     
     def clean(self):
         """
-        HU-013 | ESCENARIO 1 | H | Variante con combinación única
-        HU-013 | ESCENARIO 3 | E | Variante ya existe → error
-        HU-013 | ESCENARIO 3 | E | ProductColor no pertenece al producto → error
+        HU-013 | ESCENARIO 1 | H | Variante con combinación única (color + talla)
+        HU-013 | ESCENARIO 2 | A | Variante ya existe → se almacena en self.existing_variant para redirigir
+        HU-013 | ESCENARIO 3 | E | ProductColor no pertenece al producto → error de validación
         """
         cleaned_data = super().clean()
         
@@ -1034,12 +1050,17 @@ class ProductVariantCreateForm(FormStyleMixin, forms.ModelForm):
         product_color = cleaned_data.get('product_color')
         size = cleaned_data.get('size')
         
-        if product_color and size and ProductVariant.all_objects.filter(
-            product=self.product, product_color=product_color, size=size).exists():
+        if product_color and product_color.product_id != self.product.id:
             raise ValidationError(
-                f'Ya existe una variante para {product_color.color.name} - Talla {size.name}. '
-                f'Use el formulario de actualización para modificar el stock.'
+                'El color seleccionado no pertenece a este producto.'
             )
+        
+        # HU-013 | ESCENARIO 2 | A | Verificar existencia sin lanzar error (para redirigir en la vista)
+        self.existing_variant = None
+        if product_color and size:
+            self.existing_variant = ProductVariant.all_objects.filter(
+                product=self.product, product_color=product_color, size=size
+            ).first()
         
         return cleaned_data
 
@@ -1260,6 +1281,12 @@ class CollectionCreateForm(FormStyleMixin, forms.ModelForm):
         self.fields['text_color'].required = False
         self.fields['title_font'].required = False
 
+    def clean_name(self):
+        name = self.cleaned_data.get('name', '').strip()
+        if Collection.objects.filter(name__iexact=name).exists():
+            raise ValidationError('Ya existe una colección con este nombre.')
+        return name
+
     def save(self, commit=True):
         # HU-015 | ESCENARIO 1 | H | Guarda colección en estado borrador
         instance = super().save(commit=False)
@@ -1334,6 +1361,34 @@ class CollectionUpdateForm(FormStyleMixin, forms.ModelForm):
                 self.initial['start_date'] = self.instance.start_date.strftime('%Y-%m-%dT%H:%M')
             if self.instance.end_date:
                 self.initial['end_date'] = self.instance.end_date.strftime('%Y-%m-%dT%H:%M')
+
+    def clean_name(self):
+        name = self.cleaned_data.get('name', '').strip()
+        qs = Collection.objects.filter(name__iexact=name)
+        if self.instance and self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise ValidationError('Ya existe otra colección con este nombre.')
+        return name
+
+    def clean(self):
+        cleaned_data = super().clean()
+        
+        start_date = cleaned_data.get('start_date')
+        end_date = cleaned_data.get('end_date')
+        
+        if start_date and end_date and start_date >= end_date:
+            raise ValidationError({
+                'end_date': 'La fecha de fin debe ser posterior a la fecha de inicio.'
+            })
+        
+        if cleaned_data.get('is_active') and cleaned_data.get('status') == 'publicada':
+            if not cleaned_data.get('products'):
+                raise ValidationError({
+                    'products': 'Una colección publicada debe tener al menos un producto asignado.'
+                })
+        
+        return cleaned_data
 
     def save(self, commit=True):
         # HU-016 | ESCENARIO 1 | H | Guarda cambios de colección

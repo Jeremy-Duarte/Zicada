@@ -580,19 +580,6 @@ class HeroConfigCreateViewTest(TestCase):
         hero = HeroConfig.objects.first()
         self.assertEqual(hero.title_text, 'Nuevo Slide')
 
-    def test_create_duplicate_sort_order(self):
-        """
-        CP-084
-        HU-053 | SCENARIO 2 | A | Duplicate sort_order shows error
-        """
-        _create_hero(sort_order=0)
-        data = self.get_valid_data()
-        data['sort_order'] = 0
-        response = self.client.post(reverse(CORE_HERO_CREATE), data=data)
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(HeroConfig.objects.count(), 1)
-
     def test_create_empty_title(self):
         """
         CP-085

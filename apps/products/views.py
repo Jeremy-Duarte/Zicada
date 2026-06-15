@@ -51,6 +51,7 @@ from apps.core.url_names import (
     PRODUCTS_COLLECTION_RESTORE,
     PRODUCTS_COLLECTION_TRASHCAN,
     PRODUCTS_COLLECTION_STYLE,
+    PRODUCTS_VARIANT_EDIT,
 )
 
 from .constants import (
@@ -314,41 +315,50 @@ def generate_csv_response(filename: str, headers: list, rows: list) -> HttpRespo
 # PUBLIC VIEWS
 # =============================================================================
 
-@staff_member_required
-@require_GET
-def stock_dashboard(request):
-    """Stock dashboard for staff members."""
-    low_stock_variants = ProductVariant.objects.low_stock().select_related('product', 'product_color__color', 'size')
-    out_of_stock_variants = ProductVariant.objects.out_of_stock().select_related('product', 'product_color__color', 'size')
+class StockDashboardView(StaffPermissionRequiredMixin, TemplateView):
+    """ Stock dashboard for staff members."""
+    template_name = TEMPLATE_STOCK_DASHBOARD
+    permission_required = 'products.view_product'
     
-    products_with_stock = Product.objects.filter(
-        variants__is_active=True,
-        variants__stock__gt=STOCK_ZERO
-    ).distinct()
-    
-    all_products = Product.objects.filter(is_active=True)
-    out_of_stock_products = all_products.exclude(id__in=products_with_stock)
-    
-    product_stock_summary = []
-    for product in all_products[:PAGINATE_BY_DEFAULT]:
-        total = product.total_stock()
-        if total > STOCK_ZERO:
-            product_stock_summary.append({
-                'product': product,
-                'total_stock': total,
-                'variants_count': product.variants.filter(is_active=True).count(),
-            })
-    
-    context = {
-        'low_stock_variants': low_stock_variants,
-        'out_of_stock_variants': out_of_stock_variants,
-        'out_of_stock_products': out_of_stock_products,
-        'product_stock_summary': product_stock_summary,
-        'low_stock_count': low_stock_variants.count(),
-        'out_of_stock_variants_count': out_of_stock_variants.count(),
-        'out_of_stock_products_count': out_of_stock_products.count(),
-    }
-    return render(request, TEMPLATE_STOCK_DASHBOARD, context)
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        low_stock_variants = ProductVariant.objects.low_stock().select_related(
+            'product', 'product_color__color', 'size'
+        )
+        out_of_stock_variants = ProductVariant.objects.out_of_stock().select_related(
+            'product', 'product_color__color', 'size'
+        )
+        
+        products_with_stock = Product.objects.filter(
+            variants__is_active=True,
+            variants__stock__gt=STOCK_ZERO
+        ).distinct()
+        
+        all_products = Product.objects.filter(is_active=True)
+        out_of_stock_products = all_products.exclude(id__in=products_with_stock)
+        
+        product_stock_summary = []
+        for product in all_products[:PAGINATE_BY_DEFAULT]:
+            total = product.total_stock()
+            if total > STOCK_ZERO:
+                product_stock_summary.append({
+                    'product': product,
+                    'total_stock': total,
+                    'variants_count': product.variants.filter(is_active=True).count(),
+                })
+        
+        context.update({
+            'low_stock_variants': low_stock_variants,
+            'out_of_stock_variants': out_of_stock_variants,
+            'out_of_stock_products': out_of_stock_products,
+            'product_stock_summary': product_stock_summary,
+            'low_stock_count': low_stock_variants.count(),
+            'out_of_stock_variants_count': out_of_stock_variants.count(),
+            'out_of_stock_products_count': out_of_stock_products.count(),
+        })
+        
+        return context
 
 
 class BaseProductListView(PaginationMixin, FilterMixin, ListView):
@@ -536,6 +546,7 @@ class CollectionListViewPublic(PaginationMixin, FilterMixin, ListView):
         # HU-005 | ESCENARIO 3 | A | Filtro por fecha de inicio (colecciones recientes)
         date_filter = self.request.GET.get(QUERY_PARAM_DATE_FILTER, '')
         now = timezone.now()
+        hoy = now.date()
         
         if date_filter == DATE_FILTER_LAST_MONTH:
             qs = qs.filter(start_date__gte=now - timedelta(days=30))
@@ -546,7 +557,11 @@ class CollectionListViewPublic(PaginationMixin, FilterMixin, ListView):
         elif date_filter == DATE_FILTER_LAST_YEAR:
             qs = qs.filter(start_date__gte=now - timedelta(days=365))
         elif date_filter == DATE_FILTER_UPCOMING:
-            qs = qs.filter(start_date__gt=now, status=STATUS_DRAFT)
+            qs = qs.filter(
+                start_date__date__gt=hoy,
+                is_active=True,
+                status=STATUS_DRAFT
+            )
         
         return qs
     
@@ -563,10 +578,24 @@ class CollectionListViewPublic(PaginationMixin, FilterMixin, ListView):
         # HU-005 | ESCENARIO 1 | H | Listado de colecciones activas cargado
         # HU-005 | ESCENARIO 4 | A | Sin colecciones activas → template muestra mensaje
         qs = super().get_queryset()
+        hoy = timezone.now().date()
         qs = qs.filter(is_active=True)
+    
+        date_filter = self.request.GET.get(QUERY_PARAM_DATE_FILTER, '')
+        
+        if date_filter == DATE_FILTER_UPCOMING:
+            qs = qs.filter(
+                status=STATUS_DRAFT,
+                start_date__date__gt=hoy
+            )
+        else:
+            qs = qs.filter(status=STATUS_PUBLISHED)
+            qs = qs.filter(
+                Q(start_date__isnull=True) |
+                Q(start_date__date__lte=hoy)
+            )
         
         qs = self._apply_search_filter(qs)
-        qs = self._apply_status_filter(qs)
         qs = self._apply_price_range_filter(qs)
         qs = self._apply_product_count_filter(qs)
         qs = self._apply_date_filter(qs)
@@ -974,6 +1003,14 @@ class SizeDeleteView(StaffPermissionRequiredMixin, SortableDeleteMixin, DeleteVi
         kwargs['size'] = self.get_object()
         return kwargs
     
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        size = self.get_object()
+        context['object_name'] = 'Talla'
+        context['object_display'] = size.name if size else ''
+        context['cancel_url'] = PRODUCTS_SIZE_LIST
+        return context
+
     def post(self, request, *args, **kwargs):
         self.object = self.get_object()
         form = self.get_form()
@@ -1852,7 +1889,6 @@ class ProductVariantCreateView(StaffPermissionRequiredMixin, CreateView):
     form_class = ProductVariantCreateForm
     template_name = TEMPLATE_PRODUCTVARIANT_FORM
     permission_required = 'products.add_productvariant'  # HU-013 | ESCENARIO 4 | E | Sin permisos
-    success_url = reverse_lazy(PRODUCTS_LIST)
     
     def dispatch(self, request, *args, **kwargs):
         # HU-013 | ESCENARIO 1 | H | Obtiene el producto para asignar variante
@@ -1861,7 +1897,7 @@ class ProductVariantCreateView(StaffPermissionRequiredMixin, CreateView):
     
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
-        kwargs[CONTEXT_PRODUCT] = self.product
+        kwargs['product'] = self.product
         return kwargs
     
     def get_initial(self):
@@ -1872,20 +1908,48 @@ class ProductVariantCreateView(StaffPermissionRequiredMixin, CreateView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context[CONTEXT_PRODUCT] = self.product
-        context[CONTEXT_CANCEL_URL] = PRODUCTS_EDIT
-        context[CONTEXT_CANCEL_ARGS] = [self.product.pk]
-        context[CONTEXT_TITLE] = f'Agregar Variante a {self.product.name}'
+        context['product'] = self.product
+        context['cancel_url'] = PRODUCTS_EDIT
+        context['cancel_args'] = [self.product.pk]
+        context['title'] = f'Agregar Variante a {self.product.name}'
         return context
     
     def form_valid(self, form):
+        if hasattr(form, 'existing_variant') and form.existing_variant:
+            existing = form.existing_variant
+            variant_name = f'{existing.product_color.color.name} - {existing.size.name}'
+            
+            if existing.is_active:
+                messages.info(
+                    self.request, 
+                    f'La variante "{variant_name}" ya existe. Redirigiendo a su edición.'
+                )
+                return redirect(PRODUCTS_VARIANT_EDIT, pk=existing.pk)
+            else:
+                messages.warning(
+                    self.request,
+                    f'La variante "{variant_name}" existe pero está inactiva. '
+                    f'Puedes restaurarla desde la papelera.'
+                )
+                return redirect(PRODUCTS_EDIT, pk=self.product.pk)
+        
         form.instance.product = self.product
-        variant_name = f'{form.instance.product_color.color.name} - {form.instance.size.name}'
-        # HU-013 | ESCENARIO 1 | H | Variante creada exitosamente
+        variant = form.save()
+        variant_name = f'{variant.product_color.color.name} - {variant.size.name}'
         messages.success(self.request, MSG_VARIANT_CREATED.format(variant=variant_name))
         return redirect(PRODUCTS_EDIT, pk=self.product.pk)
-    # HU-013 | ESCENARIO 3 | E | Variante ya existe (validación en form)
-    # HU-013 | ESCENARIO 3 | E | ProductColor no pertenece al producto (validación en form)
+    
+    def form_invalid(self, form):
+        error_messages = []
+        for field, errors in form.errors.items():
+            for error in errors:
+                error_messages.append(f'{field}: {error}')
+        
+        messages.error(
+            self.request, 
+            f'Error al crear la variante: {" | ".join(error_messages)}'
+        )
+        return self.render_to_response(self.get_context_data(form=form))
 
 
 class ProductVariantUpdateView(StaffPermissionRequiredMixin, UpdateView):
@@ -2346,7 +2410,7 @@ class CollectionTrashcanView(StaffPermissionRequiredMixin, ListView):
     model = Collection
     template_name = TEMPLATE_COLLECTION_TRASHCAN
     context_object_name = 'collections'
-    permission_required = 'products.view_collection'  # HU-017 | ESCENARIO 4 | E | Sin permisos
+    permission_required = PERM_COLLECTION_VIEW  # HU-017 | ESCENARIO 4 | E | Sin permisos
     paginate_by = PAGINATE_BY_DEFAULT
     
     def get_queryset(self):
