@@ -51,6 +51,7 @@ from apps.core.url_names import (
     PRODUCTS_COLLECTION_RESTORE,
     PRODUCTS_COLLECTION_TRASHCAN,
     PRODUCTS_COLLECTION_STYLE,
+    PRODUCTS_VARIANT_EDIT,
 )
 
 from .constants import (
@@ -1888,7 +1889,6 @@ class ProductVariantCreateView(StaffPermissionRequiredMixin, CreateView):
     form_class = ProductVariantCreateForm
     template_name = TEMPLATE_PRODUCTVARIANT_FORM
     permission_required = 'products.add_productvariant'  # HU-013 | ESCENARIO 4 | E | Sin permisos
-    success_url = reverse_lazy(PRODUCTS_LIST)
     
     def dispatch(self, request, *args, **kwargs):
         # HU-013 | ESCENARIO 1 | H | Obtiene el producto para asignar variante
@@ -1897,7 +1897,7 @@ class ProductVariantCreateView(StaffPermissionRequiredMixin, CreateView):
     
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
-        kwargs[CONTEXT_PRODUCT] = self.product
+        kwargs['product'] = self.product
         return kwargs
     
     def get_initial(self):
@@ -1908,20 +1908,48 @@ class ProductVariantCreateView(StaffPermissionRequiredMixin, CreateView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context[CONTEXT_PRODUCT] = self.product
-        context[CONTEXT_CANCEL_URL] = PRODUCTS_EDIT
-        context[CONTEXT_CANCEL_ARGS] = [self.product.pk]
-        context[CONTEXT_TITLE] = f'Agregar Variante a {self.product.name}'
+        context['product'] = self.product
+        context['cancel_url'] = PRODUCTS_EDIT
+        context['cancel_args'] = [self.product.pk]
+        context['title'] = f'Agregar Variante a {self.product.name}'
         return context
     
     def form_valid(self, form):
+        if hasattr(form, 'existing_variant') and form.existing_variant:
+            existing = form.existing_variant
+            variant_name = f'{existing.product_color.color.name} - {existing.size.name}'
+            
+            if existing.is_active:
+                messages.info(
+                    self.request, 
+                    f'La variante "{variant_name}" ya existe. Redirigiendo a su edición.'
+                )
+                return redirect(PRODUCTS_VARIANT_EDIT, pk=existing.pk)
+            else:
+                messages.warning(
+                    self.request,
+                    f'La variante "{variant_name}" existe pero está inactiva. '
+                    f'Puedes restaurarla desde la papelera.'
+                )
+                return redirect(PRODUCTS_EDIT, pk=self.product.pk)
+        
         form.instance.product = self.product
-        variant_name = f'{form.instance.product_color.color.name} - {form.instance.size.name}'
-        # HU-013 | ESCENARIO 1 | H | Variante creada exitosamente
+        variant = form.save()
+        variant_name = f'{variant.product_color.color.name} - {variant.size.name}'
         messages.success(self.request, MSG_VARIANT_CREATED.format(variant=variant_name))
         return redirect(PRODUCTS_EDIT, pk=self.product.pk)
-    # HU-013 | ESCENARIO 3 | E | Variante ya existe (validación en form)
-    # HU-013 | ESCENARIO 3 | E | ProductColor no pertenece al producto (validación en form)
+    
+    def form_invalid(self, form):
+        error_messages = []
+        for field, errors in form.errors.items():
+            for error in errors:
+                error_messages.append(f'{field}: {error}')
+        
+        messages.error(
+            self.request, 
+            f'Error al crear la variante: {" | ".join(error_messages)}'
+        )
+        return self.render_to_response(self.get_context_data(form=form))
 
 
 class ProductVariantUpdateView(StaffPermissionRequiredMixin, UpdateView):

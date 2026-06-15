@@ -24,6 +24,10 @@ from apps.core.design_options import (
     get_color_palette_choices, apply_color_palette
 )
 
+from apps.products.constants import (
+    MSG_VARIANT_CREATED
+)
+
 # =============================================================================
 # CONSTANTES PARA FORMULARIOS
 # =============================================================================
@@ -1034,9 +1038,9 @@ class ProductVariantCreateForm(FormStyleMixin, forms.ModelForm):
     
     def clean(self):
         """
-        HU-013 | ESCENARIO 1 | H | Variante con combinación única
-        HU-013 | ESCENARIO 3 | E | Variante ya existe → error
-        HU-013 | ESCENARIO 3 | E | ProductColor no pertenece al producto → error
+        HU-013 | ESCENARIO 1 | H | Variante con combinación única (color + talla)
+        HU-013 | ESCENARIO 2 | A | Variante ya existe → se almacena en self.existing_variant para redirigir
+        HU-013 | ESCENARIO 3 | E | ProductColor no pertenece al producto → error de validación
         """
         cleaned_data = super().clean()
         
@@ -1051,12 +1055,12 @@ class ProductVariantCreateForm(FormStyleMixin, forms.ModelForm):
                 'El color seleccionado no pertenece a este producto.'
             )
         
-        if product_color and size and ProductVariant.all_objects.filter(
-            product=self.product, product_color=product_color, size=size
-        ).exists():
-            raise ValidationError(
-                f'Ya existe una variante para {product_color.color.name} - Talla {size.name}.'
-            )
+        # HU-013 | ESCENARIO 2 | A | Verificar existencia sin lanzar error (para redirigir en la vista)
+        self.existing_variant = None
+        if product_color and size:
+            self.existing_variant = ProductVariant.all_objects.filter(
+                product=self.product, product_color=product_color, size=size
+            ).first()
         
         return cleaned_data
 
