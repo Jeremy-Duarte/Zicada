@@ -215,6 +215,8 @@ class Order(models.Model):
         HU-030 | ESCENARIO 4 | E | Pedido ya cancelado
         HU-035 | ESCENARIO 1 | H | Registrar incidencia (motivo guardado en cancelled_reason)
         """
+        if self.status == 'cancelado':
+            raise ValidationError('El pedido ya está cancelado.')
         if self.status == 'entregado':
             raise ValidationError('No se puede cancelar un pedido ya entregado.')
         if not reason:
