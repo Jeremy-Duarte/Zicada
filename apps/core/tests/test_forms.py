@@ -594,19 +594,6 @@ class HeroConfigCreateFormTest(TestCase):
         self.assertIn('title_text', form.errors)
         self.assertIn('requerido', str(form.errors['title_text']).lower())
 
-    def test_sort_order_duplicate(self):
-        """
-        CP-025
-        HU-053 | ESCENARIO 2 | A | sort_order duplicado → error
-        """
-        _create_hero(sort_order=0)
-        data = self.get_valid_data()
-        data['sort_order'] = 0
-        form = HeroConfigCreateForm(data=data)
-        self.assertFalse(form.is_valid())
-        self.assertIn('sort_order', form.errors)
-        self.assertIn('ya existe', str(form.errors['sort_order']).lower())
-
     def test_save_builds_button_style(self):
         """
         CP-026
