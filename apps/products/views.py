@@ -314,41 +314,50 @@ def generate_csv_response(filename: str, headers: list, rows: list) -> HttpRespo
 # PUBLIC VIEWS
 # =============================================================================
 
-@staff_member_required
-@require_GET
-def stock_dashboard(request):
-    """Stock dashboard for staff members."""
-    low_stock_variants = ProductVariant.objects.low_stock().select_related('product', 'product_color__color', 'size')
-    out_of_stock_variants = ProductVariant.objects.out_of_stock().select_related('product', 'product_color__color', 'size')
+class StockDashboardView(StaffPermissionRequiredMixin, TemplateView):
+    """ Stock dashboard for staff members."""
+    template_name = TEMPLATE_STOCK_DASHBOARD
+    permission_required = 'products.view_product'
     
-    products_with_stock = Product.objects.filter(
-        variants__is_active=True,
-        variants__stock__gt=STOCK_ZERO
-    ).distinct()
-    
-    all_products = Product.objects.filter(is_active=True)
-    out_of_stock_products = all_products.exclude(id__in=products_with_stock)
-    
-    product_stock_summary = []
-    for product in all_products[:PAGINATE_BY_DEFAULT]:
-        total = product.total_stock()
-        if total > STOCK_ZERO:
-            product_stock_summary.append({
-                'product': product,
-                'total_stock': total,
-                'variants_count': product.variants.filter(is_active=True).count(),
-            })
-    
-    context = {
-        'low_stock_variants': low_stock_variants,
-        'out_of_stock_variants': out_of_stock_variants,
-        'out_of_stock_products': out_of_stock_products,
-        'product_stock_summary': product_stock_summary,
-        'low_stock_count': low_stock_variants.count(),
-        'out_of_stock_variants_count': out_of_stock_variants.count(),
-        'out_of_stock_products_count': out_of_stock_products.count(),
-    }
-    return render(request, TEMPLATE_STOCK_DASHBOARD, context)
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        low_stock_variants = ProductVariant.objects.low_stock().select_related(
+            'product', 'product_color__color', 'size'
+        )
+        out_of_stock_variants = ProductVariant.objects.out_of_stock().select_related(
+            'product', 'product_color__color', 'size'
+        )
+        
+        products_with_stock = Product.objects.filter(
+            variants__is_active=True,
+            variants__stock__gt=STOCK_ZERO
+        ).distinct()
+        
+        all_products = Product.objects.filter(is_active=True)
+        out_of_stock_products = all_products.exclude(id__in=products_with_stock)
+        
+        product_stock_summary = []
+        for product in all_products[:PAGINATE_BY_DEFAULT]:
+            total = product.total_stock()
+            if total > STOCK_ZERO:
+                product_stock_summary.append({
+                    'product': product,
+                    'total_stock': total,
+                    'variants_count': product.variants.filter(is_active=True).count(),
+                })
+        
+        context.update({
+            'low_stock_variants': low_stock_variants,
+            'out_of_stock_variants': out_of_stock_variants,
+            'out_of_stock_products': out_of_stock_products,
+            'product_stock_summary': product_stock_summary,
+            'low_stock_count': low_stock_variants.count(),
+            'out_of_stock_variants_count': out_of_stock_variants.count(),
+            'out_of_stock_products_count': out_of_stock_products.count(),
+        })
+        
+        return context
 
 
 class BaseProductListView(PaginationMixin, FilterMixin, ListView):
