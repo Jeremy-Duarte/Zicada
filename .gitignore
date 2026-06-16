@@ -11,6 +11,7 @@ media/
 # Environments
 .venv/
 .env
+.env.prod
 
 # System
 .DS_Store
