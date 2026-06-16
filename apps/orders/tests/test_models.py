@@ -1,23 +1,3 @@
-"""
-Tests unitarios para modelos de apps.orders.models
-
-Cubre:
-- HU-024: Confirmar pedido
-- HU-025: Recibir confirmación de pedido
-- HU-026: Consultar estado del pedido
-- HU-027: Listar pedidos (admin)
-- HU-028: Ver detalle de pedido (admin)
-- HU-029: Cambiar estado de pedido
-- HU-030: Cancelar pedido
-- HU-031: Crear pedido manual (admin)
-- HU-032: Asignar repartidor
-- HU-033: Consultar pedidos del día (entregador)
-- HU-034: Marcar pedido como pagado/entregado
-- HU-035: Registrar incidencia
-
-Casos de prueba: CP-xxx a CP-xxx
-"""
-
 from decimal import Decimal
 
 from django.core.exceptions import ValidationError
@@ -34,7 +14,6 @@ from apps.users.models import User
 # =============================================================================
 
 def _create_user(**kwargs):
-    """Crea un usuario de prueba."""
     defaults = {'username': 'testuser', 'password': 'pass1234'}
     defaults.update(kwargs)
     password = defaults.pop('password')
@@ -46,7 +25,6 @@ def _create_user(**kwargs):
 
 
 def _create_delivery_user(**kwargs):
-    """Crea un usuario con rol de entregador."""
     defaults = {'username': 'delivery', 'password': 'pass1234', 'is_delivery': True}
     defaults.update(kwargs)
     password = defaults.pop('password')
@@ -58,7 +36,6 @@ def _create_delivery_user(**kwargs):
 
 
 def _create_admin_user(**kwargs):
-    """Crea un usuario administrador."""
     defaults = {'username': 'admin', 'password': 'pass1234', 'is_staff': True}
     defaults.update(kwargs)
     password = defaults.pop('password')
@@ -70,13 +47,12 @@ def _create_admin_user(**kwargs):
 
 
 def _create_product_variant(stock=10):
-    """Crea una variante de producto para pruebas."""
     category = Category.objects.create(name='Test Category')
     size = Size.objects.create(name='M')
     color = Color.objects.create(name='Rojo', code='#FF0000')
     product = Product.objects.create(
         name='Test Product',
-        price=Decimal('5.00'),  # Precio pequeño
+        price=Decimal('5.00'),
         category=category
     )
     product_color = ProductColor.objects.create(
@@ -92,7 +68,6 @@ def _create_product_variant(stock=10):
 
 
 def _create_order(**kwargs):
-    """Crea un pedido de prueba con valores pequeños."""
     defaults = {
         'customer_name': 'Juan Perez',
         'customer_phone': '3001234567',
@@ -109,8 +84,7 @@ def _create_order(**kwargs):
 
 
 def _create_order_item(order, variant, quantity=2):
-    """Crea un item de pedido con precio pequeño."""
-    unit_price = Decimal('5.00')  # Precio pequeño
+    unit_price = Decimal('5.00')
     return OrderItem.objects.create(
         order=order,
         variant=variant,
@@ -128,28 +102,14 @@ def _create_order_item(order, variant, quantity=2):
 # =============================================================================
 
 class OrderModelTest(TestCase):
-    """
-    HU-024: Confirmar pedido
-    HU-026: Consultar estado del pedido
-    HU-027: Listar pedidos (admin)
-    HU-028: Ver detalle de pedido (admin)
-    HU-029: Cambiar estado de pedido
-    HU-030: Cancelar pedido
-    HU-031: Crear pedido manual (admin)
-    HU-032: Asignar repartidor
-    HU-034: Marcar pedido como pagado/entregado
-    """
+    """Pruebas del modelo Order"""
 
     def setUp(self):
         self.variant = _create_product_variant(stock=10)
         self.order = _create_order()
 
+    # UT-188: HU-031 CA-001 - Creación de pedido con todos los campos
     def test_create_order_with_all_fields(self):
-        """
-        CP-xxx
-        HU-031 | ESCENARIO 1 | H | Creación de pedido manual con todos los campos
-        """
-        # Usar valores pequeños del helper
         self.assertEqual(self.order.customer_name, 'Juan Perez')
         self.assertEqual(self.order.customer_phone, '3001234567')
         self.assertEqual(self.order.customer_email, 'juan@test.com')
@@ -160,48 +120,33 @@ class OrderModelTest(TestCase):
         self.assertEqual(self.order.status, 'pendiente')
         self.assertFalse(self.order.is_paid)
 
+    # UT-189: HU-027 - __str__ retorna número de pedido y nombre del cliente
     def test_order_str_returns_order_number_and_customer(self):
-        """
-        CP-xxx
-        HU-027 | H | __str__ retorna número de pedido y nombre del cliente
-        """
         expected = f"{self.order.order_number} - Juan Perez"
         self.assertEqual(str(self.order), expected)
 
+    # UT-190: HU-024 CA-001 - Generación automática de número de pedido
     def test_order_number_auto_generation(self):
-        """
-        CP-xxx
-        HU-024 | ESCENARIO 1 | H | Generación automática de número de pedido
-        """
         self.assertIsNotNone(self.order.order_number)
         self.assertTrue(self.order.order_number.startswith('ZCD-'))
         self.assertEqual(len(self.order.order_number), 8)
 
+    # UT-191: HU-024 CA-001 - Números de pedido secuenciales
     def test_order_number_sequential(self):
-        """
-        CP-xxx
-        HU-024 | ESCENARIO 1 | H | Números de pedido secuenciales
-        """
         order2 = _create_order(customer_name='Maria Gomez')
         self.assertNotEqual(self.order.order_number, order2.order_number)
         num1 = int(self.order.order_number.split('-')[1])
         num2 = int(order2.order_number.split('-')[1])
         self.assertEqual(num2, num1 + 1)
 
+    # UT-192: HU-026 CA-001 - Token de seguimiento único generado automáticamente
     def test_tracking_token_auto_generation(self):
-        """
-        CP-xxx
-        HU-026 | ESCENARIO 1 | H | Token de seguimiento único generado automáticamente
-        """
         self.assertIsNotNone(self.order.tracking_token)
         order2 = _create_order(customer_name='Maria Gomez')
         self.assertNotEqual(self.order.tracking_token, order2.tracking_token)
 
+    # UT-193: HU-024 CA-001 - Cálculo automático del total
     def test_total_amount_auto_calculation_on_save(self):
-        """
-        CP-xxx
-        HU-024 | ESCENARIO 1 | H | Cálculo automático del total (subtotal + envío)
-        """
         order = Order(
             customer_name='Test',
             customer_phone='123',
@@ -212,21 +157,14 @@ class OrderModelTest(TestCase):
         order.save()
         self.assertEqual(order.total_amount, Decimal('12.00'))
 
+    # UT-194: HU-031 CA-001 - Actualización del total al modificar subtotal
     def test_total_amount_updates_when_subtotal_changes(self):
-        """
-        CP-xxx
-        HU-031 | ESCENARIO 1 | H | Actualización del total al modificar subtotal
-        """
         self.order.subtotal = Decimal('15.00')
         self.order.save()
-        self.assertEqual(self.order.total_amount, Decimal('17.00'))  # 15 + 2
+        self.assertEqual(self.order.total_amount, Decimal('17.00'))
 
+    # UT-195: HU-024 CA-001 / HU-031 CA-001 - Subtotal no negativo
     def test_clean_validation_subtotal_negative(self):
-        """
-        CP-xxx
-        HU-024 | ESCENARIO 1 | H | Validación: subtotal no puede ser negativo
-        HU-031 | ESCENARIO 1 | H | Validaciones para pedido manual
-        """
         order = Order(
             customer_name='Test',
             customer_phone='123',
@@ -238,11 +176,8 @@ class OrderModelTest(TestCase):
             order.full_clean()
         self.assertIn('subtotal', str(cm.exception))
 
+    # UT-196: HU-024 CA-001 - Costo de envío no negativo
     def test_clean_validation_shipping_cost_negative(self):
-        """
-        CP-xxx
-        HU-024 | ESCENARIO 1 | H | Validación: costo de envío no puede ser negativo
-        """
         order = Order(
             customer_name='Test',
             customer_phone='123',
@@ -254,102 +189,67 @@ class OrderModelTest(TestCase):
             order.full_clean()
         self.assertIn('shipping_cost', str(cm.exception))
 
+    # UT-197: HU-034 CA-003 - Pedido entregado debe estar pagado
     def test_clean_validation_delivered_must_be_paid(self):
-        """
-        CP-xxx
-        HU-034 | ESCENARIO 3 | E | Pedido entregado debe estar marcado como pagado
-        """
-        # Crear pedido directamente en la BD para evitar validaciones intermedias
         order = Order.objects.create(
             customer_name='Test',
             customer_phone='123',
             shipping_address='Test',
             status='entregado',
-            is_paid=True,  # Debe estar pagado para pasar la validación
+            is_paid=True,
             subtotal=Decimal('10.00'),
             shipping_cost=Decimal('2.00'),
             total_amount=Decimal('12.00')
         )
-        # Cambiar is_paid a False después de crear
         order.is_paid = False
         with self.assertRaises(ValidationError) as cm:
             order.full_clean()
         self.assertIn('is_paid', str(cm.exception))
 
+    # UT-198: HU-024 CA-001 - Estado inicial pendiente
     def test_default_status_is_pending(self):
-        """
-        CP-xxx
-        HU-024 | ESCENARIO 1 | H | Estado inicial por defecto es 'pendiente'
-        """
         self.assertEqual(self.order.status, 'pendiente')
 
+    # UT-199: HU-024 CA-001 - is_paid inicial False
     def test_default_is_paid_false(self):
-        """
-        CP-xxx
-        HU-024 | ESCENARIO 1 | H | is_paid por defecto es False
-        """
         self.assertFalse(self.order.is_paid)
 
+    # UT-200: HU-029 CA-002 - Transiciones permitidas
     def test_can_transition_to_allowed_status(self):
-        """
-        CP-xxx
-        HU-029 | ESCENARIO 2 | H | Verifica transiciones de estado permitidas
-        """
-        # pendiente → confirmado
         self.assertTrue(self.order.can_transition_to('confirmado'))
-        # pendiente → cancelado
         self.assertTrue(self.order.can_transition_to('cancelado'))
-        # pendiente → entregado (no permitido)
         self.assertFalse(self.order.can_transition_to('entregado'))
 
+    # UT-201: HU-029 CA-003 - Transición no permitida
     def test_can_transition_to_disallowed_status(self):
-        """
-        CP-xxx
-        HU-029 | ESCENARIO 3 | E | Transición no permitida → retorna False
-        """
-        # pendiente → preparando (no permitido directamente)
         self.assertFalse(self.order.can_transition_to('preparando'))
 
+    # UT-202: HU-024 CA-001 / HU-029 CA-001 - Confirmar pedido exitoso
     def test_confirm_order_success(self):
-        """
-        CP-xxx
-        HU-024 | ESCENARIO 1 | H | Confirmar pedido (pendiente → confirmado)
-        HU-029 | ESCENARIO 1 | H | Cambio de estado exitoso
-        """
         _create_order_item(self.order, self.variant, quantity=2)
         self.order.confirm()
         self.order.refresh_from_db()
         self.assertEqual(self.order.status, 'confirmado')
 
+    # UT-203: HU-013 CA-005 - Reduce stock automáticamente al confirmar
     def test_confirm_order_reduces_stock(self):
-        """
-        CP-xxx
-        HU-013 | ESCENARIO 5 | H | Reduce stock automáticamente al confirmar
-        """
         initial_stock = self.variant.stock
         _create_order_item(self.order, self.variant, quantity=3)
         self.order.confirm()
         self.variant.refresh_from_db()
         self.assertEqual(self.variant.stock, initial_stock - 3)
 
+    # UT-204: HU-024 CA-002 - Stock insuficiente al confirmar
     def test_confirm_order_insufficient_stock_raises_error(self):
-        """
-        CP-xxx
-        HU-024 | ESCENARIO 2 | E | Stock insuficiente al confirmar
-        """
-        _create_order_item(self.order, self.variant, quantity=20)  # stock es 10
+        _create_order_item(self.order, self.variant, quantity=20)
         with self.assertRaises(ValidationError) as cm:
             self.order.confirm()
         self.assertIn('Stock insuficiente', str(cm.exception))
         self.order.refresh_from_db()
         self.assertEqual(self.order.status, 'pendiente')
 
+    # UT-205: HU-029 CA-003 - No confirmar pedido en estado inválido
     def test_confirm_order_invalid_status(self):
-        """
-        CP-xxx
-        HU-029 | ESCENARIO 3 | E | No se puede confirmar pedido en estado inválido
-        """
-        # Crear pedido directamente con estado entregado y pagado
         delivered_order = Order.objects.create(
             customer_name='Test',
             customer_phone='123',
@@ -364,11 +264,8 @@ class OrderModelTest(TestCase):
             delivered_order.confirm()
         self.assertIn('No se puede confirmar', str(cm.exception))
 
+    # UT-206: HU-030 CA-001 - Cancelación exitosa
     def test_cancel_order_success(self):
-        """
-        CP-xxx
-        HU-030 | ESCENARIO 1 | H | Cancelación exitosa (libera stock)
-        """
         _create_order_item(self.order, self.variant, quantity=2)
         self.order.confirm()
         self.order.cancel(reason='Cliente solicitó cancelación')
@@ -376,11 +273,8 @@ class OrderModelTest(TestCase):
         self.assertEqual(self.order.status, 'cancelado')
         self.assertEqual(self.order.cancelled_reason, 'Cliente solicitó cancelación')
 
+    # UT-207: HU-030 CA-001 - Cancelación libera stock
     def test_cancel_order_restores_stock(self):
-        """
-        CP-xxx
-        HU-030 | ESCENARIO 1 | H | Cancelación libera stock
-        """
         initial_stock = self.variant.stock
         _create_order_item(self.order, self.variant, quantity=3)
         self.order.confirm()
@@ -389,21 +283,14 @@ class OrderModelTest(TestCase):
         self.variant.refresh_from_db()
         self.assertEqual(self.variant.stock, initial_stock)
 
+    # UT-208: HU-030 CA-003 - Cancelación requiere motivo
     def test_cancel_order_without_reason_raises_error(self):
-        """
-        CP-xxx
-        HU-030 | ESCENARIO 3 | H | Cancelación requiere motivo
-        """
         with self.assertRaises(ValidationError) as cm:
             self.order.cancel(reason='')
         self.assertIn('Debe indicar un motivo', str(cm.exception))
 
+    # UT-209: HU-030 CA-002 - Pedido entregado no se cancela
     def test_cancel_delivered_order_raises_error(self):
-        """
-        CP-xxx
-        HU-030 | ESCENARIO 2 | E | Pedido ya entregado no se puede cancelar
-        """
-        # Crear pedido directamente con estado entregado y pagado
         delivered_order = Order.objects.create(
             customer_name='Test',
             customer_phone='123',
@@ -418,55 +305,38 @@ class OrderModelTest(TestCase):
             delivered_order.cancel(reason='Prueba')
         self.assertIn('No se puede cancelar un pedido ya entregado', str(cm.exception))
 
+    # UT-210: HU-030 CA-004 - Pedido ya cancelado no se cancela nuevamente
     def test_cancel_already_cancelled_order_raises_error(self):
-        """
-        CP-xxx
-        HU-030 | ESCENARIO 4 | E | Pedido ya cancelado
-        """
-        # Cancelar el pedido primero
         self.order.cancel(reason='Primera cancelación')
         self.assertEqual(self.order.status, 'cancelado')
-        # Intentar cancelar nuevamente
         with self.assertRaises(ValidationError) as cm:
             self.order.cancel(reason='Segunda cancelación')
         self.assertIn('cancelado', str(cm.exception).lower())
 
+    # UT-211: HU-029 CA-002 - Cambiar de preparando a listo
     def test_mark_as_ready_success(self):
-        """
-        CP-xxx
-        HU-029 | ESCENARIO 2 | H | Cambiar estado de preparando a listo
-        """
         self.order.status = 'preparando'
         self.order.save()
         self.order.mark_as_ready()
         self.order.refresh_from_db()
         self.assertEqual(self.order.status, 'listo')
 
+    # UT-212: HU-029 CA-003 - Marcar listo desde estado inválido
     def test_mark_as_ready_invalid_status(self):
-        """
-        CP-xxx
-        HU-029 | ESCENARIO 3 | E | No se puede marcar como listo desde estado inválido
-        """
         with self.assertRaises(ValidationError) as cm:
             self.order.mark_as_ready()
         self.assertIn('No se puede marcar como listo', str(cm.exception))
 
+    # UT-213: HU-029 CA-002 - Cambiar de confirmado a preparando
     def test_mark_as_preparing_success(self):
-        """
-        CP-xxx
-        HU-029 | ESCENARIO 2 | H | Cambiar estado de confirmado a preparando
-        """
         self.order.status = 'confirmado'
         self.order.save()
         self.order.mark_as_preparing()
         self.order.refresh_from_db()
         self.assertEqual(self.order.status, 'preparando')
 
+    # UT-214: HU-032 CA-001 - Asignación de repartidor exitosa
     def test_assign_delivery_success(self):
-        """
-        CP-xxx
-        HU-032 | ESCENARIO 1 | H | Asignación exitosa (cambia estado a en_camino)
-        """
         delivery_user = _create_delivery_user(username='delivery1')
         self.order.status = 'listo'
         self.order.save()
@@ -475,21 +345,15 @@ class OrderModelTest(TestCase):
         self.assertEqual(self.order.status, 'en_camino')
         self.assertEqual(self.order.assigned_delivery_user, delivery_user)
 
+    # UT-215: HU-032 CA-003 - Asignar repartidor solo a pedidos listos
     def test_assign_delivery_not_ready_status(self):
-        """
-        CP-xxx
-        HU-032 | ESCENARIO 1 | H | Solo se puede asignar repartidor a pedidos listos
-        """
         delivery_user = _create_delivery_user(username='delivery1')
         with self.assertRaises(ValidationError) as cm:
             self.order.assign_delivery(delivery_user)
         self.assertIn('Solo se puede asignar un repartidor a pedidos listos', str(cm.exception))
 
+    # UT-216: HU-034 CA-001 - Marcar como entregado y pagado
     def test_mark_as_delivered_success(self):
-        """
-        CP-xxx
-        HU-034 | ESCENARIO 1 | H | Marcar como entregado y pagado
-        """
         self.order.status = 'en_camino'
         self.order.save()
         self.order.mark_as_delivered()
@@ -497,54 +361,36 @@ class OrderModelTest(TestCase):
         self.assertEqual(self.order.status, 'entregado')
         self.assertTrue(self.order.is_paid)
 
+    # UT-217: HU-034 CA-003 - Pedido no está en camino
     def test_mark_as_delivered_not_en_camino_status(self):
-        """
-        CP-xxx
-        HU-034 | ESCENARIO 3 | E | Pedido no está en camino
-        """
         with self.assertRaises(ValidationError) as cm:
             self.order.mark_as_delivered()
         self.assertIn('Solo se puede entregar un pedido que está en camino', str(cm.exception))
 
+    # UT-218: HU-027 - Orden por defecto -created_at
     def test_order_meta_ordering(self):
-        """
-        CP-xxx
-        HU-027 | H | Orden por defecto es -created_at (más reciente primero)
-        """
         older = _create_order(customer_name='Older')
         newer = _create_order(customer_name='Newer')
         qs = Order.objects.all()
         self.assertEqual(qs.first().customer_name, 'Newer')
 
+    # UT-219: HU-027 - Verbose names correctos
     def test_order_verbose_names(self):
-        """
-        CP-xxx
-        HU-027 | H | Meta.verbose_name y verbose_name_plural correctos
-        """
         self.assertEqual(Order._meta.verbose_name, 'Pedido')
         self.assertEqual(Order._meta.verbose_name_plural, 'Pedidos')
 
+    # UT-220: HU-024 - Email opcional
     def test_customer_email_optional(self):
-        """
-        CP-xxx
-        HU-024 | H | Correo electrónico opcional
-        """
         order = _create_order(customer_email=None)
         self.assertIsNone(order.customer_email)
 
+    # UT-221: HU-024 - Notas de entrega opcionales
     def test_delivery_notes_optional(self):
-        """
-        CP-xxx
-        HU-024 | H | Notas de entrega opcionales
-        """
         order = _create_order(delivery_notes='Dejar con el portero')
         self.assertEqual(order.delivery_notes, 'Dejar con el portero')
 
+    # UT-222: HU-024 - ID de sesión de pago opcional
     def test_payment_session_id_optional(self):
-        """
-        CP-xxx
-        HU-024 | H | ID de sesión de pago opcional
-        """
         self.assertIsNone(self.order.payment_session_id)
 
 
@@ -553,23 +399,15 @@ class OrderModelTest(TestCase):
 # =============================================================================
 
 class OrderItemModelTest(TestCase):
-    """
-    HU-024: Confirmar pedido (creación de items)
-    HU-028: Ver detalle de pedido (admin)
-    HU-031: Crear pedido manual (admin) - items asociados
-    """
+    """Pruebas del modelo OrderItem"""
 
     def setUp(self):
         self.variant = _create_product_variant(stock=10)
         self.order = _create_order()
         self.order_item = _create_order_item(self.order, self.variant, quantity=2)
 
+    # UT-223: HU-024 CA-001 / HU-031 CA-001 - Creación de item
     def test_create_order_item_with_all_fields(self):
-        """
-        CP-xxx
-        HU-024 | ESCENARIO 1 | H | Creación de item con todos los campos
-        HU-031 | ESCENARIO 1 | H | Items asociados a pedido manual
-        """
         self.assertEqual(self.order_item.order, self.order)
         self.assertEqual(self.order_item.variant, self.variant)
         self.assertEqual(self.order_item.product_name_snapshot, self.variant.product.name)
@@ -579,19 +417,13 @@ class OrderItemModelTest(TestCase):
         self.assertEqual(self.order_item.stock_snapshot, self.variant.stock)
         self.assertEqual(self.order_item.subtotal, Decimal('10.00'))
 
+    # UT-224: HU-028 - __str__ retorna número y producto
     def test_order_item_str(self):
-        """
-        CP-xxx
-        HU-028 | H | __str__ retorna número de pedido y producto
-        """
         expected = f"{self.order.order_number} - Test Product x2"
         self.assertEqual(str(self.order_item), expected)
 
+    # UT-225: HU-024 CA-001 - Cálculo automático del subtotal
     def test_order_item_subtotal_auto_calculation(self):
-        """
-        CP-xxx
-        HU-024 | ESCENARIO 1 | H | Cálculo automático del subtotal (precio * cantidad)
-        """
         item = OrderItem(
             order=self.order,
             variant=self.variant,
@@ -601,12 +433,8 @@ class OrderItemModelTest(TestCase):
         item.save()
         self.assertEqual(item.subtotal, Decimal('15.00'))
 
+    # UT-226: HU-024 CA-001 - Snapshots automáticos desde variante
     def test_order_item_snapshot_auto_population_from_variant(self):
-        """
-        CP-xxx
-        HU-024 | ESCENARIO 1 | H | Snapshots automáticos desde la variante
-        """
-        # Crear nuevo item sin snapshots
         item = OrderItem(
             order=self.order,
             variant=self.variant,
@@ -618,11 +446,8 @@ class OrderItemModelTest(TestCase):
         self.assertEqual(item.unit_price, self.variant.product.price)
         self.assertEqual(item.stock_snapshot, self.variant.stock)
 
+    # UT-227: HU-031 CA-002 - Sobrescribir snapshots manualmente
     def test_order_item_manual_snapshot_override(self):
-        """
-        CP-xxx
-        HU-031 | ESCENARIO 2 | H | Permite sobrescribir snapshots manualmente
-        """
         item = OrderItem(
             order=self.order,
             variant=self.variant,
@@ -636,11 +461,8 @@ class OrderItemModelTest(TestCase):
         self.assertEqual(item.size_snapshot, 'XL')
         self.assertEqual(item.unit_price, Decimal('10.00'))
 
+    # UT-228: HU-031 CA-001 - Variante puede ser nula
     def test_order_item_variant_nullable(self):
-        """
-        CP-xxx
-        HU-031 | ESCENARIO 1 | H | Variante puede ser nula (para items manuales sin stock)
-        """
         item = OrderItem(
             order=self.order,
             variant=None,
@@ -653,11 +475,8 @@ class OrderItemModelTest(TestCase):
         self.assertIsNone(item.variant)
         self.assertEqual(item.product_name_snapshot, 'Producto Manual')
 
+    # UT-229: HU-031 CA-002 - Cantidad mayor a 0
     def test_clean_quantity_zero_or_negative_raises_error(self):
-        """
-        CP-xxx
-        HU-031 | ESCENARIO 2 | A | Validación: cantidad debe ser mayor a 0
-        """
         item = OrderItem(
             order=self.order,
             variant=self.variant,
@@ -667,11 +486,8 @@ class OrderItemModelTest(TestCase):
             item.full_clean()
         self.assertIn('quantity', str(cm.exception).lower())
 
+    # UT-230: HU-031 CA-002 - Precio unitario no negativo
     def test_clean_unit_price_negative_raises_error(self):
-        """
-        CP-xxx
-        HU-031 | ESCENARIO 2 | A | Validación: precio unitario no puede ser negativo
-        """
         item = OrderItem(
             order=self.order,
             variant=self.variant,
@@ -682,11 +498,8 @@ class OrderItemModelTest(TestCase):
             item.full_clean()
         self.assertIn('unit_price', str(cm.exception).lower())
 
+    # UT-231: HU-031 CA-002 - Stock snapshot no negativo
     def test_clean_stock_snapshot_negative_raises_error(self):
-        """
-        CP-xxx
-        HU-031 | ESCENARIO 2 | A | Validación: stock snapshot no puede ser negativo
-        """
         item = OrderItem(
             order=self.order,
             variant=self.variant,
@@ -697,76 +510,55 @@ class OrderItemModelTest(TestCase):
             item.full_clean()
         self.assertIn('stock_snapshot', str(cm.exception).lower())
 
+    # UT-232: HU-028 - Orden por defecto por id
     def test_order_item_meta_ordering(self):
-        """
-        CP-xxx
-        HU-028 | H | Orden por defecto por id
-        """
         item2 = _create_order_item(self.order, self.variant, quantity=1)
         self.assertEqual(OrderItem.objects.first().id, self.order_item.id)
 
+    # UT-233: HU-028 - Verbose names correctos
     def test_order_item_verbose_names(self):
-        """
-        CP-xxx
-        HU-028 | H | Meta.verbose_name y verbose_name_plural correctos
-        """
         self.assertEqual(OrderItem._meta.verbose_name, 'Item del pedido')
         self.assertEqual(OrderItem._meta.verbose_name_plural, 'Items del pedido')
 
+    # UT-234: HU-028 - CASCADE al eliminar pedido
     def test_order_item_cascade_delete(self):
-        """
-        CP-xxx
-        HU-028 | H | Al eliminar pedido, se eliminan sus items (CASCADE)
-        """
         self.order.delete()
         self.assertEqual(OrderItem.objects.count(), 0)
 
 
 # =============================================================================
-# TESTS: Order Status Progression (HU-035 incidencia)
+# TESTS: Order Status Progression
 # =============================================================================
 
 class OrderStatusProgressionTest(TestCase):
-    """Pruebas de progresión de estados y registro de incidencias."""
+    """Pruebas de progresión de estados y registro de incidencias"""
 
     def setUp(self):
         self.variant = _create_product_variant(stock=10)
         self.order = _create_order()
 
+    # UT-235: HU-029 CA-001 - Progresión completa de estados
     def test_full_status_progression(self):
-        """
-        CP-xxx
-        HU-029 | ESCENARIO 1 | H | Progresión completa de estados
-        """
-        # pendiente → confirmado
         _create_order_item(self.order, self.variant, quantity=2)
         self.order.confirm()
         self.assertEqual(self.order.status, 'confirmado')
         
-        # confirmado → preparando
         self.order.mark_as_preparing()
         self.assertEqual(self.order.status, 'preparando')
         
-        # preparando → listo
         self.order.mark_as_ready()
         self.assertEqual(self.order.status, 'listo')
         
-        # listo → en_camino
         delivery_user = _create_delivery_user(username='delivery1')
         self.order.assign_delivery(delivery_user)
         self.assertEqual(self.order.status, 'en_camino')
         
-        # en_camino → entregado
         self.order.mark_as_delivered()
         self.assertEqual(self.order.status, 'entregado')
         self.assertTrue(self.order.is_paid)
 
+    # UT-236: HU-030 CA-001 - Cancelación en múltiples estados
     def test_cancellation_at_different_stages(self):
-        """
-        CP-xxx
-        HU-030 | ESCENARIO 1 | H | Cancelación permitida en múltiples estados
-        HU-030 | ESCENARIO 3 | H | Cancelación con motivo (incidencia)
-        """
         stages = ['pendiente', 'confirmado', 'preparando', 'listo', 'en_camino']
         
         for stage in stages:
@@ -775,20 +567,13 @@ class OrderStatusProgressionTest(TestCase):
             self.assertEqual(order.status, 'cancelado')
             self.assertIn(f'Cancelado desde estado {stage}', order.cancelled_reason)
 
+    # UT-237: HU-035 CA-001 - Registrar incidencia en cancelled_reason
     def test_incidence_registration_on_cancellation(self):
-        """
-        CP-xxx
-        HU-035 | ESCENARIO 1 | H | Registrar incidencia (motivo guardado en cancelled_reason)
-        HU-035 | ESCENARIO 2 | H | Tipos de incidencia disponibles (campo libre)
-        """
         self.order.cancel(reason='Producto dañado - incidencia registrada')
         self.assertEqual(self.order.cancelled_reason, 'Producto dañado - incidencia registrada')
 
+    # UT-238: HU-035 CA-003 - No registrar incidencia en pedido entregado
     def test_cannot_cancel_delivered_order(self):
-        """
-        CP-xxx
-        HU-035 | ESCENARIO 3 | E | No se puede registrar incidencia en pedido entregado
-        """
         delivered_order = Order.objects.create(
             customer_name='Test',
             customer_phone='123',

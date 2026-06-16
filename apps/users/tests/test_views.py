@@ -1,18 +1,3 @@
-"""
-Tests para vistas de apps.users.views
-
-Cubre:
-- HU-038: UserListView
-- HU-039: UserCreateView
-- HU-040: UserUpdateView, UserChangePasswordView
-- HU-041: UserDeleteView, UserTrashcanView
-- HU-042: UserRestoreView
-- HU-043: UserProfileView, UserProfileUpdateView, UserProfilePasswordView
-- Group CRUD (soporte)
-
-Casos de prueba: CP-116 a CP-177
-"""
-
 from django.test import TestCase, Client
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission 
@@ -88,7 +73,6 @@ User = get_user_model()
 # =============================================================================
 
 def _create_admin_user(**kwargs):
-    """Create an admin user with Administrador role."""
     from django.contrib.auth.models import Group as AuthGroup
     
     defaults = {'username': 'admin', 'password': 'pass1234', 'is_staff': True}
@@ -104,7 +88,6 @@ def _create_admin_user(**kwargs):
         user.is_delivery = True
         user.save(update_fields=['is_delivery'])
 
-    # Assign Administrador role
     admin_group, _ = AuthGroup.objects.get_or_create(name='Administrador')
     user.groups.add(admin_group)
 
@@ -112,7 +95,6 @@ def _create_admin_user(**kwargs):
 
 
 def _create_delivery_user(**kwargs):
-    """Create a delivery user with Entregador role."""
     from django.contrib.auth.models import Group as AuthGroup
     
     defaults = {'username': 'delivery', 'password': 'pass1234', 'is_delivery': True}
@@ -123,7 +105,6 @@ def _create_delivery_user(**kwargs):
     user.set_password(password)
     user.save()
 
-    # Assign Entregador role
     delivery_group, _ = AuthGroup.objects.get_or_create(name='Entregador')
     user.groups.add(delivery_group)
 
@@ -131,7 +112,6 @@ def _create_delivery_user(**kwargs):
 
 
 def _create_normal_user(**kwargs):
-    """Create a normal user without special roles."""
     defaults = {'username': 'normal', 'password': 'pass1234', 'is_staff': False}
     defaults.update(kwargs)
     password = defaults.pop('password')
@@ -149,7 +129,6 @@ def _create_normal_user(**kwargs):
 
 
 def _add_user_permissions(user):
-    """Añade permisos de usuario a un usuario staff."""
     content_type = ContentType.objects.get_for_model(User)
     perms = Permission.objects.filter(content_type=content_type)
     user.user_permissions.add(*perms)
@@ -157,10 +136,6 @@ def _add_user_permissions(user):
 
 
 def _add_group_permissions(user):
-    """
-    Añade permisos de grupo a un usuario staff.
-    Usa el modelo original auth.Group para los permisos.
-    """
     from django.contrib.auth.models import Permission
     from django.contrib.contenttypes.models import ContentType
     from django.contrib.auth.models import Group as AuthGroup
@@ -173,7 +148,6 @@ def _add_group_permissions(user):
 
 
 def _create_group(name='Test Group'):
-    """Crea un grupo usando el modelo proxy de apps.users."""
     from apps.users.models import Group
     return Group.objects.create(name=name)
 
@@ -195,48 +169,48 @@ class UserListViewTest(TestCase):
         self.user2 = _create_normal_user(username='maria', first_name='Maria', email='maria@test.com')
         self.user3 = _create_delivery_user(username='delivery1')
 
+    # UT-531: HU-038 CA-001 - Lista de usuarios cargada exitosamente
     def test_list_returns_200(self):
-        """CP-116 | HU-038 | ESCENARIO 1 | H | Lista de usuarios cargada exitosamente"""
         response = self.client.get(reverse(USERS_LIST))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, TEMPLATE_USER_LIST)
 
+    # UT-532: HU-038 - Excluye al propio usuario logueado
     def test_list_excludes_current_user(self):
-        """CP-117 | HU-038 | H | Excluye al propio usuario logueado de la lista"""
         response = self.client.get(reverse(USERS_LIST))
         users = list(response.context['users'])
         self.assertNotIn(self.admin, users)
 
+    # UT-533: HU-038 - Incluye otros usuarios
     def test_list_includes_other_users(self):
-        """CP-118 | HU-038 | H | Incluye otros usuarios"""
         response = self.client.get(reverse(USERS_LIST))
         users = list(response.context['users'])
         self.assertIn(self.user1, users)
         self.assertIn(self.user2, users)
 
+    # UT-534: HU-038 CA-002 - Búsqueda por nombre de usuario
     def test_search_by_username(self):
-        """CP-119 | HU-038 | ESCENARIO 2 | H | Búsqueda por nombre de usuario"""
         response = self.client.get(reverse(USERS_LIST), {'search': 'juan'})
         users = list(response.context['users'])
         self.assertIn(self.user1, users)
         self.assertNotIn(self.user2, users)
 
+    # UT-535: HU-038 CA-002 - Búsqueda por correo
     def test_search_by_email(self):
-        """CP-120 | HU-038 | ESCENARIO 2 | H | Búsqueda por correo"""
         response = self.client.get(reverse(USERS_LIST), {'search': 'maria@test.com'})
         users = list(response.context['users'])
         self.assertIn(self.user2, users)
         self.assertNotIn(self.user1, users)
 
+    # UT-536: HU-038 CA-003 - Filtro por rol (is_delivery)
     def test_filter_by_is_delivery(self):
-        """CP-121 | HU-038 | ESCENARIO 3 | H | Filtro por rol (is_delivery)"""
         response = self.client.get(reverse(USERS_LIST), {'is_delivery': '1'})
         users = list(response.context['users'])
         self.assertIn(self.user3, users)
         self.assertNotIn(self.user1, users)
 
+    # UT-537: HU-038 CA-004 - Filtro por estado (is_active=false)
     def test_filter_by_inactive(self):
-        """CP-122 | HU-038 | ESCENARIO 4 | H | Filtro por estado (is_active=false)"""
         self.user1.is_active = False
         self.user1.save()
         response = self.client.get(reverse(USERS_LIST), {'is_active': '0'})
@@ -244,28 +218,28 @@ class UserListViewTest(TestCase):
         self.assertIn(self.user1, users)
         self.assertNotIn(self.user2, users)
 
+    # UT-538: HU-038 CA-005 - Sin usuarios (excluyendo el actual)
     def test_list_empty_excluding_admin(self):
-        """CP-123 | HU-038 | ESCENARIO 5 | A | Sin usuarios (excluyendo el actual)"""
         User.objects.exclude(pk=self.admin.pk).delete()
         response = self.client.get(reverse(USERS_LIST))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.context['users']), 0)
 
+    # UT-539: HU-038 CA-006 - Usuario no autenticado redirige a login
     def test_list_requires_authentication(self):
-        """CP-124a | HU-038 | ESCENARIO 6 | E | Usuario no autenticado -> login"""
         self.client.logout()
         response = self.client.get(reverse(USERS_LIST))
         self.assertRedirects(response, f'{reverse(CORE_STAFF_LOGIN)}?next={reverse(USERS_LIST)}')
 
+    # UT-540: HU-038 CA-006 - Usuario sin permiso redirige a catálogo
     def test_list_requires_permission(self):
-        """CP-124b | HU-038 | ESCENARIO 6 | E | Usuario autenticado sin permiso -> catálogo"""
         normal_user = _create_normal_user(username='normal')
         self.client.force_login(normal_user)
         response = self.client.get(reverse(USERS_LIST))
         self.assertRedirects(response, reverse(PRODUCTS_CATALOG))
 
+    # UT-541: HU-038 - Incluye headers en contexto
     def test_list_context_headers(self):
-        """CP-125 | HU-038 | H | Incluye headers en contexto"""
         response = self.client.get(reverse(USERS_LIST))
         self.assertEqual(response.context['headers'], HEADERS_USER_LIST)
 
@@ -295,43 +269,43 @@ class UserCreateViewTest(TestCase):
             'is_delivery': True,
         }
 
+    # UT-542: HU-039 - Muestra formulario de creación
     def test_get_create_form(self):
-        """CP-126 | HU-039 | GET | Muestra formulario de creación"""
         response = self.client.get(reverse(USERS_CREATE))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, TEMPLATE_USER_FORM)
 
+    # UT-543: HU-039 CA-001 - Usuario creado exitosamente
     def test_create_valid_user(self):
-        """CP-127 | HU-039 | ESCENARIO 1 | H | Usuario creado exitosamente"""
         data = self.get_valid_data()
         response = self.client.post(reverse(USERS_CREATE), data=data)
         self.assertRedirects(response, reverse(USERS_LIST))
         self.assertTrue(User.objects.filter(username='nuevo_user').exists())
 
+    # UT-544: HU-039 CA-003 - Correo duplicado da error
     def test_create_duplicate_email(self):
-        """CP-128 | HU-039 | ESCENARIO 3 | E | Correo duplicado"""
         _create_normal_user(email='nuevo@test.com')
         data = self.get_valid_data()
         response = self.client.post(reverse(USERS_CREATE), data=data)
         self.assertEqual(response.status_code, 200)
         self.assertFalse(User.objects.filter(username='nuevo_user').exists())
 
+    # UT-545: HU-039 CA-002 - Errores en el formulario
     def test_create_invalid_form(self):
-        """CP-129 | HU-039 | ESCENARIO 2 | A | Errores en el formulario"""
         data = self.get_valid_data()
         data['username'] = ''
         response = self.client.post(reverse(USERS_CREATE), data=data)
         self.assertEqual(response.status_code, 200)
         self.assertFalse(User.objects.filter(email='nuevo@test.com').exists())
 
+    # UT-546: HU-039 CA-004 - Usuario no autenticado redirige a login
     def test_create_requires_authentication(self):
-        """CP-130a | HU-039 | ESCENARIO 4 | E | Usuario no autenticado -> login"""
         self.client.logout()
         response = self.client.get(reverse(USERS_CREATE))
         self.assertRedirects(response, f'{reverse(CORE_STAFF_LOGIN)}?next={reverse(USERS_CREATE)}')
 
+    # UT-547: HU-039 CA-004 - Usuario sin permiso redirige a catálogo
     def test_create_requires_permission(self):
-        """CP-130b | HU-039 | ESCENARIO 4 | E | Usuario autenticado sin permiso -> catálogo"""
         normal_user = _create_normal_user(username='normal')
         self.client.force_login(normal_user)
         response = self.client.get(reverse(USERS_CREATE))
@@ -362,27 +336,27 @@ class UserUpdateViewTest(TestCase):
             'is_delivery': False,
         }
 
+    # UT-548: HU-040 - Muestra formulario de edición
     def test_get_update_form(self):
-        """CP-131 | HU-040 | GET | Muestra formulario de edición"""
         response = self.client.get(reverse(USERS_EDIT, kwargs={'pk': self.target_user.pk}))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, TEMPLATE_USER_FORM)
 
+    # UT-549: HU-040 CA-001 - Usuario actualizado exitosamente
     def test_update_valid_user(self):
-        """CP-132 | HU-040 | ESCENARIO 1 | H | Usuario actualizado exitosamente"""
         data = self.get_valid_data()
         response = self.client.post(reverse(USERS_EDIT, kwargs={'pk': self.target_user.pk}), data=data)
         self.assertRedirects(response, reverse(USERS_LIST))
         self.target_user.refresh_from_db()
         self.assertEqual(self.target_user.first_name, 'Actualizado')
 
+    # UT-550: HU-040 CA-002 - Muestra enlace para cambiar contraseña
     def test_update_shows_password_change_link(self):
-        """CP-133 | HU-040 | ESCENARIO 2 | H | Muestra enlace para cambiar contraseña"""
         response = self.client.get(reverse(USERS_EDIT, kwargs={'pk': self.target_user.pk}))
         self.assertTrue(response.context.get('show_password_change', False))
 
+    # UT-551: HU-040 CA-003 - Correo duplicado al editar da error
     def test_update_duplicate_email(self):
-        """CP-134 | HU-040 | ESCENARIO 3 | E | Correo duplicado al editar"""
         _create_normal_user(email='target@updated.com')
         data = self.get_valid_data()
         response = self.client.post(reverse(USERS_EDIT, kwargs={'pk': self.target_user.pk}), data=data)
@@ -390,26 +364,26 @@ class UserUpdateViewTest(TestCase):
         self.target_user.refresh_from_db()
         self.assertNotEqual(self.target_user.email, 'target@updated.com')
 
+    # UT-552: HU-040 CA-004 - Usuario no existe da 404
     def test_update_nonexistent_user(self):
-        """CP-135 | HU-040 | ESCENARIO 4 | E | Usuario no existe -> 404"""
         response = self.client.get(reverse(USERS_EDIT, kwargs={'pk': 9999}))
         self.assertEqual(response.status_code, 404)
 
+    # UT-553: HU-040 CA-005 - Usuario no autenticado redirige a login
     def test_update_requires_authentication(self):
-        """CP-136a | HU-040 | ESCENARIO 5 | E | Usuario no autenticado -> login"""
         self.client.logout()
         response = self.client.get(reverse(USERS_EDIT, kwargs={'pk': self.target_user.pk}))
         self.assertRedirects(response, f'{reverse(CORE_STAFF_LOGIN)}?next={reverse(USERS_EDIT, kwargs={"pk": self.target_user.pk})}')
 
+    # UT-554: HU-040 CA-005 - Usuario sin permiso redirige a catálogo
     def test_update_requires_permission(self):
-        """CP-136b | HU-040 | ESCENARIO 5 | E | Usuario autenticado sin permiso -> catálogo"""
         normal_user = _create_normal_user(username='normal')
         self.client.force_login(normal_user)
         response = self.client.get(reverse(USERS_EDIT, kwargs={'pk': self.target_user.pk}))
         self.assertRedirects(response, reverse(PRODUCTS_CATALOG))
 
+    # UT-555: HU-040 CA-002 - Formulario inválido muestra errores
     def test_update_invalid_form(self):
-        """CP-137 | HU-040 | ESCENARIO 2 | A | Formulario inválido"""
         data = self.get_valid_data()
         data['email'] = 'invalido'
         response = self.client.post(reverse(USERS_EDIT, kwargs={'pk': self.target_user.pk}), data=data)
@@ -423,7 +397,7 @@ class UserUpdateViewTest(TestCase):
 # =============================================================================
 
 class UserChangePasswordViewTest(TestCase):
-    """HU-040 | ESCENARIO 2 | H | Cambiar contraseña (admin)"""
+    """HU-040 CA-002: Cambiar contraseña (admin)"""
 
     def setUp(self):
         self.client = Client()
@@ -432,14 +406,14 @@ class UserChangePasswordViewTest(TestCase):
         self.client.force_login(self.admin)
         self.target_user = _create_normal_user(username='target', password='OldPass123!')
 
+    # UT-556: HU-040 - Muestra formulario de cambio de contraseña
     def test_get_change_password_form(self):
-        """CP-138 | HU-040 | GET | Muestra formulario de cambio de contraseña"""
         response = self.client.get(reverse(USERS_CHANGE_PASSWORD, kwargs={'pk': self.target_user.pk}))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, TEMPLATE_USER_CHANGE_PASSWORD)
 
+    # UT-557: HU-040 CA-002 - Contraseña cambiada exitosamente
     def test_change_password_valid(self):
-        """CP-139 | HU-040 | ESCENARIO 2 | H | Contraseña cambiada exitosamente"""
         data = {'password1': 'NewComplex123!', 'password2': 'NewComplex123!'}
         response = self.client.post(
             reverse(USERS_CHANGE_PASSWORD, kwargs={'pk': self.target_user.pk}), 
@@ -449,8 +423,8 @@ class UserChangePasswordViewTest(TestCase):
         self.target_user.refresh_from_db()
         self.assertTrue(self.target_user.check_password('NewComplex123!'))
 
+    # UT-558: Contraseñas no coinciden da error
     def test_change_password_mismatch(self):
-        """CP-140 | Contraseñas no coinciden"""
         data = {'password1': 'NewComplex123!', 'password2': 'Different456!'}
         response = self.client.post(
             reverse(USERS_CHANGE_PASSWORD, kwargs={'pk': self.target_user.pk}), 
@@ -460,8 +434,8 @@ class UserChangePasswordViewTest(TestCase):
         self.target_user.refresh_from_db()
         self.assertTrue(self.target_user.check_password('OldPass123!'))
 
+    # UT-559: HU-040 - Usuario no existe da 404
     def test_change_password_nonexistent_user(self):
-        """CP-141 | HU-040 | ESCENARIO 4 | E | Usuario no existe -> 404"""
         response = self.client.get(reverse(USERS_CHANGE_PASSWORD, kwargs={'pk': 9999}))
         self.assertEqual(response.status_code, 404)
 
@@ -480,14 +454,14 @@ class UserDeleteViewTest(TestCase):
         self.client.force_login(self.admin)
         self.target = _create_normal_user(username='target')
 
+    # UT-560: HU-041 - Muestra pantalla de confirmación
     def test_get_delete_confirmation(self):
-        """CP-142 | HU-041 | GET | Muestra pantalla de confirmación"""
         response = self.client.get(reverse(USERS_DELETE, kwargs={'pk': self.target.pk}))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, TEMPLATE_USER_CONFIRM_DELETE)
 
+    # UT-561: HU-041 CA-001 - Usuario archivado exitosamente
     def test_delete_valid_user(self):
-        """CP-143 | HU-041 | ESCENARIO 1 | H | Usuario archivado exitosamente"""
         response = self.client.post(
             reverse(USERS_DELETE, kwargs={'pk': self.target.pk}), 
             {'confirm': 'target'}
@@ -496,8 +470,8 @@ class UserDeleteViewTest(TestCase):
         self.target.refresh_from_db()
         self.assertFalse(self.target.is_active)
 
+    # UT-562: HU-041 CA-002 - Archivar al propio usuario no permitido
     def test_delete_self_not_allowed(self):
-        """CP-144 | HU-041 | ESCENARIO 2 | E | Archivar al propio usuario"""
         response = self.client.post(
             reverse(USERS_DELETE, kwargs={'pk': self.admin.pk}), 
             {'confirm': 'admin'}
@@ -506,8 +480,8 @@ class UserDeleteViewTest(TestCase):
         self.admin.refresh_from_db()
         self.assertTrue(self.admin.is_active)
 
+    # UT-563: HU-041 CA-004 - Cancelar archivación
     def test_delete_without_confirmation(self):
-        """CP-145 | HU-041 | ESCENARIO 4 | A | Cancelar archivación"""
         response = self.client.post(
             reverse(USERS_DELETE, kwargs={'pk': self.target.pk}), 
             {'confirm': 'wrong_name'}
@@ -516,8 +490,8 @@ class UserDeleteViewTest(TestCase):
         self.target.refresh_from_db()
         self.assertTrue(self.target.is_active)
 
+    # UT-564: HU-041 CA-005 - Usuario no autenticado redirige a login
     def test_delete_requires_authentication(self):
-        """CP-146a | HU-041 | ESCENARIO 5 | E | Usuario no autenticado -> login"""
         self.client.logout()
         response = self.client.get(reverse(USERS_DELETE, kwargs={'pk': self.target.pk}))
         self.assertRedirects(
@@ -525,8 +499,8 @@ class UserDeleteViewTest(TestCase):
             f'{reverse(CORE_STAFF_LOGIN)}?next={reverse(USERS_DELETE, kwargs={"pk": self.target.pk})}'
         )
 
+    # UT-565: HU-041 CA-005 - Usuario sin permiso redirige a catálogo
     def test_delete_requires_permission(self):
-        """CP-146b | HU-041 | ESCENARIO 5 | E | Usuario autenticado sin permiso -> catálogo"""
         normal_user = _create_normal_user(username='normal')
         self.client.force_login(normal_user)
         response = self.client.get(reverse(USERS_DELETE, kwargs={'pk': self.target.pk}))
@@ -547,35 +521,35 @@ class UserRestoreViewTest(TestCase):
         self.client.force_login(self.admin)
         self.target = _create_normal_user(username='target', is_active=False)
 
+    # UT-566: HU-042 - Muestra pantalla de restauración
     def test_get_restore_confirmation(self):
-        """CP-147 | HU-042 | GET | Muestra pantalla de restauración"""
         response = self.client.get(reverse(USERS_RESTORE, kwargs={'pk': self.target.pk}))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, TEMPLATE_USER_RESTORE)
 
+    # UT-567: HU-042 CA-001 - Usuario reincorporado exitosamente
     def test_restore_valid_user(self):
-        """CP-148 | HU-042 | ESCENARIO 1 | H | Usuario reincorporado exitosamente"""
         response = self.client.post(reverse(USERS_RESTORE, kwargs={'pk': self.target.pk}), {'confirm': True})
         self.assertRedirects(response, reverse(USERS_LIST))
         self.target.refresh_from_db()
         self.assertTrue(self.target.is_active)
 
+    # UT-568: HU-042 CA-002 - Usuario ya activo redirige
     def test_restore_already_active(self):
-        """CP-149 | HU-042 | ESCENARIO 2 | A | Usuario ya activo -> redirige"""
         active_user = _create_normal_user(username='active_user')
         response = self.client.get(reverse(USERS_RESTORE, kwargs={'pk': active_user.pk}))
         self.assertEqual(response.status_code, 302)
         active_user.refresh_from_db()
         self.assertTrue(active_user.is_active)
 
+    # UT-569: HU-042 CA-003 - Usuario no autenticado redirige a login
     def test_restore_requires_authentication(self):
-        """CP-150a | HU-042 | ESCENARIO 3 | E | Usuario no autenticado -> login"""
         self.client.logout()
         response = self.client.get(reverse(USERS_RESTORE, kwargs={'pk': self.target.pk}))
         self.assertRedirects(response, f'{reverse(CORE_STAFF_LOGIN)}?next={reverse(USERS_RESTORE, kwargs={"pk": self.target.pk})}')
 
+    # UT-570: HU-042 CA-003 - Usuario sin permiso redirige a catálogo
     def test_restore_requires_permission(self):
-        """CP-150b | HU-042 | ESCENARIO 3 | E | Usuario autenticado sin permiso -> catálogo"""
         normal_user = _create_normal_user(username='normal')
         self.client.force_login(normal_user)
         response = self.client.get(reverse(USERS_RESTORE, kwargs={'pk': self.target.pk}))
@@ -599,8 +573,8 @@ class UserTrashcanViewTest(TestCase):
         self.inactive2 = _create_normal_user(username='deleted2', is_active=False)
         self.active = _create_normal_user(username='active', is_active=True)
 
+    # UT-571: HU-041 - Papelera muestra solo usuarios inactivos
     def test_trashcan_shows_only_inactive(self):
-        """CP-151 | HU-041 | A | Papelera muestra solo usuarios inactivos"""
         response = self.client.get(reverse(USERS_TRASHCAN))
         users = list(response.context['users'])
         self.assertIn(self.inactive1, users)
@@ -608,26 +582,26 @@ class UserTrashcanViewTest(TestCase):
         self.assertNotIn(self.active, users)
         self.assertTemplateUsed(response, TEMPLATE_USER_TRASHCAN)
 
+    # UT-572: HU-041 - Papelera vacía
     def test_trashcan_empty(self):
-        """CP-152 | HU-041 | A | Papelera vacía"""
         User.objects.filter(is_active=False).delete()
         response = self.client.get(reverse(USERS_TRASHCAN))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.context['users']), 0)
 
+    # UT-573: HU-041 - Incluye headers en contexto
     def test_trashcan_context_headers(self):
-        """CP-153 | HU-041 | H | Incluye headers en contexto"""
         response = self.client.get(reverse(USERS_TRASHCAN))
         self.assertEqual(response.context['headers'], HEADERS_USER_TRASHCAN)
 
+    # UT-574: HU-041 - Usuario no autenticado redirige a login
     def test_trashcan_requires_authentication(self):
-        """CP-154a | HU-041 | E | Usuario no autenticado -> login"""
         self.client.logout()
         response = self.client.get(reverse(USERS_TRASHCAN))
         self.assertRedirects(response, f'{reverse(CORE_STAFF_LOGIN)}?next={reverse(USERS_TRASHCAN)}')
 
+    # UT-575: HU-041 - Usuario sin permiso redirige a catálogo
     def test_trashcan_requires_permission(self):
-        """CP-154b | HU-041 | E | Usuario autenticado sin permiso -> catálogo"""
         normal_user = _create_normal_user(username='normal')
         self.client.force_login(normal_user)
         response = self.client.get(reverse(USERS_TRASHCAN))
@@ -646,36 +620,36 @@ class UserProfileViewTest(TestCase):
         self.user = _create_normal_user(username='profile_user', first_name='Perfil')
         self.client.force_login(self.user)
 
+    # UT-576: HU-043 CA-001 - Perfil cargado exitosamente
     def test_profile_returns_200(self):
-        """CP-155 | HU-043 | ESCENARIO 1 | H | Perfil cargado exitosamente"""
         response = self.client.get(reverse(USERS_PROFILE))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context['user_obj'].pk, self.user.pk)
         self.assertTemplateUsed(response, TEMPLATE_USER_PROFILE)
 
+    # UT-577: HU-043 CA-007 - Sin autenticación redirige a login
     def test_profile_requires_login(self):
-        """CP-156 | HU-043 | ESCENARIO 7 | E | Sin autenticación -> redirige al login"""
         self.client.logout()
         response = self.client.get(reverse(USERS_PROFILE))
         self.assertRedirects(response, f'{reverse(CORE_STAFF_LOGIN)}?next={reverse(USERS_PROFILE)}')
 
 
 class UserProfileUpdateViewTest(TestCase):
-    """HU-043 | ESCENARIO 2 | H | Actualizar nombre y teléfono"""
+    """HU-043 CA-002: Actualizar nombre y teléfono"""
 
     def setUp(self):
         self.client = Client()
         self.user = _create_normal_user(username='profile_user', first_name='Original')
         self.client.force_login(self.user)
 
+    # UT-578: HU-043 - Muestra formulario de edición de perfil
     def test_get_profile_edit_form(self):
-        """CP-157 | HU-043 | GET | Muestra formulario de edición de perfil"""
         response = self.client.get(reverse(USERS_PROFILE_EDIT))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, TEMPLATE_USER_PROFILE_EDIT)
 
+    # UT-579: HU-043 CA-002 - Actualizar nombre exitosamente
     def test_update_profile_valid(self):
-        """CP-158 | HU-043 | ESCENARIO 2 | H | Actualizar nombre exitosamente"""
         data = {'first_name': 'NuevoNombre', 'last_name': 'NuevoApellido', 'email': self.user.email}
         response = self.client.post(reverse(USERS_PROFILE_EDIT), data=data)
         self.assertRedirects(response, reverse(USERS_PROFILE))
@@ -684,21 +658,21 @@ class UserProfileUpdateViewTest(TestCase):
 
 
 class UserProfilePasswordViewTest(TestCase):
-    """HU-043 | ESCENARIO 3,4,5,6 | Cambiar contraseña desde perfil"""
+    """HU-043 CA-003/004/005/006: Cambiar contraseña desde perfil"""
 
     def setUp(self):
         self.client = Client()
         self.user = _create_normal_user(username='profile_user', password='OldPass123!')
         self.client.force_login(self.user)
 
+    # UT-580: HU-043 - Muestra formulario de cambio de contraseña
     def test_get_password_form(self):
-        """CP-159 | HU-043 | GET | Muestra formulario de cambio de contraseña"""
         response = self.client.get(reverse(USERS_PROFILE_PASSWORD))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, TEMPLATE_USER_PROFILE_PASSWORD)
 
+    # UT-581: HU-043 CA-003 - Contraseña cambiada exitosamente
     def test_change_password_valid(self):
-        """CP-160 | HU-043 | ESCENARIO 3 | H | Contraseña cambiada exitosamente"""
         data = {
             'current_password': 'OldPass123!', 
             'new_password1': 'NewComplex123!', 
@@ -709,8 +683,8 @@ class UserProfilePasswordViewTest(TestCase):
         self.user.refresh_from_db()
         self.assertTrue(self.user.check_password('NewComplex123!'))
 
+    # UT-582: HU-043 - Cambiar contraseña mantiene sesión activa
     def test_change_password_keeps_session(self):
-        """CP-160b | HU-043 | H | Cambiar contraseña mantiene la sesión activa"""
         self.client.login(username='profile_user', password='OldPass123!')
         
         response = self.client.get(reverse(USERS_PROFILE))
@@ -732,8 +706,8 @@ class UserProfilePasswordViewTest(TestCase):
         login_success = self.client.login(username='profile_user', password='NewComplex123!')
         self.assertTrue(login_success)
 
+    # UT-583: HU-043 CA-004 - Contraseña actual incorrecta da error
     def test_change_password_wrong_old(self):
-        """CP-161 | HU-043 | ESCENARIO 4 | E | Contraseña actual incorrecta"""
         data = {
             'current_password': 'WrongOld!', 
             'new_password1': 'NewComplex123!', 
@@ -747,16 +721,16 @@ class UserProfilePasswordViewTest(TestCase):
         self.assertIsNotNone(form)
         self.assertIn('current_password', form.errors)
 
+    # UT-584: HU-043 CA-005 - Nueva contraseña débil da error
     def test_change_password_weak(self):
-        """CP-162 | HU-043 | ESCENARIO 5 | E | Nueva contraseña débil"""
         data = {'old_password': 'OldPass123!', 'new_password1': '123', 'new_password2': '123'}
         response = self.client.post(reverse(USERS_PROFILE_PASSWORD), data=data)
         self.assertEqual(response.status_code, 200)
         self.user.refresh_from_db()
         self.assertTrue(self.user.check_password('OldPass123!'))
 
+    # UT-585: HU-043 CA-006 - Nueva contraseña no coincide da error
     def test_change_password_mismatch(self):
-        """CP-163 | HU-043 | ESCENARIO 6 | E | Nueva contraseña no coincide"""
         data = {'old_password': 'OldPass123!', 'new_password1': 'NewComplex123!', 'new_password2': 'Different456!'}
         response = self.client.post(reverse(USERS_PROFILE_PASSWORD), data=data)
         self.assertEqual(response.status_code, 200)
@@ -773,7 +747,6 @@ class GroupListViewTest(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        """Configuración a nivel de clase - se ejecuta una sola vez."""
         from django.contrib.auth.models import Permission
         from django.contrib.contenttypes.models import ContentType
         from django.contrib.auth.models import Group as AuthGroup
@@ -795,28 +768,28 @@ class GroupListViewTest(TestCase):
         self.group1 = _create_group(name='Admin Group')
         self.group2 = _create_group(name='Delivery Group')
 
+    # UT-586: Group - Lista de grupos cargada exitosamente
     def test_group_list_returns_200(self):
-        """CP-164 | Group: Lista de grupos cargada exitosamente"""
         response = self.client.get(reverse(USERS_GROUP_LIST))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, TEMPLATE_GROUP_LIST)
 
+    # UT-587: Group - Incluye todos los grupos
     def test_group_list_includes_groups(self):
-        """CP-165 | Group: Incluye todos los grupos"""
         response = self.client.get(reverse(USERS_GROUP_LIST))
         groups = list(response.context['groups'])
         self.assertIn(self.group1, groups)
         self.assertIn(self.group2, groups)
 
+    # UT-588: Group - Búsqueda por nombre
     def test_group_list_search(self):
-        """CP-166 | Group: Búsqueda por nombre"""
         response = self.client.get(reverse(USERS_GROUP_LIST), {'search': 'Delivery'})
         groups = list(response.context['groups'])
         self.assertIn(self.group2, groups)
         self.assertNotIn(self.group1, groups)
 
+    # UT-589: Group - Incluye headers en contexto
     def test_group_list_context_headers(self):
-        """CP-177 | Group: Incluye headers en contexto"""
         response = self.client.get(reverse(USERS_GROUP_LIST))
         self.assertEqual(response.context['headers'], HEADERS_GROUP_LIST)
 
@@ -845,14 +818,14 @@ class GroupCreateViewTest(TestCase):
         self.admin = _add_group_permissions(self.admin)
         self.client.force_login(self.admin)
 
+    # UT-590: Group - Muestra formulario de creación
     def test_get_create_form(self):
-        """CP-167 | Group: Muestra formulario de creación"""
         response = self.client.get(reverse(USERS_GROUP_CREATE))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, TEMPLATE_GROUP_FORM)
 
+    # UT-591: Group - Grupo creado exitosamente
     def test_create_valid_group(self):
-        """CP-168 | Group: Grupo creado exitosamente"""
         data = {'name': 'New Group', 'permissions': []}
         response = self.client.post(reverse(USERS_GROUP_CREATE), data=data)
         self.assertRedirects(response, reverse(USERS_GROUP_LIST))
@@ -884,14 +857,14 @@ class GroupUpdateViewTest(TestCase):
         self.client.force_login(self.admin)
         self.group = _create_group(name='Original Group')
 
+    # UT-592: Group - Muestra formulario de edición
     def test_get_update_form(self):
-        """CP-169 | Group: Muestra formulario de edición"""
         response = self.client.get(reverse(USERS_GROUP_EDIT, kwargs={'pk': self.group.pk}))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, TEMPLATE_GROUP_FORM)
 
+    # UT-593: Group - Grupo actualizado exitosamente
     def test_update_valid_group(self):
-        """CP-170 | Group: Grupo actualizado exitosamente"""
         data = {'name': 'Updated Group', 'permissions': []}
         response = self.client.post(reverse(USERS_GROUP_EDIT, kwargs={'pk': self.group.pk}), data=data)
         self.assertRedirects(response, reverse(USERS_GROUP_LIST))
@@ -924,8 +897,8 @@ class GroupDetailViewTest(TestCase):
         self.client.force_login(self.admin)
         self.group = _create_group(name='Detail Group')
 
+    # UT-594: Group - Detalle de grupo cargado exitosamente
     def test_detail_returns_200(self):
-        """CP-171 | Group: Detalle de grupo cargado exitosamente"""
         response = self.client.get(reverse(USERS_GROUP_DETAIL, kwargs={'pk': self.group.pk}))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context['group'].pk, self.group.pk)
@@ -957,14 +930,14 @@ class GroupDeleteViewTest(TestCase):
         self.client.force_login(self.admin)
         self.group = _create_group(name='Delete Group')
 
+    # UT-595: Group - Muestra pantalla de confirmación
     def test_get_delete_confirmation(self):
-        """CP-172 | Group: Muestra pantalla de confirmación"""
         response = self.client.get(reverse(USERS_GROUP_DELETE, kwargs={'pk': self.group.pk}))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, TEMPLATE_GROUP_CONFIRM_DELETE)
 
+    # UT-596: Group - Grupo eliminado exitosamente
     def test_delete_valid_group(self):
-        """CP-173 | Group: Grupo eliminado exitosamente"""
         response = self.client.post(
             reverse(USERS_GROUP_DELETE, kwargs={'pk': self.group.pk}), 
             {'confirm': self.group.name}
@@ -972,8 +945,8 @@ class GroupDeleteViewTest(TestCase):
         self.assertRedirects(response, reverse(USERS_GROUP_LIST))
         self.assertFalse(Group.objects.filter(pk=self.group.pk).exists())
 
+    # UT-597: Group - Eliminar grupo con usuarios asignados muestra error
     def test_delete_group_with_users(self):
-        """CP-174 | Group: Eliminar grupo que tiene usuarios asignados - debe mostrar error"""
         user = _create_normal_user(username='member')
         user.groups.add(self.group)
         self.assertTrue(self.group.user_set.count() > 0)
@@ -989,11 +962,11 @@ class GroupDeleteViewTest(TestCase):
         messages_list = list(response.context.get('messages', []))
         self.assertTrue(
             any(ERROR_GROUP_DELETE.lower() in str(m.message).lower() for m in messages_list),
-            f"Mensaje '{ERROR_GROUP_DELETE}' no encontrado. Mensajes: {[str(m.message) for m in messages_list]}"
+            f"Mensaje '{ERROR_GROUP_DELETE}' no encontrado"
         )
 
+    # UT-598: Group - Usuario no autenticado redirige a login
     def test_delete_requires_authentication(self):
-        """CP-175a | Group: Usuario no autenticado -> login"""
         self.client.logout()
         response = self.client.get(reverse(USERS_GROUP_DELETE, kwargs={'pk': self.group.pk}))
         self.assertRedirects(
@@ -1001,14 +974,14 @@ class GroupDeleteViewTest(TestCase):
             f'{reverse(CORE_STAFF_LOGIN)}?next={reverse(USERS_GROUP_DELETE, kwargs={"pk": self.group.pk})}'
         )
 
+    # UT-599: Group - Usuario sin permiso redirige a catálogo
     def test_delete_requires_permission(self):
-        """CP-175b | Group: Usuario autenticado sin permiso -> catálogo"""
         normal_user = _create_normal_user(username='normal')
         self.client.force_login(normal_user)
         response = self.client.get(reverse(USERS_GROUP_DELETE, kwargs={'pk': self.group.pk}))
         self.assertRedirects(response, reverse(PRODUCTS_CATALOG))
 
+    # UT-600: Group - Grupo no existe da 404
     def test_delete_nonexistent_group(self):
-        """CP-176 | Group: Grupo no existe -> 404"""
         response = self.client.get(reverse(USERS_GROUP_DELETE, kwargs={'pk': 9999}))
         self.assertEqual(response.status_code, 404)
