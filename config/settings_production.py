@@ -15,7 +15,7 @@ if (BASE_DIR / '.env.prod').exists():
 
 # CONFIGURACIÓN BÁSICA - PRODUCCIÓN
 
-DJANGO_SECRET_KEY = env('DJANGO_SECRET_KEY')
+SECRET_KEY = env('DJANGO_SECRET_KEY')
 
 DEBUG = False
 
