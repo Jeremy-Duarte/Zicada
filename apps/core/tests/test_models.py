@@ -1,19 +1,46 @@
-"""
-Tests unitarios para modelos de apps.core.models
+# ==================================================
+# FILE: tests/unit/backoffice/test_views.py
+# APP: backoffice
+# MODULE: views
+# ==================================================
 
-Cubre:
-- BaseAuditModel (soft_delete, restore)
-- HeroConfig (creación, string representation, ordenamiento)
-- ActiveManager (filtro is_active)
-
-Casos de prueba: CP-039 a CP-059
-"""
-
-from django.test import TestCase
+from django.test import TestCase, Client
 from django.contrib.auth import get_user_model
-from django.utils import timezone
+from django.urls import reverse
 
-from apps.core.models import HeroConfig, BaseAuditModel, ActiveManager
+from apps.core.url_names import (
+    CORE_STAFF_LOGIN,
+    PRODUCTS_CATALOG,
+    BACKOFFICE_DASHBOARD,
+    BACKOFFICE_ORDERS,
+    BACKOFFICE_PRODUCTS,
+    BACKOFFICE_USERS,
+    BACKOFFICE_CONFIG,
+    BACKOFFICE_REPORT_GENERATOR,
+    BACKOFFICE_IMPORTERS_DASHBOARD,
+)
+
+from apps.backoffice.constants import (
+    TEMPLATE_ADMIN_DASHBOARD,
+    TEMPLATE_ADMIN_ORDERS_DASHBOARD,
+    TEMPLATE_ADMIN_PRODUCTS_DASHBOARD,
+    TEMPLATE_ADMIN_USERS_DASHBOARD,
+    TEMPLATE_ADMIN_CONFIG,
+    TEMPLATE_REPORT_GENERATOR,
+    TEMPLATE_IMPORTERS_DASHBOARD,
+    CONTEXT_STATS,
+    CONTEXT_SECTION,
+    CONTEXT_URLS,
+    CONTEXT_ACTION_BUTTONS,
+    CONTEXT_RECENT_ORDERS,
+    CONTEXT_LOW_STOCK_PRODUCTS,
+    CONTEXT_TOP_PRODUCTS,
+    CONTEXT_RECENT_PRODUCTS,
+    CONTEXT_QUICK_ACCESS_BUTTONS,
+    CONTEXT_RECENT_DELIVERIES,
+    CONTEXT_ACTIVE_DELIVERIES,
+    CONTEXT_IMPORT_BUTTONS,
+)
 
 User = get_user_model()
 
@@ -22,23 +49,18 @@ User = get_user_model()
 # HELPERS
 # =============================================================================
 
-def _create_hero(**kwargs):
-    defaults = {
-        'title_text': 'Hero Test',
-        'subtitle_text': 'Subtítulo',
-        'button_text': 'Ir',
-        'button_url': '/catalogo/',
-        'button_style': 'bg-zicada-accent hover:bg-red-700 text-white rounded-lg',
-        'sort_order': 0,
-        'section_height': '100vh',
-        'is_active': True,
-    }
+def _create_superuser(**kwargs):
+    defaults = {'username': 'admin', 'password': 'pass1234', 'is_staff': True, 'is_superuser': True}
     defaults.update(kwargs)
-    return HeroConfig.objects.create(**defaults)
+    password = defaults.pop('password')
+    user = User(**defaults)
+    user.set_password(password)
+    user.save()
+    return user
 
 
-def _create_user(**kwargs):
-    defaults = {'username': 'admin', 'password': 'pass1234'}
+def _create_normal_user(**kwargs):
+    defaults = {'username': 'normal', 'password': 'pass1234', 'is_staff': False}
     defaults.update(kwargs)
     password = defaults.pop('password')
     user = User(**defaults)
@@ -48,232 +70,311 @@ def _create_user(**kwargs):
 
 
 # =============================================================================
-# TESTS: BaseAuditModel (abstracto, probado via HeroConfig)
+# TESTS: ADMIN DASHBOARD (Principal)
 # =============================================================================
 
-class BaseAuditModelTest(TestCase):
-    """Prueba métodos heredados de BaseAuditModel a través de HeroConfig."""
+class AdminDashboardTest(TestCase):
+    """Pruebas para el dashboard principal de administración."""
 
     def setUp(self):
-        self.user = _create_user()
-        self.hero = _create_hero(title_text='Slide para pruebas')
+        self.client = Client()
+        self.admin = _create_superuser()
+        self.client.force_login(self.admin)
 
-    # soft_delete
-    def test_soft_delete_sets_inactive_and_deleted_at(self):
-        """
-        CP-039
-        HU-055 | ESCENARIO 1 | H | Soft delete (archivar) - HeroConfig
-        """
-        self.hero.soft_delete(user=self.user)
-        self.hero.refresh_from_db()
-        self.assertFalse(self.hero.is_active)
-        self.assertIsNotNone(self.hero.deleted_at)
-
-    def test_soft_delete_sets_updated_by(self):
-        """
-        CP-040
-        Soft delete asigna updated_by si se proporciona usuario.
-        """
-        self.hero.soft_delete(user=self.user)
-        self.hero.refresh_from_db()
-        self.assertEqual(self.hero.updated_by, self.user)
-
-    def test_soft_delete_without_user(self):
-        """
-        CP-041
-        Soft_delete funciona sin usuario (updated_by se queda como None).
-        """
-        self.hero.soft_delete()
-        self.hero.refresh_from_db()
-        self.assertFalse(self.hero.is_active)
-        self.assertIsNotNone(self.hero.deleted_at)
-        self.assertIsNone(self.hero.updated_by)
-
-    # restore
-    def test_restore_sets_active_and_clears_deleted_at(self):
-        """
-        CP-042
-        HU-056 | ESCENARIO 1 | H | Restaurar slide archivado - HeroConfig
-        """
-        self.hero.soft_delete()
-        self.hero.refresh_from_db()
-        self.hero.restore(user=self.user)
-        self.hero.refresh_from_db()
-        self.assertTrue(self.hero.is_active)
-        self.assertIsNone(self.hero.deleted_at)
-
-    def test_restore_sets_updated_by(self):
-        """
-        CP-043
-        Restore asigna updated_by si se proporciona usuario.
-        """
-        self.hero.soft_delete()
-        self.hero.refresh_from_db()
-        self.hero.restore(user=self.user)
-        self.hero.refresh_from_db()
-        self.assertEqual(self.hero.updated_by, self.user)
-
-    def test_restore_without_user(self):
-        """
-        CP-044
-        Restore funciona sin usuario.
-        """
-        self.hero.soft_delete()
-        self.hero.refresh_from_db()
-        self.hero.restore()
-        self.hero.refresh_from_db()
-        self.assertTrue(self.hero.is_active)
-        self.assertIsNone(self.hero.deleted_at)
-        self.assertIsNone(self.hero.updated_by)
-
-    # Fechas automáticas
-    def test_created_at_is_set_on_creation(self):
-        """
-        CP-045
-        Al crear, created_at se establece automáticamente.
-        """
-        self.assertIsNotNone(self.hero.created_at)
-
-    def test_updated_at_changes_on_update(self):
-        """
-        CP-046
-        Al actualizar, updated_at cambia.
-        """
-        old_updated = self.hero.updated_at
-        self.hero.title_text = 'Nuevo título'
-        self.hero.save()
-        self.hero.refresh_from_db()
-        self.assertGreater(self.hero.updated_at, old_updated)
-
-
-# =============================================================================
-# TESTS: ActiveManager
-# =============================================================================
-
-class ActiveManagerTest(TestCase):
-    """Prueba que ActiveManager filtre correctamente is_active=True."""
-
-    def setUp(self):
-        self.active = _create_hero(title_text='Activo', is_active=True)
-        self.inactive = _create_hero(title_text='Inactivo', is_active=False)
-
-    def test_default_manager_returns_only_active(self):
-        """
-        CP-047
-        HU-052, HU-057 | H | Manager que retorna solo registros activos
-        """
-        qs = HeroConfig.objects.all()
-        self.assertIn(self.active, qs)
-        self.assertNotIn(self.inactive, qs)
-
-    def test_all_objects_returns_all(self):
-        """
-        CP-048
-        all_objects manager retorna todos, incluyendo inactivos.
-        """
-        qs = HeroConfig.all_objects.all()
-        self.assertIn(self.active, qs)
-        self.assertIn(self.inactive, qs)
-
-
-# =============================================================================
-# TESTS: HeroConfig específicos
-# =============================================================================
-
-class HeroConfigModelTest(TestCase):
-    """Pruebas específicas del modelo HeroConfig."""
-
-    def setUp(self):
-        self.hero = _create_hero(title_text='Mi Hero', sort_order=5)
-
-    def test_str_representation(self):
-        """
-        CP-049
-        __str__ retorna 'Hero: ' + title_text.
-        """
-        self.assertEqual(str(self.hero), 'Hero: Mi Hero')
-
-    def test_default_ordering_by_sort_order(self):
-        """
-        CP-050
-        Meta.ordering = ['sort_order']
-        """
-        h1 = _create_hero(title_text='Primero', sort_order=1)
-        h2 = _create_hero(title_text='Segundo', sort_order=2)
-        h3 = _create_hero(title_text='Cero', sort_order=0)
-        slides = list(HeroConfig.objects.all().order_by('sort_order'))
-        self.assertEqual(slides[0].title_text, 'Cero')
-        self.assertEqual(slides[1].title_text, 'Primero')
-        self.assertEqual(slides[2].title_text, 'Segundo')
-
-    def test_save_does_not_alter_explicit_values(self):
-        """
-        CP-051
-        HU-053 | ESCENARIO 1 | H | Guardado normal del slide
-        """
-        hero = _create_hero(
-            title_text='Personalizado',
-            subtitle_text='Subtítulo personalizado',
-            button_text='Click',
-            button_url='/custom/',
-            section_height='50vh',
+    # UT-601: Admin Dashboard - Usuario no autenticado redirige al login
+    def test_admin_dashboard_requires_authentication(self):
+        self.client.logout()
+        response = self.client.get(reverse(BACKOFFICE_DASHBOARD))
+        self.assertRedirects(
+            response,
+            f'{reverse(CORE_STAFF_LOGIN)}?next={reverse(BACKOFFICE_DASHBOARD)}'
         )
-        self.assertEqual(hero.title_text, 'Personalizado')
-        self.assertEqual(hero.subtitle_text, 'Subtítulo personalizado')
-        self.assertEqual(hero.button_text, 'Click')
-        self.assertEqual(hero.button_url, '/custom/')
-        self.assertEqual(hero.section_height, '50vh')
 
-    def test_default_values_on_creation(self):
-        """
-        CP-052
-        Valores por defecto cuando no se especifican.
-        """
-        hero = HeroConfig.objects.create(title_text='Default Test')
-        self.assertEqual(hero.overlay_opacity, 0.5)
-        self.assertEqual(hero.title_font_family, "'Inter', sans-serif")
-        self.assertEqual(hero.title_font_size, '4rem')
-        self.assertEqual(hero.title_font_weight, '800')
-        self.assertEqual(hero.title_color, '#ffffff')
-        self.assertEqual(hero.subtitle_text, 'LA MODA SE VA, TU ESTILO PERMANECE')
-        self.assertEqual(hero.button_style, 'bg-zicada-accent hover:bg-opacity-90')
-        self.assertEqual(hero.content_alignment, 'center')
-        self.assertEqual(hero.section_height, '100vh')
-        self.assertEqual(hero.sort_order, 0)
+    # UT-602: Admin Dashboard - Usuario normal redirige al catálogo
+    def test_admin_dashboard_requires_permission(self):
+        normal_user = _create_normal_user()
+        self.client.force_login(normal_user)
+        response = self.client.get(reverse(BACKOFFICE_DASHBOARD))
+        self.assertRedirects(response, reverse(PRODUCTS_CATALOG))
 
-    def test_soft_delete_updates_deleted_at_accurately(self):
-        """
-        CP-053
-        Verifica que deleted_at se establece con una hora cercana al momento de la llamada.
-        """
-        before = timezone.now()
-        self.hero.soft_delete()
-        after = timezone.now()
-        self.hero.refresh_from_db()
-        self.assertGreaterEqual(self.hero.deleted_at, before)
-        self.assertLessEqual(self.hero.deleted_at, after)
+    # UT-603: Admin Dashboard - Admin autenticado con permisos carga exitosamente
+    def test_admin_dashboard_returns_200(self):
+        response = self.client.get(reverse(BACKOFFICE_DASHBOARD))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, TEMPLATE_ADMIN_DASHBOARD)
 
-    def test_restore_clears_deleted_at(self):
-        """
-        CP-054
-        Restaurar pone deleted_at en None.
-        """
-        self.hero.soft_delete()
-        self.hero.refresh_from_db()
-        self.hero.restore()
-        self.hero.refresh_from_db()
-        self.assertIsNone(self.hero.deleted_at)
+    # UT-604: Admin Dashboard - Contexto contiene las claves esperadas
+    def test_admin_dashboard_context_has_keys(self):
+        response = self.client.get(reverse(BACKOFFICE_DASHBOARD))
+        self.assertIsNotNone(response.context)
+        self.assertIn(CONTEXT_SECTION, response.context)
+        self.assertIn(CONTEXT_STATS, response.context)
+        self.assertIn(CONTEXT_ACTION_BUTTONS, response.context)
+        self.assertIn(CONTEXT_RECENT_ORDERS, response.context)
+        self.assertIn(CONTEXT_LOW_STOCK_PRODUCTS, response.context)
+        self.assertIn(CONTEXT_TOP_PRODUCTS, response.context)
 
-    def test_soft_delete_and_restore_preserves_other_fields(self):
-        """
-        CP-055
-        Los campos no relacionados con eliminación no se ven afectados.
-        """
-        original_title = self.hero.title_text
-        original_section = self.hero.section_height
-        self.hero.soft_delete()
-        self.hero.refresh_from_db()
-        self.hero.restore()
-        self.hero.refresh_from_db()
-        self.assertEqual(self.hero.title_text, original_title)
-        self.assertEqual(self.hero.section_height, original_section)
+
+# =============================================================================
+# TESTS: ADMIN ORDERS DASHBOARD
+# =============================================================================
+
+class AdminOrdersDashboardTest(TestCase):
+    """Pruebas para el dashboard de órdenes."""
+
+    def setUp(self):
+        self.client = Client()
+        self.admin = _create_superuser()
+        self.client.force_login(self.admin)
+
+    # UT-605: Admin Orders Dashboard - Vista retorna 200
+    def test_admin_orders_dashboard_returns_200(self):
+        response = self.client.get(reverse(BACKOFFICE_ORDERS))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, TEMPLATE_ADMIN_ORDERS_DASHBOARD)
+
+    # UT-606: Admin Orders Dashboard - Usuario no autenticado redirige al login
+    def test_admin_orders_dashboard_requires_authentication(self):
+        self.client.logout()
+        response = self.client.get(reverse(BACKOFFICE_ORDERS))
+        self.assertRedirects(
+            response,
+            f'{reverse(CORE_STAFF_LOGIN)}?next={reverse(BACKOFFICE_ORDERS)}'
+        )
+
+    # UT-607: Admin Orders Dashboard - Usuario normal redirige al catálogo
+    def test_admin_orders_dashboard_requires_permission(self):
+        normal_user = _create_normal_user()
+        self.client.force_login(normal_user)
+        response = self.client.get(reverse(BACKOFFICE_ORDERS))
+        self.assertRedirects(response, reverse(PRODUCTS_CATALOG))
+
+    # UT-608: Admin Orders Dashboard - Contexto contiene las claves esperadas
+    def test_admin_orders_dashboard_context_has_keys(self):
+        response = self.client.get(reverse(BACKOFFICE_ORDERS))
+        self.assertIsNotNone(response.context)
+        self.assertIn(CONTEXT_SECTION, response.context)
+        self.assertIn(CONTEXT_STATS, response.context)
+        self.assertIn(CONTEXT_URLS, response.context)
+        self.assertIn(CONTEXT_ACTION_BUTTONS, response.context)
+        self.assertIn(CONTEXT_RECENT_ORDERS, response.context)
+
+
+# =============================================================================
+# TESTS: ADMIN PRODUCTS DASHBOARD
+# =============================================================================
+
+class AdminProductsDashboardTest(TestCase):
+    """Pruebas para el dashboard de productos."""
+
+    def setUp(self):
+        self.client = Client()
+        self.admin = _create_superuser()
+        self.client.force_login(self.admin)
+
+    # UT-609: Admin Products Dashboard - Vista retorna 200
+    def test_admin_products_dashboard_returns_200(self):
+        response = self.client.get(reverse(BACKOFFICE_PRODUCTS))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, TEMPLATE_ADMIN_PRODUCTS_DASHBOARD)
+
+    # UT-610: Admin Products Dashboard - Usuario no autenticado redirige al login
+    def test_admin_products_dashboard_requires_authentication(self):
+        self.client.logout()
+        response = self.client.get(reverse(BACKOFFICE_PRODUCTS))
+        self.assertRedirects(
+            response,
+            f'{reverse(CORE_STAFF_LOGIN)}?next={reverse(BACKOFFICE_PRODUCTS)}'
+        )
+
+    # UT-611: Admin Products Dashboard - Usuario normal redirige al catálogo
+    def test_admin_products_dashboard_requires_permission(self):
+        normal_user = _create_normal_user()
+        self.client.force_login(normal_user)
+        response = self.client.get(reverse(BACKOFFICE_PRODUCTS))
+        self.assertRedirects(response, reverse(PRODUCTS_CATALOG))
+
+    # UT-612: Admin Products Dashboard - Contexto contiene las claves esperadas
+    def test_admin_products_dashboard_context_has_keys(self):
+        response = self.client.get(reverse(BACKOFFICE_PRODUCTS))
+        self.assertIsNotNone(response.context)
+        self.assertIn(CONTEXT_SECTION, response.context)
+        self.assertIn(CONTEXT_STATS, response.context)
+        self.assertIn(CONTEXT_URLS, response.context)
+        self.assertIn(CONTEXT_ACTION_BUTTONS, response.context)
+        self.assertIn(CONTEXT_RECENT_PRODUCTS, response.context)
+        self.assertIn(CONTEXT_LOW_STOCK_PRODUCTS, response.context)
+        self.assertIn(CONTEXT_TOP_PRODUCTS, response.context)
+        self.assertIn(CONTEXT_QUICK_ACCESS_BUTTONS, response.context)
+
+
+# =============================================================================
+# TESTS: ADMIN USERS DASHBOARD
+# =============================================================================
+
+class AdminUsersDashboardTest(TestCase):
+    """Pruebas para el dashboard de usuarios (entregadores)."""
+
+    def setUp(self):
+        self.client = Client()
+        self.admin = _create_superuser()
+        self.client.force_login(self.admin)
+
+    # UT-613: Admin Users Dashboard - Vista retorna 200
+    def test_admin_users_dashboard_returns_200(self):
+        response = self.client.get(reverse(BACKOFFICE_USERS))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, TEMPLATE_ADMIN_USERS_DASHBOARD)
+
+    # UT-614: Admin Users Dashboard - Usuario no autenticado redirige al login
+    def test_admin_users_dashboard_requires_authentication(self):
+        self.client.logout()
+        response = self.client.get(reverse(BACKOFFICE_USERS))
+        self.assertRedirects(
+            response,
+            f'{reverse(CORE_STAFF_LOGIN)}?next={reverse(BACKOFFICE_USERS)}'
+        )
+
+    # UT-615: Admin Users Dashboard - Usuario normal redirige al catálogo
+    def test_admin_users_dashboard_requires_permission(self):
+        normal_user = _create_normal_user()
+        self.client.force_login(normal_user)
+        response = self.client.get(reverse(BACKOFFICE_USERS))
+        self.assertRedirects(response, reverse(PRODUCTS_CATALOG))
+
+    # UT-616: Admin Users Dashboard - Contexto contiene las claves esperadas
+    def test_admin_users_dashboard_context_has_keys(self):
+        response = self.client.get(reverse(BACKOFFICE_USERS))
+        self.assertIsNotNone(response.context)
+        self.assertIn(CONTEXT_SECTION, response.context)
+        self.assertIn(CONTEXT_STATS, response.context)
+        self.assertIn(CONTEXT_URLS, response.context)
+        self.assertIn(CONTEXT_ACTION_BUTTONS, response.context)
+        self.assertIn(CONTEXT_RECENT_DELIVERIES, response.context)
+        self.assertIn(CONTEXT_ACTIVE_DELIVERIES, response.context)
+        self.assertIn(CONTEXT_QUICK_ACCESS_BUTTONS, response.context)
+
+
+# =============================================================================
+# TESTS: ADMIN CONFIG
+# =============================================================================
+
+class AdminConfigTest(TestCase):
+    """Pruebas para la vista de configuración."""
+
+    def setUp(self):
+        self.client = Client()
+        self.admin = _create_superuser()
+        self.client.force_login(self.admin)
+
+    # UT-617: Admin Config - Vista retorna 200
+    def test_admin_config_returns_200(self):
+        response = self.client.get(reverse(BACKOFFICE_CONFIG))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, TEMPLATE_ADMIN_CONFIG)
+
+    # UT-618: Admin Config - Usuario no autenticado redirige al login
+    def test_admin_config_requires_authentication(self):
+        self.client.logout()
+        response = self.client.get(reverse(BACKOFFICE_CONFIG))
+        self.assertRedirects(
+            response,
+            f'{reverse(CORE_STAFF_LOGIN)}?next={reverse(BACKOFFICE_CONFIG)}'
+        )
+
+    # UT-619: Admin Config - Usuario normal redirige al catálogo
+    def test_admin_config_requires_permission(self):
+        normal_user = _create_normal_user()
+        self.client.force_login(normal_user)
+        response = self.client.get(reverse(BACKOFFICE_CONFIG))
+        self.assertRedirects(response, reverse(PRODUCTS_CATALOG))
+
+    # UT-620: Admin Config - Contexto contiene las claves esperadas
+    def test_admin_config_context_has_keys(self):
+        response = self.client.get(reverse(BACKOFFICE_CONFIG))
+        self.assertIsNotNone(response.context)
+        self.assertIn(CONTEXT_SECTION, response.context)
+        self.assertIn(CONTEXT_QUICK_ACCESS_BUTTONS, response.context)
+
+
+# =============================================================================
+# TESTS: IMPORTERS DASHBOARD
+# =============================================================================
+
+class ImportersDashboardTest(TestCase):
+    """Pruebas para el dashboard de importación."""
+
+    def setUp(self):
+        self.client = Client()
+        self.admin = _create_superuser()
+        self.client.force_login(self.admin)
+
+    # UT-621: Importers Dashboard - Vista retorna 200
+    def test_importers_dashboard_returns_200(self):
+        response = self.client.get(reverse(BACKOFFICE_IMPORTERS_DASHBOARD))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, TEMPLATE_IMPORTERS_DASHBOARD)
+
+    # UT-622: Importers Dashboard - Usuario no autenticado redirige al login
+    def test_importers_dashboard_requires_authentication(self):
+        self.client.logout()
+        response = self.client.get(reverse(BACKOFFICE_IMPORTERS_DASHBOARD))
+        self.assertRedirects(
+            response,
+            f'{reverse(CORE_STAFF_LOGIN)}?next={reverse(BACKOFFICE_IMPORTERS_DASHBOARD)}'
+        )
+
+    # UT-623: Importers Dashboard - Usuario normal redirige al catálogo
+    def test_importers_dashboard_requires_permission(self):
+        normal_user = _create_normal_user()
+        self.client.force_login(normal_user)
+        response = self.client.get(reverse(BACKOFFICE_IMPORTERS_DASHBOARD))
+        self.assertRedirects(response, reverse(PRODUCTS_CATALOG))
+
+    # UT-624: Importers Dashboard - Contexto contiene las claves esperadas
+    def test_importers_dashboard_context_has_keys(self):
+        response = self.client.get(reverse(BACKOFFICE_IMPORTERS_DASHBOARD))
+        self.assertIsNotNone(response.context)
+        self.assertIn(CONTEXT_SECTION, response.context)
+        self.assertIn(CONTEXT_IMPORT_BUTTONS, response.context)
+
+
+# =============================================================================
+# TESTS: REPORT GENERATOR
+# =============================================================================
+
+class ReportGeneratorTest(TestCase):
+    """Pruebas para el generador de reportes PDF."""
+
+    def setUp(self):
+        self.client = Client()
+        self.admin = _create_superuser()
+        self.client.force_login(self.admin)
+
+    # UT-625: Report Generator GET - Retorna 200 con formulario
+    def test_report_generator_get_returns_200(self):
+        response = self.client.get(reverse(BACKOFFICE_REPORT_GENERATOR))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, TEMPLATE_REPORT_GENERATOR)
+        self.assertIn('form', response.context)
+
+    # UT-626: Report Generator - Usuario no autenticado redirige al login
+    def test_report_generator_requires_authentication(self):
+        self.client.logout()
+        response = self.client.get(reverse(BACKOFFICE_REPORT_GENERATOR))
+        self.assertRedirects(
+            response,
+            f'{reverse(CORE_STAFF_LOGIN)}?next={reverse(BACKOFFICE_REPORT_GENERATOR)}'
+        )
+
+    # UT-627: Report Generator - Usuario normal redirige al catálogo
+    def test_report_generator_requires_permission(self):
+        normal_user = _create_normal_user()
+        self.client.force_login(normal_user)
+        response = self.client.get(reverse(BACKOFFICE_REPORT_GENERATOR))
+        self.assertRedirects(response, reverse(PRODUCTS_CATALOG))
+
+    # UT-628: Report Generator - Contexto contiene el formulario
+    def test_report_generator_context_has_form(self):
+        response = self.client.get(reverse(BACKOFFICE_REPORT_GENERATOR))
+        self.assertIn('form', response.context)
