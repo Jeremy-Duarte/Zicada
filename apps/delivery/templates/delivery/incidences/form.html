@@ -1,0 +1,121 @@
+{% extends 'delivery/base_pwa.html' %}
+{% load static %}
+
+{% block title %}Reportar Incidencia - Zicada Delivery{% endblock %}
+
+{% block header %}
+{% include 'delivery/components/header_simple.html' with page_title="Reportar Incidencia" page_subtitle=order_info.order_number back_url=back_url %}
+{% endblock %}
+
+{% block content %}
+<!-- Advertencia -->
+<div class="bg-yellow-50 border-l-4 border-yellow-400 rounded-lg p-4 mb-6" role="alert">
+    <div class="flex">
+        <div class="flex-shrink-0">
+            <i class="fas fa-exclamation-triangle text-yellow-400" aria-hidden="true"></i>
+        </div>
+        <div class="ml-3">
+            <p class="text-sm text-yellow-700">
+                <strong class="font-semibold">Importante:</strong> 
+                Reportar una incidencia cancelará el pedido. El administrador podrá restaurarlo si el cliente lo solicita.
+            </p>
+        </div>
+    </div>
+</div>
+
+<form method="POST" id="incidenceForm">
+    {% csrf_token %}
+    
+    <div class="bg-white rounded-xl shadow-sm overflow-hidden mb-6">
+        <div class="bg-gray-50 px-4 py-3 border-b">
+            <h2 class="font-semibold text-gray-900">
+                <i class="fas fa-list mr-2" aria-hidden="true"></i>
+                ¿Qué sucedió?
+                <span class="text-red-500 text-sm ml-1">*</span>
+                <span class="sr-only">(requerido)</span>
+            </h2>
+        </div>
+        <div class="p-4 space-y-3">
+            {% for type in incidence_types %}
+            <label class="block cursor-pointer">
+                <input type="radio" 
+                       name="incidence_type" 
+                       value="{{ type.value }}" 
+                       class="radio-custom hidden" 
+                       required>
+                <div class="incidence-card border-2 border-gray-200 rounded-xl p-4 transition-all hover:border-gray-300">
+                    <div class="flex items-center">
+                        <div class="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center mr-3">
+                            <span class="text-xl" aria-hidden="true">{{ type.icon }}</span>
+                        </div>
+                        <div class="flex-1">
+                            <p class="font-medium text-gray-900">{{ type.label }}</p>
+                            <p class="text-xs text-gray-500 mt-0.5">
+                                {% if type.value == 'customer_not_home' %}
+                                    El cliente no se encontraba en la dirección indicada
+                                {% elif type.value == 'wrong_address' %}
+                                    La dirección no existe o está incompleta
+                                {% elif type.value == 'customer_cancelled' %}
+                                    El cliente ya no desea el pedido
+                                {% elif type.value == 'product_rejected' %}
+                                    El cliente rechazó el producto por alguna razón
+                                {% else %}
+                                    Otra situación que impidió la entrega
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div class="w-6 h-6 rounded-full border-2 border-gray-300 bg-white flex-shrink-0">
+                            <div class="w-full h-full rounded-full bg-black scale-0 transition-all"></div>
+                        </div>
+                    </div>
+                </div>
+            </label>
+            {% endfor %}
+        </div>
+    </div>
+    
+    <div class="bg-white rounded-xl shadow-sm overflow-hidden mb-6">
+        <div class="bg-gray-50 px-4 py-3 border-b">
+            <h2 class="font-semibold text-gray-900">
+                <i class="fas fa-comment mr-2" aria-hidden="true"></i>
+                Comentarios adicionales
+            </h2>
+        </div>
+        <div class="p-4">
+            <label for="incidenceComments" class="block text-sm font-medium text-gray-700 mb-2">
+                Comentarios adicionales
+                <span class="text-gray-400 text-xs font-normal">(opcional)</span>
+            </label>
+            <textarea id="incidenceComments" 
+                      name="comments" 
+                      rows="4" 
+                      class="w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent transition"
+                      placeholder="Describe detalladamente lo que sucedió..."></textarea>
+            <p class="text-xs text-gray-500 mt-2">
+                <i class="fas fa-info-circle mr-1" aria-hidden="true"></i>
+                Esta información ayudará al administrador a gestionar el pedido correctamente.
+            </p>
+        </div>
+    </div>
+    
+    <div class="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-200 z-40">
+        <div class="flex space-x-3">
+            <a href="{{ back_url }}" 
+               class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-xl font-semibold text-center transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400">
+                Cancelar
+            </a>
+            <button type="submit" 
+                    name="action" 
+                    value="cancel" 
+                    class="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 rounded-xl font-semibold shadow-lg transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2">
+                <i class="fas fa-flag mr-2" aria-hidden="true"></i>
+                Reportar Incidencia
+            </button>
+        </div>
+    </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/delivery/incidence.js' %}"></script>
+{% endblock %}

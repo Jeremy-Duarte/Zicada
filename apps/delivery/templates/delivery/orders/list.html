@@ -1,0 +1,35 @@
+{% extends 'delivery/base_pwa.html' %}
+{% load humanize %}
+{% load static %}
+
+{% block title %}Mis Pedidos - Zicada Delivery{% endblock %}
+
+{% block header %}
+{% include 'delivery/components/header_simple.html' with page_title="Mis Pedidos" page_subtitle=today|date:"l, j \d\e F" back_url=back_url|default:"delivery:dashboard" %}
+{% endblock %}
+
+{% block content %}
+<!-- Filtros -->
+<div class="flex space-x-2 overflow-x-auto pb-2 mb-4 sticky top-16 bg-gray-50 z-30">
+    <a href="?filter=all" class="filter-btn px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap {% if filter == 'all' %}bg-black text-white{% else %}bg-gray-100 text-gray-700{% endif %}">Todos ({{ total_orders }})</a>
+    <a href="?filter=pending" class="filter-btn px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap {% if filter == 'pending' %}bg-black text-white{% else %}bg-gray-100 text-gray-700{% endif %}"><i class="fas fa-clock mr-1"></i> Pendientes ({{ pending_payment }})</a>
+    <a href="?filter=completed" class="filter-btn px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap {% if filter == 'completed' %}bg-black text-white{% else %}bg-gray-100 text-gray-700{% endif %}"><i class="fas fa-check-circle mr-1"></i> Completados</a>
+</div>
+
+{% if orders %}
+    {% for order in orders %}
+        {% include 'delivery/components/order_card.html' with order=order %}
+    {% endfor %}
+{% else %}
+<div class="flex flex-col items-center justify-center py-16 text-center">
+    <div class="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4"><i class="fas fa-truck text-gray-400 text-4xl"></i></div>
+    <h3 class="text-lg font-semibold mb-2">No tienes pedidos asignados para hoy</h3>
+    <p class="text-sm text-gray-500 mb-6">Los nuevos pedidos aparecerán automáticamente aquí</p>
+    <button id="emptyRefreshBtn" class="bg-black text-white px-6 py-2 rounded-lg">Actualizar</button>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/delivery/orders.js' %}"></script>
+{% endblock %}
