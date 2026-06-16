@@ -11,6 +11,15 @@ from django.contrib import messages
 from django.urls import reverse
 import json
 from datetime import datetime, date, timedelta
+from django.conf import settings
+from django.http import JsonResponse
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.cache import cache_page
+from django.views.decorators.vary import vary_on_headers
+from django.core.serializers.json import DjangoJSONEncoder
+from django.urls import reverse
+from django.templatetags.static import static
+import json
 
 # Importar url_names para mantener consistencia
 from apps.core.url_names import (
@@ -93,21 +102,49 @@ def pwa_manifest(request):
     
     return JsonResponse(manifest)
 
+@cache_page(60 * 15)
+@vary_on_headers('User-Agent')
+def sw_config(request):
+    """
+    Endpoint que devuelve la configuración del Service Worker.
+    Esto permite que el SW sea estático pero configurable.
+    """
+    # Construir URLs para precache
+    protocol = 'https' if request.is_secure() else 'http'
+    base_url = f"{protocol}://{request.get_host()}"
+    
+    precache_urls = [
+        base_url + reverse('delivery:login'),
+        base_url + reverse('delivery:dashboard'),
+        base_url + reverse('delivery:orders'),
+        base_url + reverse('delivery:summary'),
+        base_url + static('delivery/css/main.css'),
+        base_url + static('delivery/js/base.js'),
+    ]
+    
+    config = {
+        'cacheName': getattr(settings, 'SW_CACHE_NAME', 'zicada-delivery-v1'),
+        'offlineUrl': base_url + reverse('delivery:offline'),
+        'precacheUrls': precache_urls,
+        'version': getattr(settings, 'PWA_VERSION', '1.0.0'),
+        'lastUpdated': timezone.now().isoformat(),
+    }
+    
+    return JsonResponse(config, encoder=DjangoJSONEncoder)
+
 def delivery_login(request):
     """
     Login específico para la PWA de delivery.
     NO redirige a dashboard si ya está autenticado, 
     solo si es delivery y tiene sesión activa.
     """
-    # Si ya está autenticado y es delivery, mostrar dashboard
     if request.user.is_authenticated:
         if getattr(request.user, 'is_delivery', False):
             return redirect(DELIVERY_DASHBOARD)
         else:
-            # Si no es delivery, hacer logout y mostrar login
             from django.contrib.auth import logout
             logout(request)
-            return render(request, 'delivery/login.html', {
+            return render(request, DELIVERY_LOGIN, {
                 'error': 'Esta app es solo para repartidores. Usa la web principal.'
             })
     
@@ -120,11 +157,11 @@ def delivery_login(request):
             auth_login(request, user)
             return redirect(DELIVERY_DASHBOARD)
         else:
-            return render(request, 'delivery/login.html', {
+            return render(request, DELIVERY_LOGIN, {
                 'error': 'Credenciales inválidas o no tienes permisos de entregador'
             })
     
-    return render(request, 'delivery/login.html')
+    return render(request, DELIVERY_LOGIN)
 
 @login_required
 def dashboard(request):

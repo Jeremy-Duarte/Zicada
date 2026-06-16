@@ -8,10 +8,16 @@ urlpatterns = [
     # PWA endpoints
     path('manifest.json', views.pwa_manifest, name='pwa_manifest'),
     path('offline/', views.offline_page, name='offline'),
+
+    # Service Worker configuration endpoint
+    path('sw-config.json', views.sw_config, name='sw_config'),
+    
+    # Service Worker estático
     path('sw.js', TemplateView.as_view(
         template_name='delivery/sw.js',
         content_type='application/javascript'
     ), name='service_worker'),
+    
     path('health/', views.health_check, name='health_check'),
     
     # Autenticación
