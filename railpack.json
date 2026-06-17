@@ -2,11 +2,11 @@
   "$schema": "https://schema.railpack.com",
   "deploy": {
     "aptPackages": [
-      "libgobject-2.0-0",
       "libglib2.0-0",
       "libpango-1.0-0",
       "libpangocairo-1.0-0",
       "libcairo2",
+      "libharfbuzz0b",
       "libffi8",
       "libjpeg62-turbo",
       "libpng16-16",
