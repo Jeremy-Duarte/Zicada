@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'cloudinary',
     'cloudinary_storage',
     'django_crontab',
+    'anymail',
     # Zicada Apps
     'apps.core',
     'apps.users',
@@ -150,14 +151,11 @@ REST_FRAMEWORK = {
 }
 
 # EMAIL
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = env('EMAIL_HOST')
-EMAIL_PORT = env.int('EMAIL_PORT')
-EMAIL_USE_TLS = env.bool('EMAIL_USE_TLS')
-EMAIL_HOST_USER = env('EMAIL_HOST_USER')
-EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD')
-DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL')
-
+ANYMAIL = {
+    "RESEND_API_KEY": env('RESEND_API_KEY'),
+}
+EMAIL_BACKEND = 'anymail.backends.resend.EmailBackend'
+DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='Zicada <noreply@zicada.com>')
 FROM_EMAIL_NO_REPLY = env('FROM_EMAIL_NO_REPLY', default=DEFAULT_FROM_EMAIL)
 FROM_EMAIL_ORDERS = env('FROM_EMAIL_ORDERS', default=DEFAULT_FROM_EMAIL)
 FROM_EMAIL_SUPPORT = env('FROM_EMAIL_SUPPORT', default=DEFAULT_FROM_EMAIL)
