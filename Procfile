@@ -1,1 +1,1 @@
-web: gunicorn --bind 0.0.0.0:$PORT config.wsgi:application
+web: python manage.py collectstatic --noinput && gunicorn --bind 0.0.0.0:$PORT config.wsgi:application
