@@ -13,6 +13,7 @@ django-crontab==0.7.1
 django-environ==0.13.0
 djangorestframework==3.17.1
 fonttools==4.63.0
+gunicorn==26.0.0
 idna==3.11
 iniconfig==2.3.0
 mando==0.7.1
@@ -23,6 +24,7 @@ packaging==26.2
 pandas==3.0.3
 pillow==12.2.0
 pluggy==1.6.0
+psycopg2-binary==2.9.12
 pycparser==3.0
 pydyf==0.12.1
 Pygments==2.20.0
