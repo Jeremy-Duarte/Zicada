@@ -22,6 +22,12 @@ DEBUG = False
 # Railway asigna un dominio automáticamente
 ALLOWED_HOSTS = env.list('DJANGO_ALLOWED_HOSTS', default=['.railway.app'])
 
+# SEGURIDAD CSRF
+CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS', default=[
+    'https://*.railway.app',
+    'https://zicada.up.railway.app',
+])
+
 # APPS INSTALADAS
 INSTALLED_APPS = [
     'django.contrib.admin',

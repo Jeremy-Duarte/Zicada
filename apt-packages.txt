@@ -1,0 +1,9 @@
+libgobject-2.0-0
+libglib2.0-0
+libpango-1.0-0
+libpangocairo-1.0-0
+libcairo2
+libffi-dev
+libjpeg-dev
+libpng-dev
+zlib1g-dev
