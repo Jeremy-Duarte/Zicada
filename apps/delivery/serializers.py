@@ -23,7 +23,7 @@ class OrderListSerializer(serializers.ModelSerializer):
     """Serializer para lista de pedidos (HU-033)"""
     customer_name = serializers.CharField()
     customer_phone = serializers.CharField()
-    shipping_address = serializers.TextField()
+    shipping_address = serializers.CharField(allow_blank=True)
     total_amount = serializers.DecimalField(max_digits=10, decimal_places=2)
     is_paid = serializers.BooleanField()
     status_display = serializers.SerializerMethodField()
@@ -61,7 +61,7 @@ class OrderDetailSerializer(serializers.ModelSerializer):
     customer_name = serializers.CharField()
     customer_phone = serializers.CharField()
     customer_email = serializers.EmailField(allow_null=True, allow_blank=True)
-    shipping_address = serializers.TextField()
+    shipping_address = serializers.CharField(allow_blank=True)
     total_amount = serializers.DecimalField(max_digits=10, decimal_places=2)
     subtotal = serializers.DecimalField(max_digits=10, decimal_places=2)
     shipping_cost = serializers.DecimalField(max_digits=10, decimal_places=2)
