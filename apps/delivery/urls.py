@@ -1,23 +1,27 @@
+# apps/delivery/urls.py
+
 from django.urls import path
 from django.views.generic import TemplateView
 from . import views
+from .api import (
+    DeliveryOrdersAPIView,
+    DeliveryOrderDetailAPIView,
+    DeliveryMarkAsPaidAPIView,
+    DeliveryIncidenceAPIView,
+    DeliverySummaryAPIView,
+)
 
 app_name = 'delivery'
 
-urlpatterns = [
+urlpatterns = [    
     # PWA endpoints
     path('manifest.json', views.pwa_manifest, name='pwa_manifest'),
     path('offline/', views.offline_page, name='offline'),
-
-    # Service Worker configuration endpoint
-    path('sw-config.json', views.sw_config, name='sw_config'),
-    
-    # Service Worker estático
     path('sw.js', TemplateView.as_view(
         template_name='delivery/sw.js',
         content_type='application/javascript'
     ), name='service_worker'),
-    
+    path('sw-config.json', views.sw_config, name='sw_config'),
     path('health/', views.health_check, name='health_check'),
     
     # Autenticación
@@ -29,18 +33,30 @@ urlpatterns = [
     path('orders/', views.delivery_orders, name='orders'),
     path('orders/<int:order_id>/', views.order_detail, name='order_detail'),
     
-    # HU-034: Marcar pagado
+    # HU-034: Marcar pagado (HTML fallback)
     path('orders/<int:order_id>/mark-paid/', views.mark_as_paid, name='mark_paid'),
     
-    # HU-035: Registrar incidencia
+    # HU-035: Registrar incidencia (HTML fallback)
     path('orders/<int:order_id>/incidence/', views.register_incidence, name='register_incidence'),
     
     # HU-036: Resumen del día
     path('summary/', views.daily_summary, name='summary'),
     path('summary/close/', views.close_journey, name='close_journey'),
     
-    # API endpoints
-    path('api/orders/', views.api_orders, name='api_orders'),
-    path('api/orders/<int:order_id>/mark-paid/', views.api_mark_paid, name='api_mark_paid'),
-    path('api/incidences/create/', views.api_create_incidence, name='api_create_incidence'),
+    # ==================== API ENDPOINTS
+    
+    # HU-033: Lista de pedidos
+    path('api/orders/', DeliveryOrdersAPIView.as_view(), name='api_orders'),
+    
+    # HU-034: Detalle de pedido
+    path('api/orders/<int:order_id>/', DeliveryOrderDetailAPIView.as_view(), name='api_order_detail'),
+    
+    # HU-034: Marcar como pagado
+    path('api/orders/<int:order_id>/mark-paid/', DeliveryMarkAsPaidAPIView.as_view(), name='api_mark_paid'),
+    
+    # HU-035: Registrar incidencia
+    path('api/incidences/', DeliveryIncidenceAPIView.as_view(), name='api_create_incidence'),
+    
+    # HU-036: Resumen del día
+    path('api/summary/', DeliverySummaryAPIView.as_view(), name='api_summary'),
 ]
