@@ -75,10 +75,10 @@
     <div class="w-full px-4 sm:px-6 lg:px-8 py-8">
         <div class="flex flex-col lg:flex-row lg:gap-6">
             <div class="lg:w-72 lg:sticky lg:top-24 lg:self-start lg:flex-shrink-0">
-                {% include 'components/filters/filter_sidebar.html' with filter_config=filter_config clean_url=clean_url has_active_filters=has_active_filters search_value=current_search current_status=current_status status_choices=status_choices current_min_price=current_min_price current_max_price=current_max_price min_price_global=min_price_global max_price_global=max_price_global current_product_count_min=current_product_count_min current_product_count_max=current_product_count_max current_date_filter=current_date_filter current_product_type=current_product_type product_types=product_types current_order_by=current_order_by order_choices=order_choices %}
+                {% include 'components/filters/filter_sidebar.html' with hx_target="#products-container" filter_config=filter_config clean_url=clean_url has_active_filters=has_active_filters active_filters_count=active_filters_count search_value=current_search current_status=current_status status_choices=status_choices current_min_price=current_min_price current_max_price=current_max_price min_price_global=min_price_global max_price_global=max_price_global current_product_count_min=current_product_count_min current_product_count_max=current_product_count_max current_date_filter=current_date_filter current_product_type=current_product_type product_types=product_types product_type_labels=product_type_labels current_order_by=current_order_by order_choices=order_choices %}
             </div>
             
-            <div class="flex-1 min-w-0">
+            <div id="products-container" class="flex-1 min-w-0">
                 <div class="bg-black/20 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
                     <div class="mb-4 flex justify-between items-center flex-wrap gap-3">
                         <h2 class="text-xl md:text-2xl font-semibold text-white">

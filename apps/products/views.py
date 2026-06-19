@@ -635,6 +635,11 @@ class CollectionListViewPublic(PaginationMixin, FilterMixin, ListView):
         
         return qs
     
+    def get_template_names(self):
+        if self.request.headers.get('HX-Request'):
+            return ['components/_collection_list.html']
+        return [self.template_name]
+    
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         
@@ -733,7 +738,6 @@ class CollectionListViewPublic(PaginationMixin, FilterMixin, ListView):
             'now': timezone.now(),
         })
         
-        
         return context
 
 
@@ -768,6 +772,11 @@ class CollectionDetailView(BaseProductListView):
         qs = qs.filter(collections=self.collection)
         qs = self.apply_common_filters(qs)
         return qs
+    
+    def get_template_names(self):
+        if self.request.headers.get('HX-Request'):
+            return ['components/_product_list.html']
+        return [self.template_name]
     
     def _sanitize_css(self, raw_css):
         if not raw_css:
@@ -827,7 +836,7 @@ class CollectionDetailView(BaseProductListView):
         
         context['active_filters_count'] = sum([
             bool(context.get('current_search')),
-            False,
+            False,  # No tiene category en esta vista
             bool(context.get('current_min_price')) or bool(context.get('current_max_price')),
             bool(context.get('current_product_type')),
             False,

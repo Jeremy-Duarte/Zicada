@@ -13,9 +13,6 @@
         </div>
         
         <div class="flex flex-col lg:flex-row lg:gap-8">
-            <div class="lg:w-64 lg:sticky lg:top-24 lg:self-start lg:flex-shrink-0">
-                {% include 'components/filters/filter_sidebar.html' with filter_config=filter_config clean_url=clean_url has_active_filters=has_active_filters search_value=current_search current_status=current_status status_choices=status_choices current_min_price=current_min_price current_max_price=current_max_price min_price_global=min_price_global max_price_global=max_price_global current_product_count_min=current_product_count_min current_product_count_max=current_product_count_max current_date_filter=current_date_filter current_product_type=current_product_type product_types=product_types current_order_by=current_order_by order_choices=order_choices %}
-            </div>
             
             <div class="flex-1 min-w-0">
                 {% if collections %}
