@@ -404,11 +404,29 @@ class BaseProductListView(PaginationMixin, FilterMixin, ListView):
         )
     
     def apply_common_filters(self, qs):
-        """Aplica todos los filtros comunes a un queryset."""
+        # Aplica TODOS los filtros comunes a un queryset
         qs = self.apply_search_filter(qs)
         qs = self.apply_price_range_filter(qs)
         qs = self.apply_ordering(qs)
         return qs
+    
+    def get_queryset(self):
+        """Método principal que construye el queryset con todos los filtros."""
+        # Primero: FilterMixin aplica sus filtros (category, product_type, etc.)
+        qs = super().get_queryset()
+        
+        # Segundo: Aplicar filtros comunes (search, price, ordering)
+        qs = self.apply_common_filters(qs)
+        
+        # Tercero: Optimizar consultas
+        return qs.filter(is_active=PRODUCT_FILTER_ACTIVE).select_related(
+            'category'
+        ).prefetch_related(
+            'product_colors', 
+            'product_colors__images', 
+            'variants', 
+            'variants__size'
+        )
     
 
 class ProductCatalogView(BaseProductListView):
@@ -429,9 +447,12 @@ class ProductCatalogView(BaseProductListView):
     def get_queryset(self):
         # HU-004 | ESCENARIO 1 | H | Catálogo cargado exitosamente con productos activos
         # HU-007 | ESCENARIO 1,2,3,4 | H | Filtros aplicados (talla, precio, tipo, combinados)
-        qs = self.get_base_queryset()
-        qs = self.apply_common_filters(qs)
-        return qs
+        return super().get_queryset()
+    
+    def get_template_names(self):
+        if self.request.headers.get('HX-Request'):
+            return ['components/_product_list.html']
+        return [self.template_name]
     
     def get_context_data(self, **kwargs):
         # HU-004 | ESCENARIO 3 | H | Paginación configurada
@@ -445,11 +466,9 @@ class ProductCatalogView(BaseProductListView):
             min_price=Min('price'), max_price=Max('price')
         )
         
-        # Available product types (without duplicates)
         product_types = list(set(
             Product.objects.filter(is_active=True).values_list('product_type', flat=True)
         ))
-        # Filter empty values
         product_types = [pt for pt in product_types if pt]
         
         context['categories'] = categories
@@ -465,6 +484,8 @@ class ProductCatalogView(BaseProductListView):
         context['product_type_labels'] = {pt: PRODUCT_TYPES_DISPLAY.get(pt, pt) for pt in product_types}
         context['filter_config'] = FILTER_CONFIG_DEFAULT
         context['order_choices'] = ORDER_CHOICES_CATALOG
+        
+        # HU-007 | ESCENARIO 5 | A | Sin resultados con filtros
         context['has_active_filters'] = any([
             self.request.GET.get(QUERY_PARAM_SEARCH),
             self.request.GET.get(QUERY_PARAM_CATEGORY),
@@ -472,6 +493,17 @@ class ProductCatalogView(BaseProductListView):
             self.request.GET.get(QUERY_PARAM_MAX_PRICE),
             self.request.GET.get(QUERY_PARAM_PRODUCT_TYPE),
         ])
+        
+        context['active_filters_count'] = sum([
+            bool(context.get('current_search')),
+            bool(context.get('current_category')),
+            bool(context.get('current_min_price')) or bool(context.get('current_max_price')),
+            bool(context.get('current_product_type')),
+            False,
+            False,
+        ])
+        
+        # HU-007 | ESCENARIO 6 | H | Limpiar filtros (botón con clean_url)
         context['clean_url'] = reverse('products:catalog')
         
         return context
@@ -657,7 +689,7 @@ class CollectionListViewPublic(PaginationMixin, FilterMixin, ListView):
                     ),
                 ]
             })
-        
+
         context.update({
             'rows': rows,
             'headers': HEADERS_COLLECTION,
@@ -687,9 +719,20 @@ class CollectionListViewPublic(PaginationMixin, FilterMixin, ListView):
                 self.request.GET.get(QUERY_PARAM_DATE_FILTER),
                 self.request.GET.get(QUERY_PARAM_PRODUCT_TYPE),
             ]),
+            
+            'active_filters_count': sum([
+                bool(self.request.GET.get(QUERY_PARAM_SEARCH)),
+                bool(self.request.GET.get(QUERY_PARAM_STATUS)),
+                bool(self.request.GET.get(QUERY_PARAM_MIN_PRICE)) or bool(self.request.GET.get(QUERY_PARAM_MAX_PRICE)),
+                bool(self.request.GET.get(QUERY_PARAM_PRODUCT_COUNT_MIN)) or bool(self.request.GET.get(QUERY_PARAM_PRODUCT_COUNT_MAX)),
+                bool(self.request.GET.get(QUERY_PARAM_DATE_FILTER)),
+                bool(self.request.GET.get(QUERY_PARAM_PRODUCT_TYPE)),
+            ]),
+            
             'clean_url': reverse('products:collections_list'),            
             'now': timezone.now(),
         })
+        
         
         return context
 
@@ -782,10 +825,18 @@ class CollectionDetailView(BaseProductListView):
             self.request.GET.get(QUERY_PARAM_PRODUCT_TYPE),
         ])
         
+        context['active_filters_count'] = sum([
+            bool(context.get('current_search')),
+            False,
+            bool(context.get('current_min_price')) or bool(context.get('current_max_price')),
+            bool(context.get('current_product_type')),
+            False,
+            False,
+        ])
+        
         context['clean_url'] = reverse('products:collection_detail', kwargs={'slug': self.collection.slug})
         context['now'] = timezone.now()
         
-        # HU-006 | ESCENARIO 2 | H | CSS personalizado de la colección sanitizado
         context['safe_custom_css'] = self._sanitize_css(self.collection.custom_css)
         
         return context

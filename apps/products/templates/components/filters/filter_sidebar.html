@@ -1,64 +1,496 @@
 {% load static %}
+{% load filter_extras %}
 
-<div class="filter-sidebar-wrapper" style="all: initial;">
-    <div style="all: revert;">
-        <div class="bg-zicada-dark rounded-xl p-4 shadow-lg">
-            <!-- Header con botón toggle para móvil -->
-            <div class="flex justify-between items-center mb-4">
-                <button id="toggle-filters-btn" class="lg:hidden flex items-center gap-2 text-white hover:text-zicada-accent transition">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
-                    </svg>
-                    <span class="font-semibold">Filtros</span>
-                    <svg class="w-4 h-4 transform transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                    </svg>
-                </button>
-                <h3 class="font-bold text-lg text-white hidden lg:block">Filtros</h3>
-                {% if has_active_filters %}
-                <a href="{{ clean_url }}" class="text-sm text-zicada-accent hover:text-red-400 transition">Limpiar todo</a>
-                {% endif %}
-            </div>
-            
-            <!-- Contenido de filtros (colapsable en móvil) -->
-            <div id="filters-content" class="space-y-4">
-                <form method="GET" class="space-y-4" id="filter-form" data-persist-key="product_filters">
-                    {% include 'components/filters/filter_search.html' with value=search_value %}
-                    
-                    {% if filter_config.status %}
-                        {% include 'components/filters/filter_status.html' with current=current_status choices=status_choices %}
-                    {% endif %}
-                    
-                    {% if filter_config.price %}
-                        {% include 'components/filters/filter_price.html' with min=current_min_price max=current_max_price min_global=min_price_global max_global=max_price_global %}
-                    {% endif %}
-                    
-                    {% if filter_config.product_count %}
-                        {% include 'components/filters/filter_product_count.html' with min=current_product_count_min max=current_product_count_max %}
-                    {% endif %}
-                    
-                    {% if filter_config.date %}
-                        {% include 'components/filters/filter_date.html' with current=current_date_filter %}
-                    {% endif %}
-                    
-                    {% if filter_config.product_type %}
-                        {% include 'components/filters/filter_product_type.html' with current=current_product_type types=product_types %}
-                    {% endif %}
-                    
-                    {% include 'components/filters/filter_order.html' with current=current_order_by choices=order_choices %}
-                    
-                    <div class="flex gap-3 pt-4">
-                        <button type="submit" class="flex-1 bg-zicada-accent hover:bg-red-700 text-white px-4 py-2 rounded-lg transition text-sm font-semibold">Aplicar</button>
-                        {% if has_active_filters %}
-                        <a href="{{ clean_url }}" class="flex-1 border border-zicada-primary bg-zicada-primary text-white hover:bg-zicada-dark px-4 py-2 rounded-lg transition text-center text-sm">Limpiar</a>
-                        {% endif %}
-                    </div>
-                </form>
-            </div>
+<div class="filter-sidebar" 
+     x-data="filterSidebar()"
+     x-init="init()">
+    
+    <!-- Mobile Toggle Button -->
+    <button @click="mobileOpen = !mobileOpen" 
+            aria-expanded="false"
+            :aria-expanded="mobileOpen.toString()"
+            class="lg:hidden w-full flex items-center justify-between bg-white rounded-xl px-5 py-3.5 shadow-sm border border-gray-100/80 mb-4 transition-all hover:shadow-md">
+        <div class="flex items-center gap-2.5">
+            <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
+            </svg>
+            <span class="font-medium text-gray-900 text-sm">Filtros</span>
+            <span class="bg-zicada-accent text-white text-[10px] font-bold px-2 py-0.5 rounded-full"
+                  x-show="activeFilterCount > 0"
+                  x-text="activeFilterCount"></span>
         </div>
+        <div class="flex items-center gap-2">
+            <span class="text-xs text-gray-400" x-text="mobileOpen ? 'Cerrar' : 'Abrir'"></span>
+            <svg class="w-4 h-4 text-gray-400 transition-transform duration-200" 
+                 :class="{'rotate-180': mobileOpen}" 
+                 fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
+        </div>
+    </button>
+
+    <!-- Main Filter Container -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100/80 overflow-hidden transition-all duration-300"
+         :class="mobileOpen ? 'block' : 'hidden lg:block'">
+        
+        <!-- Header -->
+        <header class="px-5 pt-5 pb-4 border-b border-gray-100">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-sm font-semibold text-gray-900 tracking-tight" id="filter-heading">Filtros</h3>
+                    <p class="text-xs text-gray-400 mt-0.5">Refina tu búsqueda</p>
+                </div>
+                <a href="{{ clean_url }}" 
+                   class="text-xs font-medium text-zicada-accent hover:text-red-700 transition-colors flex items-center gap-1.5"
+                   aria-label="Limpiar todos los filtros"
+                   x-show="activeFilterCount > 0"
+                   @click.prevent="clearAllFilters()">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                    Limpiar todo
+                </a>
+            </div>
+        </header>
+
+        <!-- Active Filters Badges -->
+        <section class="px-5 py-3 border-b border-gray-100 bg-gray-50/50" 
+                 aria-label="Filtros activos"
+                 x-show="activeFilterCount > 0"
+                 x-transition.duration.200ms>
+            <ul class="flex flex-wrap gap-1.5 list-none m-0 p-0">
+                <!-- Search Badge -->
+                <template x-if="searchQuery && searchQuery.trim() !== ''">
+                    <li class="inline-flex items-center gap-1.5 bg-white text-gray-700 text-xs px-3 py-1.5 rounded-full border border-gray-200 shadow-sm">
+                        <span class="font-medium truncate max-w-[100px]" x-text="'\"' + searchQuery + '\"'"></span>
+                        <button @click="removeFilter('search')" 
+                                class="text-gray-400 hover:text-red-600 transition-colors ml-0.5"
+                                aria-label="Eliminar filtro de búsqueda">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </li>
+                </template>
+
+                <!-- Category Badge -->
+                <template x-if="currentCategory">
+                    <li class="inline-flex items-center gap-1.5 bg-white text-gray-700 text-xs px-3 py-1.5 rounded-full border border-gray-200 shadow-sm">
+                        <span x-text="currentCategory"></span>
+                        <button @click="removeFilter('category')" 
+                                class="text-gray-400 hover:text-red-600 transition-colors ml-0.5"
+                                aria-label="Eliminar filtro de categoría">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </li>
+                </template>
+
+                <!-- Product Type Badge -->
+                <template x-if="currentProductType">
+                    <li class="inline-flex items-center gap-1.5 bg-white text-gray-700 text-xs px-3 py-1.5 rounded-full border border-gray-200 shadow-sm">
+                        <span x-text="productTypeLabel(currentProductType)"></span>
+                        <button @click="removeFilter('product_type')" 
+                                class="text-gray-400 hover:text-red-600 transition-colors ml-0.5"
+                                aria-label="Eliminar filtro de tipo de producto">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </li>
+                </template>
+
+                <!-- Price Badge -->
+                <template x-if="hasPriceFilter">
+                    <li class="inline-flex items-center gap-1.5 bg-white text-gray-700 text-xs px-3 py-1.5 rounded-full border border-gray-200 shadow-sm">
+                        <span x-text="formatPrice(minPrice) + ' — ' + formatPrice(maxPrice)"></span>
+                        <button @click="resetPrice()" 
+                                class="text-gray-400 hover:text-red-600 transition-colors ml-0.5"
+                                aria-label="Eliminar filtro de precio">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </li>
+                </template>
+
+                <!-- Status Badge -->
+                <template x-if="currentStatus">
+                    <li class="inline-flex items-center gap-1.5 bg-white text-gray-700 text-xs px-3 py-1.5 rounded-full border border-gray-200 shadow-sm">
+                        <span x-text="currentStatus"></span>
+                        <button @click="removeFilter('status')" 
+                                class="text-gray-400 hover:text-red-600 transition-colors ml-0.5"
+                                aria-label="Eliminar filtro de estado">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </li>
+                </template>
+
+                <!-- Date Filter Badge -->
+                <template x-if="currentDateFilter">
+                    <li class="inline-flex items-center gap-1.5 bg-white text-gray-700 text-xs px-3 py-1.5 rounded-full border border-gray-200 shadow-sm">
+                        <span x-text="currentDateFilter"></span>
+                        <button @click="removeFilter('date_filter')" 
+                                class="text-gray-400 hover:text-red-600 transition-colors ml-0.5"
+                                aria-label="Eliminar filtro de fecha">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </li>
+                </template>
+
+                <!-- Order By Badge -->
+                <template x-if="currentOrderBy && currentOrderBy !== '-created_at'">
+                    <li class="inline-flex items-center gap-1.5 bg-white text-gray-700 text-xs px-3 py-1.5 rounded-full border border-gray-200 shadow-sm">
+                        <span x-text="'Orden: ' + orderLabel(currentOrderBy)"></span>
+                        <button @click="removeFilter('order_by')" 
+                                class="text-gray-400 hover:text-red-600 transition-colors ml-0.5"
+                                aria-label="Eliminar filtro de orden">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </li>
+                </template>
+            </ul>
+        </section>
+
+        <!-- ============================================ -->
+        <!-- FILTER FORM                                  -->
+        <!-- ============================================ -->
+        <form method="GET" 
+              id="filter-form" 
+              class="p-5 space-y-5"
+              hx-get="{{ request.path }}"
+              hx-target="#products-container"
+              hx-swap="outerHTML"
+              hx-push-url="true"
+              hx-trigger="submit"
+              @submit.prevent="submitForm()"
+              aria-labelledby="filter-heading">
+            
+            <!-- Inputs ocultos -->
+            <input type="hidden" name="category" x-model="currentCategory">
+            <input type="hidden" name="product_type" x-model="currentProductType">
+            <input type="hidden" name="status" x-model="currentStatus">
+            <input type="hidden" name="date_filter" x-model="currentDateFilter">
+            <input type="hidden" name="order_by" x-model="currentOrderBy">
+            <input type="hidden" name="min_price" x-model="minPrice">
+            <input type="hidden" name="max_price" x-model="maxPrice">
+            <input type="hidden" name="product_count_min" x-model="productCountMin">
+            <input type="hidden" name="product_count_max" x-model="productCountMax">
+
+            <!-- Search -->
+            <section class="space-y-1.5">
+                <label for="filter-search" class="block text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Buscar
+                </label>
+                <div class="relative">
+                    <input type="text" 
+                           id="filter-search"
+                           name="search"
+                           x-model="searchQuery"
+                           value="{{ current_search }}"
+                           placeholder="Nombre o descripción..."
+                           class="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-zicada-accent focus:ring-2 focus:ring-zicada-accent/20 transition text-sm placeholder-gray-400"
+                           @input.debounce.300ms="submitForm()">
+                    <span id="search-help" class="sr-only">Ingresa el nombre o descripción del producto</span>
+                    <svg class="absolute left-3 top-3 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                    </svg>
+                </div>
+            </section>
+
+            <!-- Categories (Pills) -->
+            {% if categories %}
+            <section class="space-y-1.5">
+                <h4 class="block text-xs font-medium text-gray-500 uppercase tracking-wider" id="categories-label">
+                    Categorías
+                </h4>
+                <ul class="flex flex-wrap gap-1.5 list-none m-0 p-0" aria-labelledby="categories-label">
+                    <li>
+                        <button type="button"
+                                class="inline-block px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-200"
+                                :class="currentCategory === '' ? 'bg-zicada-accent text-white shadow-sm shadow-zicada-accent/20 ring-2 ring-zicada-accent/30' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                                @click="setFilter('category', '')"
+                                aria-label="Mostrar todas las categorías">
+                            Todas
+                        </button>
+                    </li>
+                    {% for category in categories %}
+                    <li>
+                        <button type="button"
+                                class="inline-block px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-200"
+                                :class="currentCategory === '{{ category.slug }}' ? 'bg-zicada-accent text-white shadow-sm shadow-zicada-accent/20 ring-2 ring-zicada-accent/30' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                                @click="setFilter('category', '{{ category.slug }}')"
+                                aria-label="Filtrar por {{ category.name }}">
+                            {{ category.name }}
+                        </button>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </section>
+            {% endif %}
+
+            <!-- Price Range with Dual Slider -->
+            {% if filter_config.price %}
+            <section class="space-y-1.5">
+                <div class="flex items-center justify-between">
+                    <h4 id="price-label" class="block text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Precio
+                    </h4>
+                    <span class="text-sm font-medium text-gray-900" 
+                          x-text="formatPrice(minPrice) + ' — ' + formatPrice(maxPrice)"
+                          aria-live="polite"
+                          aria-atomic="true"></span>
+                </div>
+                
+                <div class="relative pt-6 pb-2">
+                    <div class="mb-4">
+                        <label for="min-price" class="sr-only">Precio mínimo</label>
+                        <input type="range" 
+                               id="min-price"
+                               x-model="minPrice"
+                               :min="minGlobal" 
+                               :max="maxGlobal" 
+                               step="1000"
+                               class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-zicada-accent"
+                               @input="updatePrice()"
+                               aria-labelledby="price-label">
+                    </div>
+                    
+                    <div>
+                        <label for="max-price" class="sr-only">Precio máximo</label>
+                        <input type="range" 
+                               id="max-price"
+                               x-model="maxPrice"
+                               :min="minGlobal" 
+                               :max="maxGlobal" 
+                               step="1000"
+                               class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-zicada-accent"
+                               @input="updatePrice()"
+                               aria-labelledby="price-label">
+                    </div>
+                </div>
+                
+                <div class="flex justify-between text-[10px] text-gray-400 pt-4">
+                    <span x-text="formatPrice(minGlobal)"></span>
+                    <span x-text="formatPrice(maxGlobal)"></span>
+                </div>
+            </section>
+            {% endif %}
+
+            <!-- Product Type -->
+            {% if filter_config.product_type and product_types %}
+            <section class="space-y-1.5">
+                <h4 class="block text-xs font-medium text-gray-500 uppercase tracking-wider" id="product-type-label">
+                    Tipo de producto
+                </h4>
+                <ul class="flex flex-wrap gap-1.5 list-none m-0 p-0" aria-labelledby="product-type-label">
+                    <li>
+                        <button type="button"
+                                class="inline-block px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-200"
+                                :class="currentProductType === '' ? 'bg-zicada-accent text-white shadow-sm shadow-zicada-accent/20 ring-2 ring-zicada-accent/30' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                                @click="setFilter('product_type', '')">
+                            Todos
+                        </button>
+                    </li>
+                    {% for type in product_types %}
+                    <li>
+                        <button type="button"
+                                class="inline-block px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-200"
+                                :class="currentProductType === '{{ type }}' ? 'bg-zicada-accent text-white shadow-sm shadow-zicada-accent/20 ring-2 ring-zicada-accent/30' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                                @click="setFilter('product_type', '{{ type }}')">
+                            {{ product_type_labels|get_item:type }}
+                        </button>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </section>
+            {% endif %}
+
+            <!-- Status (Collections only) -->
+            {% if filter_config.status %}
+            <section class="space-y-1.5">
+                <h4 class="block text-xs font-medium text-gray-500 uppercase tracking-wider" id="status-label">
+                    Estado
+                </h4>
+                <ul class="grid grid-cols-3 gap-1.5 list-none m-0 p-0" aria-labelledby="status-label">
+                    {% for value, label in status_choices %}
+                    <li>
+                        <button type="button"
+                                class="block w-full text-center px-2 py-2 rounded-xl text-xs font-medium transition-all duration-200"
+                                :class="currentStatus === '{{ value }}' ? 'bg-zicada-accent text-white shadow-sm shadow-zicada-accent/20 ring-2 ring-zicada-accent/30' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                                @click="setFilter('status', '{{ value }}')"
+                                aria-label="Filtrar por estado: {{ label }}">
+                            {{ label }}
+                        </button>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </section>
+            {% endif %}
+
+            <!-- Product Count (Collections only) -->
+            {% if filter_config.product_count %}
+            <section class="space-y-1.5">
+                <h4 class="block text-xs font-medium text-gray-500 uppercase tracking-wider" id="product-count-label">
+                    Cantidad de productos
+                </h4>
+                <div class="flex gap-3">
+                    <div class="w-1/2">
+                        <label for="product-count-min" class="sr-only">Cantidad mínima de productos</label>
+                        <input type="number" 
+                               id="product-count-min"
+                               name="product_count_min"
+                               x-model="productCountMin"
+                               value="{{ current_product_count_min }}"
+                               placeholder="Mín"
+                               min="0"
+                               class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-zicada-accent focus:ring-2 focus:ring-zicada-accent/20 transition text-sm placeholder-gray-400"
+                               @input.debounce.300ms="submitForm()"
+                               aria-labelledby="product-count-label">
+                    </div>
+                    <div class="w-1/2">
+                        <label for="product-count-max" class="sr-only">Cantidad máxima de productos</label>
+                        <input type="number" 
+                               id="product-count-max"
+                               name="product_count_max"
+                               x-model="productCountMax"
+                               value="{{ current_product_count_max }}"
+                               placeholder="Máx"
+                               min="0"
+                               class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-zicada-accent focus:ring-2 focus:ring-zicada-accent/20 transition text-sm placeholder-gray-400"
+                               @input.debounce.300ms="submitForm()"
+                               aria-labelledby="product-count-label">
+                    </div>
+                </div>
+            </section>
+            {% endif %}
+
+            <!-- Date Filter (Collections only) -->
+            {% if filter_config.date %}
+            <section class="space-y-1.5">
+                <h4 class="block text-xs font-medium text-gray-500 uppercase tracking-wider" id="date-label">
+                    Fecha
+                </h4>
+                <ul class="flex flex-wrap gap-1.5 list-none m-0 p-0" aria-labelledby="date-label">
+                    <li>
+                        <button type="button"
+                                class="inline-block px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-200"
+                                :class="currentDateFilter === '' ? 'bg-zicada-accent text-white shadow-sm shadow-zicada-accent/20 ring-2 ring-zicada-accent/30' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                                @click="setFilter('date_filter', '')">
+                            Todas
+                        </button>
+                    </li>
+                    <li>
+                        <button type="button"
+                                class="inline-block px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-200"
+                                :class="currentDateFilter === 'ultimo_mes' ? 'bg-zicada-accent text-white shadow-sm shadow-zicada-accent/20 ring-2 ring-zicada-accent/30' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                                @click="setFilter('date_filter', 'ultimo_mes')">
+                            Último mes
+                        </button>
+                    </li>
+                    <li>
+                        <button type="button"
+                                class="inline-block px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-200"
+                                :class="currentDateFilter === 'ultimo_trimestre' ? 'bg-zicada-accent text-white shadow-sm shadow-zicada-accent/20 ring-2 ring-zicada-accent/30' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                                @click="setFilter('date_filter', 'ultimo_trimestre')">
+                            Último trimestre
+                        </button>
+                    </li>
+                    <li>
+                        <button type="button"
+                                class="inline-block px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-200"
+                                :class="currentDateFilter === 'ultimo_semestre' ? 'bg-zicada-accent text-white shadow-sm shadow-zicada-accent/20 ring-2 ring-zicada-accent/30' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                                @click="setFilter('date_filter', 'ultimo_semestre')">
+                            Último semestre
+                        </button>
+                    </li>
+                    <li>
+                        <button type="button"
+                                class="inline-block px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-200"
+                                :class="currentDateFilter === 'ultimo_ano' ? 'bg-zicada-accent text-white shadow-sm shadow-zicada-accent/20 ring-2 ring-zicada-accent/30' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                                @click="setFilter('date_filter', 'ultimo_ano')">
+                            Último año
+                        </button>
+                    </li>
+                    <li>
+                        <button type="button"
+                                class="inline-block px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-200"
+                                :class="currentDateFilter === 'proximas' ? 'bg-zicada-accent text-white shadow-sm shadow-zicada-accent/20 ring-2 ring-zicada-accent/30' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                                @click="setFilter('date_filter', 'proximas')">
+                            Próximas
+                        </button>
+                    </li>
+                </ul>
+            </section>
+            {% endif %}
+
+            <!-- Order By -->
+            <section class="space-y-1.5">
+                <h4 class="block text-xs font-medium text-gray-500 uppercase tracking-wider" id="order-label">
+                    Ordenar por
+                </h4>
+                <ul class="flex flex-wrap gap-1.5 list-none m-0 p-0" aria-labelledby="order-label">
+                    {% for value, label in order_choices %}
+                    <li>
+                        <button type="button"
+                                class="inline-block px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-200"
+                                :class="currentOrderBy === '{{ value }}' ? 'bg-zicada-accent text-white shadow-sm shadow-zicada-accent/20 ring-2 ring-zicada-accent/30' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                                @click="setFilter('order_by', '{{ value }}')">
+                            {{ label }}
+                        </button>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </section>
+
+            <!-- Action Buttons -->
+            <footer class="flex gap-3 pt-2 border-t border-gray-100 mt-2">
+                <button type="submit" 
+                        class="flex-1 bg-zicada-accent hover:bg-red-700 text-white px-4 py-2.5 rounded-xl transition text-sm font-medium shadow-sm shadow-zicada-accent/20 hover:shadow-zicada-accent/30"
+                        aria-label="Aplicar todos los filtros seleccionados">
+                    Aplicar
+                </button>
+                <a href="{{ clean_url }}" 
+                   class="flex-1 border-2 border-gray-200 text-gray-600 hover:bg-gray-50 px-4 py-2.5 rounded-xl transition text-center text-sm font-medium"
+                   aria-label="Limpiar todos los filtros"
+                   x-show="activeFilterCount > 0"
+                   @click.prevent="clearAllFilters()">
+                    Limpiar
+                </a>
+            </footer>
+        </form>
     </div>
 </div>
 
 {% block extra_js %}
-<script src="{% static 'js/core/filter-sidebar.js' %}" defer></script>
+<script>
+document.addEventListener('alpine:init', () => {
+    // Obtener el componente y pasarle los valores iniciales
+    const sidebar = document.querySelector('.filter-sidebar');
+    if (sidebar && sidebar._x_dataStack) {
+        const data = Alpine.$data(sidebar);
+        if (data) {
+            data.searchQuery = '{{ current_search|escapejs }}';
+            data.currentCategory = '{{ current_category }}';
+            data.currentProductType = '{{ current_product_type }}';
+            data.currentStatus = '{{ current_status }}';
+            data.currentDateFilter = '{{ current_date_filter }}';
+            data.currentOrderBy = '{{ current_order_by }}';
+            data.minGlobal = {{ min_price_global }};
+            data.maxGlobal = {{ max_price_global }};
+            data.minPrice = {{ current_min_price|default:min_price_global|default:0 }};
+            data.maxPrice = {{ current_max_price|default:max_price_global|default:1000000 }};
+            data.productCountMin = '{{ current_product_count_min }}';
+            data.productCountMax = '{{ current_product_count_max }}';
+        }
+    }
+});
+</script>
 {% endblock %}
