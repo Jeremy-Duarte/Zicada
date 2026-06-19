@@ -1,0 +1,14 @@
+{% load static %}
+
+<div id="products-container" class="flex-1 min-w-0">
+    {% if products %}
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-5 gap-y-8">
+        {% for product in products %}
+        <div>{% include 'components/product_card.html' with product=product %}</div>
+        {% endfor %}
+    </div>
+    {% include 'components/pagination.html' %}
+    {% else %}
+    {% include 'components/empty_state.html' with message="No hay productos disponibles." submessage="¡Vuelve pronto para descubrir nuestros nuevos productos!" %}
+    {% endif %}
+</div>

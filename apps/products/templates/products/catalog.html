@@ -10,21 +10,10 @@
         
         <div class="flex flex-col lg:flex-row lg:gap-6">
             <div class="lg:w-72 lg:sticky lg:top-24 lg:self-start lg:flex-shrink-0">
-                {% include 'components/filters/filter_sidebar.html' with filter_config=filter_config clean_url=clean_url has_active_filters=has_active_filters search_value=current_search current_status=current_status status_choices=status_choices current_min_price=current_min_price current_max_price=current_max_price min_price_global=min_price_global max_price_global=max_price_global current_product_count_min=current_product_count_min current_product_count_max=current_product_count_max current_date_filter=current_date_filter current_product_type=current_product_type product_types=product_types current_order_by=current_order_by order_choices=order_choices %}
+                {% include 'components/filters/filter_sidebar.html' with filter_config=filter_config clean_url=clean_url has_active_filters=has_active_filters active_filters_count=active_filters_count search_value=current_search current_status=current_status status_choices=status_choices current_min_price=current_min_price current_max_price=current_max_price min_price_global=min_price_global max_price_global=max_price_global current_product_count_min=current_product_count_min current_product_count_max=current_product_count_max current_date_filter=current_date_filter current_product_type=current_product_type product_types=product_types product_type_labels=product_type_labels current_order_by=current_order_by order_choices=order_choices categories=categories current_category=current_category %}            
             </div>
-            
-            <div class="flex-1 min-w-0">
-                {% if products %}
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-5 gap-y-8">
-                    {% for product in products %}
-                    <div>{% include 'components/product_card.html' with product=product %}</div>
-                    {% endfor %}
-                </div>
-                {% include 'components/pagination.html' %}
-                {% else %}
-                {% include 'components/empty_state.html' with message="No hay productos disponibles." submessage="¡Vuelve pronto para descubrir nuestros nuevos productos!" %}
-                {% endif %}
-            </div>
+
+            {% include 'components/_product_list.html' %}
         </div>
     </div>
 </div>

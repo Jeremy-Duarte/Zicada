@@ -1,8 +1,0 @@
-<div>
-    <label for="min-price" class="block text-zicada-light text-sm font-medium mb-2">💰 Rango de precios</label>
-    <div class="flex gap-3">
-        <input type="number" id="min-price" name="min_price" value="{{ min }}" placeholder="Min" min="{{ min_global }}" max="{{ max_global }}" class="w-1/2 px-3 py-2 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-zicada-accent focus:ring-1 focus:ring-zicada-accent text-gray-900 placeholder-gray-400">
-        <input type="number" name="max_price" value="{{ max }}" placeholder="Max" min="{{ min_global }}" max="{{ max_global }}" class="w-1/2 px-3 py-2 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-zicada-accent focus:ring-1 focus:ring-zicada-accent text-gray-900 placeholder-gray-400">
-    </div>
-    <div class="mt-2 text-xs text-zicada-light/60">Rango: ${{ min_global|floatformat:0 }} - ${{ max_global|floatformat:0 }}</div>
-</div>

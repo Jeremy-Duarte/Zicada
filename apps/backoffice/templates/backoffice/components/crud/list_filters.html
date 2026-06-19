@@ -25,20 +25,44 @@
                     {% endfor %}
                 </select>
                 {% elif filter.type == 'search' %}
-                <input type="text" name="{{ filter.name }}" value="{{ request.GET.name|default:'' }}" 
-                       class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-zicada-accent"
-                       placeholder="{{ filter.placeholder|default:'Buscar...' }}">
+                    <label for="filter-{{ filter.name }}" class="sr-only">{{ filter.label|default:'Buscar' }}</label>
+                    <input type="text" 
+                        id="filter-{{ filter.name }}"
+                        name="{{ filter.name }}" 
+                        value="{{ request.GET.name|default:'' }}" 
+                        class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-zicada-accent"
+                        placeholder="{{ filter.placeholder|default:'Buscar...' }}">
+                        
                 {% elif filter.type == 'daterange' %}
-                <div class="flex gap-2">
-                    <input type="date" name="{{ filter.name }}_from" value="{{ request.GET.name_from|default:'' }}" 
-                           class="w-1/2 px-3 py-2 text-sm border rounded-lg focus:ring-zicada-accent" placeholder="Desde">
-                    <input type="date" name="{{ filter.name }}_to" value="{{ request.GET.name_to|default:'' }}" 
-                           class="w-1/2 px-3 py-2 text-sm border rounded-lg focus:ring-zicada-accent" placeholder="Hasta">
-                </div>
+                    <div class="flex gap-2">
+                        <div class="w-1/2">
+                            <label for="filter-{{ filter.name }}_from" class="sr-only">Desde</label>
+                            <input type="date" 
+                                id="filter-{{ filter.name }}_from"
+                                name="{{ filter.name }}_from" 
+                                value="{{ request.GET.name_from|default:'' }}" 
+                                class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-zicada-accent" 
+                                placeholder="Desde">
+                        </div>
+                        <div class="w-1/2">
+                            <label for="filter-{{ filter.name }}_to" class="sr-only">Hasta</label>
+                            <input type="date" 
+                                id="filter-{{ filter.name }}_to"
+                                name="{{ filter.name }}_to" 
+                                value="{{ request.GET.name_to|default:'' }}" 
+                                class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-zicada-accent" 
+                                placeholder="Hasta">
+                        </div>
+                    </div>
+                    
                 {% else %}
-                <input type="text" name="{{ filter.name }}" value="{{ request.GET.name|default:'' }}" 
-                       class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-zicada-accent"
-                       placeholder="{{ filter.placeholder|default:filter.label }}">
+                    <label for="filter-{{ filter.name }}" class="sr-only">{{ filter.label|default:'Filtro' }}</label>
+                    <input type="text" 
+                        id="filter-{{ filter.name }}"
+                        name="{{ filter.name }}" 
+                        value="{{ request.GET.name|default:'' }}" 
+                        class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-zicada-accent"
+                        placeholder="{{ filter.placeholder|default:filter.label }}">
                 {% endif %}
             </div>
             {% endfor %}
