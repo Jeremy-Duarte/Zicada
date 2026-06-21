@@ -1,47 +1,50 @@
 from django.conf import settings
-from django.http import JsonResponse
-from django.views.decorators.cache import never_cache
-from django.views.decorators.http import require_safe, require_http_methods
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth import authenticate, login as auth_login
-from django.views.decorators.csrf import csrf_exempt
-from django.utils import timezone
 from django.contrib import messages
-from django.urls import reverse
-import json
-from datetime import datetime, date, timedelta
-from django.conf import settings
-from django.http import JsonResponse
-from django.contrib.auth.decorators import login_required
-from django.views.decorators.cache import cache_page
-from django.views.decorators.vary import vary_on_headers
+from django.contrib.auth import authenticate
+from django.contrib.auth import login as auth_login
+from django.contrib.auth import logout
 from django.core.serializers.json import DjangoJSONEncoder
-from django.urls import reverse
+from django.db import models
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
 from django.templatetags.static import static
-import json
+from django.urls import reverse
+from django.utils import timezone
+from django.views.decorators.cache import cache_page, never_cache
+from django.views.decorators.http import require_http_methods, require_safe
+from django.views.decorators.vary import vary_on_headers
+from django.contrib.auth.decorators import login_required
 
-# Importar url_names para mantener consistencia
+import json
+from datetime import date
+
+from apps.orders.models import Order
 from apps.core.url_names import (
-    DELIVERY_LOGIN,
-    DELIVERY_DASHBOARD,
-    DELIVERY_ORDERS,
-    DELIVERY_ORDER_DETAIL,
-    DELIVERY_MARK_PAID,
-    DELIVERY_REGISTER_INCIDENCE,
-    DELIVERY_DAILY_SUMMARY,
     DELIVERY_CLOSE_JOURNEY,
-    DELIVERY_API_ORDERS,
-    DELIVERY_API_MARK_PAID,
-    DELIVERY_API_CREATE_INCIDENCE,
+    DELIVERY_DAILY_SUMMARY,
+    DELIVERY_DASHBOARD,
     DELIVERY_LOGIN,
     DELIVERY_MANIFEST,
+    DELIVERY_MARK_PAID,
     DELIVERY_OFFLINE,
+    DELIVERY_ORDER_DETAIL,
+    DELIVERY_ORDERS,
+    DELIVERY_REGISTER_INCIDENCE,
     DELIVERY_SERVICE_WORKER,
 )
 
+
 # =============================================================================
-# PWA Y AUTENTICACIÓN
+# HELPER PRIVADO
+# =============================================================================
+
+def _is_delivery_user(user):
+    """Verifica que el usuario autenticado sea un repartidor activo."""
+    return getattr(user, 'is_delivery', False) and user.is_active
+
+
+# =============================================================================
+# PWA — MANIFEST, SERVICE WORKER Y SALUD
 # =============================================================================
 
 @never_cache
@@ -50,7 +53,7 @@ def pwa_manifest(request):
     """Genera manifest.json dinámico para la PWA de delivery."""
     protocol = 'https' if request.is_secure() else 'http'
     base_url = f"{protocol}://{request.get_host()}"
-    
+
     icons = []
     for size, path in settings.PWA_ICONS.items():
         icons.append({
@@ -59,12 +62,12 @@ def pwa_manifest(request):
             "type": "image/png",
             "purpose": "any maskable"
         })
-    
+
     manifest = {
         "name": settings.PWA_NAME,
         "short_name": settings.PWA_SHORT_NAME,
         "description": settings.PWA_DESCRIPTION,
-        "start_url": reverse(DELIVERY_LOGIN),  # Usar reverse con url_name
+        "start_url": reverse(DELIVERY_LOGIN),
         "display": settings.PWA_DISPLAY,
         "theme_color": settings.PWA_THEME_COLOR,
         "background_color": settings.PWA_BACKGROUND_COLOR,
@@ -99,29 +102,33 @@ def pwa_manifest(request):
             }
         ]
     }
-    
+
     return JsonResponse(manifest)
+
 
 @cache_page(60 * 15)
 @vary_on_headers('User-Agent')
 def sw_config(request):
     """
     Endpoint que devuelve la configuración del Service Worker.
-    Esto permite que el SW sea estático pero configurable.
+    Permite que el SW sea estático pero configurable desde el servidor.
     """
-    # Construir URLs para precache
     protocol = 'https' if request.is_secure() else 'http'
     base_url = f"{protocol}://{request.get_host()}"
-    
+
     precache_urls = [
         base_url + reverse('delivery:login'),
         base_url + reverse('delivery:dashboard'),
         base_url + reverse('delivery:orders'),
         base_url + reverse('delivery:summary'),
-        base_url + static('delivery/css/main.css'),
-        base_url + static('delivery/js/base.js'),
+        base_url + static('css/delivery/main.css'),
+        base_url + static('js/delivery/base.js'),
+        base_url + static('js/delivery/orders.js'),
+        base_url + static('js/delivery/dashboard.js'),
+        base_url + static('js/delivery/summary.js'),
+        base_url + static('js/delivery/order-detail.js'),
     ]
-    
+
     config = {
         'cacheName': getattr(settings, 'SW_CACHE_NAME', 'zicada-delivery-v1'),
         'offlineUrl': base_url + reverse('delivery:offline'),
@@ -129,69 +136,65 @@ def sw_config(request):
         'version': getattr(settings, 'PWA_VERSION', '1.0.0'),
         'lastUpdated': timezone.now().isoformat(),
     }
-    
+
     return JsonResponse(config, encoder=DjangoJSONEncoder)
+
+
+@require_safe
+def health_check(request):
+    """Endpoint de health check para Railway/Render."""
+    return JsonResponse({
+        'status': 'ok',
+        'timestamp': timezone.now().isoformat(),
+        'app': 'Zicada Delivery PWA',
+        'version': '1.0.0'
+    })
+
+
+# =============================================================================
+# AUTENTICACIÓN
+# =============================================================================
+
+_DELIVERY_LOGIN_TEMPLATE = 'delivery/login.html'
+
 
 def delivery_login(request):
     """
     Login específico para la PWA de delivery.
-    NO redirige a dashboard si ya está autenticado, 
-    solo si es delivery y tiene sesión activa.
+    Solo permite acceso a usuarios con is_delivery=True.
     """
     if request.user.is_authenticated:
-        if getattr(request.user, 'is_delivery', False):
+        if _is_delivery_user(request.user):
             return redirect(DELIVERY_DASHBOARD)
-        else:
-            from django.contrib.auth import logout
-            logout(request)
-            return render(request, DELIVERY_LOGIN, {
-                'error': 'Esta app es solo para repartidores. Usa la web principal.'
-            })
-    
+        logout(request)
+        return render(request, _DELIVERY_LOGIN_TEMPLATE, {
+            'error': 'Esta app es solo para repartidores. Usa la web principal.'
+        })
+
     if request.method == 'POST':
-        username = request.POST.get('username')
-        password = request.POST.get('password')
+        username = request.POST.get('username', '').strip()
+        password = request.POST.get('password', '')
         user = authenticate(request, username=username, password=password)
-        
-        if user and getattr(user, 'is_delivery', False) and user.is_active:
+
+        if user and _is_delivery_user(user):
             auth_login(request, user)
             return redirect(DELIVERY_DASHBOARD)
-        else:
-            return render(request, DELIVERY_LOGIN, {
-                'error': 'Credenciales inválidas o no tienes permisos de entregador'
-            })
-    
-    return render(request, DELIVERY_LOGIN)
 
-@login_required
-def dashboard(request):
-    """Dashboard principal del entregador."""
-    # Verificar que es delivery, si no, logout y redirect a login
-    if not getattr(request.user, 'is_delivery', False):
-        from django.contrib.auth import logout
-        logout(request)
-        return redirect(DELIVERY_LOGIN)
-    
-    # Datos falsos para el dashboard
-    context = {
-        'user': request.user,
-        'pwa_mode': True,
-        'today_orders_count': 8,
-        'completed_orders': 5,
-        'pending_orders': 3,
-        'today_earnings': 125000,
-        'last_order': {
-            'id': 1234,
-            'customer': 'María González',
-            'address': 'Calle 123 #45-67',
-            'status': 'en_camino'
-        },
-        'orders_url': reverse(DELIVERY_ORDERS),
-        'summary_url': reverse(DELIVERY_DAILY_SUMMARY),
-        'logout_url': reverse(DELIVERY_LOGIN),
-    }
-    
-    return render(request, 'delivery/dashboard.html', context)
+        return render(request, _DELIVERY_LOGIN_TEMPLATE, {
+            'error': 'Credenciales inválidas o no tienes permisos de entregador.'
+        })
+
+    return render(request, _DELIVERY_LOGIN_TEMPLATE)
+
+
+def delivery_logout(request):
+    """Cierra sesión del entregador y limpia el caché del Service Worker."""
+    logout(request)
+    response = redirect(DELIVERY_LOGIN)
+    # Fuerza al navegador a limpiar el SW y su caché para evitar servir datos obsoletos
+    response['Clear-Site-Data'] = '"cache", "storage"'
+    return response
+
 
 @login_required
 def offline_page(request):
@@ -200,270 +203,360 @@ def offline_page(request):
         'login_url': reverse(DELIVERY_LOGIN),
     })
 
-def delivery_logout(request):
-    """Cierra sesión del entregador y redirige al login."""
-    from django.contrib.auth import logout
-    logout(request)
-    return redirect(DELIVERY_LOGIN)
 
 # =============================================================================
-# HU-033: CONSULTAR PEDIDOS DEL DÍA
+# HU-033: DASHBOARD DEL ENTREGADOR
+# =============================================================================
+
+@login_required
+def dashboard(request):
+    """Dashboard principal del entregador con métricas reales del día."""
+    if not _is_delivery_user(request.user):
+        logout(request)
+        return redirect(DELIVERY_LOGIN)
+
+    today = timezone.localdate()
+    user = request.user
+
+    from django.db.models import Q
+    
+    # Pedidos asignados al usuario que:
+    # 1. Están pendientes activos (listo o en camino)
+    # O 2. Fueron completados o cancelados hoy (acción realizada hoy)
+    all_relevant_orders = Order.objects.filter(
+        Q(assigned_delivery_user=user) &
+        (Q(status__in=['listo', 'en_camino']) | Q(status__in=['entregado', 'cancelado'], updated_at__date=today))
+    )
+
+    completed = all_relevant_orders.filter(status='entregado').count()
+    pending = all_relevant_orders.filter(status__in=['listo', 'en_camino']).count()
+    total_today = all_relevant_orders.count()
+
+    # Último pedido activo
+    last_order = Order.objects.filter(
+        assigned_delivery_user=user,
+        status__in=['listo', 'en_camino']
+    ).order_by('-created_at').first()
+
+    context = {
+        'user': user,
+        'pwa_mode': True,
+        'today_orders_count': total_today,
+        'completed_orders': completed,
+        'pending_orders': pending,
+        'last_order': last_order,
+        'orders_url': reverse(DELIVERY_ORDERS),
+        'summary_url': reverse(DELIVERY_DAILY_SUMMARY),
+        'logout_url': reverse('delivery:logout'),
+    }
+
+    return render(request, 'delivery/dashboard.html', context)
+
+
+# =============================================================================
+# HU-033: LISTA DE PEDIDOS DEL DÍA
 # =============================================================================
 
 @login_required
 def delivery_orders(request):
-    """Lista de pedidos asignados para hoy."""
-    if not getattr(request.user, 'is_delivery', False):
+    """Lista de pedidos asignados — la carga real se hace vía API desde orders.js."""
+    if not _is_delivery_user(request.user):
         return redirect(DELIVERY_LOGIN)
-    
-    # Datos falsos de pedidos para probar
-    fake_orders = [
-        {
-            'id': 1001,
-            'order_number': 'ZCD-0001',
-            'customer_name': 'María González',
-            'customer_phone': '3001234567',
-            'shipping_address': 'Calle 123 #45-67, Chapinero, Bogotá',
-            'total_amount': 78500,
-            'is_paid': False,
-            'status': 'listo',
-            'status_display': 'Listo para enviar',
-            'delivery_notes': 'Llamar antes de llegar, timbre 3B',
-            'created_at': timezone.now().isoformat(),
-        },
-        {
-            'id': 1002,
-            'order_number': 'ZCD-0002',
-            'customer_name': 'Carlos Rodríguez',
-            'customer_phone': '3109876543',
-            'shipping_address': 'Carrera 89 #12-34, Usaquén, Bogotá',
-            'total_amount': 125500,
-            'is_paid': True,
-            'status': 'en_camino',
-            'status_display': 'En camino',
-            'delivery_notes': 'Entregar en portería',
-            'created_at': (timezone.now() - timedelta(hours=2)).isoformat(),
-        },
-        {
-            'id': 1003,
-            'order_number': 'ZCD-0003',
-            'customer_name': 'Ana Martínez',
-            'customer_phone': '3155555555',
-            'shipping_address': 'Avenida Chile #85-23, Chía, Cundinamarca',
-            'total_amount': 45000,
-            'is_paid': False,
-            'status': 'listo',
-            'status_display': 'Listo para enviar',
-            'delivery_notes': 'Edificio Azul, apto 502',
-            'created_at': (timezone.now() - timedelta(hours=1)).isoformat(),
-        },
-        {
-            'id': 1004,
-            'order_number': 'ZCD-0004',
-            'customer_name': 'Laura Sánchez',
-            'customer_phone': '3123456789',
-            'shipping_address': 'Calle 200 #15-30, Suba, Bogotá',
-            'total_amount': 234000,
-            'is_paid': True,
-            'status': 'en_camino',
-            'status_display': 'En camino',
-            'delivery_notes': 'Casa de dos pisos, portón rojo',
-            'created_at': (timezone.now() - timedelta(hours=3)).isoformat(),
-        },
-    ]
-    
-    # Filtrar pedidos según estado
-    if request.GET.get('filter') == 'pending':
-        fake_orders = [o for o in fake_orders if not o['is_paid']]
-    elif request.GET.get('filter') == 'completed':
-        fake_orders = [o for o in fake_orders if o['is_paid']]
-    
+
     context = {
-        'orders': fake_orders,
-        'today': date.today(),
-        'total_orders': len(fake_orders),
-        'pending_payment': len([o for o in fake_orders if not o['is_paid']]),
+        'today': timezone.localdate(),
         'filter': request.GET.get('filter', 'all'),
-        # URLs
         'order_detail_url_name': DELIVERY_ORDER_DETAIL,
         'mark_paid_url_name': DELIVERY_MARK_PAID,
         'register_incidence_url_name': DELIVERY_REGISTER_INCIDENCE,
     }
-    
+
     return render(request, 'delivery/orders/list.html', context)
+
+
+# =============================================================================
+# HU-034: DETALLE DE PEDIDO
+# =============================================================================
 
 @login_required
 def order_detail(request, order_id):
-    """Detalle de un pedido específico."""
-    if not getattr(request.user, 'is_delivery', False):
+    """Detalle de un pedido asignado al repartidor autenticado."""
+    if not _is_delivery_user(request.user):
         return redirect(DELIVERY_LOGIN)
-    
-    # Datos falsos para el detalle del pedido
-    fake_order = {
-        'id': order_id,
-        'order_number': f'ZCD-{order_id:04d}',
-        'customer_name': 'María González' if order_id == 1001 else 'Carlos Rodríguez',
-        'customer_phone': '3001234567' if order_id == 1001 else '3109876543',
-        'customer_email': f'cliente{order_id}@example.com',
-        'shipping_address': 'Calle 123 #45-67, Chapinero, Bogotá',
-        'delivery_notes': 'Llamar antes de llegar. Timbre 3B',
-        'total_amount': 78500,
-        'subtotal': 75000,
-        'shipping_cost': 3500,
-        'is_paid': order_id % 2 == 0,
-        'status': 'listo' if order_id % 2 != 0 else 'en_camino',
-        'status_display': 'Listo para enviar' if order_id % 2 != 0 else 'En camino',
-        'payment_method': 'Efectivo contraentrega',
-        'created_at': (timezone.now() - timedelta(hours=2)).isoformat(),
-        'items': [
-            {
-                'product_name': 'Camiseta Deportiva',
-                'size': 'M',
-                'quantity': 2,
-                'unit_price': 25000,
-                'subtotal': 50000,
-            },
-            {
-                'product_name': 'Short Deportivo',
-                'size': 'L',
-                'quantity': 1,
-                'unit_price': 25000,
-                'subtotal': 25000,
-            }
-        ]
-    }
-    
+
+    order = get_object_or_404(
+        Order,
+        id=order_id,
+        assigned_delivery_user=request.user
+    )
+
     context = {
-        'order': fake_order,
+        'order': order,
         'order_id': order_id,
-        # URLs
         'mark_paid_url': reverse(DELIVERY_MARK_PAID, args=[order_id]),
         'register_incidence_url': reverse(DELIVERY_REGISTER_INCIDENCE, args=[order_id]),
         'back_url': reverse(DELIVERY_ORDERS),
     }
-    
+
     return render(request, 'delivery/orders/detail.html', context)
 
 
 # =============================================================================
-# HU-034: MARCAR PEDIDO COMO PAGADO
+# HU-034: CONFIRMAR ENTREGA DEL PEDIDO
+# (Todos los pedidos son pre-pagados vía pasarela — el repartidor solo confirma entrega)
 # =============================================================================
 
 @login_required
 @require_http_methods(["POST"])
 def mark_as_paid(request, order_id):
-    """Marca un pedido como pagado."""
-    if not getattr(request.user, 'is_delivery', False):
-        return JsonResponse({'error': 'No autorizado'}, status=403)
-    
-    # Simulación de marcado como pagado
-    context = {
-        'success': True,
-        'message': f'Pedido #{order_id} marcado como pagado exitosamente',
-        'order_id': order_id,
-        'paid_at': timezone.now().isoformat(),
-    }
-    
-    messages.success(request, f'Pedido #{order_id} marcado como pagado')
-    
+    """
+    Confirma la entrega física del pedido.
+    El pago ya fue procesado por Stripe antes de la entrega.
+    """
+    if not _is_delivery_user(request.user):
+        return JsonResponse({'success': False, 'message': 'No autorizado'}, status=403)
+
+    order = get_object_or_404(
+        Order,
+        id=order_id,
+        assigned_delivery_user=request.user
+    )
+
+    if order.status == 'entregado':
+        msg = 'Este pedido ya fue marcado como entregado.'
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'success': False, 'message': msg}, status=400)
+        messages.warning(request, msg)
+        return redirect(DELIVERY_ORDER_DETAIL, order_id=order_id)
+
+    if order.status != 'en_camino':
+        msg = f'Solo puedes confirmar entregas en estado "En camino". Estado actual: {order.get_status_display()}'
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'success': False, 'message': msg}, status=400)
+        messages.error(request, msg)
+        return redirect(DELIVERY_ORDER_DETAIL, order_id=order_id)
+
+    order.mark_as_delivered(user=request.user)
+
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return JsonResponse(context)
-    
-    return redirect(DELIVERY_ORDER_DETAIL, order_id=order_id)
+        return JsonResponse({
+            'success': True,
+            'message': f'Pedido {order.order_number} confirmado como entregado.',
+            'order_id': order.id,
+            'order_number': order.order_number,
+            'delivered_at': timezone.now().isoformat(),
+        })
+
+    messages.success(request, f'✅ Pedido {order.order_number} entregado correctamente.')
+    return redirect(DELIVERY_ORDERS)
 
 
 # =============================================================================
 # HU-035: REGISTRAR INCIDENCIA
 # =============================================================================
 
+INCIDENCE_TYPES = [
+    {'value': 'customer_not_home', 'label': 'Cliente no estaba', 'icon': '🏠'},
+    {'value': 'wrong_address', 'label': 'Dirección incorrecta', 'icon': '📍'},
+    {'value': 'customer_cancelled', 'label': 'Cliente canceló', 'icon': '❌'},
+    {'value': 'product_rejected', 'label': 'Producto rechazado', 'icon': '📦'},
+    {'value': 'other', 'label': 'Otro', 'icon': '📝'},
+]
+
+_INCIDENCE_VALUES = {t['value'] for t in INCIDENCE_TYPES}
+
+
 @login_required
 def register_incidence(request, order_id):
-    """Registra una incidencia en un pedido."""
-    if not getattr(request.user, 'is_delivery', False):
+    """Registra una incidencia en un pedido asignado al repartidor."""
+    if not _is_delivery_user(request.user):
         return redirect(DELIVERY_LOGIN)
-    
-    INCIDENCE_TYPES = [
-        {'value': 'customer_not_home', 'label': 'Cliente no estaba', 'icon': '🏠'},
-        {'value': 'wrong_address', 'label': 'Dirección incorrecta', 'icon': '📍'},
-        {'value': 'customer_cancelled', 'label': 'Cliente canceló', 'icon': '❌'},
-        {'value': 'product_rejected', 'label': 'Producto rechazado', 'icon': '📦'},
-        {'value': 'other', 'label': 'Otro', 'icon': '📝'},
-    ]
-    
+
+    order = get_object_or_404(
+        Order,
+        id=order_id,
+        assigned_delivery_user=request.user
+    )
+
     if request.method == 'POST':
-        incidence_type = request.POST.get('incidence_type')
-        comments = request.POST.get('comments', '')
+        incidence_type = request.POST.get('incidence_type', '').strip()
+        comments = request.POST.get('comments', '').strip()
         action = request.POST.get('action', 'report')
-        
-        if action == 'cancel':
-            messages.warning(request, f'Pedido #{order_id} cancelado. Motivo: {comments}')
-        else:
-            messages.info(request, f'Incidencia reportada para pedido #{order_id}')
-        
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return JsonResponse({
-                'success': True,
-                'message': 'Incidencia registrada correctamente',
-                'incidence_type': incidence_type,
-            })
-        
+
+        # Validar tipo de incidencia
+        if incidence_type not in _INCIDENCE_VALUES:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Tipo de incidencia inválido.'
+                }, status=400)
+            messages.error(request, 'Tipo de incidencia inválido.')
+            return redirect(DELIVERY_REGISTER_INCIDENCE, order_id=order_id)
+
+        type_label = next(
+            (t['label'] for t in INCIDENCE_TYPES if t['value'] == incidence_type),
+            incidence_type
+        )
+
+        incidence_data = {
+            'type': incidence_type,
+            'type_label': type_label,
+            'comments': comments,
+            'reported_by': request.user.id,
+            'reported_by_name': request.user.get_full_name() or request.user.username,
+            'reported_at': timezone.now().isoformat(),
+            'action_taken': action,
+        }
+
+        try:
+            if action == 'cancel':
+                reason = json.dumps(incidence_data, ensure_ascii=False)
+                order.cancel(reason, user=request.user)
+
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({
+                        'success': True,
+                        'message': f'Pedido {order.order_number} cancelado por: {type_label}',
+                        'order_number': order.order_number,
+                        'status': 'cancelado',
+                    })
+
+                messages.warning(request, f'Pedido {order.order_number} cancelado. Motivo: {type_label}')
+            else:
+                # Acumular incidencias en cancelled_reason como lista JSON
+                existing = []
+                if order.cancelled_reason:
+                    try:
+                        parsed = json.loads(order.cancelled_reason)
+                        existing = parsed if isinstance(parsed, list) else [parsed]
+                    except json.JSONDecodeError:
+                        pass
+
+                existing.append(incidence_data)
+                order.cancelled_reason = json.dumps(existing, ensure_ascii=False)
+                order.save(update_fields=['cancelled_reason', 'updated_at'])
+
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({
+                        'success': True,
+                        'message': f'Incidencia reportada: {type_label}',
+                        'order_number': order.order_number,
+                        'status': order.status,
+                    })
+
+                messages.info(request, f'Incidencia reportada para pedido {order.order_number}.')
+
+        except Exception as exc:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': False,
+                    'message': f'Error al procesar la incidencia: {exc}'
+                }, status=500)
+            messages.error(request, f'Error: {exc}')
+            return redirect(DELIVERY_REGISTER_INCIDENCE, order_id=order_id)
+
         return redirect(DELIVERY_ORDERS)
-    
+
     context = {
+        'order': order,
         'order_id': order_id,
         'incidence_types': INCIDENCE_TYPES,
-        'order_info': {
-            'order_number': f'ZCD-{order_id:04d}',
-            'customer_name': 'Cliente de prueba',
-            'total_amount': 78500,
-        },
         'back_url': reverse(DELIVERY_ORDER_DETAIL, args=[order_id]),
     }
-    
+
     return render(request, 'delivery/incidences/form.html', context)
 
 
 # =============================================================================
-# HU-036: VER RESUMEN DEL DÍA Y CIERRE DE JORNADA
+# HU-036: RESUMEN DEL DÍA Y CIERRE DE JORNADA
 # =============================================================================
+
+def _build_summary(user, today):
+    """
+    Construye el resumen del día para el repartidor.
+    Todos los pedidos son pre-pagados vía Stripe, por lo que
+    las métricas son de entrega, no de cobro.
+    """
+    # Pedidos entregados hoy (independientemente de cuándo fueron creados)
+    delivered_orders = Order.objects.filter(
+        assigned_delivery_user=user,
+        status='entregado',
+        updated_at__date=today
+    )
+
+    # Pedidos actualmente pendientes (en estado listo o en camino)
+    pending_orders = Order.objects.filter(
+        assigned_delivery_user=user,
+        status__in=['listo', 'en_camino']
+    )
+
+    # Pedidos con incidencias reportadas hoy (estatus cancelado, actualizados hoy, con cancelled_reason no vacía)
+    incidences_orders = Order.objects.filter(
+        assigned_delivery_user=user,
+        status='cancelado',
+        updated_at__date=today
+    ).exclude(
+        cancelled_reason=''
+    ).exclude(
+        cancelled_reason__isnull=True
+    )
+
+    total_delivered = delivered_orders.count()
+    pending_delivery = pending_orders.count()
+    total_today = total_delivered + pending_delivery + incidences_orders.count()
+
+    # Incidencias del día (guardadas en cancelled_reason como JSON)
+    incidences = []
+    for order in incidences_orders:
+        try:
+            data = json.loads(order.cancelled_reason)
+            entries = data if isinstance(data, list) else [data]
+            for inc in entries:
+                incidences.append({
+                    'order_id': order.id,
+                    'order_number': order.order_number,
+                    'type': inc.get('type_label', 'Desconocida'),
+                    'comments': inc.get('comments', ''),
+                    'reported_at': inc.get('reported_at', order.updated_at.isoformat()),
+                })
+        except json.JSONDecodeError:
+            continue
+
+    return {
+        'date': today.isoformat(),
+        'total_today': total_today,
+        'total_delivered': total_delivered,
+        'pending_delivery': pending_delivery,
+        'delivered_orders': [
+            {
+                'id': o.id,
+                'order_number': o.order_number,
+                'customer': o.customer_name,
+                'amount': float(o.total_amount),
+            }
+            for o in delivered_orders
+        ],
+        'incidences': incidences,
+    }
+
 
 @login_required
 def daily_summary(request):
     """Muestra el resumen del día para el entregador."""
-    if not getattr(request.user, 'is_delivery', False):
+    if not _is_delivery_user(request.user):
         return redirect(DELIVERY_LOGIN)
-    
-    today = date.today()
-    closed_summary = request.session.get(f'closed_summary_{today.isoformat()}')
-    
+
+    today = timezone.localdate()
+    session_key = f'closed_summary_{today.isoformat()}'
+    closed_summary = request.session.get(session_key)
+
     if closed_summary:
         summary = closed_summary
         is_closed = True
     else:
-        summary = {
-            'date': today.isoformat(),
-            'total_delivered': 8,
-            'total_paid': 5,
-            'total_amount': 785000,
-            'pending_payment': 3,
-            'pending_amount': 125000,
-            'delivered_orders': [
-                {'id': 1001, 'customer': 'María González', 'amount': 78500, 'paid': True},
-                {'id': 1002, 'customer': 'Carlos Rodríguez', 'amount': 125500, 'paid': True},
-                {'id': 1003, 'customer': 'Ana Martínez', 'amount': 45000, 'paid': False},
-                {'id': 1004, 'customer': 'Laura Sánchez', 'amount': 234000, 'paid': True},
-                {'id': 1005, 'customer': 'Pedro López', 'amount': 67000, 'paid': True},
-                {'id': 1006, 'customer': 'Sofia Ramírez', 'amount': 89000, 'paid': False},
-                {'id': 1007, 'customer': 'Juan Pérez', 'amount': 95000, 'paid': True},
-                {'id': 1008, 'customer': 'Diana Castro', 'amount': 56000, 'paid': False},
-            ],
-            'incidences': [
-                {'order_id': 1009, 'type': 'Cliente no estaba', 'comments': 'Intenté contactar 3 veces'},
-                {'order_id': 1010, 'type': 'Dirección incorrecta', 'comments': 'La dirección no existe'},
-            ]
-        }
+        summary = _build_summary(request.user, today)
         is_closed = False
-    
+
     context = {
         'summary': summary,
         'today': today,
@@ -472,147 +565,31 @@ def daily_summary(request):
         'close_url': reverse(DELIVERY_CLOSE_JOURNEY),
         'orders_url': reverse(DELIVERY_ORDERS),
     }
-    
+
     return render(request, 'delivery/summary/daily.html', context)
+
 
 @login_required
 @require_http_methods(["POST"])
 def close_journey(request):
-    """Cierra la jornada del entregador."""
-    if not getattr(request.user, 'is_delivery', False):
-        return JsonResponse({'error': 'No autorizado'}, status=403)
-    
-    today = date.today()
-    
-    summary = {
-        'date': today.isoformat(),
-        'total_delivered': 8,
-        'total_paid': 5,
-        'total_amount': 785000,
-        'pending_payment': 3,
-        'pending_amount': 125000,
-        'closed_at': timezone.now().isoformat(),
-        'closed_by': request.user.get_full_name() or request.user.username,
-    }
-    
-    request.session[f'closed_summary_{today.isoformat()}'] = summary
-    
-    messages.success(request, 'Jornada cerrada exitosamente. ¡Buen trabajo!')
-    
+    """Cierra la jornada del entregador guardando el resumen en sesión."""
+    if not _is_delivery_user(request.user):
+        return JsonResponse({'success': False, 'message': 'No autorizado'}, status=403)
+
+    today = timezone.localdate()
+    summary = _build_summary(request.user, today)
+    summary['closed_at'] = timezone.now().isoformat()
+    summary['closed_by'] = request.user.get_full_name() or request.user.username
+
+    session_key = f'closed_summary_{today.isoformat()}'
+    request.session[session_key] = summary
+
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return JsonResponse({
             'success': True,
-            'message': 'Jornada cerrada exitosamente',
+            'message': '¡Jornada cerrada exitosamente! Buen trabajo.',
             'summary': summary,
         })
-    
+
+    messages.success(request, '¡Jornada cerrada exitosamente! Buen trabajo.')
     return redirect(DELIVERY_DAILY_SUMMARY)
-
-
-# =============================================================================
-# API ENDPOINTS
-# =============================================================================
-
-@login_required
-def api_orders(request):
-    """API endpoint para obtener pedidos (para pull-to-refresh)."""
-    if not getattr(request.user, 'is_delivery', False):
-        return JsonResponse({'error': 'No autorizado'}, status=403)
-    
-    fake_orders = [
-        {
-            'id': 1001,
-            'order_number': 'ZCD-0001',
-            'customer_name': 'María González',
-            'shipping_address': 'Calle 123 #45-67, Bogotá',
-            'total_amount': 78500,
-            'is_paid': False,
-            'status': 'listo',
-            'detail_url': reverse(DELIVERY_ORDER_DETAIL, args=[1001]),
-            'mark_paid_url': reverse(DELIVERY_API_MARK_PAID, args=[1001]),
-        },
-        {
-            'id': 1002,
-            'order_number': 'ZCD-0002',
-            'customer_name': 'Carlos Rodríguez',
-            'shipping_address': 'Carrera 89 #12-34, Bogotá',
-            'total_amount': 125500,
-            'is_paid': True,
-            'status': 'en_camino',
-            'detail_url': reverse(DELIVERY_ORDER_DETAIL, args=[1002]),
-            'mark_paid_url': reverse(DELIVERY_API_MARK_PAID, args=[1002]),
-        },
-    ]
-    
-    return JsonResponse({
-        'success': True,
-        'orders': fake_orders,
-        'last_update': timezone.now().isoformat(),
-    })
-
-@login_required
-@csrf_exempt
-@require_http_methods(["POST"])
-def api_mark_paid(request, order_id):
-    """API endpoint para marcar pedido como pagado desde JS."""
-    if not getattr(request.user, 'is_delivery', False):
-        return JsonResponse({'error': 'No autorizado'}, status=403)
-    
-    try:
-        data = json.loads(request.body) if request.body else {}
-        
-        return JsonResponse({
-            'success': True,
-            'message': f'Pedido #{order_id} marcado como pagado',
-            'order_id': order_id,
-            'paid_at': timezone.now().isoformat(),
-            'redirect_url': reverse(DELIVERY_ORDER_DETAIL, args=[order_id]),
-        })
-    except json.JSONDecodeError:
-        return JsonResponse({'error': 'Datos inválidos'}, status=400)
-
-@login_required
-@csrf_exempt
-@require_http_methods(["POST"])
-def api_create_incidence(request):
-    """API endpoint para crear incidencias desde JS."""
-    if not getattr(request.user, 'is_delivery', False):
-        return JsonResponse({'error': 'No autorizado'}, status=403)
-    
-    try:
-        data = json.loads(request.body)
-        order_id = data.get('order_id')
-        incidence_type = data.get('incidence_type')
-        comments = data.get('comments', '')
-        
-        return JsonResponse({
-            'success': True,
-            'message': 'Incidencia registrada correctamente',
-            'incidence': {
-                'id': 999,
-                'order_id': order_id,
-                'type': incidence_type,
-                'comments': comments,
-                'created_at': timezone.now().isoformat(),
-            },
-            'redirect_url': reverse(DELIVERY_ORDERS),
-        })
-    except json.JSONDecodeError:
-        return JsonResponse({'error': 'Datos inválidos'}, status=400)
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
-
-
-# =============================================================================
-# HEALTH CHECK PARA RAILWAY/RENDER
-# =============================================================================
-
-@require_safe
-def health_check(request):
-    """Endpoint de health check para despliegue."""
-    return JsonResponse({
-        'status': 'ok',
-        'timestamp': timezone.now().isoformat(),
-        'app': 'Zicada Delivery PWA',
-        'version': '1.0.0'
-    })
