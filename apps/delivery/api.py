@@ -30,50 +30,33 @@ class DeliveryOrdersAPIView(APIView):
     
     def get(self, request):
         user = request.user
-        today = date.today()
-        
-        # Obtener pedidos asignados al usuario en estados activos
+        today = timezone.localdate()
+
+        # Obtener pedidos asignados al usuario que:
+        # 1. Están pendientes activos (listo o en camino)
+        # O 2. Fueron completados o cancelados hoy (acción realizada hoy)
+        from django.db.models import Q
         orders = Order.objects.filter(
-            assigned_delivery_user=user,
-            status__in=['listo', 'en_camino']
-        ).exclude(
-            status='entregado'
+            Q(assigned_delivery_user=user) &
+            (Q(status__in=['listo', 'en_camino']) | Q(status__in=['entregado', 'cancelado'], updated_at__date=today))
         ).order_by('-created_at')
-        
-        # Filtrar por fecha de creación (pedidos de hoy)
-        orders_today = orders.filter(
-            created_at__date=today
-        )
-        
-        # Si no hay pedidos de hoy, mostrar todos los pendientes
-        if not orders_today.exists():
-            orders = orders
-        else:
-            orders = orders_today
-        
-        # Aplicar filtros desde query params
+
+        # Filtros enviados por el frontend
         filter_param = request.query_params.get('filter', 'all')
-        
+
         if filter_param == 'pending':
-            orders = orders.filter(is_paid=False)
+            # Por entregar (listo o en camino)
+            orders = orders.filter(status__in=['listo', 'en_camino'])
         elif filter_param == 'completed':
-            orders = orders.filter(is_paid=True)
-        
+            # Entregados hoy
+            orders = orders.filter(status='entregado')
+
         serializer = OrderListSerializer(orders, many=True)
-        
+
         return Response({
             'success': True,
             'count': orders.count(),
             'orders': serializer.data,
-            'filters': {
-                'all': OrderListSerializer(orders, many=True).data,
-                'pending': OrderListSerializer(
-                    orders.filter(is_paid=False), many=True
-                ).data,
-                'completed': OrderListSerializer(
-                    orders.filter(is_paid=True), many=True
-                ).data,
-            },
             'last_update': timezone.now().isoformat(),
         })
 
@@ -118,7 +101,7 @@ class DeliveryOrderDetailAPIView(APIView):
             'order': serializer.data,
             'incidence': incidence,
             'actions': {
-                'can_mark_paid': not order.is_paid and order.status != 'entregado',
+                'can_confirm_delivery': order.status == 'en_camino',
                 'can_report_incidence': order.status not in ['entregado', 'cancelado'],
                 'can_cancel': order.status not in ['entregado', 'cancelado'],
             }
@@ -127,14 +110,16 @@ class DeliveryOrderDetailAPIView(APIView):
 
 class DeliveryMarkAsPaidAPIView(APIView):
     """
-    HU-034: Marcar pedido como pagado
+    HU-034: Confirmar entrega de un pedido
+    Todos los pedidos son pre-pagados vía Stripe.
+    El repartidor solo confirma la entrega física.
     POST /api/delivery/orders/<int:order_id>/mark-paid/
     """
     permission_classes = [IsAuthenticated, IsDeliveryUser]
-    
+
     def post(self, request, order_id):
         user = request.user
-        
+
         try:
             order = Order.objects.get(
                 id=order_id,
@@ -145,50 +130,40 @@ class DeliveryMarkAsPaidAPIView(APIView):
                 'success': False,
                 'message': 'Pedido no encontrado o no asignado a ti'
             }, status=status.HTTP_404_NOT_FOUND)
-        
-        # Validar que el pedido no esté ya pagado
-        if order.is_paid:
+
+        if order.status == 'entregado':
             return Response({
                 'success': False,
-                'message': 'Este pedido ya fue marcado como pagado'
+                'message': 'Este pedido ya fue confirmado como entregado.'
             }, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Validar que el pedido esté en camino
+
         if order.status != 'en_camino':
             return Response({
                 'success': False,
-                'message': f'Solo se puede marcar como pagado pedidos "En camino". Estado actual: {order.get_status_display()}'
+                'message': f'Solo puedes confirmar entregas en estado "En camino". '
+                           f'Estado actual: {order.get_status_display()}'
             }, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Validar datos
-        serializer = MarkAsPaidSerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response({
-                'success': False,
-                'errors': serializer.errors
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Marcar como pagado
+
         try:
-            order.is_paid = True
-            order.save(update_fields=['is_paid', 'updated_at'])
-            order.updated_by = user
-            order.save(update_fields=['updated_by'])
-            
-            logger.info(f"Pedido {order.order_number} marcado como pagado por {user.username}")
-            
+            order.mark_as_delivered(user=user)
+
+            logger.info(
+                "Pedido %s confirmado como entregado por %s",
+                order.order_number, user.username
+            )
+
             return Response({
                 'success': True,
-                'message': f'Pedido {order.order_number} marcado como pagado',
+                'message': f'Pedido {order.order_number} confirmado como entregado.',
                 'order_id': order.id,
                 'order_number': order.order_number,
-                'paid_at': timezone.now().isoformat(),
+                'delivered_at': timezone.now().isoformat(),
             })
-        except Exception as e:
-            logger.error(f"Error al marcar pedido {order.id} como pagado: {str(e)}")
+        except Exception as exc:
+            logger.error("Error al confirmar entrega del pedido %s: %s", order.id, exc)
             return Response({
                 'success': False,
-                'message': 'Error al procesar el pago'
+                'message': 'Error al confirmar la entrega.'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -314,45 +289,49 @@ class DeliverySummaryAPIView(APIView):
     
     def get(self, request):
         user = request.user
-        today = date.today()
+        today = timezone.localdate()
         
-        # Pedidos del día
-        orders = Order.objects.filter(
+        # Pedidos entregados hoy (independientemente de cuándo fueron creados)
+        delivered_orders = Order.objects.filter(
             assigned_delivery_user=user,
-            created_at__date=today
+            status='entregado',
+            updated_at__date=today
         )
-        
-        delivered_orders = orders.filter(status='entregado')
         total_delivered = delivered_orders.count()
-        total_paid = delivered_orders.filter(is_paid=True).count()
         total_amount = delivered_orders.aggregate(total=models.Sum('total_amount'))['total'] or 0
         
-        pending_payment = orders.filter(is_paid=False, status__in=['listo', 'en_camino']).count()
-        pending_amount = orders.filter(is_paid=False, status__in=['listo', 'en_camino']).aggregate(
-            total=models.Sum('total_amount')
-        )['total'] or 0
+        # Pedidos actualmente pendientes (en estado listo o en camino)
+        pending_orders = Order.objects.filter(
+            assigned_delivery_user=user,
+            status__in=['listo', 'en_camino']
+        )
+        pending_count = pending_orders.count()
+        pending_amount = pending_orders.aggregate(total=models.Sum('total_amount'))['total'] or 0
+        
+        # Pedidos con incidencias reportadas hoy (estatus cancelado, actualizados hoy, con cancelled_reason no vacía)
+        incidences_orders = Order.objects.filter(
+            assigned_delivery_user=user,
+            status='cancelado',
+            updated_at__date=today
+        ).exclude(
+            cancelled_reason=''
+        ).exclude(
+            cancelled_reason__isnull=True
+        )
         
         # Incidencias del día
         incidences = []
-        for order in orders.filter(cancelled_reason__isnull=False).exclude(cancelled_reason=''):
+        for order in incidences_orders:
             try:
                 data = json.loads(order.cancelled_reason)
-                if isinstance(data, list):
-                    for inc in data:
-                        incidences.append({
-                            'order_id': order.id,
-                            'order_number': order.order_number,
-                            'type': inc.get('type_label', 'Desconocida'),
-                            'comments': inc.get('comments', ''),
-                            'reported_at': inc.get('reported_at', order.updated_at.isoformat()),
-                        })
-                elif isinstance(data, dict):
+                entries = data if isinstance(data, list) else [data]
+                for inc in entries:
                     incidences.append({
                         'order_id': order.id,
                         'order_number': order.order_number,
-                        'type': data.get('type_label', 'Desconocida'),
-                        'comments': data.get('comments', ''),
-                        'reported_at': data.get('reported_at', order.updated_at.isoformat()),
+                        'type': inc.get('type_label', 'Desconocida'),
+                        'comments': inc.get('comments', ''),
+                        'reported_at': inc.get('reported_at', order.updated_at.isoformat()),
                     })
             except json.JSONDecodeError:
                 continue
@@ -360,17 +339,18 @@ class DeliverySummaryAPIView(APIView):
         summary = {
             'date': today.isoformat(),
             'total_delivered': total_delivered,
-            'total_paid': total_paid,
-            'total_amount': total_amount,
-            'pending_payment': pending_payment,
-            'pending_amount': pending_amount,
+            'total_paid': total_delivered,  # Todos los entregados se asumen pagados (pre-pagados)
+            'total_amount': float(total_amount),
+            'pending_payment': 0,  # No hay cobro contra entrega
+            'pending_delivery': pending_count,
+            'pending_amount': float(pending_amount),
             'delivered_orders': [
                 {
                     'id': order.id,
                     'order_number': order.order_number,
                     'customer': order.customer_name,
-                    'amount': order.total_amount,
-                    'paid': order.is_paid,
+                    'amount': float(order.total_amount),
+                    'paid': True,
                 }
                 for order in delivered_orders
             ],
