@@ -7,6 +7,41 @@
 {% block header %}{% include 'delivery/components/header_dashboard.html' %}{% endblock %}
 
 {% block content %}
+<!-- Install Banner for Android/Chrome/Edge -->
+<div id="pwa-install-banner" class="hidden bg-gradient-to-r from-red-600 via-neutral-900 to-black text-white rounded-xl p-4 mb-6 shadow-md relative overflow-hidden transition-all duration-300">
+    <div class="flex items-center justify-between relative z-10">
+        <div class="flex items-center gap-3">
+            <div class="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center backdrop-blur-md">
+                <i class="fas fa-mobile-alt text-xl text-white"></i>
+            </div>
+            <div>
+                <h3 class="font-bold text-sm">Instalar Zicada Delivery</h3>
+                <p class="text-xs text-gray-200">Accede más rápido y recibe notificaciones</p>
+            </div>
+        </div>
+        <button id="pwa-install-btn" class="bg-white text-black px-4 py-2 rounded-lg text-xs font-semibold hover:bg-gray-100 transition-colors shadow-sm">
+            Instalar
+        </button>
+    </div>
+    <div class="absolute -right-6 -bottom-6 w-24 h-24 bg-white/5 rounded-full blur-xl"></div>
+</div>
+
+<!-- Install Banner for iOS Safari -->
+<div id="pwa-ios-install-banner" class="hidden bg-gradient-to-r from-red-600 via-neutral-900 to-black text-white rounded-xl p-4 mb-6 shadow-md relative overflow-hidden transition-all duration-300">
+    <div class="flex items-start gap-3 relative z-10">
+        <div class="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center backdrop-blur-md shrink-0">
+            <i class="fab fa-apple text-xl text-white"></i>
+        </div>
+        <div>
+            <h3 class="font-bold text-sm">Instalar en tu iPhone/iPad</h3>
+            <p class="text-xs text-gray-200 mt-1">
+                Toca el botón Compartir <span class="bg-white/20 px-1.5 py-0.5 rounded"><i class="fas fa-share-square"></i></span> en Safari y selecciona <strong>"Agregar a inicio"</strong>.
+            </p>
+        </div>
+    </div>
+    <div class="absolute -right-6 -bottom-6 w-24 h-24 bg-white/5 rounded-full blur-xl"></div>
+</div>
+
 <div class="stats-grid grid grid-cols-2 gap-4 mb-8">
     {% include 'delivery/components/stat_card.html' with icon="fa-truck" bg_color="bg-gray-100" icon_color="text-gray-600" value=today_orders_count label="Pedidos Hoy" %}
     {% include 'delivery/components/stat_card.html' with icon="fa-clock" bg_color="bg-orange-100" icon_color="text-orange-600" value=pending_orders label="Por Entregar" %}
