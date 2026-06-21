@@ -671,12 +671,11 @@ class ProductCreateForm(FormStyleMixin, forms.ModelForm):
     """
     class Meta:
         model = Product
-        fields = ['name', 'description', 'price', 'product_type', 'category']
+        fields = ['name', 'description', 'price', 'category']
         widgets = {
             'name': forms.TextInput(),
             'description': forms.Textarea(attrs={'rows': 4}),
             'price': forms.NumberInput(attrs={'min': 0, 'step': 100}),
-            'product_type': forms.Select(),
             'category': forms.Select(),
         }
     
@@ -730,12 +729,11 @@ class ProductUpdateForm(FormStyleMixin, forms.ModelForm):
     """
     class Meta:
         model = Product
-        fields = ['name', 'description', 'price', 'product_type', 'category']
+        fields = ['name', 'description', 'price', 'category']
         widgets = {
             'name': forms.TextInput(),
             'description': forms.Textarea(attrs={'rows': 4}),
             'price': forms.NumberInput(attrs={'min': 0, 'step': 100}),
-            'product_type': forms.Select(),
             'category': forms.Select(),
         }
     
