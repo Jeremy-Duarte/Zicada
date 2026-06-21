@@ -15,6 +15,36 @@ SECRET_KEY = env('DJANGO_SECRET_KEY')
 DEBUG = env.bool('DJANGO_DEBUG', default=False)
 ALLOWED_HOSTS = env.list('DJANGO_ALLOWED_HOSTS', default=['localhost', '127.0.0.1'])
 
+# =============================================================================
+# SEGURIDAD HTTP — solo activo en producción (DEBUG=False)
+# En desarrollo local estas configuraciones permanecen desactivadas.
+# Referencia: https://docs.djangoproject.com/en/stable/topics/security/
+# =============================================================================
+
+# Redirigir todas las peticiones HTTP a HTTPS
+SECURE_SSL_REDIRECT = env.bool('SECURE_SSL_REDIRECT', default=not DEBUG)
+
+# Protección contra ataques de sesión por red
+SESSION_COOKIE_SECURE = env.bool('SESSION_COOKIE_SECURE', default=not DEBUG)
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = 'Lax'
+
+# CSRF solo sobre HTTPS
+CSRF_COOKIE_SECURE = env.bool('CSRF_COOKIE_SECURE', default=not DEBUG)
+CSRF_COOKIE_HTTPONLY = True
+CSRF_COOKIE_SAMESITE = 'Lax'
+
+# HTTP Strict Transport Security (HSTS)
+# 1 año en producción; 0 en desarrollo para no bloquear HTTP local
+SECURE_HSTS_SECONDS = env.int('SECURE_HSTS_SECONDS', default=0 if DEBUG else 31536000)
+SECURE_HSTS_INCLUDE_SUBDOMAINS = env.bool('SECURE_HSTS_INCLUDE_SUBDOMAINS', default=not DEBUG)
+SECURE_HSTS_PRELOAD = env.bool('SECURE_HSTS_PRELOAD', default=not DEBUG)
+
+# Protección adicional de cabeceras
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_BROWSER_XSS_FILTER = True
+X_FRAME_OPTIONS = 'DENY'
+
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -24,6 +54,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     # Vendor Apps
     'rest_framework',
+    'django.contrib.humanize',
     'cloudinary',
     'cloudinary_storage',
     'django_crontab',
@@ -33,6 +64,7 @@ INSTALLED_APPS = [
     'apps.products',
     'apps.orders',
     'apps.backoffice',
+    'apps.delivery',
 ]
 
 MIDDLEWARE = [
@@ -161,3 +193,42 @@ CRONTAB_DJANGO_SETTINGS_MODULE = 'config.settings'
 STRIPE_PUBLISHABLE_KEY= env("STRIPE_PUBLISHABLE_KEY")
 STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY")
 STRIPE_WEBHOOK_KEY= env("STRIPE_WEBHOOK_KEY")
+
+# PWA Metadata
+PWA_NAME = "Zicada Delivery"
+PWA_SHORT_NAME = "Zicada"
+PWA_DESCRIPTION = "App de entregas para repartidores Zicada"
+PWA_START_URL = "/delivery/login/"
+PWA_DISPLAY = "standalone"
+PWA_THEME_COLOR = "#000000"
+PWA_BACKGROUND_COLOR = "#ffffff"
+PWA_ORIENTATION = "portrait"
+PWA_SCOPE = "/delivery/"
+
+# Icons PWA
+PWA_ICONS = {
+    "72": "delivery/icons/icon-72x72.png",
+    "96": "delivery/icons/icon-96x96.png",
+    "128": "delivery/icons/icon-128x128.png",
+    "144": "delivery/icons/icon-144x144.png",
+    "152": "delivery/icons/icon-152x152.png",
+    "192": "delivery/icons/icon-192x192.png",
+    "384": "delivery/icons/icon-384x384.png",
+    "512": "delivery/icons/icon-512x512.png",
+}
+
+# Service Worker Cache
+SW_CACHE_NAME = "zicada-delivery-v1.1.2"
+PWA_VERSION = "1.1.2"
+SW_PRECACHE_URLS = [
+    "/delivery/login/",
+    "/delivery/dashboard/",
+    "/delivery/orders/",
+    "/delivery/summary/",
+    "/static/css/delivery/main.css",
+    "/static/js/delivery/base.js",
+    "/static/js/delivery/orders.js",
+]
+
+# Offline fallback
+OFFLINE_PAGE = "/delivery/offline/"

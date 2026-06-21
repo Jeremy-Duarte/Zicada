@@ -1,0 +1,213 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#000000">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
+    <title>{% block title %}Zicada Delivery{% endblock %}</title>
+    
+    <!-- Skip navigation link for accessibility -->
+    <style>
+        .skip-link {
+            position: absolute;
+            top: -40px;
+            left: 0;
+            background: #000;
+            color: white;
+            padding: 8px;
+            text-decoration: none;
+            z-index: 100;
+        }
+        .skip-link:focus {
+            top: 0;
+        }
+    </style>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="{% url 'delivery:pwa_manifest' %}">
+    
+    <!-- Tailwind + Font Awesome -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#000000',
+                        secondary: '#1a1a1a',
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{% static 'css/delivery/main.css' %}">
+
+    <script>
+        // Configuración global de la aplicación
+        window.ZICADA = window.ZICADA || {};
+        
+        window.ZICADA.URLS = {
+            serviceWorker: "{% url 'delivery:service_worker' %}",
+            manifest: "{% url 'delivery:pwa_manifest' %}",
+            offline: "{% url 'delivery:offline' %}",
+            apiBase: "/delivery/api",
+            login: "{% url 'delivery:login' %}",
+            dashboard: "{% url 'delivery:dashboard' %}",
+            orders: "{% url 'delivery:orders' %}",
+            summary: "{% url 'delivery:summary' %}",
+            logout: "{% url 'delivery:logout' %}",
+        };
+        
+        // Configuración del usuario
+        window.ZICADA.CONFIG = {
+            csrfToken: "{{ csrf_token }}",
+            userId: {{ user.id|default:'null' }},
+            isAuthenticated: {{ user.is_authenticated|yesno:"true,false" }},
+            isDelivery: {{ user.is_delivery|yesno:"true,false" }},
+            userFullName: "{{ user.get_full_name|default:'' }}",
+            userName: "{{ user.username|default:'' }}",
+        };
+        
+        // Configuración de la aplicación
+        window.ZICADA.SETTINGS = {
+            refreshInterval: 30000, // 30 segundos
+            version: "1.1.0",
+            environment: "{{ settings.DEBUG|yesno:'development,production' }}",
+        };
+        
+        console.log('ZICADA configurado:', window.ZICADA);
+    </script>
+    
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="bg-gray-50">
+    <!-- Skip to main content link -->
+    <a href="#main-content" class="skip-link">Saltar al contenido principal</a>
+    
+    <!-- Componentes globales -->
+    {% include 'delivery/components/offline_indicator.html' %}
+    
+    <div class="flex flex-col h-screen">
+        {% block header %}{% endblock %}
+        
+        <main id="main-content" class="flex-1 overflow-y-auto pb-24" tabindex="-1">
+            <div class="container mx-auto px-4 py-4">
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+        
+        {% block bottom_nav %}{% include 'delivery/components/bottom_nav.html' %}{% endblock %}
+    </div>
+    
+    <!-- ============================================================ -->
+    <!-- REGISTRO DEL SERVICE WORKER                                  -->
+    <!-- ============================================================ -->
+    <script>
+        (function registerServiceWorker() {
+            if (!('serviceWorker' in navigator)) {
+                console.warn('Service Worker no soportado en este navegador');
+                return;
+            }
+            
+            // Obtener URL del Service Worker desde la configuración global
+            var swUrl = window.ZICADA?.URLS?.serviceWorker;
+            
+            if (!swUrl) {
+                console.error('URL del Service Worker no configurada en window.ZICADA.URLS.serviceWorker');
+                return;
+            }
+            
+            console.log('Registrando Service Worker en:', swUrl);
+            
+            // Registrar el Service Worker con scope /delivery/
+            navigator.serviceWorker.register(swUrl, { scope: '/delivery/' })
+                .then(function(registration) {
+                    console.log('✅ Service Worker registrado con éxito:', registration.scope);
+                    
+                    // Enviar configuración al SW para que inicialice la caché
+                    fetch('/delivery/sw-config.json')
+                        .then(function(res) { return res.json(); })
+                        .then(function(config) {
+                            config.type = 'CONFIG';
+                            var sw = registration.active || registration.installing || registration.waiting;
+                            if (sw) {
+                                sw.postMessage(config);
+                            }
+                        })
+                        .catch(function(err) { console.error('Error fetching SW config', err); });
+                    
+                    // Verificar actualizaciones
+                    registration.update();
+                    
+                    // Escuchar cambios en el Service Worker
+                    registration.addEventListener('updatefound', function() {
+                        var newSW = registration.installing;
+                        console.log('🔄 Nuevo Service Worker encontrado');
+                        
+                        newSW.addEventListener('statechange', function() {
+                            if (newSW.state === 'activated') {
+                                console.log('✅ Nuevo Service Worker activado');
+                                // Notificar al usuario para recargar
+                                if (window.showToast) {
+                                    window.showToast('Nueva versión disponible. Recargando...', 'info');
+                                }
+                                setTimeout(function() {
+                                    window.location.reload();
+                                }, 2000);
+                            }
+                        });
+                    });
+                })
+                .catch(function(error) {
+                    console.error('❌ Error al registrar Service Worker:', error);
+                });
+            
+            // Escuchar mensajes del Service Worker
+            navigator.serviceWorker.addEventListener('message', function(event) {
+                var data = event.data;
+                
+                if (data && data.type === 'SYNC_COMPLETE') {
+                    console.log('📡 Sincronización completada:', data.timestamp);
+                    if (window.showToast) {
+                        window.showToast('Datos sincronizados con el servidor', 'success');
+                    }
+                }
+            });
+            
+            // Recargar automáticamente cuando el Service Worker tome control
+            var isRefreshing = false;
+            navigator.serviceWorker.addEventListener('controllerchange', function() {
+                if (isRefreshing) {
+                    return;
+                }
+                isRefreshing = true;
+                console.log('🔄 Service Worker actualizado, recargando página...');
+                window.location.reload();
+            });
+            
+            // Verificar si hay una nueva versión cada hora
+            setInterval(function() {
+                if (navigator.serviceWorker.controller) {
+                    navigator.serviceWorker.controller.postMessage({
+                        type: 'CHECK_UPDATE'
+                    });
+                }
+            }, 60 * 60 * 1000); // Cada hora
+            
+        })();
+    </script>
+    
+    <!-- JavaScript base común -->
+    <script src="{% static 'js/delivery/base.js' %}"></script>
+    
+    <!-- JavaScript específico de cada página -->
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

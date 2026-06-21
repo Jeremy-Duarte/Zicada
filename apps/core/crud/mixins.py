@@ -9,7 +9,7 @@ from django.contrib.auth.mixins import PermissionRequiredMixin as BasePermission
 from django.urls import reverse
 from django.core.exceptions import ImproperlyConfigured
 
-from apps.core.url_names import CORE_STAFF_LOGIN, PRODUCTS_CATALOG, BACKOFFICE_DASHBOARD
+from apps.core.url_names import CORE_STAFF_LOGIN, PRODUCTS_CATALOG, DELIVERY_LOGIN
 
 import json
 
@@ -367,6 +367,8 @@ class StaffPermissionRequiredMixin(BasePermissionRequiredMixin):
             user.groups.filter(name='Administrador').exists()
         )
         
+        if self.request.user.groups.filter(name='Entregador').exists():
+            return redirect(reverse(DELIVERY_LOGIN))
         if not is_admin:
             messages.error(self.request, self.permission_denied_message)
             return redirect(reverse(PRODUCTS_CATALOG))

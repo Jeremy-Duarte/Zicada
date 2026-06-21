@@ -1,0 +1,32 @@
+/* Transiciones y efectos */
+.card-hover {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.card-hover:active {
+    transform: scale(0.98);
+}
+
+.modal {
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+.modal.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Mejoras de accesibilidad */
+button:focus-visible,
+a:focus-visible {
+    outline: 2px solid #000;
+    outline-offset: 2px;
+}
+
+/* Pull-to-refresh */
+.pull-indicator {
+    transition: transform 0.3s ease;
+}
+
+/* Scroll suave */
+* {
+    -webkit-tap-highlight-color: transparent;
+}

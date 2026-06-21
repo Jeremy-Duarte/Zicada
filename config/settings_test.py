@@ -13,6 +13,14 @@ SECRET_KEY = 'django-insecure-test-key-for-ci-only-2024'
 DEBUG = False
 ALLOWED_HOSTS = ['*']
 
+# Seguridad HTTPS — desactivada en tests para que el cliente de prueba funcione sin SSL
+SECURE_SSL_REDIRECT = False
+SESSION_COOKIE_SECURE = False
+CSRF_COOKIE_SECURE = False
+SECURE_HSTS_SECONDS = 0
+SECURE_HSTS_INCLUDE_SUBDOMAINS = False
+SECURE_HSTS_PRELOAD = False
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',

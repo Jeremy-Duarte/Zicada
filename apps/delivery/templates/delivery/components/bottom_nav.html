@@ -1,0 +1,22 @@
+<nav class="bg-white border-t border-gray-200 fixed bottom-0 left-0 right-0 z-40" aria-label="Navegación principal">
+    <div class="flex justify-around py-2">
+        <a href="{% url 'delivery:dashboard' %}" 
+           class="flex flex-col items-center px-4 py-1 text-gray-500 hover:text-black transition focus:outline-none focus:ring-2 focus:ring-black rounded-lg"
+           aria-label="Ir al inicio">
+            <i class="fas fa-home text-xl" aria-hidden="true"></i>
+            <span class="text-xs mt-1">Inicio</span>
+        </a>
+        <a href="{% url 'delivery:orders' %}" 
+           class="flex flex-col items-center px-4 py-1 text-gray-500 hover:text-black transition focus:outline-none focus:ring-2 focus:ring-black rounded-lg"
+           aria-label="Ver mis pedidos">
+            <i class="fas fa-truck text-xl" aria-hidden="true"></i>
+            <span class="text-xs mt-1">Pedidos</span>
+        </a>
+        <a href="{% url 'delivery:summary' %}" 
+           class="flex flex-col items-center px-4 py-1 text-gray-500 hover:text-black transition focus:outline-none focus:ring-2 focus:ring-black rounded-lg"
+           aria-label="Ver resumen del día">
+            <i class="fas fa-chart-bar text-xl" aria-hidden="true"></i>
+            <span class="text-xs mt-1">Resumen</span>
+        </a>
+    </div>
+</nav>

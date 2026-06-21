@@ -1,0 +1,114 @@
+{% extends 'delivery/base_pwa.html' %}
+{% load humanize %}
+{% load static %}
+
+{% block title %}Resumen del Día - Zicada Delivery{% endblock %}
+
+{% block extra_head %}
+<meta name="journey-closed" content="{% if is_closed %}true{% else %}false{% endif %}">
+{% endblock %}
+
+{% block header %}
+{% include 'delivery/components/header_simple.html' with page_title="Resumen del Día" page_subtitle=today|date:"l, j \d\e F \d\e Y" hide_refresh=is_closed %}
+{% endblock %}
+
+{% block content %}
+{% if is_closed %}
+<div class="bg-green-50 border border-green-200 rounded-xl p-6 text-center mb-6">
+    <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+        <i class="fas fa-check-circle text-green-600 text-2xl"></i>
+    </div>
+    <h3 class="text-lg font-bold text-green-800">Jornada Cerrada</h3>
+    <p class="text-sm text-green-700 mt-1">
+        Cerrada por {{ summary.closed_by }} a las
+        {% if summary.closed_at %}{{ summary.closed_at|slice:":16"|cut:"T" }}{% endif %}
+    </p>
+</div>
+{% endif %}
+
+{# Estadísticas de entrega — no de pago, ya que todos son pre-pagados #}
+<div class="grid grid-cols-2 gap-4 mb-6">
+    {% include 'delivery/components/stat_card.html' with icon="fa-truck" bg_color="bg-blue-100" icon_color="text-blue-600" value=summary.total_delivered label="Entregados" %}
+    {% include 'delivery/components/stat_card.html' with icon="fa-clock" bg_color="bg-yellow-100" icon_color="text-yellow-600" value=summary.pending_delivery label="Pendientes" %}
+</div>
+
+{# Total de pedidos gestionados #}
+<div class="bg-gradient-to-r from-gray-900 to-black rounded-xl p-6 text-white mb-6 shadow-lg">
+    <p class="text-sm opacity-75 mb-1">Pedidos gestionados hoy</p>
+    <p class="text-3xl font-bold">{{ summary.total_today }}</p>
+    <p class="text-xs opacity-60 mt-2">
+        <i class="fas fa-shield-alt mr-1"></i>
+        Todos los pagos verificados vía pasarela
+    </p>
+</div>
+
+{% if summary.delivered_orders %}
+<div class="bg-white rounded-xl overflow-hidden mb-6">
+    <div class="bg-gray-50 px-4 py-3 border-b">
+        <h2 class="font-semibold">
+            <i class="fas fa-list-check mr-2"></i>Pedidos Entregados
+        </h2>
+    </div>
+    {% for order in summary.delivered_orders %}
+    <div class="p-4 border-b last:border-b-0">
+        <div class="flex justify-between items-center">
+            <div>
+                <p class="font-medium text-gray-900">{{ order.customer }}</p>
+                <p class="text-sm text-gray-500">{{ order.order_number }}</p>
+            </div>
+            <div class="text-right">
+                <p class="font-semibold text-gray-900">${{ order.amount|floatformat:0|intcomma }}</p>
+                <span class="inline-flex items-center text-xs text-green-600">
+                    <i class="fas fa-check-circle mr-1"></i> Entregado
+                </span>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% if summary.incidences %}
+<div class="bg-white rounded-xl overflow-hidden mb-6">
+    <div class="bg-gray-50 px-4 py-3 border-b">
+        <h2 class="font-semibold text-gray-900">
+            <i class="fas fa-exclamation-triangle mr-2 text-red-500"></i>Incidencias
+        </h2>
+    </div>
+    {% for inc in summary.incidences %}
+    <div class="p-4 border-b last:border-b-0">
+        <div class="flex items-start">
+            <div class="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
+                <i class="fas fa-flag text-red-600 text-sm"></i>
+            </div>
+            <div>
+                <p class="font-medium text-gray-900">{{ inc.order_number }}</p>
+                <p class="text-sm text-red-700 font-medium">{{ inc.type }}</p>
+                {% if inc.comments %}
+                <p class="text-sm text-gray-600 mt-0.5">{{ inc.comments }}</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% if can_close %}
+<div class="pb-6">
+    <button type="button"
+            id="closeJourneyBtn"
+            data-close-url="{{ close_url }}"
+            class="w-full bg-black text-white py-3 rounded-xl font-semibold hover:bg-gray-900 transition-colors focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2">
+        <i class="fas fa-flag-checkered mr-2"></i>
+        Cerrar Jornada del Día
+    </button>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block bottom_nav %}{% include 'delivery/components/bottom_nav.html' %}{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/delivery/summary.js' %}"></script>
+{% endblock %}
