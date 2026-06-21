@@ -69,7 +69,7 @@
     </a>
 </div>
 
-{% if request.user.is_staff or request.user.groups.filter(name='Administrador').exists %}
+{% if is_admin %}
 <div class="mt-6">
     <a href="{% url 'backoffice:dashboard' %}" class="flex items-center justify-center gap-2 bg-gray-100 text-gray-800 rounded-xl p-3 border border-gray-300 text-center card-hover shadow-sm font-medium text-sm">
         <i class="fas fa-sliders-h"></i>

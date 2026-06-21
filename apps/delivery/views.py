@@ -248,6 +248,7 @@ def dashboard(request):
         'orders_url': reverse(DELIVERY_ORDERS),
         'summary_url': reverse(DELIVERY_DAILY_SUMMARY),
         'logout_url': reverse('delivery:logout'),
+        'is_admin': user.is_staff or user.groups.filter(name='Administrador').exists(),
     }
 
     return render(request, 'delivery/dashboard.html', context)
