@@ -122,12 +122,12 @@ class HeroConfig(BaseAuditModel):
         help_text='Opacidad del overlay oscuro (0 = transparente, 1 = negro total).'
     )    
     title_text = models.CharField(
-        max_length=200,
+        max_length=255,
         default='ZICADA',
         verbose_name='Texto del título'
     )
     title_font_family = models.CharField(
-        max_length=100,
+        max_length=255,
         default="'Inter', sans-serif",
         verbose_name='Fuente del título (CSS)'
     )
@@ -157,12 +157,12 @@ class HeroConfig(BaseAuditModel):
         verbose_name='Margen inferior'
     )    
     subtitle_text = models.CharField(
-        max_length=300,
+        max_length=500,
         default='LA MODA SE VA, TU ESTILO PERMANECE',
         verbose_name='Texto del lema'
     )
     subtitle_font_family = models.CharField(
-        max_length=100,
+        max_length=255,
         default="'Inter', sans-serif",
         verbose_name='Fuente del lema'
     )
@@ -192,12 +192,12 @@ class HeroConfig(BaseAuditModel):
         verbose_name='Texto del botón'
     )
     button_url = models.CharField(
-        max_length=200,
+        max_length=500,
         default='/catalogo/',
         verbose_name='URL del botón'
     )
     button_style = models.CharField(
-        max_length=100,
+        max_length=500,
         default='bg-zicada-accent hover:bg-opacity-90',
         verbose_name='Clases CSS del botón'
     )

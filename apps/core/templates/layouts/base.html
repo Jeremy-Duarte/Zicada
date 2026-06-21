@@ -6,7 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     
     {% include 'components/seo_tags.html' %}
-    
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -43,7 +45,8 @@
     {% include 'components/footer.html' %}
     
     <script src="{% static 'js/main.js' %}"></script>
-    
+    <script src="{% static 'js/core/filter-sidebar.js' %}"></script>
+
     <script>
         function updateCartCount(count) {
             const cartCount = document.getElementById('cart-count');

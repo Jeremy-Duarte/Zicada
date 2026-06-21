@@ -1,21 +1,3 @@
-"""
-Tests para vistas de apps.orders.views
-
-Cubre:
-- HU-027: OrderListView
-- HU-028: OrderDetailView
-- HU-029: OrderConfirmView, OrderMarkPreparingView, OrderMarkReadyView
-- HU-030: OrderCancelView
-- HU-031: OrderCreateView, OrderUpdateView
-- HU-032: OrderAssignDeliveryView
-- HU-033: delivery_dashboard, take_order
-- HU-034: OrderMarkAsDeliveredView, deliver_order
-- HU-035: OrderCancelView (incidencias)
-- OrderItemCreateView, OrderItemUpdateView, OrderItemDeleteView
-
-Casos de prueba: CP-xxx a CP-xxx
-"""
-
 from decimal import Decimal
 
 from django.test import TestCase, Client
@@ -58,7 +40,6 @@ User = get_user_model()
 # =============================================================================
 
 def _create_admin_user(**kwargs):
-    """Create an admin user with Administrador role."""
     defaults = {'username': 'admin', 'password': 'pass1234', 'is_staff': True}
     defaults.update(kwargs)
     password = defaults.pop('password')
@@ -79,7 +60,6 @@ def _create_admin_user(**kwargs):
 
 
 def _create_delivery_user(**kwargs):
-    """Create a delivery user with Entregador role."""
     defaults = {'username': 'delivery', 'password': 'pass1234', 'is_delivery': True}
     defaults.update(kwargs)
     password = defaults.pop('password')
@@ -95,7 +75,6 @@ def _create_delivery_user(**kwargs):
 
 
 def _create_normal_user(**kwargs):
-    """Create a normal user without special roles."""
     defaults = {'username': 'normal', 'password': 'pass1234', 'is_staff': False}
     defaults.update(kwargs)
     password = defaults.pop('password')
@@ -108,7 +87,6 @@ def _create_normal_user(**kwargs):
 
 
 def _create_product_variant(stock=10):
-    """Create a product variant for testing."""
     category = Category.objects.create(name='Test Category')
     size = Size.objects.create(name='M')
     color = Color.objects.create(name='Rojo', code='#FF0000')
@@ -130,7 +108,6 @@ def _create_product_variant(stock=10):
 
 
 def _create_order(**kwargs):
-    """Create a test order."""
     defaults = {
         'customer_name': 'Juan Perez',
         'customer_phone': '3001234567',
@@ -147,7 +124,6 @@ def _create_order(**kwargs):
 
 
 def _create_order_item(order, variant, quantity=2):
-    """Create an order item."""
     unit_price = Decimal('5.00')
     return OrderItem.objects.create(
         order=order,
@@ -176,26 +152,26 @@ class OrderListViewTest(TestCase):
         self.order1 = _create_order(customer_name='Juan Perez')
         self.order2 = _create_order(customer_name='Maria Gomez')
 
+    # UT-239: HU-027 CA-001 - Lista de pedidos cargada exitosamente
     def test_list_returns_200(self):
-        """CP-xxx | HU-027 | ESCENARIO 1 | H | Lista de pedidos cargada exitosamente"""
         response = self.client.get(reverse(ORDERS_LIST))
         self.assertEqual(response.status_code, 200)
 
+    # UT-240: HU-027 CA-005 - Usuario no autenticado redirige a login
     def test_list_requires_authentication(self):
-        """CP-xxx | HU-027 | ESCENARIO 6 | E | Usuario no autenticado -> login"""
         self.client.logout()
         response = self.client.get(reverse(ORDERS_LIST))
         self.assertRedirects(response, f'{reverse(CORE_STAFF_LOGIN)}?next={reverse(ORDERS_LIST)}')
 
+    # UT-241: HU-027 CA-005 - Usuario sin rol Administrador redirige a catálogo
     def test_list_requires_admin_role(self):
-        """CP-xxx | HU-027 | ESCENARIO 6 | E | Usuario sin rol Administrador -> catálogo"""
         normal_user = _create_normal_user(username='normal')
         self.client.force_login(normal_user)
         response = self.client.get(reverse(ORDERS_LIST))
         self.assertRedirects(response, reverse(PRODUCTS_CATALOG))
 
+    # UT-242: HU-027 CA-004 - Búsqueda por número de pedido
     def test_search_by_order_number(self):
-        """CP-xxx | HU-027 | ESCENARIO 4 | H | Búsqueda por número de pedido"""
         response = self.client.get(reverse(ORDERS_LIST), {'search': self.order1.order_number})
         self.assertContains(response, self.order1.customer_name)
         self.assertNotContains(response, self.order2.customer_name)
@@ -214,19 +190,19 @@ class OrderDetailViewTest(TestCase):
         self.client.force_login(self.admin)
         self.order = _create_order()
 
+    # UT-243: HU-028 CA-001 - Detalle cargado exitosamente
     def test_detail_returns_200(self):
-        """CP-xxx | HU-028 | ESCENARIO 1 | H | Detalle cargado exitosamente"""
         response = self.client.get(reverse(ORDERS_DETAIL, kwargs={'pk': self.order.pk}))
         self.assertEqual(response.status_code, 200)
 
+    # UT-244: HU-028 CA-002 - Usuario no autenticado redirige a login
     def test_detail_requires_authentication(self):
-        """CP-xxx | HU-028 | ESCENARIO 3 | E | Usuario no autenticado -> login"""
         self.client.logout()
         response = self.client.get(reverse(ORDERS_DETAIL, kwargs={'pk': self.order.pk}))
         self.assertRedirects(response, f'{reverse(CORE_STAFF_LOGIN)}?next={reverse(ORDERS_DETAIL, kwargs={"pk": self.order.pk})}')
 
+    # UT-245: HU-028 CA-002 - Usuario sin rol Administrador redirige a catálogo
     def test_detail_requires_admin_role(self):
-        """CP-xxx | HU-028 | ESCENARIO 3 | E | Usuario sin rol Administrador -> catálogo"""
         normal_user = _create_normal_user(username='normal')
         self.client.force_login(normal_user)
         response = self.client.get(reverse(ORDERS_DETAIL, kwargs={'pk': self.order.pk}))
@@ -256,26 +232,26 @@ class OrderCreateViewTest(TestCase):
             'is_paid': False,
         }
 
+    # UT-246: HU-031 - Muestra formulario de creación
     def test_get_create_form(self):
-        """CP-xxx | HU-031 | GET | Muestra formulario de creación"""
         response = self.client.get(reverse(ORDERS_CREATE))
         self.assertEqual(response.status_code, 200)
 
+    # UT-247: HU-031 CA-001 - Pedido manual creado exitosamente
     def test_create_valid_order(self):
-        """CP-xxx | HU-031 | ESCENARIO 1 | H | Pedido manual creado exitosamente"""
         data = self.get_valid_data()
         response = self.client.post(reverse(ORDERS_CREATE), data=data)
         self.assertRedirects(response, reverse(ORDERS_LIST))
         self.assertTrue(Order.objects.filter(customer_name='Nuevo Cliente').exists())
 
+    # UT-248: HU-031 CA-004 - Usuario no autenticado redirige a login
     def test_create_requires_authentication(self):
-        """CP-xxx | HU-031 | ESCENARIO 4 | E | Usuario no autenticado -> login"""
         self.client.logout()
         response = self.client.get(reverse(ORDERS_CREATE))
         self.assertRedirects(response, f'{reverse(CORE_STAFF_LOGIN)}?next={reverse(ORDERS_CREATE)}')
 
+    # UT-249: HU-031 CA-004 - Usuario sin rol Administrador redirige a catálogo
     def test_create_requires_admin_role(self):
-        """CP-xxx | HU-031 | ESCENARIO 4 | E | Usuario sin rol Administrador -> catálogo"""
         normal_user = _create_normal_user(username='normal')
         self.client.force_login(normal_user)
         response = self.client.get(reverse(ORDERS_CREATE))
@@ -307,13 +283,13 @@ class OrderUpdateViewTest(TestCase):
             'status': 'pendiente',
         }
 
+    # UT-250: HU-031 - Muestra formulario de edición
     def test_get_update_form(self):
-        """CP-xxx | HU-031 | GET | Muestra formulario de edición"""
         response = self.client.get(reverse(ORDERS_EDIT, kwargs={'pk': self.order.pk}))
         self.assertEqual(response.status_code, 200)
 
+    # UT-251: HU-031 CA-001 - Pedido actualizado exitosamente
     def test_update_valid_order(self):
-        """CP-xxx | HU-031 | ESCENARIO 1 | H | Pedido actualizado exitosamente"""
         data = self.get_valid_data()
         response = self.client.post(reverse(ORDERS_EDIT, kwargs={'pk': self.order.pk}), data=data)
         self.assertRedirects(response, reverse(ORDERS_LIST))
@@ -333,11 +309,11 @@ class OrderConfirmViewTest(TestCase):
         self.admin = _create_admin_user(username='admin')
         self.client.force_login(self.admin)
         self.variant = _create_product_variant(stock=10)
-        self.order = _create_order(is_paid=True)  # Pagado para poder confirmar
+        self.order = _create_order(is_paid=True)
         _create_order_item(self.order, self.variant, quantity=2)
 
+    # UT-252: HU-029 CA-001 - Pedido confirmado exitosamente
     def test_confirm_valid_order(self):
-        """CP-xxx | HU-029 | ESCENARIO 1 | H | Pedido confirmado exitosamente"""
         response = self.client.post(reverse(ORDERS_CONFIRM, kwargs={'pk': self.order.pk}), {'confirm': True})
         self.assertRedirects(response, reverse(ORDERS_DETAIL, kwargs={'pk': self.order.pk}))
         self.order.refresh_from_db()
@@ -363,8 +339,8 @@ class OrderCancelViewTest(TestCase):
             'confirm': True,
         }
 
+    # UT-253: HU-030 CA-001 - Pedido cancelado exitosamente
     def test_cancel_valid_order(self):
-        """CP-xxx | HU-030 | ESCENARIO 1 | H | Pedido cancelado exitosamente"""
         response = self.client.post(reverse(ORDERS_CANCEL, kwargs={'pk': self.order.pk}), data=self.get_valid_data())
         self.assertRedirects(response, reverse(ORDERS_DETAIL, kwargs={'pk': self.order.pk}))
         self.order.refresh_from_db()
@@ -384,8 +360,8 @@ class OrderMarkPreparingViewTest(TestCase):
         self.client.force_login(self.admin)
         self.order = _create_order(status='confirmado')
 
+    # UT-254: HU-029 CA-002 - Pedido marcado como en preparación
     def test_mark_preparing(self):
-        """CP-xxx | HU-029 | ESCENARIO 2 | H | Pedido marcado como en preparación"""
         response = self.client.post(reverse(ORDERS_MARK_PREPARING, kwargs={'pk': self.order.pk}))
         self.assertRedirects(response, reverse(ORDERS_DETAIL, kwargs={'pk': self.order.pk}))
         self.order.refresh_from_db()
@@ -405,8 +381,8 @@ class OrderMarkReadyViewTest(TestCase):
         self.client.force_login(self.admin)
         self.order = _create_order(status='preparando')
 
+    # UT-255: HU-029 CA-002 - Pedido marcado como listo
     def test_mark_ready(self):
-        """CP-xxx | HU-029 | ESCENARIO 2 | H | Pedido marcado como listo"""
         response = self.client.post(reverse(ORDERS_MARK_READY, kwargs={'pk': self.order.pk}))
         self.assertRedirects(response, reverse(ORDERS_DETAIL, kwargs={'pk': self.order.pk}))
         self.order.refresh_from_db()
@@ -427,8 +403,8 @@ class OrderAssignDeliveryViewTest(TestCase):
         self.delivery_user = _create_delivery_user(username='delivery1')
         self.order = _create_order(status='listo')
 
+    # UT-256: HU-032 CA-001 - Repartidor asignado exitosamente
     def test_assign_delivery(self):
-        """CP-xxx | HU-032 | ESCENARIO 1 | H | Repartidor asignado exitosamente"""
         response = self.client.post(
             reverse(ORDERS_ASSIGN_DELIVERY, kwargs={'pk': self.order.pk}),
             {'delivery_user': self.delivery_user.id, 'confirm': True}
@@ -453,8 +429,8 @@ class OrderMarkAsDeliveredViewTest(TestCase):
         self.delivery_user = _create_delivery_user(username='delivery1')
         self.order = _create_order(status='en_camino', assigned_delivery_user=self.delivery_user)
 
+    # UT-257: HU-034 CA-001 - Pedido marcado como entregado
     def test_mark_delivered(self):
-        """CP-xxx | HU-034 | ESCENARIO 1 | H | Pedido marcado como entregado"""
         response = self.client.post(reverse(ORDERS_MARK_DELIVERED, kwargs={'pk': self.order.pk}), {'confirm': True})
         self.assertRedirects(response, reverse(ORDERS_DETAIL, kwargs={'pk': self.order.pk}))
         self.order.refresh_from_db()
@@ -463,16 +439,11 @@ class OrderMarkAsDeliveredViewTest(TestCase):
 
 
 # =============================================================================
-# TESTS: HU-033 Delivery Dashboard (PENDIENTE DE IMPLEMENTACIÓN COMPLETA)
+# TESTS: HU-033 Delivery Dashboard
 # =============================================================================
 
 class DeliveryDashboardTest(TestCase):
-    """
-    HU-033: Consultar pedidos del día (entregador)
-    NOTA: Actualmente las vistas usan @staff_member_required, por lo que
-    solo usuarios staff pueden acceder. La funcionalidad completa para
-    entregadores se implementará en una fase posterior.
-    """
+    """HU-033: Consultar pedidos del día (entregador)"""
 
     def setUp(self):
         self.client = Client()
@@ -482,50 +453,35 @@ class DeliveryDashboardTest(TestCase):
         self.order_ready = _create_order(status='listo')
         self.order_assigned = _create_order(status='en_camino', assigned_delivery_user=self.delivery_user)
 
+    # UT-258: HU-033 - Usuario entregador sin is_staff redirigido
     def test_dashboard_requires_staff_access(self):
-        """
-        CP-xxx | HU-033 | ACTUAL | Usuario entregador sin is_staff -> redirigido al login
-        NOTA: Pendiente implementar dashboard específico para entregadores
-        """
         response = self.client.get(reverse(ORDERS_DELIVERY_DASHBOARD))
-        # El decorador @staff_member_required redirige al login de admin
         self.assertEqual(response.status_code, 302)
-        # La URL de redirección es /admin/login/ (por defecto de Django)
         self.assertIn('/admin/login/', response.url)
 
+    # UT-259: HU-033 - Usuario staff puede acceder
     def test_dashboard_accessible_by_staff(self):
-        """
-        CP-xxx | HU-033 | ACTUAL | Usuario staff puede acceder al dashboard
-        """
         self.client.force_login(self.staff_user)
         response = self.client.get(reverse(ORDERS_DELIVERY_DASHBOARD))
-        # Staff tiene acceso (código 200)
         self.assertEqual(response.status_code, 200)
 
+    # UT-260: HU-033 CA-001 - Dashboard carga para usuarios staff
     def test_dashboard_returns_200_for_staff(self):
-        """
-        CP-xxx | HU-033 | ACTUAL | Dashboard carga para usuarios staff
-        """
         self.client.force_login(self.staff_user)
         response = self.client.get(reverse(ORDERS_DELIVERY_DASHBOARD))
         self.assertEqual(response.status_code, 200)
 
+    # UT-261: HU-033 CA-001 - Dashboard muestra pedidos listos para staff
     def test_dashboard_shows_ready_orders_for_staff(self):
-        """
-        CP-xxx | HU-033 | ACTUAL | Dashboard muestra pedidos listos para staff
-        """
         self.client.force_login(self.staff_user)
         response = self.client.get(reverse(ORDERS_DELIVERY_DASHBOARD))
         self.assertIn('pedidos_listos', response.context)
         self.assertIn(self.order_ready, response.context['pedidos_listos'])
 
+    # UT-262: HU-033 - Usuario no autenticado redirige a login
     def test_dashboard_requires_authentication(self):
-        """
-        CP-xxx | HU-033 | E | Usuario no autenticado -> redirige al login de admin
-        """
         self.client.logout()
         response = self.client.get(reverse(ORDERS_DELIVERY_DASHBOARD))
-        # El decorador @staff_member_required redirige a /admin/login/
         self.assertEqual(response.status_code, 302)
         self.assertIn('/admin/login/', response.url)
 
@@ -539,28 +495,23 @@ class TakeOrderViewTest(TestCase):
 
     def setUp(self):
         self.client = Client()
-        # Necesitamos un usuario que tenga is_staff=True Y is_delivery=True
         self.delivery_staff_user = _create_admin_user(
             username='delivery_staff', 
-            is_delivery=True  # Importante para la validación del modelo
+            is_delivery=True
         )
         self.client.force_login(self.delivery_staff_user)
         self.order = _create_order(status='listo')
 
+    # UT-263: HU-033 CA-001 - Repartidor (staff) toma pedido exitosamente
     def test_take_order_success(self):
-        """
-        CP-xxx | HU-033 | ESCENARIO 1 | H | Repartidor (staff) toma pedido exitosamente
-        """
         response = self.client.post(reverse(ORDERS_TAKE_ORDER, kwargs={'order_id': self.order.pk}))
         self.assertRedirects(response, reverse(ORDERS_DELIVERY_DASHBOARD))
         self.order.refresh_from_db()
         self.assertEqual(self.order.status, 'en_camino')
         self.assertEqual(self.order.assigned_delivery_user, self.delivery_staff_user)
 
+    # UT-264: HU-033 - Pedido no está listo muestra error
     def test_take_order_not_ready(self):
-        """
-        CP-xxx | HU-033 | E | Pedido no está listo -> mensaje de error
-        """
         self.order.status = 'pendiente'
         self.order.save()
         response = self.client.post(reverse(ORDERS_TAKE_ORDER, kwargs={'order_id': self.order.pk}))
@@ -568,13 +519,10 @@ class TakeOrderViewTest(TestCase):
         self.order.refresh_from_db()
         self.assertEqual(self.order.status, 'pendiente')
 
+    # UT-265: HU-033 - Usuario no autenticado redirige a login
     def test_take_order_requires_authentication(self):
-        """
-        CP-xxx | HU-033 | E | Usuario no autenticado -> redirige al login
-        """
         self.client.logout()
         response = self.client.post(reverse(ORDERS_TAKE_ORDER, kwargs={'order_id': self.order.pk}))
-        # El decorador @staff_member_required redirige a /admin/login/
         self.assertEqual(response.status_code, 302)
         self.assertIn('/admin/login/', response.url)
 
@@ -588,7 +536,6 @@ class DeliverOrderViewTest(TestCase):
 
     def setUp(self):
         self.client = Client()
-        # Necesitamos un usuario que tenga is_staff=True Y is_delivery=True
         self.delivery_staff_user = _create_admin_user(
             username='delivery_staff',
             is_delivery=True
@@ -596,26 +543,16 @@ class DeliverOrderViewTest(TestCase):
         self.client.force_login(self.delivery_staff_user)
         self.order = _create_order(status='en_camino', assigned_delivery_user=self.delivery_staff_user)
 
+    # UT-266: HU-034 CA-001 - Pedido entregado exitosamente
     def test_deliver_order_success(self):
-        """
-        CP-xxx | HU-034 | ESCENARIO 1 | H | Pedido entregado exitosamente
-        """
         response = self.client.post(reverse(ORDERS_DELIVER_ORDER, kwargs={'order_id': self.order.pk}))
         self.assertRedirects(response, reverse(ORDERS_DELIVERY_DASHBOARD))
         self.order.refresh_from_db()
         self.assertEqual(self.order.status, 'entregado')
         self.assertTrue(self.order.is_paid)
 
-    def test_deliver_order_wrong_status(self):
-        """
-        CP-xxx | HU-034 | ESCENARIO 3 | E | Pedido no está en camino, sin vista por ahora
-        """
-        pass 
-
+    # UT-267: HU-034 - Usuario no autenticado redirige a login
     def test_deliver_order_requires_authentication(self):
-        """
-        CP-xxx | HU-034 | E | Usuario no autenticado -> redirige al login
-        """
         self.client.logout()
         response = self.client.post(reverse(ORDERS_DELIVER_ORDER, kwargs={'order_id': self.order.pk}))
         self.assertEqual(response.status_code, 302)

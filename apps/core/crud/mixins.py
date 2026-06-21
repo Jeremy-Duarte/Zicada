@@ -326,28 +326,62 @@ class StaffPermissionRequiredMixin(BasePermissionRequiredMixin):
     authentication_required_message = 'Debes iniciar sesión para acceder a esta sección.'
     
     def has_permission(self):
-        has_perm = super().has_permission()
-        
-        if has_perm:
-            return True
-        
         user = self.request.user
-        if user.is_authenticated and user.is_staff:
-            return True
         
-        if user.is_authenticated and user.groups.filter(name='Administrador').exists():
-            return True
+        if not user.is_authenticated:
+            return False
         
-        return False
+        is_admin = (
+            user.is_staff or 
+            user.groups.filter(name='Administrador').exists()
+        )
+        
+        if not is_admin:
+            return False
+        
+        if hasattr(self, 'permission_required') and self.permission_required:
+            if isinstance(self.permission_required, str):
+                perms = [self.permission_required]
+            else:
+                perms = self.permission_required
+            
+            if not user.has_perms(perms):
+                return False
+        
+        return True
     
     def handle_no_permission(self):
-        if not self.request.user.is_authenticated:
+        user = self.request.user
+        
+        if not user.is_authenticated:
             messages.error(self.request, self.authentication_required_message)
             return redirect(f'{reverse(CORE_STAFF_LOGIN)}?next={self.request.path}')
         
-        messages.error(self.request, self.permission_denied_message)
+        if user.groups.filter(name='Entregador').exists():
+            messages.error(self.request, 'Los entregadores no tienen acceso al panel de administración.')
+            # TODO: cambiar ruta a delivery dashboard cuando exista
+            return redirect(reverse(CORE_STAFF_LOGIN))
+        
+        is_admin = (
+            user.is_staff or 
+            user.groups.filter(name='Administrador').exists()
+        )
         
         if self.request.user.groups.filter(name='Entregador').exists():
             return redirect(reverse(DELIVERY_LOGIN))
+        if not is_admin:
+            messages.error(self.request, self.permission_denied_message)
+            return redirect(reverse(PRODUCTS_CATALOG))
         
+        if hasattr(self, 'permission_required') and self.permission_required:
+            messages.error(
+                self.request, 
+                'No tienes el permiso específico necesario para realizar esta acción.'
+            )
+            try:
+                return redirect(reverse(BACKOFFICE_DASHBOARD))
+            except:
+                return redirect(reverse(CORE_STAFF_LOGIN))
+        
+        messages.error(self.request, self.permission_denied_message)
         return redirect(reverse(PRODUCTS_CATALOG))
