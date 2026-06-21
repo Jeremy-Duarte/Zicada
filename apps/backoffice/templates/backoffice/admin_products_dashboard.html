@@ -27,7 +27,7 @@
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {% include 'backoffice/components/widgets/chart_card.html' with chart_id="stock-distribution" title="Distribución de stock" chart_type="donut" chart_data=stock_distribution %}
+        {% include 'backoffice/components/widgets/chart_card.html' with chart_id="stock-distribution" title="Distribución de stock" chart_type="donut" chart_data=stock_distribution yaxis_label="Unidades" %}
         {% include 'backoffice/components/widgets/stat_card_big.html' with value=stats.total_variants label="Variantes activas" value_color="zicada-accent" ring_color="zicada-accent" icon="palette" icon_bg="zicada-accent" stats_list=stock_stats_list description="Total de combinaciones talla-color disponibles"%}
     </div>
 

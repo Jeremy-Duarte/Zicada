@@ -29,8 +29,8 @@
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {% include 'backoffice/components/widgets/chart_card.html' with chart_id="orders-trend" title="Tendencia de pedidos (últimos 7 días)" chart_type="line" chart_data=orders_trend_data %}
-        {% include 'backoffice/components/widgets/chart_card.html' with chart_id="orders-status" title="Distribución actual" chart_type="donut" chart_data=orders_status_data %}
+        {% include 'backoffice/components/widgets/chart_card.html' with chart_id="orders-trend" title="Tendencia de pedidos (últimos 7 días)" chart_type="line" chart_data=orders_trend_data yaxis_label="Pedidos" %}
+        {% include 'backoffice/components/widgets/chart_card.html' with chart_id="orders-status" title="Distribución actual" chart_type="donut" chart_data=orders_status_data yaxis_label="Pedidos" %}
     </div>
 
     {% include 'backoffice/components/widgets/recent_items_list.html' with title="Últimos pedidos" items=recent_orders view_all_url=urls.orders_list %}
