@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     # Vendor Apps
     'rest_framework',
+    'django.contrib.humanize',
     'cloudinary',
     'cloudinary_storage',
     'django_crontab',

@@ -36,6 +36,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'django.contrib.humanize',
     'cloudinary',
     'cloudinary_storage',
     'django_crontab',
@@ -44,6 +45,7 @@ INSTALLED_APPS = [
     'apps.products',
     'apps.orders',
     'apps.backoffice',
+    'apps.delivery',
 ]
 
 MIDDLEWARE = [
