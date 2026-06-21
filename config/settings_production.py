@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'apps.products',
     'apps.orders',
     'apps.backoffice',
+    'apps.delivery',
 ]
 
 # MIDDLEWARE
@@ -230,3 +231,42 @@ LOGGING = {
         },
     },
 }
+
+# PWA Metadata
+PWA_NAME = "Zicada Delivery"
+PWA_SHORT_NAME = "Zicada"
+PWA_DESCRIPTION = "App de entregas para repartidores Zicada"
+PWA_START_URL = "/delivery/login/"
+PWA_DISPLAY = "standalone"
+PWA_THEME_COLOR = "#000000"
+PWA_BACKGROUND_COLOR = "#ffffff"
+PWA_ORIENTATION = "portrait"
+PWA_SCOPE = "/delivery/"
+
+# Icons PWA
+PWA_ICONS = {
+    "72": "delivery/icons/icon-72x72.png",
+    "96": "delivery/icons/icon-96x96.png",
+    "128": "delivery/icons/icon-128x128.png",
+    "144": "delivery/icons/icon-144x144.png",
+    "152": "delivery/icons/icon-152x152.png",
+    "192": "delivery/icons/icon-192x192.png",
+    "384": "delivery/icons/icon-384x384.png",
+    "512": "delivery/icons/icon-512x512.png",
+}
+
+# Service Worker Cache
+SW_CACHE_NAME = "zicada-delivery-v1.1.2"
+PWA_VERSION = "1.1.2"
+SW_PRECACHE_URLS = [
+    "/delivery/login/",
+    "/delivery/dashboard/",
+    "/delivery/orders/",
+    "/delivery/summary/",
+    "/static/css/delivery/main.css",
+    "/static/js/delivery/base.js",
+    "/static/js/delivery/orders.js",
+]
+
+# Offline fallback
+OFFLINE_PAGE = "/delivery/offline/"
