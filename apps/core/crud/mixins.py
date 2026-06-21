@@ -345,8 +345,10 @@ class StaffPermissionRequiredMixin(BasePermissionRequiredMixin):
             else:
                 perms = self.permission_required
             
-            if not user.has_perms(perms):
-                return False
+            # Superusuarios y miembros del grupo Administrador tienen acceso total
+            if not (user.is_superuser or user.groups.filter(name='Administrador').exists()):
+                if not user.has_perms(perms):
+                    return False
         
         return True
     

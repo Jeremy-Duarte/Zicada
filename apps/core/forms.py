@@ -189,7 +189,12 @@ class StaffLoginForm(FormStyleMixin, AuthenticationForm):
                     code='invalid_login',
                 )
             
-            if not (user.is_staff or getattr(user, 'is_delivery', False)):
+            is_admin_or_delivery = (
+                user.is_staff or 
+                user.groups.filter(name='Administrador').exists() or 
+                getattr(user, 'is_delivery', False)
+            )
+            if not is_admin_or_delivery:
                 raise forms.ValidationError(
                     self.error_messages['no_permission'],
                     code='no_permission',
