@@ -536,7 +536,6 @@ class HeroConfigUpdateForm(FormStyleMixin, SortableUpdateMixin, forms.ModelForm)
             'button_url',
             'content_alignment',
             'section_height',
-            'is_active',
         ]
         widgets = {
             'background_image': CloudinarySingleImageWidget(),
@@ -551,7 +550,6 @@ class HeroConfigUpdateForm(FormStyleMixin, SortableUpdateMixin, forms.ModelForm)
             'subtitle_color': forms.TextInput(attrs={'type': 'color', 'class': 'w-16 h-10 p-1'}),
             'button_text': forms.TextInput(attrs={'class': 'w-full'}),
             'content_alignment': forms.RadioSelect(choices=ALIGNMENT_CHOICES, attrs={'class': 'flex gap-4'}),
-            'is_active': forms.CheckboxInput(),
         }
     
     # Campos existentes

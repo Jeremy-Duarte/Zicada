@@ -730,14 +730,13 @@ class ProductUpdateForm(FormStyleMixin, forms.ModelForm):
     """
     class Meta:
         model = Product
-        fields = ['name', 'description', 'price', 'product_type', 'category', 'is_active']
+        fields = ['name', 'description', 'price', 'product_type', 'category']
         widgets = {
             'name': forms.TextInput(),
             'description': forms.Textarea(attrs={'rows': 4}),
             'price': forms.NumberInput(attrs={'min': 0, 'step': 100}),
             'product_type': forms.Select(),
             'category': forms.Select(),
-            'is_active': forms.CheckboxInput(),
         }
     
     def clean_name(self):
@@ -919,10 +918,7 @@ class ProductColorUpdateForm(FormStyleMixin, SortableUpdateMixin, forms.ModelFor
     """
     class Meta:
         model = ProductColor
-        fields = ['images', 'featured_image', 'is_active']
-        widgets = {
-            'is_active': forms.CheckboxInput(),
-        }
+        fields = ['images', 'featured_image']
 
     sortable_queryset = None
     sortable_label_attr = lambda self, pc: pc.color.name
@@ -1077,10 +1073,9 @@ class ProductVariantUpdateForm(FormStyleMixin, forms.ModelForm):
     """
     class Meta:
         model = ProductVariant
-        fields = ['stock', 'is_active']
+        fields = ['stock']
         widgets = {
             'stock': forms.NumberInput(attrs={'min': 0}),
-            'is_active': forms.CheckboxInput(),
         }
     
     def __init__(self, *args, **kwargs):
@@ -1329,7 +1324,6 @@ class CollectionUpdateForm(FormStyleMixin, forms.ModelForm):
             'primary_color', 'secondary_color', 'background_color', 'text_color',
             'background_image',
             'title_font',
-            'is_active',
         ]
         widgets = {
             'name': forms.TextInput(attrs={'class': 'w-full'}),
@@ -1342,7 +1336,6 @@ class CollectionUpdateForm(FormStyleMixin, forms.ModelForm):
             'text_color': forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_PICKER}),
             'background_image': forms.ClearableFileInput(attrs={'class': 'w-full'}),
             'title_font': forms.Select(choices=FONT_FAMILY_CHOICES, attrs={'class': 'w-full'}),
-            'is_active': forms.CheckboxInput(attrs={'class': 'toggle-switch'}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -1354,7 +1347,6 @@ class CollectionUpdateForm(FormStyleMixin, forms.ModelForm):
         self.fields['background_color'].required = False
         self.fields['text_color'].required = False
         self.fields['title_font'].required = False
-        self.fields['is_active'].required = False
         
         if self.instance and self.instance.pk:
             if self.instance.start_date:
@@ -1382,7 +1374,8 @@ class CollectionUpdateForm(FormStyleMixin, forms.ModelForm):
                 'end_date': 'La fecha de fin debe ser posterior a la fecha de inicio.'
             })
         
-        if cleaned_data.get('is_active') and cleaned_data.get('status') == 'publicada':
+        is_active = self.instance.is_active if (self.instance and self.instance.pk) else False
+        if is_active and cleaned_data.get('status') == 'publicada':
             if not cleaned_data.get('products'):
                 raise ValidationError({
                     'products': 'Una colección publicada debe tener al menos un producto asignado.'
@@ -1709,7 +1702,6 @@ class CollectionStyleForm(FormStyleMixin, forms.ModelForm):
             'effects_config',
             'custom_css',
             'style_config',
-            'is_active',
         ]
         widgets = {
             'primary_color': forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_PICKER, 'class': 'w-16 h-10 p-1'}),
@@ -1720,7 +1712,6 @@ class CollectionStyleForm(FormStyleMixin, forms.ModelForm):
             'title_font': forms.Select(choices=FONT_FAMILY_CHOICES, attrs={'class': 'w-full'}),
             'custom_css': forms.Textarea(attrs={'rows': 8, 'class': 'w-full font-mono'}),
             'effects_config': forms.Textarea(attrs={'rows': 6, 'class': 'w-full font-mono', 'placeholder': '{\n  "hover_effect": "zoom",\n  "card_animation": "fadeInUp"\n}'}),
-            'is_active': forms.CheckboxInput(attrs={'class': 'toggle-switch'}),
         }
 
     def __init__(self, *args, **kwargs):

@@ -158,7 +158,6 @@ class OrderCreateForm(FormStyleMixin, forms.ModelForm):
             'shipping_address',
             'delivery_notes',
             'shipping_cost',
-            'is_paid',
         ]
         widgets = {
             'shipping_address': forms.Textarea(attrs={'rows': 3}),
@@ -168,8 +167,6 @@ class OrderCreateForm(FormStyleMixin, forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['shipping_cost'].initial = DEFAULT_SHIPPING_COST
-        self.fields['is_paid'].initial = False
-        self.fields['is_paid'].help_text = 'Marcar como pagado si el cliente ya pagó (ej: contraentrega, transferencia)'
     
     def clean_customer_phone(self):
         """
@@ -214,68 +211,19 @@ class OrderUpdateForm(FormStyleMixin, forms.ModelForm):
             'shipping_address',
             'delivery_notes',
             'shipping_cost',
-            'is_paid',
-            'status',
-            'assigned_delivery_user',
         ]
         widgets = {
             'shipping_address': forms.Textarea(attrs={'rows': 3}),
             'delivery_notes': forms.Textarea(attrs={'rows': 2}),
-            'status': forms.Select(),
         }
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
         if self.instance and self.instance.pk:
-            user_model = get_user_model()
-            self.fields['assigned_delivery_user'].queryset = user_model.objects.filter(
-                is_delivery=True
-            ).order_by('username')
-            
             # HU-031 | ESCENARIO 4 | A | Pedido entregado o cancelado → campos deshabilitados
             if self.instance.status in ['entregado', 'cancelado']:
-                self.fields['status'].disabled = True
-                self.fields['assigned_delivery_user'].disabled = True
                 self.fields['shipping_cost'].disabled = True
-                
-            # HU-031 | ESCENARIO 4 | A | Pedido ya pagado → campo is_paid deshabilitado
-            if self.instance.is_paid:
-                self.fields['is_paid'].disabled = True
-                self.fields['is_paid'].help_text = 'Este pedido ya está pagado y no puede modificarse.'
-    
-    def clean_status(self):
-        """
-        HU-029 | ESCENARIO 3 | E | Transición de estado inválida
-        HU-029 | ESCENARIO 1 | H | Transición válida
-        """
-        new_status = self.cleaned_data.get('status')
-        
-        if self.instance and self.instance.pk:
-            if new_status != self.instance.status:
-                if not self.instance.can_transition_to(new_status):
-                    from_status = self.instance.get_status_display()
-                    to_status = dict(Order.STATUS_CHOICES).get(new_status, new_status)
-                    raise ValidationError(ERROR_INVALID_STATUS_TRANSITION.format(
-                        from_status=from_status, to_status=to_status
-                    ))
-        return new_status
-    
-    def clean_is_paid(self):
-        """
-        HU-031 | ESCENARIO 4 | E | No se puede desmarcar un pedido ya pagado
-        HU-034 | ESCENARIO 3 | E | Pedido entregado debe estar pagado
-        """
-        is_paid = self.cleaned_data.get('is_paid')
-        status = self.cleaned_data.get('status', self.instance.status if self.instance else 'pendiente')
-        
-        if status == 'entregado' and not is_paid:
-            raise ValidationError('Un pedido entregado debe estar marcado como pagado.')
-        
-        if self.instance and self.instance.is_paid and not is_paid:
-            raise ValidationError(ERROR_CANNOT_UNPAID)
-        
-        return is_paid
     
     def clean_shipping_cost(self):
         """

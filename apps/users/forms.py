@@ -133,7 +133,7 @@ class BaseUserForm(FormStyleMixin):
         model = User
         fields = [
             'username', 'first_name', 'last_name', 'email', 'phone',
-            'is_delivery', 'is_active', 'is_staff', 'is_superuser', 'groups',
+            'is_delivery', 'is_staff', 'is_superuser', 'groups',
         ]
         widgets = {
             'username': forms.TextInput(),
@@ -142,7 +142,6 @@ class BaseUserForm(FormStyleMixin):
             'email': forms.EmailInput(),
             'phone': forms.TextInput(attrs={'placeholder': PHONE_PLACEHOLDER}),
             'is_delivery': forms.CheckboxInput(),
-            'is_active': forms.CheckboxInput(),
             'is_staff': forms.CheckboxInput(),
             'is_superuser': forms.CheckboxInput(),
             'groups': forms.SelectMultiple(attrs={'size': 5}),
