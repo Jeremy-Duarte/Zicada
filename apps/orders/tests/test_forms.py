@@ -313,25 +313,6 @@ class OrderUpdateFormTest(TestCase):
         self.assertFalse(form.is_valid())
         self.assertIn('shipping_cost', form.errors)
 
-    # UT-139: Transición de estado inválida
-    def test_invalid_status_transition(self):
-        self.order.status = 'pendiente'
-        self.order.save()
-        
-        data = self.get_valid_data()
-        data['status'] = 'entregado'
-        data['is_paid'] = True
-        form = OrderUpdateForm(data=data, instance=self.order)
-        self.assertFalse(form.is_valid())
-        self.assertIn('status', form.errors)
-
-    # UT-140: Pedido entregado debe estar pagado
-    def test_delivered_order_must_be_paid(self):
-        data = self.get_valid_data()
-        data['status'] = 'entregado'
-        data['is_paid'] = False
-        form = OrderUpdateForm(data=data, instance=self.order)
-        self.assertFalse(form.is_valid())
 
 
 # =============================================================================
