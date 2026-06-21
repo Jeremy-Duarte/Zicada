@@ -23,6 +23,7 @@
                 cacheName: 'zicada-delivery-v1',
                 offlineUrl: '/delivery/offline/',
                 precacheUrls: [
+                    '/delivery/offline/',
                     '/delivery/login/',
                     '/delivery/dashboard/',
                     '/delivery/orders/',

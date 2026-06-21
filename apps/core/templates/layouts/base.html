@@ -28,6 +28,15 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'css/custom.css' %}">
     
+    <script>
+        // Si la aplicación se abre en modo PWA (standalone), forzar la navegación al área de entregas
+        if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
+            if (!window.location.pathname.startsWith('/delivery/')) {
+                window.location.href = '/delivery/login/';
+            }
+        }
+    </script>
+    
     {% block extra_css %}{% endblock %}
     {% block extra_head %}{% endblock %}
 </head>

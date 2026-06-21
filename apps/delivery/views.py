@@ -117,6 +117,7 @@ def sw_config(request):
     base_url = f"{protocol}://{request.get_host()}"
 
     precache_urls = [
+        base_url + reverse('delivery:offline'),
         base_url + reverse('delivery:login'),
         base_url + reverse('delivery:dashboard'),
         base_url + reverse('delivery:orders'),

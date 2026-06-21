@@ -260,6 +260,7 @@ PWA_ICONS = {
 SW_CACHE_NAME = "zicada-delivery-v1.1.2"
 PWA_VERSION = "1.1.2"
 SW_PRECACHE_URLS = [
+    "/delivery/offline/",
     "/delivery/login/",
     "/delivery/dashboard/",
     "/delivery/orders/",

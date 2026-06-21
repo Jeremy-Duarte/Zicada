@@ -12,7 +12,7 @@ const ALLOWED_ORIGINS = new Set([
 let CACHE_NAME = 'zicada-delivery-default';
 let OFFLINE_URL = '/delivery/offline/';
 let PRECACHE_URLS = [];
-let SW_VERSION = '1.1.2'; // Bumping version to force update
+let SW_VERSION = '1.1.3'; // Bumping version to force update
 
 /**
  * Verifica si un origen está permitido
@@ -139,7 +139,7 @@ async function networkFirstStrategy(request) {
         return networkResponse;
     } catch (error) {
         console.log('[SW] Network fallback a cache:', request.url);
-        const cachedResponse = await caches.match(request);
+        const cachedResponse = await caches.match(request, { ignoreSearch: true });
         
         if (cachedResponse) {
             return cachedResponse;
@@ -147,7 +147,7 @@ async function networkFirstStrategy(request) {
         
         const isNavigation = request.mode === 'navigate';
         if (isNavigation) {
-            const offlineResponse = await caches.match(OFFLINE_URL);
+            const offlineResponse = await caches.match(OFFLINE_URL, { ignoreSearch: true });
             if (offlineResponse) {
                 return offlineResponse;
             }
@@ -170,7 +170,7 @@ async function networkFirstStrategy(request) {
  */
 async function cacheFirstStrategy(request) {
     try {
-        const cachedResponse = await caches.match(request);
+        const cachedResponse = await caches.match(request, { ignoreSearch: true });
         
         if (cachedResponse) {
             return cachedResponse;
