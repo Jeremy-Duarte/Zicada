@@ -94,6 +94,22 @@
 
 {% block extra_js %}
 <script>
+    // Limpiar Service Workers obsoletos al llegar al login
+    // Esto resuelve el problema de SW cacheados con versiones anteriores
+    (function cleanupOldServiceWorkers() {
+        if (!('serviceWorker' in navigator)) {
+            return;
+        }
+        navigator.serviceWorker.getRegistrations().then(function(registrations) {
+            registrations.forEach(function(registration) {
+                // Forzar actualización — el SW detectará el nuevo cacheName y se reemplazará
+                registration.update().catch(function() {});
+            });
+        }).catch(function() {});
+    })();
+</script>
+<script>
+
     // Toggle password visibility (accesible)
     const togglePassword = document.getElementById('togglePassword');
     const passwordInput = document.getElementById('password');
@@ -143,14 +159,14 @@
     }
     
     // Prevenir submit múltiple
-    let isSubmitting = false;
-    loginForm?.addEventListener('submit', function() {
+    var isSubmitting = false;
+    loginForm?.addEventListener('submit', function(e) {
         if (isSubmitting) {
             e.preventDefault();
             return false;
         }
         isSubmitting = true;
-        const submitBtn = this.querySelector('button[type="submit"]');
+        var submitBtn = this.querySelector('button[type="submit"]');
         if (submitBtn) {
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Iniciando sesión...';

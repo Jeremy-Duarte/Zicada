@@ -1,32 +1,40 @@
-<div id="paymentModal" 
-     class="modal fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 opacity-0 invisible transition" 
-     aria-modal="true" 
+<div id="paymentModal"
+     class="modal fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 opacity-0 invisible transition"
+     aria-modal="true"
      aria-labelledby="paymentModalTitle"
      aria-describedby="paymentModalDesc">
-    <div class="bg-white rounded-xl max-w-sm w-full">
+    <div class="bg-white rounded-xl max-w-sm w-full shadow-xl">
         <div class="p-6">
-            <div class="text-center mb-4">
+            <div class="text-center mb-5">
                 <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <i class="fas fa-money-bill-wave text-green-600 text-2xl" aria-hidden="true"></i>
+                    <i class="fas fa-box-open text-green-600 text-2xl" aria-hidden="true"></i>
                 </div>
-                <h3 id="paymentModalTitle" class="text-xl font-bold text-gray-900">Confirmar Pago</h3>
-                <p id="paymentModalDesc" class="text-gray-600 mt-2">
-                    ¿Confirmas que recibiste el pago de <span class="font-bold">${{ order.total_amount|floatformat:0 }}</span> 
-                    del cliente <span class="font-bold">{{ order.customer_name }}</span>?
+                <h3 id="paymentModalTitle" class="text-xl font-bold text-gray-900">Confirmar Entrega</h3>
+                <p id="paymentModalDesc" class="text-gray-600 mt-2 text-sm">
+                    ¿Confirmas que entregaste el pedido a
+                    <span class="font-bold text-gray-900">{{ order.customer_name }}</span>?
                 </p>
+                <div class="bg-gray-50 rounded-lg p-3 mt-3 text-left">
+                    <p class="text-xs text-gray-500 mb-1">Total del pedido</p>
+                    <p class="text-lg font-bold text-gray-900">${{ order.total_amount|floatformat:0 }}</p>
+                    <p class="text-xs text-green-600 mt-1">
+                        <i class="fas fa-check-circle mr-1"></i>
+                        Pago verificado — pagado en línea
+                    </p>
+                </div>
             </div>
             <div class="flex space-x-3">
-                <button type="button" 
+                <button type="button"
                         id="closePaymentModalBtn"
-                        class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400">
+                        class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-xl font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400">
                     Cancelar
                 </button>
                 <form method="POST" action="{{ mark_paid_url }}" class="flex-1">
                     {% csrf_token %}
-                    <button type="submit" 
-                            class="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2">
+                    <button type="submit"
+                            class="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2">
                         <i class="fas fa-check mr-2" aria-hidden="true"></i>
-                        Confirmar Pago
+                        Confirmar Entrega
                     </button>
                 </form>
             </div>

@@ -4,31 +4,66 @@
 
 {% block title %}Mis Pedidos - Zicada Delivery{% endblock %}
 
+{% block extra_head %}
+{# Pasar configuración inicial a JavaScript #}
+<script>
+    window.DELIVERY_CONFIG = {
+        apiBase: '/delivery/api',
+        csrfToken: '{{ csrf_token }}',
+        userId: {{ user.id }},
+        initialFilter: '{{ filter|default:"all" }}',
+        refreshInterval: 30000 // 30 segundos
+    };
+</script>
+{% endblock %}
+
 {% block header %}
 {% include 'delivery/components/header_simple.html' with page_title="Mis Pedidos" page_subtitle=today|date:"l, j \d\e F" back_url=back_url|default:"delivery:dashboard" %}
 {% endblock %}
 
 {% block content %}
 <!-- Filtros -->
-<div class="flex space-x-2 overflow-x-auto pb-2 mb-4 sticky top-16 bg-gray-50 z-30">
-    <a href="?filter=all" class="filter-btn px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap {% if filter == 'all' %}bg-black text-white{% else %}bg-gray-100 text-gray-700{% endif %}">Todos ({{ total_orders }})</a>
-    <a href="?filter=pending" class="filter-btn px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap {% if filter == 'pending' %}bg-black text-white{% else %}bg-gray-100 text-gray-700{% endif %}"><i class="fas fa-clock mr-1"></i> Pendientes ({{ pending_payment }})</a>
-    <a href="?filter=completed" class="filter-btn px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap {% if filter == 'completed' %}bg-black text-white{% else %}bg-gray-100 text-gray-700{% endif %}"><i class="fas fa-check-circle mr-1"></i> Completados</a>
+<div class="flex space-x-2 overflow-x-auto pt-2 pb-2 mb-4 sticky top-0 bg-gray-50 z-30">
+    <button data-filter="all" 
+            class="filter-btn px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap bg-black text-white">
+        Todos (<span id="totalCount">0</span>)
+    </button>
+    <button data-filter="pending" 
+            class="filter-btn px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap bg-gray-100 text-gray-700 hover:bg-gray-200">
+        <i class="fas fa-clock mr-1"></i> Pendientes (<span id="pendingCount">0</span>)
+    </button>
+    <button data-filter="completed" 
+            class="filter-btn px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap bg-gray-100 text-gray-700 hover:bg-gray-200">
+        <i class="fas fa-check-circle mr-1"></i> Completados
+    </button>
 </div>
 
-{% if orders %}
-    {% for order in orders %}
-        {% include 'delivery/components/order_card.html' with order=order %}
-    {% endfor %}
-{% else %}
-<div class="flex flex-col items-center justify-center py-16 text-center">
-    <div class="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4"><i class="fas fa-truck text-gray-400 text-4xl"></i></div>
-    <h3 class="text-lg font-semibold mb-2">No tienes pedidos asignados para hoy</h3>
-    <p class="text-sm text-gray-500 mb-6">Los nuevos pedidos aparecerán automáticamente aquí</p>
-    <button id="emptyRefreshBtn" class="bg-black text-white px-6 py-2 rounded-lg">Actualizar</button>
+<!-- Contenedor de pedidos -->
+<div id="ordersContainer" class="space-y-3">
+    <!-- Loading state -->
+    <div id="loadingState" class="text-center py-8">
+        <i class="fas fa-spinner fa-spin text-2xl text-gray-400"></i>
+        <p class="text-gray-500 mt-2">Cargando pedidos...</p>
+    </div>
+    
+    <!-- Orders will be rendered here by JavaScript -->
+    <div id="ordersList"></div>
+    
+    <!-- Empty state (hidden by default) -->
+    <div id="emptyState" class="hidden flex flex-col items-center justify-center py-16 text-center">
+        <div class="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+            <i class="fas fa-truck text-gray-400 text-4xl"></i>
+        </div>
+        <h3 class="text-lg font-semibold text-gray-900 mb-2">No tienes pedidos asignados para hoy</h3>
+        <p class="text-sm text-gray-500 mb-6">Los nuevos pedidos aparecerán automáticamente aquí</p>
+        <button id="emptyRefreshBtn" class="bg-black text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-gray-800 transition">
+            <i class="fas fa-sync-alt mr-2"></i> Actualizar
+        </button>
+    </div>
 </div>
-{% endif %}
 {% endblock %}
+
+{% block bottom_nav %}{% include 'delivery/components/bottom_nav.html' %}{% endblock %}
 
 {% block extra_js %}
 <script src="{% static 'js/delivery/orders.js' %}"></script>
