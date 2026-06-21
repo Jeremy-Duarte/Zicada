@@ -225,7 +225,7 @@
         
         if (markPaidForm) {
             markPaidForm.addEventListener('submit', function(event) {
-                const confirmMessage = '¿Confirmas que deseas marcar este pedido como pagado?';
+                const confirmMessage = '¿Confirmas que deseas marcar este pedido como entregado?';
                 const isConfirmed = confirm(confirmMessage);
                 
                 if (!isConfirmed) {
@@ -301,6 +301,22 @@
     }
     
     /**
+     * Configura los botones flotantes de acción (sin onclick inline)
+     * @function setupActionButtons
+     */
+    function setupActionButtons() {
+        const paymentBtn = getElement('showPaymentModalBtn');
+        if (paymentBtn) {
+            paymentBtn.addEventListener('click', showPaymentModal);
+        }
+
+        const incidenceBtn = getElement('showIncidenceModalBtn');
+        if (incidenceBtn) {
+            incidenceBtn.addEventListener('click', showIncidenceModal);
+        }
+    }
+
+    /**
      * Inicializa la página de detalle de pedido
      * @function initOrderDetailPage
      */
@@ -308,20 +324,21 @@
         // Obtener referencias a modales
         paymentModal = getElement('paymentModal');
         incidenceModal = getElement('incidenceModal');
-        
+
         // Configurar modales
         setupModalClickOutside();
         setupModalEscapeKey();
-        
+
         // Configurar botones y formularios
         setupMapsButton();
         setupMarkAsPaidButton();
         setupIncidenceForm();
         setupPhoneCallButton();
-        
+        setupActionButtons();
+
         // Exponer funciones globales
         exposeGlobalFunctions();
-        
+
         // Registrar analytics (opcional)
         const orderNumberElement = document.querySelector('h1');
         const orderNumber = orderNumberElement?.textContent || 'unknown';

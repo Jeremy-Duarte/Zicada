@@ -12,7 +12,7 @@ const ALLOWED_ORIGINS = new Set([
 let CACHE_NAME = 'zicada-delivery-default';
 let OFFLINE_URL = '/delivery/offline/';
 let PRECACHE_URLS = [];
-let SW_VERSION = '1.0.0';
+let SW_VERSION = '1.1.2'; // Bumping version to force update
 
 /**
  * Verifica si un origen está permitido
@@ -112,11 +112,21 @@ globalThis.addEventListener('activate', function(event) {
  */
 async function networkFirstStrategy(request) {
     try {
-        const networkResponse = await fetch(request);
+        // Clonar la request y forzar bypass del cache del navegador para obtener datos frescos
+        let fetchRequest = request;
+        if (request.method === 'GET' && request.mode !== 'navigate') {
+            try {
+                fetchRequest = new Request(request, { cache: 'no-cache' });
+            } catch (err) {
+                console.warn('[SW] No se pudo crear Request con cache: no-cache:', err);
+                fetchRequest = request;
+            }
+        }
+        const networkResponse = await fetch(fetchRequest);
         
         // Cachear respuestas exitosas GET
         const isGetRequest = request.method === 'GET';
-        const isSuccessfulResponse = networkResponse?.status === 200;
+        const isSuccessfulResponse = networkResponse && networkResponse.status === 200;
         
         if (isGetRequest && isSuccessfulResponse) {
             const cache = await caches.open(CACHE_NAME);
@@ -218,6 +228,23 @@ function handleFetch(request) {
 
 // Interceptar peticiones
 globalThis.addEventListener('fetch', function(event) {
+    var url = new URL(event.request.url);
+
+    // Health check interno del Service Worker
+    if (url.pathname === '/delivery/health/sw') {
+        event.respondWith(
+            new Response(JSON.stringify({
+                status: 'ok',
+                cacheName: CACHE_NAME,
+                version: SW_VERSION,
+                timestamp: Date.now()
+            }), {
+                headers: { 'Content-Type': 'application/json' }
+            })
+        );
+        return;
+    }
+
     event.respondWith(handleFetch(event.request));
 });
 
@@ -306,7 +333,7 @@ globalThis.addEventListener('push', function(event) {
     const options = {
         body: data.body,
         icon: '/static/delivery/icons/icon-192x192.png',
-        badge: '/static/delivery/icons/badge-72x72.png',
+        badge: '/static/delivery/icons/icon-72x72.png',
         vibrate: [200, 100, 200],
         data: {
             url: data.url,
@@ -354,25 +381,7 @@ globalThis.addEventListener('notificationclick', function(event) {
                 }
                 
                 console.warn('[SW] No se pudo abrir la ventana:', urlToOpen);
-                return value;
-            })
-        );
-    }
-});
-
-// Health check
-globalThis.addEventListener('fetch', function(event) {
-    const url = new URL(event.request.url);
-    
-    if (url.pathname === '/delivery/health/sw') {
-        event.respondWith(
-            new Response(JSON.stringify({
-                status: 'ok',
-                cacheName: CACHE_NAME,
-                version: SW_VERSION,
-                timestamp: Date.now()
-            }), {
-                headers: { 'Content-Type': 'application/json' }
+                return null;
             })
         );
     }

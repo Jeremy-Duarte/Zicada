@@ -27,7 +27,7 @@
                     '/delivery/dashboard/',
                     '/delivery/orders/',
                     '/delivery/summary/',
-                    '/static/delivery/css/main.css'
+                    '/static/css/delivery/main.css'
                 ]
             };
         }
@@ -47,7 +47,7 @@
             const config = await getServiceWorkerConfig();
             
             // Registrar el SW
-            const registration = await navigator.serviceWorker.register('/static/delivery/js/sw.js');
+            const registration = await navigator.serviceWorker.register('/delivery/sw.js');
             
             console.log('Service Worker registrado con éxito:', registration.scope);
             

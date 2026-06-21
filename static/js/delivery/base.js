@@ -135,19 +135,7 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-// Registrar Service Worker
-if ('serviceWorker' in navigator) {
-    globalThis.addEventListener('load', function() {
-        const swUrl = "{% url 'delivery:service_worker' %}";
-        navigator.serviceWorker.register(swUrl)
-            .then(function(registration) {
-                console.log('Service Worker registrado:', registration.scope);
-            })
-            .catch(function(error) {
-                console.error('Error al registrar Service Worker:', error);
-            });
-    });
-}
+// Service Worker registration handled in base_pwa.html to allow dynamic config passing.
 
 /**
  * Maneja el envío de formularios para prevenir doble submit
