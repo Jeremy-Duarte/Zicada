@@ -9,7 +9,7 @@ from django.contrib.auth.mixins import PermissionRequiredMixin as BasePermission
 from django.urls import reverse
 from django.core.exceptions import ImproperlyConfigured
 
-from apps.core.url_names import CORE_STAFF_LOGIN, PRODUCTS_CATALOG
+from apps.core.url_names import CORE_STAFF_LOGIN, PRODUCTS_CATALOG, DELIVERY_LOGIN
 
 import json
 
@@ -348,6 +348,6 @@ class StaffPermissionRequiredMixin(BasePermissionRequiredMixin):
         messages.error(self.request, self.permission_denied_message)
         
         if self.request.user.groups.filter(name='Entregador').exists():
-            return redirect(reverse(CORE_STAFF_LOGIN)) #TODO cambiar ruta a delivery dashboard cuando exista
+            return redirect(reverse(DELIVERY_LOGIN))
         
         return redirect(reverse(PRODUCTS_CATALOG))

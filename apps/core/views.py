@@ -36,6 +36,7 @@ from apps.core.url_names import (
     CORE_STAFF_LOGIN,
     PRODUCTS_CATALOG,
     BACKOFFICE_DASHBOARD,
+    DELIVERY_DASHBOARD,
 )
 
 from .constants import (
@@ -273,11 +274,23 @@ class StaffLoginView(LoginView):
     redirect_authenticated_user = True
 
     def get_success_url(self):
-        return reverse_lazy(BACKOFFICE_DASHBOARD)
+        user = self.request.user
+        
+        if user.is_staff or user.groups.filter(name='Administrador').exists():
+            return reverse_lazy(BACKOFFICE_DASHBOARD)
+        
+        if getattr(user, 'is_delivery', False) or user.groups.filter(name='Entregador').exists():
+            return reverse_lazy(DELIVERY_DASHBOARD)
+        
+        # Por defecto → catálogo
+        return reverse_lazy(PRODUCTS_CATALOG)
 
     def form_valid(self, form):
         response = super().form_valid(form)
-        messages.success(self.request, LOGIN_WELCOME_MESSAGE.format(username=self.request.user.username))
+        
+        username = self.request.user.get_full_name() or self.request.user.username
+        messages.success(self.request, LOGIN_WELCOME_MESSAGE.format(username=username))
+        
         return response
 
     def form_invalid(self, form):
@@ -292,8 +305,14 @@ class StaffLoginView(LoginView):
                 messages.error(request, LOGIN_INACTIVE_MESSAGE)
                 return redirect(CORE_STAFF_LOGIN)
             
-            if request.user.is_staff or getattr(request.user, 'is_delivery', False):
+            user = request.user
+            
+            if user.is_staff or user.groups.filter(name='Administrador').exists():
                 return redirect(BACKOFFICE_DASHBOARD)
+            
+            if getattr(user, 'is_delivery', False) or user.groups.filter(name='Entregador').exists():
+                return redirect(DELIVERY_DASHBOARD)
+            
             return redirect(PRODUCTS_CATALOG)
         
         return super().dispatch(request, *args, **kwargs)
