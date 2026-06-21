@@ -26,3 +26,9 @@ def get_item(dictionary, key):
     if not dictionary:
         return ''
     return dictionary.get(key, key)
+
+@register.filter(name='has_group')
+def has_group(user, group_name):
+    if not user or not user.is_authenticated:
+        return False
+    return user.groups.filter(name=group_name).exists()

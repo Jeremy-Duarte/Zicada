@@ -1,4 +1,4 @@
-{% load static %}
+{% load static filter_extras %}
 <aside class="w-72 bg-gray-900 text-white flex flex-col shadow-xl z-10 overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-gray-800 [&::-webkit-scrollbar-thumb]:bg-gray-600 [&::-webkit-scrollbar-thumb:hover]:bg-gray-500">
     
     <div class="p-5 border-b border-gray-800">
@@ -95,22 +95,29 @@
     </nav>
 
     <div class="p-4 border-t border-gray-800 mt-auto">
-    <a href="{% url 'users:profile' %}" class="group block w-full">            
-        <div class="bg-gray-800 rounded-xl p-3">
-            <div class="flex items-center gap-3">
+        <div class="flex items-center justify-between bg-gray-800 rounded-xl p-3 hover:bg-gray-750 transition-all duration-200">
+            <a href="{% url 'users:profile' %}" class="flex items-center gap-3 flex-1 min-w-0 group" title="Ver mi perfil">
+                <div class="w-9 h-9 rounded-full bg-gray-700 flex items-center justify-center text-gray-300 group-hover:bg-zicada-accent group-hover:text-white transition-all duration-200">
+                    <i class="fas fa-user text-sm"></i>
+                </div>
                 <div class="flex-1 min-w-0">
-                    <p class="text-sm font-medium text-white truncate">
+                    <p class="text-sm font-medium text-white truncate group-hover:text-zicada-accent transition-colors duration-200">
                         {{ request.user.get_full_name|default:request.user.username }}
                     </p>
                     <p class="text-xs text-gray-400">
-                        {% if request.user.is_staff %}Administrador{% else %}Entregador{% endif %}
+                        {% if request.user.is_staff %}
+                            Acceso Total
+                        {% elif request.user|has_group:"Administrador" %}
+                            Administrador
+                        {% else %}
+                            Entregador
+                        {% endif %}
                     </p>
                 </div>
-                <a href="{% url 'core:staff_logout' %}" class="text-gray-400 hover:text-red-400 transition" title="Cerrar sesión">
-                    <i class="fas fa-sign-out-alt"></i>
-                </a>
-            </div>
+            </a>
+            <a href="{% url 'core:staff_logout' %}" class="text-gray-400 hover:text-red-400 p-2 transition-colors duration-200" title="Cerrar sesión">
+                <i class="fas fa-sign-out-alt text-base"></i>
+            </a>
         </div>
-        </a>
     </div>
 </aside>

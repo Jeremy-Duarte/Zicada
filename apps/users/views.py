@@ -143,16 +143,19 @@ from .constants import (
 
 def get_user_type_badge(user) -> str:
     """Get HTML badge for user type."""
-    if user.is_superuser:
-        user_type = USER_TYPE_SUPERUSER
-    elif user.is_staff:
-        user_type = USER_TYPE_STAFF
+    if user.is_staff or user.is_superuser:
+        label = "Acceso Total"
+        badge_class = "bg-purple-100 text-purple-700"
+    elif user.groups.filter(name='Administrador').exists():
+        label = "Administrador"
+        badge_class = "bg-blue-100 text-blue-700"
     elif user.is_delivery:
-        user_type = USER_TYPE_DELIVERY
+        label = "Entregador"
+        badge_class = "bg-orange-100 text-orange-700"
     else:
-        user_type = USER_TYPE_CUSTOMER
+        label = "Sin Rol"
+        badge_class = "bg-gray-100 text-gray-700"
     
-    label, badge_class = USER_TYPE_BADGES[user_type]
     return mark_safe(STATUS_BADGE_TEMPLATE.format(badge_class=badge_class, badge_text=label))
 
 

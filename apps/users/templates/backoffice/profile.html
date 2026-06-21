@@ -1,5 +1,5 @@
 {% extends "backoffice/layouts/backoffice_base.html" %}
-{% load static %}
+{% load static filter_extras %}
 
 {% block title %}Mi Perfil - Zicada{% endblock %}
 
@@ -41,10 +41,15 @@
                 <div class="bg-gray-50 rounded-lg p-4">
                     <p class="text-sm text-gray-500 mb-1">Rol</p>
                     <p class="text-lg font-semibold text-gray-800">
-                        {% if user_obj.is_superuser %}Superadministrador
-                        {% elif user_obj.is_staff %}Staff
-                        {% elif user_obj.is_delivery %}Entregador
-                        {% else %}Cliente{% endif %}
+                        {% if user_obj.is_staff %}
+                            Acceso Total
+                        {% elif user_obj|has_group:"Administrador" %}
+                            Administrador
+                        {% elif user_obj.is_delivery %}
+                            Entregador
+                        {% else %}
+                            Sin Rol
+                        {% endif %}
                     </p>
                 </div>
                 <div class="bg-gray-50 rounded-lg p-4">

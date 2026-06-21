@@ -68,7 +68,7 @@ USER_TYPE_BADGES = {
     USER_TYPE_SUPERUSER: ('Superadmin', 'bg-purple-100 text-purple-700'),
     USER_TYPE_STAFF: ('Staff', 'bg-blue-100 text-blue-700'),
     USER_TYPE_DELIVERY: ('Entregador', 'bg-orange-100 text-orange-700'),
-    USER_TYPE_CUSTOMER: ('Cliente', 'bg-gray-100 text-gray-700'),
+    USER_TYPE_CUSTOMER: ('Sin Rol', 'bg-gray-100 text-gray-700'),
 }
 
 # Status Badges
