@@ -314,6 +314,16 @@
         if (incidenceBtn) {
             incidenceBtn.addEventListener('click', showIncidenceModal);
         }
+
+        const closePaymentBtn = getElement('closePaymentModalBtn');
+        if (closePaymentBtn) {
+            closePaymentBtn.addEventListener('click', closePaymentModal);
+        }
+
+        const closeIncidenceBtn = getElement('closeIncidenceModalBtn');
+        if (closeIncidenceBtn) {
+            closeIncidenceBtn.addEventListener('click', closeIncidenceModal);
+        }
     }
 
     /**
