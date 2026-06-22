@@ -121,6 +121,7 @@ from .constants import (
     BADGE_PLUS,
     BADGE_TRASH,
     LABEL_EXPORT_REPORTS,
+    LABEL_EXPORT_IMPORTS,
     # Button Titles
     BTN_TITLE_MANAGE_ORDERS,
     BTN_TITLE_CREATE_ORDER,
@@ -149,6 +150,7 @@ from .constants import (
     BTN_DESC_EXPORT_DELIVERIES,
     BTN_DESC_FINANCIAL_REPORTS,
     BTN_DESC_MANAGE_COLLECTIONS,
+    BTN_DESC_IMPORT_PRODUCTS,
     # Gradient Colors
     GRADIENT_ACCENT_FROM,
     GRADIENT_ACCENT_TO,
@@ -556,8 +558,8 @@ class AdminProductsDashboardView(BaseDashboardView):
             {
                 'url': reverse(BACKOFFICE_IMPORTERS_DASHBOARD),
                 'icon': ICON_FILE_EXPORT,
-                'title': LABEL_EXPORT_REPORTS,
-                'description': BTN_DESC_EXPORT,
+                'title': LABEL_EXPORT_IMPORTS,
+                'description': BTN_DESC_IMPORT_PRODUCTS,
                 'gradient_from': GRADIENT_BLUE_FROM,
                 'gradient_to': GRADIENT_BLUE_TO,
                 'badge': BADGE_COMING_SOON
