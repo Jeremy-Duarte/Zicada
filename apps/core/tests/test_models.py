@@ -4,7 +4,7 @@ from apps.products.models import Product
 @pytest.mark.django_db
 class TestActiveManager:
     # UT - 001
-    def test_returns_active_objetcs(self, product_whit_state):
+    def test_returns_active_objects(self, product_whit_state):
         product_active = product_whit_state(True)
         product_inactive = product_whit_state(False)
         result = Product.objects.all()
@@ -13,7 +13,7 @@ class TestActiveManager:
         assert product_inactive not in result
         assert result.count() == 1
     # UT - 002
-    def test_returns_filtered_objetcs(self, product_whit_state):
+    def test_returns_filtered_objects(self, product_whit_state):
         product_active = product_whit_state(True)
         product_inactive = product_whit_state(False)
         result = Product.all_objects.all()
@@ -31,7 +31,7 @@ class TestBaseAuditModel:
 
         assert product.is_active == False
         assert product.deleted_at is not None
-        
+
     #UT - 004
     def test_softdeleted_models_can_be_restored(self, base_product):
         product = base_product
