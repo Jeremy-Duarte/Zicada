@@ -356,6 +356,16 @@ class Product(BaseAuditModel):
         self.full_clean()
         super().save(*args, **kwargs)
 
+    def soft_delete(self, *args, **kwargs):
+        if self.variants.filter(order_items__isnull=False).exists():
+            raise ValidationError('No se puede eliminar el producto porque está asociado a pedidos existentes.')
+        super().soft_delete(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        if self.variants.filter(order_items__isnull=False).exists():
+            raise ValidationError('No se puede eliminar el producto porque está asociado a pedidos existentes.')
+        super().delete(*args, **kwargs)
+
 
 # =============================================================================
 # PRODUCT VARIANT MANAGER (HU-008, HU-013)
