@@ -46,3 +46,25 @@ def product_whit_stock(db, ifactory):
         )
         return product, variant
     return _create_product
+
+@pytest.fixture
+def order_factory(db, ifactory):
+    from apps.orders.models import Order
+    def _create_order(status='pendiente', **kwargs):
+        return ifactory.create(Order, status=status, **kwargs)
+    return _create_order
+
+@pytest.fixture
+def order_item_factory(db, ifactory):
+    from apps.orders.models import OrderItem
+    def _create_order_item(order, variant, quantity=1, price=Decimal('10000.00'), **kwargs):
+        return ifactory.create(
+            OrderItem,
+            order=order,
+            variant=variant,
+            quantity=quantity,
+            unit_price=price,
+            subtotal=price * quantity,
+            **kwargs
+        )
+    return _create_order_item
