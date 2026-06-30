@@ -570,7 +570,7 @@ class HeroConfigUpdateForm(FormStyleMixin, SortableUpdateMixin, forms.ModelForm)
     button_size = forms.ChoiceField(choices=BUTTON_SIZE_CHOICES, required=True, label='Tamaño')
     button_shadow = forms.ChoiceField(choices=BUTTON_SHADOW_CHOICES, required=True, label='Sombra')
     button_width = forms.ChoiceField(choices=BUTTON_WIDTH_CHOICES, required=True, label='Ancho del botón')
-    
+
     sortable_queryset = None
     sortable_label_attr = 'title_text'
     sortable_widget_name = 'hero_order'
@@ -629,8 +629,8 @@ class HeroConfigUpdateForm(FormStyleMixin, SortableUpdateMixin, forms.ModelForm)
         
         if commit:
             instance.save()
+            self.save_sortable_order()
         return instance
-
 
 # =============================================================================
 # HU-055: HERO CONFIG DELETE FORM
