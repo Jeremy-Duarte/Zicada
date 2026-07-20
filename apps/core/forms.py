@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib.auth.forms import AuthenticationForm
-from apps.core.crud.mixins import FormStyleMixin, SortableUpdateMixin
+from apps.core.crud.mixins import FormStyleMixin, SortableUpdateMixin, SortableCreateMixin, SortableDeleteMixin
 from django.core.exceptions import ValidationError
 from .models import HeroConfig
 from apps.products.models import Collection, Product
@@ -377,7 +377,7 @@ def get_button_url_choices():
 # HU-053: HERO CONFIG CREATE FORM
 # =============================================================================
 
-class HeroConfigCreateForm(FormStyleMixin, forms.ModelForm):
+class HeroConfigCreateForm(FormStyleMixin, SortableCreateMixin, forms.ModelForm):
     """
     HU-053: Crear slide del hero
     Escenarios: H (datos válidos), A (título vacío o sort_order duplicado), E (sin permisos)
@@ -629,14 +629,13 @@ class HeroConfigUpdateForm(FormStyleMixin, SortableUpdateMixin, forms.ModelForm)
         
         if commit:
             instance.save()
-            self.save_sortable_order()
         return instance
 
 # =============================================================================
 # HU-055: HERO CONFIG DELETE FORM
 # =============================================================================
 
-class HeroConfigDeleteForm(FormStyleMixin, forms.Form):
+class HeroConfigDeleteForm(FormStyleMixin, SortableDeleteMixin, forms.Form):
     """
     HU-055: Archivar slide del hero (soft delete)
     Escenarios: H (confirmación correcta), A (cancelar), E (sin permisos)
