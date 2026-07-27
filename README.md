@@ -3,7 +3,6 @@
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=Jeremy-Duarte_Zicada&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=Jeremy-Duarte_Zicada)
 [![Python](https://img.shields.io/badge/Python-3.14-3776AB?logo=python&logoColor=white)](https://python.org)
 [![Django](https://img.shields.io/badge/Django-6.0-092E20?logo=django&logoColor=white)](https://djangoproject.com)
-[![Astro](https://img.shields.io/badge/Astro-5.x-BC52EE?logo=astro&logoColor=white)](https://astro.build)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.x-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-4169E1?logo=postgresql&logoColor=white)](https://postgresql.org)
 [![SonarCloud](https://img.shields.io/badge/SonarCloud-Quality%20Gate-F3702A?logo=sonarcloud&logoColor=white)](https://sonarcloud.io/summary/new_code?id=Jeremy-Duarte_Zicada)
@@ -49,9 +48,9 @@ Posicionar a Zicada como una marca reconocida a nivel nacional, con proyección 
 |------|------------|---------|
 | Backend | Django + Django REST Framework | 6.x |
 | Base de datos | PostgreSQL (produccion) / SQLite (desarrollo) | 15.x |
-| Frontend web | Astro + Tailwind CSS | 5.x / 3.x |
+| Frontend web | Django Templates + Tailwind CSS | - / 3.x |
 | App movil | PWA (offline-first) | - |
-| Hosting | Vercel (frontend) / Railway (backend) | - |
+| Hosting | Railway | - |
 | Almacenamiento imagenes | Cloudinary | - |
 | Calidad de codigo | SonarCloud | - |
 | Variables de entorno | django-environ | - |
@@ -156,4 +155,4 @@ Proyecto privado. No autorizado su uso, reproduccion o distribucion sin consenti
 
 ---
 
-*Ultima actualizacion: Abril 2026*
+*Ultima actualizacion: Julio 2026*
