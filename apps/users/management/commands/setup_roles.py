@@ -51,10 +51,10 @@ class Command(BaseCommand):
     def _setup_administrator_role(self, group, force=False):
         """Sets up the Administrator role with all permissions."""
         if force or group.permissions.count() == 0:
-            all_perms = Permission.objects.all()
+            all_perms = Permission.objects.all().iterator()
             group.permissions.set(all_perms)
             self.stdout.write(
-                f'Administrator role configured with {all_perms.count()} permissions'
+                f'Administrator role configured with {Permission.objects.all().count()} permissions'
             )
         else:
             self.stdout.write(
@@ -84,16 +84,14 @@ class Command(BaseCommand):
         # Assign staff users to Administrator group
         staff_users = User.objects.filter(is_staff=True)
         for user in staff_users:
-            if not user.groups.filter(name='Administrador').exists():
-                user.groups.add(admin_group)
-                self.stdout.write(f'  Assigned {user.email} to Administrator')
+            user.groups.add(admin_group)
+            self.stdout.write(f'  Assigned {user.email} to Administrator')
         
         # Assign delivery users to Delivery group
         delivery_users = User.objects.filter(is_delivery=True)
         for user in delivery_users:
-            if not user.groups.filter(name='Entregador').exists():
-                user.groups.add(delivery_group)
-                self.stdout.write(f'  Assigned {user.email} to Delivery')
+            user.groups.add(delivery_group)
+            self.stdout.write(f'  Assigned {user.email} to Delivery')
 
     def handle(self, *args, **options):
         force = options.get('force', False)
