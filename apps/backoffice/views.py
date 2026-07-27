@@ -121,6 +121,7 @@ from .constants import (
     BADGE_PLUS,
     BADGE_TRASH,
     LABEL_EXPORT_REPORTS,
+    LABEL_EXPORT_IMPORTS,
     # Button Titles
     BTN_TITLE_MANAGE_ORDERS,
     BTN_TITLE_CREATE_ORDER,
@@ -149,6 +150,7 @@ from .constants import (
     BTN_DESC_EXPORT_DELIVERIES,
     BTN_DESC_FINANCIAL_REPORTS,
     BTN_DESC_MANAGE_COLLECTIONS,
+    BTN_DESC_IMPORT_PRODUCTS,
     # Gradient Colors
     GRADIENT_ACCENT_FROM,
     GRADIENT_ACCENT_TO,
@@ -273,12 +275,6 @@ class BaseDashboardView(StaffPermissionRequiredMixin, TemplateView):
     """Vista base para dashboards del backoffice."""
     permission_required = 'products.view_product'
 
-    def dispatch(self, request, *args, **kwargs):
-        """Verificar permisos antes de procesar la solicitud."""
-        if not request.user.is_staff and not request.user.has_perm(self.permission_required):
-            return self.handle_no_permission()
-        return super().dispatch(request, *args, **kwargs)
-
 
 # =============================================================================
 # DASHBOARD PRINCIPAL
@@ -326,7 +322,8 @@ class AdminDashboardView(BaseDashboardView):
             week_revenue=week_revenue,
             total_paid=total_paid,
             today_revenue=today_revenue,
-            year=year
+            year=year,
+            year_revenue=year_revenue
         )
 
         reports_url = reverse(BACKOFFICE_REPORT_GENERATOR)
@@ -380,7 +377,8 @@ class AdminDashboardView(BaseDashboardView):
         week_revenue: float,
         total_paid: int,
         today_revenue: float,
-        year: int
+        year: int,
+        year_revenue: float
     ) -> List[Dict[str, Any]]:
         """Construye la lista de items financieros para evitar duplicación."""
         return [
@@ -426,7 +424,7 @@ class AdminDashboardView(BaseDashboardView):
             },
             {
                 'label': FINANCIAL_LABEL_YEAR_INCOME,
-                'value': f"{CURRENCY_PREFIX}{week_revenue:,.0f}",
+                'value': f"{CURRENCY_PREFIX}{year_revenue:,.0f}",
                 'icon': FINANCIAL_ICON_CALENDAR,
                 'icon_bg': ICON_BG_INDIGO,
                 'icon_color': FINANCIAL_COLOR_INDIGO,
@@ -556,8 +554,8 @@ class AdminProductsDashboardView(BaseDashboardView):
             {
                 'url': reverse(BACKOFFICE_IMPORTERS_DASHBOARD),
                 'icon': ICON_FILE_EXPORT,
-                'title': LABEL_EXPORT_REPORTS,
-                'description': BTN_DESC_EXPORT,
+                'title': LABEL_EXPORT_IMPORTS,
+                'description': BTN_DESC_IMPORT_PRODUCTS,
                 'gradient_from': GRADIENT_BLUE_FROM,
                 'gradient_to': GRADIENT_BLUE_TO,
                 'badge': BADGE_COMING_SOON
@@ -819,7 +817,11 @@ class ReportGeneratorView(StaffPermissionRequiredMixin, FormView):
                 REPORT_TYPE_DELIVERY: DeliveryReport,
                 REPORT_TYPE_ORDERS: OrdersReport,
             }
-            report = reports[report_type](request, **params)
+            report_class = reports.get(report_type)
+            if report_class is None:
+                messages.error(request, 'Tipo de reporte inválido.')
+                return redirect('backoffice:dashboard')
+            report = report_class(request, **params)
             return report.render_pdf()
         return self.form_invalid(form)
 

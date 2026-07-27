@@ -25,7 +25,7 @@
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {% include 'backoffice/components/widgets/chart_card.html' with chart_id="orders-trend" title="Tendencia de pedidos (últimos 7 días)" chart_type="line" chart_data=orders_trend_data %}
+        {% include 'backoffice/components/widgets/chart_card.html' with chart_id="orders-trend" title="Tendencia de pedidos (últimos 7 días)" chart_type="line" chart_data=orders_trend_data yaxis_label="Pedidos" %}
         {% include 'backoffice/components/widgets/stat_card_big.html' with value=delivery_stats.total label="Entregadores registrados" value_color="zicada-accent" ring_color="zicada-accent" icon="users" icon_bg="zicada-accent" stats_list=delivery_stats_list description="Total de repartidores en el sistema" %}
     </div>
 

@@ -36,6 +36,7 @@
             <p>Mientras tanto, te invitamos a:</p>
             <ul>
                 <li>📱 Seguirnos en <a href="https://instagram.com/zicada">Instagram</a> y <a href="https://facebook.com/zicada">Facebook</a></li>
+                {# Known limitation: email templates lack request context so {% url 'products:catalog' %} is not available; hardcoded path is unavoidable here. #}
                 <li>🛍️ Seguir explorando nuestro <a href="{{ site_url }}/catalogo/">catálogo</a></li>
                 <li>💬 Contactarnos por WhatsApp al <strong>321 4801603</strong> para atención inmediata</li>
             </ul>

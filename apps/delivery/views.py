@@ -4,19 +4,18 @@ from django.contrib.auth import authenticate
 from django.contrib.auth import login as auth_login
 from django.contrib.auth import logout
 from django.core.serializers.json import DjangoJSONEncoder
-from django.db import models
+from django.db import transaction
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.templatetags.static import static
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.cache import cache_page, never_cache
-from django.views.decorators.http import require_http_methods, require_safe
+from django.views.decorators.http import require_http_methods, require_POST, require_safe
 from django.views.decorators.vary import vary_on_headers
 from django.contrib.auth.decorators import login_required
 
 import json
-from datetime import date
 
 from apps.orders.models import Order
 from apps.core.url_names import (
@@ -24,13 +23,10 @@ from apps.core.url_names import (
     DELIVERY_DAILY_SUMMARY,
     DELIVERY_DASHBOARD,
     DELIVERY_LOGIN,
-    DELIVERY_MANIFEST,
     DELIVERY_MARK_PAID,
-    DELIVERY_OFFLINE,
     DELIVERY_ORDER_DETAIL,
     DELIVERY_ORDERS,
     DELIVERY_REGISTER_INCIDENCE,
-    DELIVERY_SERVICE_WORKER,
 )
 
 
@@ -77,6 +73,7 @@ def pwa_manifest(request):
         "categories": ["business", "productivity"],
         "lang": "es",
         "dir": "ltr",
+        "prefer_related_applications": False,
         "shortcuts": [
             {
                 "name": "Mis Pedidos",
@@ -188,6 +185,7 @@ def delivery_login(request):
     return render(request, _DELIVERY_LOGIN_TEMPLATE)
 
 
+@require_POST
 def delivery_logout(request):
     """Cierra sesión del entregador y limpia el caché del Service Worker."""
     logout(request)
@@ -237,7 +235,7 @@ def dashboard(request):
     last_order = Order.objects.filter(
         assigned_delivery_user=user,
         status__in=['listo', 'en_camino']
-    ).order_by('-created_at').first()
+    ).select_related('assigned_delivery_user').prefetch_related('items').order_by('-created_at').first()
 
     context = {
         'user': user,
@@ -374,12 +372,6 @@ def register_incidence(request, order_id):
     if not _is_delivery_user(request.user):
         return redirect(DELIVERY_LOGIN)
 
-    order = get_object_or_404(
-        Order,
-        id=order_id,
-        assigned_delivery_user=request.user
-    )
-
     if request.method == 'POST':
         incidence_type = request.POST.get('incidence_type', '').strip()
         comments = request.POST.get('comments', '').strip()
@@ -411,42 +403,48 @@ def register_incidence(request, order_id):
         }
 
         try:
-            if action == 'cancel':
-                reason = json.dumps(incidence_data, ensure_ascii=False)
-                order.cancel(reason, user=request.user)
+            with transaction.atomic():
+                order = get_object_or_404(
+                    Order.objects.prefetch_related('items'),
+                    id=order_id,
+                    assigned_delivery_user=request.user
+                )
+                if action == 'cancel':
+                    reason = json.dumps(incidence_data, ensure_ascii=False)
+                    order.cancel(reason, user=request.user)
 
-                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                    return JsonResponse({
-                        'success': True,
-                        'message': f'Pedido {order.order_number} cancelado por: {type_label}',
-                        'order_number': order.order_number,
-                        'status': 'cancelado',
-                    })
+                    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                        return JsonResponse({
+                            'success': True,
+                            'message': f'Pedido {order.order_number} cancelado por: {type_label}',
+                            'order_number': order.order_number,
+                            'status': 'cancelado',
+                        })
 
-                messages.warning(request, f'Pedido {order.order_number} cancelado. Motivo: {type_label}')
-            else:
-                # Acumular incidencias en cancelled_reason como lista JSON
-                existing = []
-                if order.cancelled_reason:
-                    try:
-                        parsed = json.loads(order.cancelled_reason)
-                        existing = parsed if isinstance(parsed, list) else [parsed]
-                    except json.JSONDecodeError:
-                        pass
+                    messages.warning(request, f'Pedido {order.order_number} cancelado. Motivo: {type_label}')
+                else:
+                    # Acumular incidencias en cancelled_reason como lista JSON
+                    existing = []
+                    if order.cancelled_reason:
+                        try:
+                            parsed = json.loads(order.cancelled_reason)
+                            existing = parsed if isinstance(parsed, list) else [parsed]
+                        except json.JSONDecodeError:
+                            pass
 
-                existing.append(incidence_data)
-                order.cancelled_reason = json.dumps(existing, ensure_ascii=False)
-                order.save(update_fields=['cancelled_reason', 'updated_at'])
+                    existing.append(incidence_data)
+                    order.cancelled_reason = json.dumps(existing, ensure_ascii=False)
+                    order.save(update_fields=['cancelled_reason', 'updated_at'])
 
-                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                    return JsonResponse({
-                        'success': True,
-                        'message': f'Incidencia reportada: {type_label}',
-                        'order_number': order.order_number,
-                        'status': order.status,
-                    })
+                    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                        return JsonResponse({
+                            'success': True,
+                            'message': f'Incidencia reportada: {type_label}',
+                            'order_number': order.order_number,
+                            'status': order.status,
+                        })
 
-                messages.info(request, f'Incidencia reportada para pedido {order.order_number}.')
+                    messages.info(request, f'Incidencia reportada para pedido {order.order_number}.')
 
         except Exception as exc:
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
@@ -458,6 +456,12 @@ def register_incidence(request, order_id):
             return redirect(DELIVERY_REGISTER_INCIDENCE, order_id=order_id)
 
         return redirect(DELIVERY_ORDERS)
+
+    order = get_object_or_404(
+        Order,
+        id=order_id,
+        assigned_delivery_user=request.user
+    )
 
     context = {
         'order': order,
@@ -534,7 +538,7 @@ def _build_summary(user, today):
                 'id': o.id,
                 'order_number': o.order_number,
                 'customer': o.customer_name,
-                'amount': float(o.total_amount),
+                'amount': str(o.total_amount),
             }
             for o in delivered_orders
         ],
@@ -580,11 +584,18 @@ def close_journey(request):
 
     today = timezone.localdate()
     summary = _build_summary(request.user, today)
-    summary['closed_at'] = timezone.now().isoformat()
-    summary['closed_by'] = request.user.get_full_name() or request.user.username
+    summary_light = {
+        'date': summary['date'],
+        'total_delivered': summary['total_delivered'],
+        'pending_delivery': summary['pending_delivery'],
+        'total_today': summary['total_today'],
+        'incidence_count': len(summary['incidences']),
+        'closed_at': timezone.now().isoformat(),
+        'closed_by': request.user.get_full_name() or request.user.username,
+    }
 
     session_key = f'closed_summary_{today.isoformat()}'
-    request.session[session_key] = summary
+    request.session[session_key] = summary_light
 
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return JsonResponse({

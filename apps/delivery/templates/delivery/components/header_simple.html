@@ -10,11 +10,21 @@
                 <p class="text-xs text-gray-500">{{ page_subtitle }}</p>
             </div>
         </div>
-        {% if not hide_refresh %}
-        <button id="refreshBtn" class="p-2 rounded-full hover:bg-gray-100 transition" aria-label="Actualizar">
-            <i class="fas fa-sync-alt text-gray-600"></i>
-        </button>
-        {% endif %}
+        <div class="flex items-center space-x-1">
+            {% if not hide_refresh %}
+            <button id="refreshBtn" class="p-2 rounded-full hover:bg-gray-100 transition" aria-label="Actualizar">
+                <i class="fas fa-sync-alt text-gray-600"></i>
+            </button>
+            {% endif %}
+            {% if show_logout %}
+            <form method="POST" action="{% url 'delivery:logout' %}" class="inline">
+                {% csrf_token %}
+                <button type="submit" class="p-2 rounded-full hover:bg-gray-100 transition text-red-600 hover:text-red-700" aria-label="Cerrar sesión">
+                    <i class="fas fa-sign-out-alt"></i>
+                </button>
+            </form>
+            {% endif %}
+        </div>
     </div>
 </header>
 {% endblock %}

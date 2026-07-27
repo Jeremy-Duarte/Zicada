@@ -10,7 +10,7 @@ from django.db import migrations
 def create_roles_and_permissions(apps, schema_editor):
     """Crea los roles Administrador y Entregador con sus permisos."""
     
-    Group = apps.get_model('users', 'Group')
+    Group = apps.get_model('auth', 'Group')
     User = apps.get_model('users', 'User')
     Permission = apps.get_model('auth', 'Permission')
     

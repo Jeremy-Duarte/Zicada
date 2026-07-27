@@ -5,7 +5,7 @@ from datetime import timedelta
 
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
-from django.db.models import Q, Min, Max, Count
+from django.db.models import Q, Min, Max, Count, Sum, Prefetch
 from django.contrib.admin.views.decorators import staff_member_required
 from django.utils import timezone
 from django.core.management import call_command
@@ -14,7 +14,8 @@ from django.views.generic import ListView, CreateView, UpdateView, DeleteView, T
 from django.views import View
 from apps.core.crud.mixins import StaffPermissionRequiredMixin
 from django.utils.safestring import mark_safe
-from django.views.decorators.http import require_GET, require_POST, require_http_methods
+from django.utils.html import format_html
+from django.views.decorators.http import require_GET
 from django.http import HttpResponse
 
 from apps.core.crud.mixins import PaginationMixin, FilterMixin, SortableDeleteMixin
@@ -335,27 +336,34 @@ class StockDashboardView(StaffPermissionRequiredMixin, TemplateView):
             variants__stock__gt=STOCK_ZERO
         ).distinct()
         
-        all_products = Product.objects.filter(is_active=True)
+        all_products = Product.objects.filter(is_active=True).annotate(
+            total_stock=Sum('variants__stock', filter=Q(variants__is_active=True)),
+            variant_count=Count('variants', filter=Q(variants__is_active=True)),
+        )
         out_of_stock_products = all_products.exclude(id__in=products_with_stock)
         
         product_stock_summary = []
         for product in all_products[:PAGINATE_BY_DEFAULT]:
-            total = product.total_stock()
+            total = product.total_stock or 0
             if total > STOCK_ZERO:
                 product_stock_summary.append({
                     'product': product,
                     'total_stock': total,
-                    'variants_count': product.variants.filter(is_active=True).count(),
+                    'variants_count': product.variant_count,
                 })
         
+        low_stock_list = list(low_stock_variants)
+        out_of_stock_variants_list = list(out_of_stock_variants)
+        out_of_stock_products_list = list(out_of_stock_products)
+
         context.update({
-            'low_stock_variants': low_stock_variants,
-            'out_of_stock_variants': out_of_stock_variants,
-            'out_of_stock_products': out_of_stock_products,
+            'low_stock_variants': low_stock_list,
+            'out_of_stock_variants': out_of_stock_variants_list,
+            'out_of_stock_products': out_of_stock_products_list,
             'product_stock_summary': product_stock_summary,
-            'low_stock_count': low_stock_variants.count(),
-            'out_of_stock_variants_count': out_of_stock_variants.count(),
-            'out_of_stock_products_count': out_of_stock_products.count(),
+            'low_stock_count': len(low_stock_list),
+            'out_of_stock_variants_count': len(out_of_stock_variants_list),
+            'out_of_stock_products_count': len(out_of_stock_products_list),
         })
         
         return context
@@ -583,7 +591,6 @@ class CollectionDetailView(BaseProductListView):
         # HU-006 | ESCENARIO 1 | H | Productos de la colección filtrados
         qs = super().get_queryset().filter(is_active=PRODUCT_FILTER_ACTIVE)
         qs = qs.filter(collections=self.collection)
-        qs = self.apply_common_filters(qs)
         return qs
     
     def get_template_names(self):
@@ -690,7 +697,7 @@ def build_gallery_context(product):
     # HU-006 | ESCENARIO 1 | H | Imágenes del producto cargadas
     product_colors = product.product_colors.filter(
         is_active=True
-    ).prefetch_related('images').order_by(ORDER_BY_SORT_ORDER)
+    ).select_related('color').prefetch_related('images').order_by(ORDER_BY_SORT_ORDER)
     
     gallery_images = []
     featured_image = None
@@ -724,7 +731,7 @@ def build_variants_context(product):
     """
     variants = product.variants.filter(
         is_active=True
-    ).select_related('product_color', 'size')
+    ).select_related('product_color__color', 'size')
     
     variants_data = []
     unique_colors = []
@@ -749,7 +756,7 @@ def build_variants_context(product):
             # HU-008 | ESCENARIO 2 | A | Talla agotada (stock = 0) → stock_display='out_of_stock'
             'stock_display': stock_display,
             'stock_message': stock_message,
-            'price': float(product.price),
+            'price': str(product.price),
             'image': variant.product_color.featured_image.image.url if variant.product_color.featured_image and variant.product_color.featured_image.image else '',
         })
         
@@ -1130,11 +1137,13 @@ class ColorListView(StaffPermissionRequiredMixin, PaginationMixin, FilterMixin, 
                 'pk': color.pk,
                 'values': [
                     color.name,
-                    mark_safe(
-                        f'<div class="flex items-center gap-2">'
-                        f'<div class="w-6 h-6 rounded-full border" style="background-color: {color.code};"></div>'
-                        f'<span>{color.code}</span>'
-                        f'</div>'
+                    format_html(
+                        '<div class="flex items-center gap-2">'
+                        '<div class="w-6 h-6 rounded-full border" style="background-color: {};"></div>'
+                        '<span>{}</span>'
+                        '</div>',
+                        color.code,
+                        color.code,
                     ),
                     color.sort_order
                 ],
@@ -1305,7 +1314,7 @@ class ProductImageListView(StaffPermissionRequiredMixin, PaginationMixin, Filter
             rows.append({
                 'pk': img.pk,
                 'values': [
-                    mark_safe(f'<img src="{img.image.url}" alt="{alt_text}" class="w-16 h-16 object-cover rounded-lg">'),
+                    format_html('<img src="{}" alt="{}" class="w-16 h-16 object-cover rounded-lg">', img.image.url, alt_text),
                     alt_text,
                     img.created_at.strftime(DATE_FORMAT_DISPLAY),
                 ],
@@ -1424,6 +1433,11 @@ class ProductListView(StaffPermissionRequiredMixin, PaginationMixin, FilterMixin
         (FILTER_PRODUCT_TYPE, 'product_type', 'exact'),
         (FILTER_IS_ACTIVE, FILTER_IS_ACTIVE, 'exact'),
     ]
+    
+    def get_queryset(self):
+        return super().get_queryset().prefetch_related(
+            Prefetch('product_colors', queryset=ProductColor.objects.select_related('featured_image'))
+        )
     
     def get_context_data(self, **kwargs):
         # HU-009 | ESCENARIO 1 | H | Lista cargada exitosamente con productos activos y archivados
@@ -1621,7 +1635,7 @@ class ProductTrashcanView(StaffPermissionRequiredMixin, ListView):
     
     def get_queryset(self):
         # HU-012 | ESCENARIO 1,2 | A | Productos archivados visibles en papelera
-        return Product.all_objects.filter(is_active=False).order_by(ORDER_BY_DELETED_AT)
+        return Product.all_objects.filter(is_active=False).select_related('category').order_by(ORDER_BY_DELETED_AT)
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -1983,7 +1997,7 @@ class CollectionListView(StaffPermissionRequiredMixin, PaginationMixin, FilterMi
     def get_queryset(self):
         # HU-014 | ESCENARIO 1 | H | Lista de colecciones cargada (activas y archivadas)
         qs = super().get_queryset()
-        qs = qs.prefetch_related('products')
+        qs = qs.prefetch_related('products').annotate(product_count=Count('products'))
         return qs
     
     def _get_cover_image_html(self, collection):
@@ -1992,7 +2006,7 @@ class CollectionListView(StaffPermissionRequiredMixin, PaginationMixin, FilterMi
         return mark_safe(ICON_IMAGE_PLACEHOLDER)
     
     def _get_name_html(self, collection):
-        return mark_safe(f'<div><strong>{collection.name}</strong><br><span class="text-xs text-gray-500">{collection.slug}</span></div>')
+        return format_html('<div><strong>{}</strong><br><span class="text-xs text-gray-500">{}</span></div>', collection.name, collection.slug)
     
     def _get_status_badge_html(self, collection):
         status_map = {
@@ -2020,7 +2034,7 @@ class CollectionListView(StaffPermissionRequiredMixin, PaginationMixin, FilterMi
             'values': [
                 self._get_cover_image_html(collection),
                 self._get_name_html(collection),
-                collection.products.count(),
+                collection.product_count,
                 self._get_status_badge_html(collection),
                 self._get_active_badge_html(collection),
                 self._get_dates_html(collection),
@@ -2288,7 +2302,9 @@ class CollectionTrashcanView(StaffPermissionRequiredMixin, ListView):
     
     def get_queryset(self):
         # HU-017 | ESCENARIO 1,2 | A | Colecciones archivadas visibles en papelera
-        return Collection.all_objects.filter(is_active=False).order_by(ORDER_BY_DELETED_AT)
+        return Collection.all_objects.filter(is_active=False).annotate(
+            product_count=Count('products')
+        ).order_by(ORDER_BY_DELETED_AT)
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -2299,7 +2315,7 @@ class CollectionTrashcanView(StaffPermissionRequiredMixin, ListView):
                 'pk': collection.pk,
                 'values': [
                     collection.name,
-                    collection.products.count(),
+                    collection.product_count,
                     collection.deleted_at.strftime(DATE_FORMAT_DISPLAY) if collection.deleted_at else '-',
                 ],
             })

@@ -32,7 +32,7 @@
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {% include 'backoffice/components/widgets/chart_card.html' with chart_id="orders-status" title="Pedidos por estado" chart_type="donut" chart_data=orders_status_data %}
+        {% include 'backoffice/components/widgets/chart_card.html' with chart_id="orders-status" title="Pedidos por estado" chart_type="donut" chart_data=orders_status_data yaxis_label="Pedidos" %}
         {% include 'backoffice/components/widgets/info_card.html' with title="Resumen financiero" icon="chart-pie" items=financial_items footer_text="Actualizado al día de hoy"%}
     </div>
 

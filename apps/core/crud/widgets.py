@@ -390,11 +390,12 @@ class ProductCheckboxSelectWidget(forms.Widget):
                 <div class="col-span-full text-center py-8 text-gray-400">
                     <i class="fas fa-box-open text-3xl mb-2 block"></i>
                     <p class="text-sm">No hay productos disponibles.</p>
-                    <a href="/products/admin/productos/crear/" target="_blank" class="text-zicada-accent hover:underline inline-block mt-2 text-sm">
+                    <a href="%s" target="_blank" class="text-zicada-accent hover:underline inline-block mt-2 text-sm">
                         Crear producto
                     </a>
                 </div>
-            '''
+            ''' % (reverse('admin:products_product_add'),)
+
 
         grid_items = []
         for product in products:

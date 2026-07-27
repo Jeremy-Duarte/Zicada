@@ -17,7 +17,7 @@ echo "FULL COVERAGE REPORT"
 echo "Target: $TARGET"
 echo "=========================================="
 
-export DJANGO_SETTINGS_MODULE=config.settings
+export DJANGO_SETTINGS_MODULE=config.settings_test
 export PYTHONPATH="$PROJECT_ROOT"
 
 case "$TARGET" in

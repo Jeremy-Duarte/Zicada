@@ -23,7 +23,7 @@
         updateUrl: "{% url 'orders:cart_update' %}",
         removeUrl: "{% url 'orders:cart_remove' %}",
         checkoutUrl: "{% url 'orders:checkout' %}",
-        csrfToken: "{{ csrf_token }}"
+        csrfToken: "{{ csrf_token|escapejs }}"
     };
 </script>
 <script src="{% static 'js/orders/cart_detail.js' %}"></script>

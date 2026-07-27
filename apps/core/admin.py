@@ -15,7 +15,7 @@ class HeroConfigAdmin(admin.ModelAdmin):
     
     fieldsets = (
         ('Configuración del Slide', {
-            'fields': ('is_active', 'order', 'background_image', 'overlay_opacity'),
+            'fields': ('is_active', 'sort_order', 'background_image', 'overlay_opacity'),
             'classes': ('wide',)
         }),
         ('Contenido', {
@@ -39,6 +39,7 @@ class HeroConfigAdmin(admin.ModelAdmin):
             kwargs['form'] = self.form
         return super().get_form(request, obj, **kwargs)
     
+    @admin.display(description='Slide')
     def title_preview(self, obj):
         return format_html(
             '<div style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">'
@@ -46,8 +47,8 @@ class HeroConfigAdmin(admin.ModelAdmin):
             obj.title_text[:30],
             obj.subtitle_text[:40] if obj.subtitle_text else ''
         )
-    title_preview.short_description = 'Slide'
     
+    @admin.display(description='Fondo')
     def background_preview(self, obj):
         if obj.background_image and obj.background_image.url:
             return format_html(
@@ -55,7 +56,6 @@ class HeroConfigAdmin(admin.ModelAdmin):
                 obj.background_image.url
             )
         return '-'
-    background_preview.short_description = 'Fondo'
     
     class Media:
         css = {

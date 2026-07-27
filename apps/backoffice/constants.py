@@ -130,6 +130,7 @@ BADGE_PRIMARY = 'Principal'
 BADGE_PLUS = '+'
 BADGE_TRASH = '🗑'
 LABEL_EXPORT_REPORTS = 'Exportar Reportes'
+LABEL_EXPORT_IMPORTS = 'Importaciones de modelos'
 
 # Button Titles
 BTN_TITLE_MANAGE_ORDERS = 'Gestionar Pedidos'
@@ -161,6 +162,7 @@ BTN_DESC_EXPORT_DELIVERIES = 'Descargar reportes de entregas'
 BTN_DESC_FINANCIAL_REPORTS = 'Generar reportes financieros personalizados'
 BTN_DESC_MANAGE_ORDERS = 'Ver, filtrar y gestionar todos los pedidos'
 BTN_DESC_MANAGE_COLLECTIONS = 'Planear, Crear una Colección de productos'
+BTN_DESC_IMPORT_PRODUCTS = 'Importa categorias, colores o tallas'
 
 # Gradient Colors
 GRADIENT_ACCENT_FROM = 'zicada-accent'

@@ -152,7 +152,7 @@ PASSWORD_HASHERS = [
     'django.contrib.auth.hashers.MD5PasswordHasher',
 ]
 
-logging.disable(logging.CRITICAL)
+logging.disable(logging.WARNING)
 
 CRONJOBS = []
 CRONTAB_LOCK_JOBS = False

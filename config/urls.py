@@ -18,12 +18,12 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
-from apps.core.views import home, pwa_manifest
+from apps.core.views import home
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('accounts/', include('django.contrib.auth.urls')),
     path('', home, name='home'),
-    path('manifest.json', pwa_manifest, name='pwa_manifest'),
     path('core/', include('apps.core.urls')),
     path('orders/', include('apps.orders.urls')),
     path('products/', include('apps.products.urls')),

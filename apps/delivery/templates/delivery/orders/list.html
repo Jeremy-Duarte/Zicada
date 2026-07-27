@@ -11,14 +11,15 @@
         apiBase: '/delivery/api',
         csrfToken: '{{ csrf_token }}',
         userId: {{ user.id }},
-        initialFilter: '{{ filter|default:"all" }}',
+        initialFilter: '{{ filter|default:"all"|escapejs }}',
         refreshInterval: 30000 // 30 segundos
     };
 </script>
 {% endblock %}
 
 {% block header %}
-{% include 'delivery/components/header_simple.html' with page_title="Mis Pedidos" page_subtitle=today|date:"l, j \d\e F" back_url=back_url|default:"delivery:dashboard" %}
+{% url 'delivery:dashboard' as default_back_url %}
+{% include 'delivery/components/header_simple.html' with page_title="Mis Pedidos" page_subtitle=today|date:"l, j \d\e F" back_url=back_url|default:default_back_url show_logout=True %}
 {% endblock %}
 
 {% block content %}

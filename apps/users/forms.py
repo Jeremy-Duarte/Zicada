@@ -589,26 +589,3 @@ class UserProfilePasswordForm(FormStyleMixin, forms.Form):
         return self.user
 
 
-# =============================================================================
-# DELIVERY USER PROFILE FORM (SOPORTE)
-# =============================================================================
-
-class DeliveryUserProfileForm(FormStyleMixin, forms.ModelForm):
-    """
-    Soporte: Formulario para entregadores (no tiene HU asignada directamente)
-    """
-    class Meta:
-        model = User
-        fields = ['phone']
-        widgets = {
-            'phone': forms.TextInput(attrs={'placeholder': PHONE_PLACEHOLDER}),
-        }
-    
-    def clean_phone(self):
-        phone = self.cleaned_data.get('phone', '').strip()
-        digits = ''.join(c for c in phone if c.isdigit())
-        if len(digits) < 7:
-            raise ValidationError(ERROR_PHONE_MIN_DIGITS)
-        if len(digits) > 15:
-            raise ValidationError(ERROR_PHONE_MAX_DIGITS)
-        return digits

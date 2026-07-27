@@ -1,10 +1,10 @@
 from datetime import timedelta
 from typing import Any, Dict, List, Tuple
-from django.db.models import Q, Sum, Count, Min, Max
+from django.db.models import Q, Sum, Count
 from django.shortcuts import reverse
 from django.utils import timezone
 from apps.orders.models import Order, OrderItem
-from apps.products.models import Product, ProductVariant, Size, Category, Color, ProductImage
+from apps.products.models import Product, ProductVariant
 from apps.users.models import User
 from .constants import (
     PAID_ORDER_STATUSES, ORDER_STATUS_LABELS, DEFAULT_LIMIT, MAX_LOW_STOCK,
@@ -131,13 +131,18 @@ def get_top_products(limit: int = DEFAULT_LIMIT) -> List[Dict[str, Any]]:
         total_quantity=Sum('quantity'),
         total_revenue=Sum('subtotal')
     ).order_by('-total_quantity')[:limit]
+    names = [item['product_name_snapshot'] for item in top]
+    products_map = {}
+    for p in Product.objects.filter(name__in=names, is_active=True):
+        if p.name not in products_map:
+            products_map[p.name] = p
     result = []
     for item in top:
         name = item['product_name_snapshot']
-        try:
-            product = Product.objects.get(name=name, is_active=True)
+        product = products_map.get(name)
+        if product:
             url = reverse(PRODUCTS_EDIT, args=[product.pk])
-        except Product.DoesNotExist:
+        else:
             url = reverse(PRODUCTS_LIST) + QUERY_NAME.format(name)
         result.append({
             'title': name,
@@ -171,10 +176,11 @@ def get_recent_products(limit: int = DEFAULT_LIMIT) -> List[Dict[str, Any]]:
     result = []
     for product in products:
         category_name = product.category.name if product.category else STRING_NO_CATEGORY
+        total_stock = getattr(product, 'total_stock', lambda: 0)()
         result.append({
             'title': product.name,
             'subtitle': f"{CURRENCY_PREFIX}{product.price:,.0f} - {category_name}",
-            'value': f"{product.total_stock()} {STRING_UNITS}",
+            'value': f"{total_stock} {STRING_UNITS}",
             'date': product.created_at.strftime(DATE_FORMAT_DAY_MONTH_YEAR),
             'icon': ICON_TSHIRT,
             'icon_bg': ICON_BG_BLUE,
@@ -229,20 +235,17 @@ def get_recent_deliveries(limit: int = DEFAULT_LIMIT) -> List[Dict[str, Any]]:
     return result
 
 def get_active_deliveries_list(limit: int = DEFAULT_LIMIT) -> List[Dict[str, Any]]:
-    deliveries = User.objects.filter(is_delivery=True, is_active=True).order_by('-date_joined')[:limit]
+    deliveries = User.objects.filter(is_delivery=True, is_active=True).annotate(
+        assigned_count=Count('assigned_orders', filter=Q(assigned_orders__status=ORDER_STATUS_ON_THE_WAY)),
+        delivered_count=Count('assigned_orders', filter=Q(assigned_orders__status=ORDER_STATUS_DELIVERED))
+    ).order_by('-date_joined')[:limit]
     result = []
     for delivery in deliveries:
-        assigned_count = Order.objects.filter(
-            assigned_delivery_user=delivery, status=ORDER_STATUS_ON_THE_WAY
-        ).count()
-        delivered_count = Order.objects.filter(
-            assigned_delivery_user=delivery, status=ORDER_STATUS_DELIVERED
-        ).count()
         result.append({
             'title': delivery.get_full_name() or delivery.username,
             'subtitle': delivery.email or STRING_NO_EMAIL,
-            'value': f"{assigned_count} {STRING_ON_THE_WAY}",
-            'date': f"{delivered_count} {STRING_DELIVERED}",
+            'value': f"{delivery.assigned_count} {STRING_ON_THE_WAY}",
+            'date': f"{delivery.delivered_count} {STRING_DELIVERED}",
             'icon': ICON_USER,
             'icon_bg': ICON_BG_PURPLE,
             'icon_color': ICON_COLOR_PURPLE,

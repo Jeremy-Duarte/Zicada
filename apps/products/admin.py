@@ -555,16 +555,17 @@ class CollectionAdmin(admin.ModelAdmin):
     
     actions = ['archive_expired_collections', 'publish_scheduled_collections', 'archive_selected_collections']
     
+    @admin.action(description='Archivar colecciones expiradas')
     def archive_expired_collections(self, request, queryset):
         call_command('archive_collections')
         self.message_user(request, 'Colecciones expiradas archivadas correctamente.', messages.SUCCESS)
-    archive_expired_collections.short_description = 'Archivar colecciones expiradas'
     
+    @admin.action(description='Publicar colecciones programadas')
     def publish_scheduled_collections(self, request, queryset):
         call_command('publish_collections')
         self.message_user(request, 'Colecciones programadas publicadas correctamente.', messages.SUCCESS)
-    publish_scheduled_collections.short_description = 'Publicar colecciones programadas'
     
+    @admin.action(description='Archivar colecciones seleccionadas')
     def archive_selected_collections(self, request, queryset):
         count = 0
         for collection in queryset:
@@ -574,4 +575,3 @@ class CollectionAdmin(admin.ModelAdmin):
                 collection.update_products_type()
                 count += 1
         self.message_user(request, f'{count} colección(es) archivada(s).')
-    archive_selected_collections.short_description = 'Archivar colecciones seleccionadas'

@@ -99,18 +99,9 @@
                     {{ form.section_height }}
                     <p class="text-xs text-gray-400 mt-1">10% a 100% de la pantalla</p>
                 </div>
-                {% if form.instance.pk %}
-                <div>
-                    <label for="{{ form.is_active.id_for_label }}" class="flex items-center gap-2 cursor-pointer">
-                        {{ form.is_active }}
-                        <span class="text-sm font-medium text-gray-700">Slide activo</span>
-                    </label>
-                    <p class="text-xs text-gray-400 mt-1">Los slides inactivos no se muestran en el carrusel</p>
-                </div>
-                {% endif %}
             </div>
 
-            <!-- Selector de color de fondo para las previews (SOLO PARA PROBAR) -->
+            <!-- Selector de color de fondo para las previews -->
             <div class="border-b border-gray-200 pb-4">
                 <h2 class="text-lg font-semibold text-gray-800">Color de fondo para probar contraste</h2>
                 <p class="text-sm text-gray-500">Este color solo afecta a las previews de abajo, no al slide final</p>
@@ -302,5 +293,7 @@
 </div>
 {% endblock %}
 {% block extra_js %}
+{{ block.super }}
+{{ form.media }}
 <script src="{% static 'js/core/hero-form.js' %}" defer></script>
 {% endblock %}

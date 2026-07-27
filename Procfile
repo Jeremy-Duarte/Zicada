@@ -1,1 +1,1 @@
-web: python manage.py migrate && python manage.py setup_roles && python manage.py collectstatic --noinput && gunicorn config.wsgi --log-file -
+web: DJANGO_SETTINGS_MODULE=config.settings_production python manage.py migrate && DJANGO_SETTINGS_MODULE=config.settings_production python manage.py setup_roles && DJANGO_SETTINGS_MODULE=config.settings_production python manage.py collectstatic --noinput && gunicorn config.wsgi --log-file -

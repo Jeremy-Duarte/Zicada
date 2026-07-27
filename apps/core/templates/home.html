@@ -2,7 +2,8 @@
 {% load static %}
 
 {% block title %}Zicada - Moda Urbana Personalizada | Inicio{% endblock %}
-{% block description %}Descubre Zicada, ropa streetwear única y personalizada en Colombia. Colecciones exclusivas que reflejan tu estilo. Envíos a todo el país.{% endblock %}
+{% block description %}Descubre Zicada, ropa streetwear única y personalizada en Colombia. Colecciones exclusivas que
+reflejan tu estilo. Envíos a todo el país.{% endblock %}
 
 {% block content %}
 
@@ -12,8 +13,7 @@
     <div id="hero-carousel" class="relative w-full h-full">
         {% for slide in hero_slides %}
         <div class="hero-slide absolute inset-0 w-full h-full transition-opacity duration-1000 ease-in-out"
-             data-index="{{ forloop.counter0 }}"
-             style="{% if slide.background_image and slide.background_image.url %}
+            data-index="{{ forloop.counter0 }}" style="{% if slide.background_image and slide.background_image.url %}
                     background-image: url('{{ slide.background_image.url }}');
                     background-size: cover;
                     background-position: center;
@@ -23,11 +23,11 @@
                     {% endif %}
                     opacity: {% if forloop.first %}1{% else %}0{% endif %};
                     z-index: {% if forloop.first %}10{% else %}0{% endif %};">
-            
+
             <!-- Overlay con opacidad configurable -->
             {% if slide.background_image and slide.background_image.url %}
-                {% with opacity=slide.overlay_opacity|default:0.3 %}
-                    <div class="absolute inset-0 
+            {% with opacity=slide.overlay_opacity|default:0.3 %}
+            <div class="absolute inset-0 
                         {% if opacity >= 0.9 %}bg-black bg-opacity-90
                         {% elif opacity >= 0.8 %}bg-black bg-opacity-80
                         {% elif opacity >= 0.7 %}bg-black bg-opacity-70
@@ -39,28 +39,31 @@
                         {% elif opacity >= 0.1 %}bg-black bg-opacity-10
                         {% else %}bg-black bg-opacity-0{% endif %}
                     "></div>
-                {% endwith %}
+            {% endwith %}
             {% endif %}
-            
+
             <!-- Contenido -->
             <div class="relative z-10 container mx-auto px-6 md:px-8 h-full flex items-center justify-center">
                 <div class="max-w-4xl w-full mx-auto
                     {% if slide.content_alignment == 'left' %}text-left
                     {% elif slide.content_alignment == 'right' %}text-right
                     {% else %}text-center{% endif %}">
-                    
-                    <h1 class="tracking-tight px-4 md:px-8"
-                        style="font-family: {{ slide.title_font_family }}; 
+
+                    <h1 class="tracking-tight px-4 md:px-8" style="font-family: {{ slide.title_font_family }}; 
                             font-size: {{ slide.title_font_size }}; 
                             font-weight: {{ slide.title_font_weight }}; 
                             line-height: {{ slide.title_line_height }}; 
                             color: {{ slide.title_color }};
                             margin-bottom: {{ slide.title_margin_bottom|default:'1.5rem' }};">
-                        {{ slide.title_text|safe|linebreaksbr }}
+                        {% if "zicada" in slide.title_text|lower %}
+                        <img src="{% static 'img/lettering-zicada.png' %}" alt="Lettering Zicada"
+                            class="mx-auto max-h-48 md:max-h-64 lg:max-h-80 w-auto object-contain" />
+                        {% else %}
+                        {{ slide.title_text|linebreaksbr }}
+                        {% endif %}
                     </h1>
-                    
-                    <p class="max-w-2xl mx-auto px-4 md:px-8"
-                       style="font-family: {{ slide.subtitle_font_family }}; 
+
+                    <p class="max-w-2xl mx-auto px-4 md:px-8" style="font-family: {{ slide.subtitle_font_family }}; 
                                font-size: {{ slide.subtitle_font_size }}; 
                                font-weight: {{ slide.subtitle_font_weight }}; 
                                line-height: {{ slide.subtitle_line_height }}; 
@@ -68,13 +71,13 @@
                                margin-bottom: {{ slide.subtitle_margin_bottom|default:'2.5rem' }};">
                         {{ slide.subtitle_text }}
                     </p>
-                    
+
                     <div class="flex flex-col sm:flex-row gap-5 px-4 md:px-8
                         {% if slide.content_alignment == 'left' %}justify-start
                         {% elif slide.content_alignment == 'right' %}justify-end
                         {% else %}justify-center{% endif %}">
                         <a href="{{ slide.button_url }}"
-                           class="{{ slide.button_style|default:'bg-white hover:bg-red-700 text-black' }} px-10 py-4 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg inline-block">
+                            class="{{ slide.button_style|default:'bg-white hover:bg-red-700 text-black' }} px-10 py-4 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg inline-block">
                             {{ slide.button_text }}
                         </a>
                     </div>
@@ -82,14 +85,13 @@
             </div>
         </div>
         {% endfor %}
-        
+
         <!-- Controles (puntos) - siempre visibles -->
         <div class="absolute bottom-8 left-0 right-0 z-30 flex justify-center gap-3">
             {% for slide in hero_slides %}
             <button class="carousel-dot w-3 h-3 rounded-full transition-all duration-300 mx-1
                           {% if forloop.first %}bg-white w-6{% else %}bg-white/50{% endif %}"
-                    data-index="{{ forloop.counter0 }}"
-                    style="cursor: pointer;"></button>
+                data-index="{{ forloop.counter0 }}" style="cursor: pointer;"></button>
             {% endfor %}
         </div>
     </div>
@@ -97,7 +99,7 @@
 {% else %}
 <!-- Fallback cuando no hay slides activos -->
 <section class="relative bg-gradient-to-r from-gray-100 to-gray-200 text-gray-900"
-         style="height: 100vh; margin-top: -16.666vh; padding-top: 16.666vh;">
+    style="height: 100vh; margin-top: -16.666vh; padding-top: 16.666vh;">
     <div class="absolute inset-0 bg-white opacity-40"></div>
     <div class="container mx-auto px-4 relative z-10 text-center">
         <div class="max-w-4xl mx-auto">
@@ -106,14 +108,16 @@
                 <span class="text-zicada-accent">TU ESTILO PERMANECE</span>
             </h1>
             <p class="text-xl md:text-2xl text-gray-600 mb-8 max-w-2xl mx-auto">
-                Ropa única y personalizada diseñada para expresar tu individualidad. 
+                Ropa única y personalizada diseñada para expresar tu individualidad.
                 Colecciones exclusivas de streetwear hechas en Colombia.
             </p>
             <div class="flex flex-col sm:flex-row gap-4 justify-center">
-                <a href="{% url 'products:catalog' %}" class="bg-zicada-accent hover:bg-red-700 text-white font-semibold px-8 py-3 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg">
+                <a href="{% url 'products:catalog' %}"
+                    class="bg-zicada-accent hover:bg-red-700 text-white font-semibold px-8 py-3 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg">
                     Ver catálogo
                 </a>
-                <a href="{% url 'products:collections_list' %}" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold px-8 py-3 rounded-lg transition-all duration-300 border border-gray-300">
+                <a href="{% url 'products:collections_list' %}"
+                    class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold px-8 py-3 rounded-lg transition-all duration-300 border border-gray-300">
                     Explorar colecciones
                 </a>
             </div>
@@ -132,35 +136,43 @@
             </div>
             <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-3">Colecciones destacadas</h2>
             <div class="w-20 h-1 bg-zicada-accent mx-auto my-4 rounded-full"></div>
-            <p class="text-gray-600 max-w-2xl mx-auto">Descubre nuestras colecciones más recientes, cada una con un estilo único y personalidad propia.</p>
+            <p class="text-gray-600 max-w-2xl mx-auto">Descubre nuestras colecciones más recientes, cada una con un
+                estilo único y personalidad propia.</p>
         </div>
-        
+
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {% for collection in featured_collections %}
-            <div class="group relative overflow-hidden rounded-xl shadow-lg hover:shadow-xl transition-all duration-300">
+            <div
+                class="group relative overflow-hidden rounded-xl shadow-lg hover:shadow-xl transition-all duration-300">
                 <div class="aspect-w-16 aspect-h-9">
                     {% if collection.style_config and collection.style_config.background_image %}
-                        <img src="{{ collection.style_config.background_image }}" alt="{{ collection.name }}" class="w-full h-64 object-cover group-hover:scale-110 transition duration-500 brightness-95 group-hover:brightness-100">
+                    <img src="{{ collection.style_config.background_image }}" alt="{{ collection.name }}"
+                        class="w-full h-64 object-cover group-hover:scale-110 transition duration-500 brightness-95 group-hover:brightness-100">
                     {% else %}
-                        <div class="w-full h-64 bg-gradient-to-r from-gray-200 to-gray-300"></div>
+                    <div class="w-full h-64 bg-gradient-to-r from-gray-200 to-gray-300"></div>
                     {% endif %}
                 </div>
-                <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent flex flex-col justify-end p-6">
+                <div
+                    class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent flex flex-col justify-end p-6">
                     <h3 class="text-white text-xl font-bold mb-2">{{ collection.name }}</h3>
                     <p class="text-gray-200 text-sm mb-3 line-clamp-2">{{ collection.description|truncatewords:15 }}</p>
-                    <a href="{% url 'products:collection_detail' collection.slug %}" class="inline-flex items-center text-zicada-accent font-semibold hover:text-red-400 transition group">
+                    <a href="{% url 'products:collection_detail' collection.slug %}"
+                        class="inline-flex items-center text-zicada-accent font-semibold hover:text-red-400 transition group">
                         Ver colección
-                        <svg class="w-4 h-4 ml-1 transform group-hover:translate-x-1 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        <svg class="w-4 h-4 ml-1 transform group-hover:translate-x-1 transition" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
+                            </path>
                         </svg>
                     </a>
                 </div>
             </div>
             {% endfor %}
         </div>
-        
+
         <div class="text-center mt-12">
-            <a href="{% url 'products:collections_list' %}" class="inline-block border border-zicada-accent text-zicada-accent hover:bg-zicada-accent hover:text-white px-8 py-3 rounded-lg transition-all duration-300">
+            <a href="{% url 'products:collections_list' %}"
+                class="inline-block border border-zicada-accent text-zicada-accent hover:bg-zicada-accent hover:text-white px-8 py-3 rounded-lg transition-all duration-300">
                 Ver todas las colecciones
             </a>
         </div>
@@ -177,19 +189,21 @@
             </div>
             <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-3">Últimos productos</h2>
             <div class="w-20 h-1 bg-zicada-accent mx-auto my-4 rounded-full"></div>
-            <p class="text-gray-600 max-w-2xl mx-auto">Las últimas prendas que se han unido a nuestro catálogo. Encuentra tu próximo favorito.</p>
+            <p class="text-gray-600 max-w-2xl mx-auto">Las últimas prendas que se han unido a nuestro catálogo.
+                Encuentra tu próximo favorito.</p>
         </div>
-        
+
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {% for product in latest_products %}
-                {% include 'components/product_card.html' with product=product %}
+            {% include 'components/product_card.html' with product=product %}
             {% empty %}
-                <p class="text-center text-gray-500 col-span-full">No hay productos disponibles.</p>
+            <p class="text-center text-gray-500 col-span-full">No hay productos disponibles.</p>
             {% endfor %}
         </div>
-        
+
         <div class="text-center mt-12">
-            <a href="{% url 'products:catalog' %}" class="inline-block bg-zicada-accent hover:bg-red-700 text-white font-semibold px-8 py-3 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg">
+            <a href="{% url 'products:catalog' %}"
+                class="inline-block bg-zicada-accent hover:bg-red-700 text-white font-semibold px-8 py-3 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg">
                 Ver todo el catálogo
             </a>
         </div>
@@ -206,17 +220,19 @@
             </div>
             <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-3">Explora por categoría</h2>
             <div class="w-20 h-1 bg-zicada-accent mx-auto my-4 rounded-full"></div>
-            <p class="text-gray-600 max-w-2xl mx-auto">Encuentra lo que buscas según el tipo de prenda que necesitas.</p>
+            <p class="text-gray-600 max-w-2xl mx-auto">Encuentra lo que buscas según el tipo de prenda que necesitas.
+            </p>
         </div>
-        
+
         <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
             {% for category in categories %}
-            <a href="{% url 'products:catalog' %}?category={{ category.slug }}" class="group block bg-gray-100 rounded-xl overflow-hidden hover:shadow-xl hover:shadow-zicada-accent/20 transition-all duration-300">
+            <a href="{% url 'products:catalog' %}?category={{ category.slug }}"
+                class="group block bg-gray-100 rounded-xl overflow-hidden hover:shadow-xl hover:shadow-zicada-accent/20 transition-all duration-300">
                 <div class="h-32 bg-gradient-to-r from-gray-700 to-gray-800 flex items-center justify-center">
                     <span class="text-white text-xl font-bold group-hover:scale-110 transition">{{ category.name }}</span>
                 </div>
                 <div class="p-4 text-center bg-white">
-                    <span class="text-sm text-gray-600 group-hover:text-zicada-accent transition">{{ category.products.count }} productos</span>
+                    <span class="text-sm text-gray-600 group-hover:text-zicada-accent transition">{{ category.product_count }} productos</span>
                 </div>
             </a>
             {% endfor %}
@@ -236,74 +252,75 @@
         <p class="text-gray-600 max-w-2xl mx-auto mb-8">
             En Zicada cada prenda es especial. Contáctanos para consultar por personalizaciones o tallas especiales.
         </p>
-        <a href="{% url 'core:contact' %}" class="inline-block bg-zicada-accent hover:bg-red-700 text-white font-semibold px-8 py-3 rounded-lg transition-all duration-300 shadow-lg">
+        <a href="{% url 'core:contact' %}"
+            class="inline-block bg-zicada-accent hover:bg-red-700 text-white font-semibold px-8 py-3 rounded-lg transition-all duration-300 shadow-lg">
             Contáctanos
         </a>
     </div>
 </section>
 
 <script>
-(function() {
-    // Esperar a que el DOM esté completamente cargado
-    document.addEventListener('DOMContentLoaded', function() {
-        const slides = document.querySelectorAll('.hero-slide');
-        const dots = document.querySelectorAll('.carousel-dot');
-        
-        if (slides.length === 0) return;
-        
-        let currentIndex = 0;
-        let interval;
-        
-        function showSlide(index) {
-            if (index < 0) index = 0;
-            if (index >= slides.length) index = 0;
-            
-            slides.forEach((slide, i) => {
-                if (i === index) {
-                    slide.style.opacity = '1';
-                    slide.style.zIndex = '10';
-                } else {
-                    slide.style.opacity = '0';
-                    slide.style.zIndex = '0';
-                }
+    (function () {
+        // Esperar a que el DOM esté completamente cargado
+        document.addEventListener('DOMContentLoaded', function () {
+            const slides = document.querySelectorAll('.hero-slide');
+            const dots = document.querySelectorAll('.carousel-dot');
+
+            if (slides.length === 0) return;
+
+            let currentIndex = 0;
+            let interval;
+
+            function showSlide(index) {
+                if (index < 0) index = 0;
+                if (index >= slides.length) index = 0;
+
+                slides.forEach((slide, i) => {
+                    if (i === index) {
+                        slide.style.opacity = '1';
+                        slide.style.zIndex = '10';
+                    } else {
+                        slide.style.opacity = '0';
+                        slide.style.zIndex = '0';
+                    }
+                });
+
+                dots.forEach((dot, i) => {
+                    if (i === index) {
+                        dot.classList.remove('bg-white/50');
+                        dot.classList.add('bg-white', 'w-6');
+                    } else {
+                        dot.classList.remove('bg-white', 'w-6');
+                        dot.classList.add('bg-white/50');
+                    }
+                });
+
+                currentIndex = index;
+            }
+
+            function nextSlide() {
+                let next = currentIndex + 1;
+                if (next >= slides.length) next = 0;
+                showSlide(next);
+            }
+
+            dots.forEach((dot, idx) => {
+                dot.addEventListener('click', function () {
+                    showSlide(idx);
+                    if (interval) {
+                        clearInterval(interval);
+                        interval = setInterval(nextSlide, 5000);
+                    }
+                });
             });
-            
-            dots.forEach((dot, i) => {
-                if (i === index) {
-                    dot.classList.remove('bg-white/50');
-                    dot.classList.add('bg-white', 'w-6');
-                } else {
-                    dot.classList.remove('bg-white', 'w-6');
-                    dot.classList.add('bg-white/50');
-                }
-            });
-            
-            currentIndex = index;
-        }
-        
-        function nextSlide() {
-            let next = currentIndex + 1;
-            if (next >= slides.length) next = 0;
-            showSlide(next);
-        }
-        
-        dots.forEach((dot, idx) => {
-            dot.addEventListener('click', function() {
-                showSlide(idx);
-                if (interval) {
-                    clearInterval(interval);
-                    interval = setInterval(nextSlide, 5000);
-                }
-            });
+
+            showSlide(0);
+
+            if (slides.length > 1) {
+                interval = setInterval(nextSlide, 10000);
+            }
         });
-        
-        showSlide(0);
-        
-        if (slides.length > 1) {
-            interval = setInterval(nextSlide, 10000);
-        }
-    });
-})();
+    })();
 </script>
 
 {% endblock %}

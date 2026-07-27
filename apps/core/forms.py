@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib.auth.forms import AuthenticationForm
-from apps.core.crud.mixins import FormStyleMixin, SortableUpdateMixin
+from apps.core.crud.mixins import FormStyleMixin, SortableUpdateMixin, SortableCreateMixin, SortableDeleteMixin
 from django.core.exceptions import ValidationError
 from .models import HeroConfig
 from apps.products.models import Collection, Product
@@ -161,56 +161,32 @@ class StaffLoginForm(FormStyleMixin, AuthenticationForm):
         self.fields['username'].widget.attrs['placeholder'] = 'Usuario'
         self.fields['password'].widget.attrs['placeholder'] = 'Contraseña'
     
-    def clean(self):
-        """
-        Sobrescribir clean para manejar usuarios inactivos y sin permisos
-        ANTES de que AuthenticationForm los convierta en invalid_login
-        """
-        username = self.cleaned_data.get('username')
-        password = self.cleaned_data.get('password')
-        
-        if username and password:
-            # Intentar obtener el usuario primero
-            try:
-                attempt_user = get_user_model()
-                user = attempt_user.objects.get_by_natural_key(username)
-            except attempt_user.DoesNotExist:
-                return super().clean()
-            
-            if not user.is_active:
-                raise forms.ValidationError(
-                    self.error_messages['inactive'],
-                    code='inactive',
-                )
-            
-            if not user.check_password(password):
-                raise forms.ValidationError(
-                    self.error_messages['invalid_login'],
-                    code='invalid_login',
-                )
-            
-            is_admin_or_delivery = (
-                user.is_staff or 
-                user.groups.filter(name='Administrador').exists() or 
-                getattr(user, 'is_delivery', False)
-            )
-            if not is_admin_or_delivery:
-                raise forms.ValidationError(
-                    self.error_messages['no_permission'],
-                    code='no_permission',
-                )
-            
-            self.user_cache = user
-            self.confirmed_login_allowed = True
-        
-        return self.cleaned_data
-    
     def confirm_login_allowed(self, user):
+        """
+        Verifica permisos de acceso DESPUÉS de la autenticación exitosa.
+        AuthenticationForm.clean() ya valida credenciales vía authenticate()
+        y luego llama a este método — no es necesario reescribir clean().
+        """
         super().confirm_login_allowed(user)
+
+        is_admin_or_delivery = (
+            user.is_staff or
+            user.groups.filter(name='Administrador').exists() or
+            getattr(user, 'is_delivery', False)
+        )
+        if not is_admin_or_delivery:
+            raise forms.ValidationError(
+                self.error_messages['no_permission'],
+                code='no_permission',
+            )
 
 
 # =============================================================================
 # OPCIONES DE ESTILOS (sin HU específica, soporte para HU-053 a HU-056)
+# NOTA: Varias de estas tuplas de opciones están duplicadas con apps/core/design_options.py.
+# Las de forms.py usan etiquetas más simples para ser usadas en widgets de formulario,
+# mientras que design_options.py tiene etiquetas más descriptivas con emojis.
+# Mantener ambas versiones por ahora para no romper la UI existente.
 # =============================================================================
 
 # Opciones de fuentes predefinidas
@@ -377,7 +353,7 @@ def get_button_url_choices():
 # HU-053: HERO CONFIG CREATE FORM
 # =============================================================================
 
-class HeroConfigCreateForm(FormStyleMixin, forms.ModelForm):
+class HeroConfigCreateForm(FormStyleMixin, SortableCreateMixin, forms.ModelForm):
     """
     HU-053: Crear slide del hero
     Escenarios: H (datos válidos), A (título vacío o sort_order duplicado), E (sin permisos)
@@ -570,7 +546,7 @@ class HeroConfigUpdateForm(FormStyleMixin, SortableUpdateMixin, forms.ModelForm)
     button_size = forms.ChoiceField(choices=BUTTON_SIZE_CHOICES, required=True, label='Tamaño')
     button_shadow = forms.ChoiceField(choices=BUTTON_SHADOW_CHOICES, required=True, label='Sombra')
     button_width = forms.ChoiceField(choices=BUTTON_WIDTH_CHOICES, required=True, label='Ancho del botón')
-    
+
     sortable_queryset = None
     sortable_label_attr = 'title_text'
     sortable_widget_name = 'hero_order'
@@ -631,12 +607,11 @@ class HeroConfigUpdateForm(FormStyleMixin, SortableUpdateMixin, forms.ModelForm)
             instance.save()
         return instance
 
-
 # =============================================================================
 # HU-055: HERO CONFIG DELETE FORM
 # =============================================================================
 
-class HeroConfigDeleteForm(FormStyleMixin, forms.Form):
+class HeroConfigDeleteForm(FormStyleMixin, SortableDeleteMixin, forms.Form):
     """
     HU-055: Archivar slide del hero (soft delete)
     Escenarios: H (confirmación correcta), A (cancelar), E (sin permisos)

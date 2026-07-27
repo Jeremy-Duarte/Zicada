@@ -9,7 +9,8 @@
 {% endblock %}
 
 {% block header %}
-{% include 'delivery/components/header_simple.html' with page_title="Resumen del Día" page_subtitle=today|date:"l, j \d\e F \d\e Y" hide_refresh=is_closed %}
+{% url 'delivery:dashboard' as default_back_url %}
+{% include 'delivery/components/header_simple.html' with page_title="Resumen del Día" page_subtitle=today|date:"l, j \d\e F \d\e Y" hide_refresh=is_closed back_url=default_back_url show_logout=True %}
 {% endblock %}
 
 {% block content %}

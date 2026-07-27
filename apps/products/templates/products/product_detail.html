@@ -126,7 +126,7 @@
                 gallery: JSON.parse('{{ gallery_images_json|escapejs }}'),
                 config: {
                     cartAddUrl: "{% url 'orders:cart_add' %}",
-                    csrfToken: "{{ csrf_token }}",
+                    csrfToken: "{{ csrf_token|escapejs }}",
                     staticPlaceholder: "{% static 'img/product-placeholder.jpeg' %}",
                     productId: JSON.parse(productIdElement.textContent)
                 }

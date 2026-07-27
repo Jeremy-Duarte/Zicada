@@ -5,6 +5,7 @@ from django.views.generic import ListView, CreateView, UpdateView, FormView, Det
 from django.shortcuts import get_object_or_404, redirect
 from django.contrib import messages
 from django.contrib.auth import get_user_model, update_session_auth_hash
+from django.db.models import Count
 from django.db import models
 from django.utils.safestring import mark_safe
 
@@ -143,16 +144,19 @@ from .constants import (
 
 def get_user_type_badge(user) -> str:
     """Get HTML badge for user type."""
-    if user.is_superuser:
-        user_type = USER_TYPE_SUPERUSER
-    elif user.is_staff:
-        user_type = USER_TYPE_STAFF
+    if user.is_staff or user.is_superuser:
+        label = "Acceso Total"
+        badge_class = "bg-purple-100 text-purple-700"
+    elif user.groups.filter(name='Administrador').exists():
+        label = "Administrador"
+        badge_class = "bg-blue-100 text-blue-700"
     elif user.is_delivery:
-        user_type = USER_TYPE_DELIVERY
+        label = "Entregador"
+        badge_class = "bg-orange-100 text-orange-700"
     else:
-        user_type = USER_TYPE_CUSTOMER
+        label = "Sin Rol"
+        badge_class = "bg-gray-100 text-gray-700"
     
-    label, badge_class = USER_TYPE_BADGES[user_type]
     return mark_safe(STATUS_BADGE_TEMPLATE.format(badge_class=badge_class, badge_text=label))
 
 
@@ -396,7 +400,7 @@ class UserRestoreView(StaffPermissionRequiredMixin, FormView):
     def form_valid(self, form):
         # HU-042 | ESCENARIO 1 | H | Usuario reincorporado exitosamente
         self.user.is_active = True
-        self.user.save(update_fields=[FILTER_IS_ACTIVE])
+        self.user.save(update_fields=['is_active'])
         messages.success(self.request, MSG_USER_RESTORED.format(username=self.user.username))
         return redirect(USERS_LIST)
     
@@ -463,14 +467,14 @@ class GroupListView(StaffPermissionRequiredMixin, PaginationMixin, FilterMixin, 
         search = self.request.GET.get(QUERY_PARAM_SEARCH, '')
         if search:
             qs = qs.filter(name__icontains=search)
-        return qs
+        return qs.annotate(user_count=Count('user'))
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         rows = []
         
         for group in context[CONTEXT_GROUPS]:
-            user_count = group.user_set.count()
+            user_count = group.user_count
             rows.append({
                 'pk': group.pk,
                 'values': [
@@ -534,7 +538,7 @@ class GroupDetailView(StaffPermissionRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context[CONTEXT_CANCEL_URL] = USERS_GROUP_LIST
-        context[CONTEXT_USERS] = self.object.user_set.all().order_by(FILTER_USERNAME)
+        context[CONTEXT_USERS] = self.object.user_set.all().order_by('username')
         return context
 
 

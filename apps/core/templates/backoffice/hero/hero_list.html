@@ -6,7 +6,6 @@
 {% block content %}
 <div class="space-y-6">
     {% include 'backoffice/components/crud/list_header.html' with title="Slides del Hero" create_url="core:hero_create" create_label="Nuevo Slide" %}
-    
     <div class="bg-white rounded-xl shadow-sm overflow-hidden">
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200">
@@ -26,7 +25,7 @@
                             <div class="text-sm font-medium text-gray-900">{{ slide.title_text }}</div>
                             <div class="text-xs text-gray-500">{{ slide.subtitle_text|truncatechars:40 }}</div>
                         </td>
-                        <td class="px-6 py-4 text-sm text-gray-500">{{ slide.order }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-500">{{ slide.sort_order }}</td>
                         <td class="px-6 py-4">
                             {% if slide.background_image %}
                             <img src="{{ slide.background_image.url }}" 

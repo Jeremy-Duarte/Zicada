@@ -1,6 +1,5 @@
 import json
 import logging
-import time
 from decimal import Decimal
 
 from django.conf import settings
@@ -8,16 +7,19 @@ from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from apps.core.crud.mixins import StaffPermissionRequiredMixin
 from django.core.exceptions import ValidationError
-from django.db import models
-from django.http import HttpResponse, JsonResponse
+from django.db import models, transaction
+from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
+from django.utils import timezone
 from django.utils.safestring import mark_safe
+from datetime import timedelta
 from django.views import View
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 from django.views.generic import CreateView, DetailView, FormView, ListView, UpdateView
 
+import stripe
 from apps.core.crud.mixins import FilterMixin, PaginationMixin
 from apps.orders.stripe_client import get_stripe
 from apps.products.models import ProductVariant
@@ -64,9 +66,6 @@ from .constants import (
     # Status badge mapping
     STATUS_BADGE_MAP,
     STATUS_BADGE_DEFAULT,
-    # Webhook settings
-    WEBHOOK_MAX_RETRIES,
-    WEBHOOK_RETRY_DELAY,
     # Stock thresholds
     LOW_STOCK_THRESHOLD,
     # Pagination
@@ -157,8 +156,15 @@ def delivery_dashboard(request):
     HU-033: Consultar pedidos del día (entregador)
     HU-036: Ver resumen del día (parcial - solo lista, no hay resumen)
     """
+    if not request.user.is_delivery:
+        messages.error(request, 'Solo los repartidores pueden acceder a esta sección.')
+        return redirect(PRODUCTS_CATALOG)
+
     # HU-033 | ESCENARIO 1 | H | Lista de pedidos listos y asignados
-    pedidos_listos = Order.objects.filter(status=STATUS_READY)
+    pedidos_listos = Order.objects.filter(
+        status=STATUS_READY,
+        assigned_delivery_user__isnull=True
+    )
     pedidos_asignados = Order.objects.filter(
         assigned_delivery_user=request.user,
         status=STATUS_ON_THE_WAY
@@ -181,10 +187,16 @@ def take_order(request, order_id):
     """
     HU-033 (parte): Asignar pedido a repartidor
     """
+    if not request.user.is_delivery:
+        messages.error(request, 'Solo los repartidores pueden tomar pedidos.')
+        return redirect(ORDERS_DELIVERY_DASHBOARD)
+
     # HU-033 | ESCENARIO 1 | H | Repartidor toma un pedido listo
     order = get_object_or_404(Order, id=order_id)
 
-    if order.status != STATUS_READY:
+    try:
+        order.assign_delivery(request.user)
+    except ValidationError as e:
         messages.error(
             request,
             f'El pedido {order.order_number} no está listo para entregar '
@@ -192,9 +204,6 @@ def take_order(request, order_id):
         )
         return redirect(ORDERS_DELIVERY_DASHBOARD)
 
-    order.assigned_delivery_user = request.user
-    order.status = STATUS_ON_THE_WAY
-    order.save(update_fields=['assigned_delivery_user', 'status'])
     messages.success(request, f'Pedido {order.order_number} asignado correctamente.')
     return redirect(ORDERS_DELIVERY_DASHBOARD)
 
@@ -261,20 +270,12 @@ def cart_add(request):
             # HU-019 | ESCENARIO 3 | E | Producto sin stock en la talla (o inactivo)
             return JsonResponse({'error': f'❌ "{variant.product.name}" {MSG_PRODUCT_UNAVAILABLE}'}, status=400)
         
-        current_qty = 0
-        if hasattr(cart, 'cart') and isinstance(cart.cart, dict):
-            item_data = cart.cart.get(str(variant_id))
-            if item_data:
-                current_qty = item_data.get('quantity', 0)
-        
-        new_qty = current_qty + quantity
-        
         if variant.stock == 0:
             return JsonResponse({
                 'error': f'❌ "{variant.product.name}" - {variant.size.name} / {variant.color_name} {MSG_OUT_OF_STOCK}'
             }, status=400)
         
-        if new_qty > variant.stock:
+        if quantity > variant.stock:
             return JsonResponse({
                 'error': MSG_INSUFFICIENT_STOCK.format(
                     product=variant.product.name,
@@ -333,7 +334,7 @@ def cart_remove(request):
             'total_items': cart.get_total_items(),
         })
         
-    except Exception:
+    except (KeyError, ValidationError):
         logger.exception("Error in cart_remove")
         return JsonResponse({'error': MSG_REMOVE_ERROR}, status=400)
 
@@ -415,7 +416,7 @@ def cart_update(request):
         })
     except ValidationError as e:
         return JsonResponse({'error': f'⚠️ {str(e)}'}, status=400)
-    except Exception as e:
+    except (KeyError, ValidationError) as e:
         logger.exception("Error in cart_update")
         return JsonResponse({'error': MSG_UPDATE_ERROR}, status=400)
 
@@ -452,13 +453,13 @@ def cart_data(request):
     cart = Cart(request)
     summary = cart.get_summary()
 
-    summary['subtotal'] = float(summary['subtotal'])
-    summary['shipping_cost'] = float(summary['shipping_cost'])
-    summary['total'] = float(summary['total'])
+    summary['subtotal'] = str(summary['subtotal'])
+    summary['shipping_cost'] = str(summary['shipping_cost'])
+    summary['total'] = str(summary['total'])
 
     for item in summary['items']:
-        item['price'] = float(item['price'])
-        item['subtotal'] = float(Decimal(item['price']) * item['quantity'])
+        item['subtotal'] = str(Decimal(item['price']) * item['quantity'])
+        item['price'] = str(item['price'])
 
         try:
             variant = ProductVariant.objects.select_related(
@@ -492,7 +493,7 @@ def cart_detail(request):
     summary = cart.get_summary()
 
     for item in summary['items']:
-        item['total'] = item['price'] * item['quantity']
+        item['total'] = Decimal(item['price']) * item['quantity']
         
         try:
             variant = ProductVariant.objects.select_related(
@@ -605,9 +606,9 @@ def _get_cart_summary_context(cart):
     summary = cart.get_summary()
     return {
         'items': summary['items'],
-        'subtotal': float(summary['subtotal']),
-        'shipping_cost': float(summary['shipping_cost']),
-        'total': float(summary['total']),
+        'subtotal': summary['subtotal'],
+        'shipping_cost': summary['shipping_cost'],
+        'total': summary['total'],
     }
 
 
@@ -628,6 +629,9 @@ def create_stripe_checkout_session(request):
     """
     HU-024: Confirmar pedido (creación de pedido y redirección a Stripe)
     HU-025: Recibir confirmación de pedido (después del pago)
+    NOTA: Acepta GET porque el flujo de checkout redirige aquí vía GET
+    (redirect-after-POST). El checkout_data en sesión actúa como guardia
+    contra ejecuciones accidentales.
     """
     stripe = get_stripe()
     cart = Cart(request)
@@ -671,19 +675,8 @@ def create_stripe_checkout_session(request):
     )
     order.save()
 
-    # Crear items del pedido (snapshots)
-    for item in cart.get_items():
-        variant = ProductVariant.objects.get(id=item['variant_id'])
-        OrderItem.objects.create(
-            order=order,
-            variant=variant,
-            product_name_snapshot=item['product_name'],
-            size_snapshot=item['size_name'],
-            quantity=item['quantity'],
-            unit_price=Decimal(item['price']),
-            stock_snapshot=variant.stock,
-            subtotal=Decimal(item['price']) * item['quantity']
-        )
+    # Crear items del pedido vía Cart.to_order_items() con bloqueo de stock
+    cart.to_order_items(order)
 
     try:
         success_url = settings.SITE_URL + reverse(
@@ -693,6 +686,7 @@ def create_stripe_checkout_session(request):
         cancel_url = settings.SITE_URL + reverse(ORDERS_CART_DETAIL)
 
         checkout_session = stripe.checkout.Session.create(
+            idempotency_key=str(order.order_number),
             payment_method_types=['card'],
             line_items=[{
                 'price_data': {
@@ -721,11 +715,18 @@ def create_stripe_checkout_session(request):
         del request.session['checkout_data']
         return redirect(checkout_session.url)
 
+    except stripe.error.CardError as e:
+        messages.error(request, f'Error con la tarjeta: {e.user_message}')
+        return redirect(ORDERS_CHECKOUT)
+    except stripe.error.APIConnectionError:
+        messages.error(request, 'Error de conexión con el servicio de pago. Por favor, intenta de nuevo en unos segundos.')
+        return redirect(ORDERS_CHECKOUT)
+    except stripe.error.StripeError as e:
+        order.cancel(reason=f'Error en Stripe: {str(e)}', user=None)
+        messages.error(request, f'Error al procesar el pago: {str(e)}')
+        return redirect(ORDERS_CHECKOUT)
     except Exception as e:
-        # HU-024 | ESCENARIO 2 | E | Stock insuficiente al confirmar (error en Stripe o validación)
-        order.status = STATUS_CANCELLED
-        order.cancelled_reason = f'Error al crear sesión de pago: {str(e)}'
-        order.save()
+        order.cancel(reason=f'Error al crear sesión de pago: {str(e)}', user=None)
         messages.error(request, f'Error al procesar el pago: {str(e)}')
         return redirect(ORDERS_CHECKOUT)
 
@@ -736,26 +737,19 @@ def order_confirmation(request, order_number):
     HU-025: Recibir confirmación de pedido (pantalla y envío de correo/WhatsApp)
     """
     try:
-        order = Order.objects.get(order_number=order_number)
+        order = Order.objects.prefetch_related('items').get(order_number=order_number)
     except Order.DoesNotExist:
         messages.error(request, MESSAGE_ORDER_NOT_FOUND)
         return redirect(PRODUCTS_CATALOG)
 
-    # Esperar a que Stripe webhook marque como pagado
     if not order.is_paid:
-        for _ in range(WEBHOOK_MAX_RETRIES):
-            if order.is_paid:
-                break
-            time.sleep(WEBHOOK_RETRY_DELAY)
-            order.refresh_from_db()
+        order.refresh_from_db()
 
     if order.is_paid:
-        cart = Cart(request)
-        if not cart.is_empty():
-            cart.clear()
         # HU-025 | ESCENARIO 1 | H | Confirmación en pantalla con número de pedido
-        # HU-025 | ESCENARIO 2 | H | Envío de enlace por WhatsApp (se hace en el webhook? No está aquí, se usa email)
+        # HU-025 | ESCENARIO 2 | H | Envío de enlace por WhatsApp (se hace en el webhook)
         # HU-025 | ESCENARIO 3 | H | Envío de correo opcional (se hace en webhook con send_order_confirmation_email)
+        pass
     else:
         messages.warning(request, MESSAGE_PAYMENT_PROCESSING)
 
@@ -772,7 +766,9 @@ def order_tracking(request, tracking_token):
     HU-026: Consultar estado del pedido (vía token)
     """
     # HU-026 | ESCENARIO 2 | H | Consulta por enlace (token)
-    order = get_object_or_404(Order, tracking_token=tracking_token)
+    order = get_object_or_404(Order.objects.prefetch_related('items'), tracking_token=tracking_token)
+    if timezone.now() - order.created_at > timedelta(days=90):
+        raise Http404('El enlace de seguimiento ha expirado.')
     # HU-026 | ESCENARIO 1 | H | Consulta por número de pedido (no hay vista pública con número, solo token)
     # HU-026 | ESCENARIO 3 | E | Pedido no encontrado → 404
     # HU-026 | ESCENARIO 4 | E | Enlace expirado (no implementado, los tokens no expiran)
@@ -804,8 +800,9 @@ def stripe_webhook(request):
     sig_header = request.META.get('HTTP_STRIPE_SIGNATURE')
 
     try:
+        webhook_keys = getattr(settings, 'STRIPE_WEBHOOK_KEYS', [settings.STRIPE_WEBHOOK_KEY])
         event = stripe.Webhook.construct_event(
-            payload, sig_header, settings.STRIPE_WEBHOOK_KEY
+            payload, sig_header, webhook_keys[0] if len(webhook_keys) == 1 else webhook_keys
         )
     except ValueError:
         return HttpResponse(status=400)
@@ -819,6 +816,13 @@ def stripe_webhook(request):
         try:
             order = Order.objects.get(payment_session_id=session_id)
             logger.info(f"Webhook recibido para pedido {order.order_number}")
+
+            stripe_session = stripe.checkout.Session.retrieve(session_id)
+            stripe_amount = stripe_session.get('amount_total', 0)
+            if int(order.total_amount * 100) != stripe_amount:
+                logger.error(f"Amount mismatch: order={order.total_amount}, stripe={stripe_amount / 100}")
+                return HttpResponse(status=200)
+
         except Order.DoesNotExist:
             logger.error(f"Pedido no encontrado para session_id: {session_id}")
             return HttpResponse(status=200)
@@ -828,21 +832,23 @@ def stripe_webhook(request):
             return HttpResponse(status=200)
 
         try:
-            # HU-024 | ESCENARIO 1 | H | Confirmar pedido y reducir stock
-            if order.status == STATUS_PENDING:
-                order.confirm(user=None)
-
             order.is_paid = True
             order.save(update_fields=['is_paid'])
             logger.info(f"Pedido {order.order_number} marcado como pagado")
 
-            # HU-025 | ESCENARIO 3 | H | Envío de correo de confirmación
-            if order.customer_email:
-                send_order_confirmation_email(order)
-                logger.info(f"Correo de confirmación enviado a {order.customer_email}")
-            else:
-                logger.warning(f"Pedido {order.order_number} no tiene email asociado")
+            if order.status == STATUS_PENDING:
+                order.confirm(user=None)
 
+                # HU-025 | ESCENARIO 3 | H | Envío de correo de confirmación
+                if order.customer_email:
+                    send_order_confirmation_email(order)
+                    logger.info(f"Correo de confirmación enviado a {order.customer_email}")
+                else:
+                    logger.warning(f"Pedido {order.order_number} no tiene email asociado")
+
+        except ValidationError as e:
+            logger.exception(f"Pedido {order.order_number} pagado pero error de validación: {e}")
+            return HttpResponse(status=200)
         except Exception as e:
             logger.exception(f"Error al procesar pedido {order.order_number}: {e}")
             return HttpResponse(status=500)
@@ -1189,9 +1195,6 @@ class OrderItemCreateView(StaffPermissionRequiredMixin, CreateView):
         context[CONTEXT_CANCEL_ARGS] = [self.order.pk]
         context['submit_label'] = 'Agregar producto'
         
-        from apps.orders.constants import MAX_QUANTITY_PER_ITEM
-        context['MAX_QUANTITY_PER_ITEM'] = MAX_QUANTITY_PER_ITEM
-        
         return context
 
     def form_valid(self, form):
@@ -1256,9 +1259,6 @@ class OrderItemUpdateView(StaffPermissionRequiredMixin, UpdateView):
         context[CONTEXT_CANCEL_URL] = ORDERS_DETAIL
         context[CONTEXT_CANCEL_ARGS] = [self.object.order.pk]
         context['submit_label'] = 'Guardar cambios'
-
-        from apps.orders.constants import MAX_QUANTITY_PER_ITEM
-        context['MAX_QUANTITY_PER_ITEM'] = MAX_QUANTITY_PER_ITEM
 
         if self.object.variant:
             try:
@@ -1338,15 +1338,16 @@ class OrderItemDeleteView(StaffPermissionRequiredMixin, FormView):
             product_name = self.order_item.product_name_snapshot
             quantity = self.order_item.quantity
             
-            variant = self.order_item.variant
-            if variant and self.order_item.order.status == 'confirmado':
-                variant.refresh_from_db()
-                variant.stock += quantity
-                variant.save(update_fields=['stock'])
+            with transaction.atomic():
+                variant = self.order_item.variant
+                if variant and self.order_item.order.status == 'confirmado':
+                    variant = ProductVariant.objects.select_for_update().get(pk=variant.pk)
+                    variant.stock += quantity
+                    variant.save(update_fields=['stock'])
+
+                self.order_item.delete()
             
-            self.order_item.delete()
-            
-            order = Order.objects.get(pk=order_pk)
+            order = get_object_or_404(Order, pk=order_pk)
             order.save(update_fields=['updated_at'])
             
             messages.success(

@@ -98,12 +98,8 @@
         </div>
     </div>
     
-    <div class="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-200 z-40">
+    <div class="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-200 z-40 space-y-2">
         <div class="flex space-x-3">
-            <a href="{{ back_url }}"
-               class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-xl font-semibold text-center transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400">
-                Volver
-            </a>
             <button type="submit"
                     name="action"
                     value="report"
@@ -119,6 +115,10 @@
                 Cancelar Pedido
             </button>
         </div>
+        <a href="{{ back_url }}"
+           class="block w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-xl font-semibold text-center transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400">
+            Volver
+        </a>
     </div>
 </form>
 {% endblock %}

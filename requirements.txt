@@ -33,6 +33,7 @@ pyphen==0.17.2
 pytest==9.0.3
 pytest-cov==7.1.0
 pytest-django==4.12.0
+pytest-django-ifactory==1.3.0
 python-dateutil==2.9.0.post0
 requests==2.33.1
 rich==15.0.0
