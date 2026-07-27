@@ -229,12 +229,10 @@ reflejan tu estilo. Envíos a todo el país.{% endblock %}
             <a href="{% url 'products:catalog' %}?category={{ category.slug }}"
                 class="group block bg-gray-100 rounded-xl overflow-hidden hover:shadow-xl hover:shadow-zicada-accent/20 transition-all duration-300">
                 <div class="h-32 bg-gradient-to-r from-gray-700 to-gray-800 flex items-center justify-center">
-                    <span class="text-white text-xl font-bold group-hover:scale-110 transition">{{ category.name
-                        }}</span>
+                    <span class="text-white text-xl font-bold group-hover:scale-110 transition">{{ category.name }}</span>
                 </div>
                 <div class="p-4 text-center bg-white">
-                    <span class="text-sm text-gray-600 group-hover:text-zicada-accent transition">{{
-                        category.products.count }} productos</span>
+                    <span class="text-sm text-gray-600 group-hover:text-zicada-accent transition">{{ category.product_count }} productos</span>
                 </div>
             </a>
             {% endfor %}

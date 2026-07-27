@@ -5,6 +5,7 @@ from django.contrib import messages
 from django.contrib.auth import logout
 from django.contrib.auth.views import LoginView
 from django.core.mail import EmailMultiAlternatives
+from django.db.models import Count, Q
 from django.http import JsonResponse, HttpResponseRedirect
 from django.shortcuts import render, redirect, get_object_or_404
 from django.template.loader import render_to_string
@@ -137,7 +138,9 @@ def home(request):
     ).select_related('category').prefetch_related('variants')[:LATEST_PRODUCTS_LIMIT]
     
     # HU-050 | H | Carga de categorías
-    categories = Category.objects.all().order_by(HERO_ORDER_BY_SORT)[:FEATURED_CATEGORIES_LIMIT]
+    categories = Category.objects.annotate(
+        product_count=Count('products', filter=Q(products__is_active=True))
+    ).order_by('sort_order')[:FEATURED_CATEGORIES_LIMIT]
 
     context = {
         CONTEXT_HERO_SLIDES: hero_slides,
