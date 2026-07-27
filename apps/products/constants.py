@@ -1,6 +1,3 @@
-# Umbral de bajo stock
-STOCK_LOW_THRESHOLD = 5  
-
 # Status Strings
 STATUS_PUBLISHED = 'publicada'
 STATUS_DRAFT = 'borrador'
@@ -235,7 +232,7 @@ QUERY_PARAM_ORDER_BY = 'order_by'
 DATE_FILTER_LAST_MONTH = 'ultimo_mes'
 DATE_FILTER_LAST_QUARTER = 'ultimo_trimestre'
 DATE_FILTER_LAST_SEMESTER = 'ultimo_semestre'
-DATE_FILTER_LAST_YEAR = 'ultimo_ano'
+DATE_FILTER_LAST_YEAR = 'ultimo_anio'
 DATE_FILTER_UPCOMING = 'proximas'
 
 # Import Form Field Names

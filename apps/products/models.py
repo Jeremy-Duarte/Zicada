@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from django.db import models
 from django.core.exceptions import ValidationError
 from django.utils.text import slugify
@@ -219,6 +221,7 @@ class ProductColor(BaseAuditModel):
         unique_together = ['product', 'color']
         ordering = ['sort_order']
         verbose_name = 'Color del producto'
+        verbose_name_plural = 'Colores del producto'
 
     def __str__(self):
         return f"{self.product.name} - {self.color.name}"
@@ -294,6 +297,9 @@ class Product(BaseAuditModel):
         ordering = ['-created_at']
         verbose_name = 'Producto'
         verbose_name_plural = 'Productos'
+        indexes = [
+            models.Index(fields=['product_type', 'is_active']),
+        ]
     
     def total_stock(self):
         # HU-009 | ESCENARIO 1 | H | Calcula stock total del producto
@@ -523,7 +529,6 @@ class ProductVariant(BaseAuditModel):
     def save(self, *args, **kwargs):
         # HU-013 | ESCENARIO 1 | H | Genera SKU automáticamente
         if not self.sku:
-            from datetime import datetime
             timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
             self.sku = f"ZCD-{self.product.id}-{self.product_color.color.name}-{self.size.name}-{timestamp}"
 
@@ -582,6 +587,7 @@ class Collection(BaseAuditModel):
         max_length=20,
         choices=STATUS_CHOICES,
         default='borrador',
+        db_index=True,
         verbose_name='Estado',
         help_text='Borrador (no visible), Publicada (visible), Archivada (oculta)'
     )
@@ -665,6 +671,10 @@ class Collection(BaseAuditModel):
         ordering = ['-created_at']
         verbose_name = 'Colección'
         verbose_name_plural = 'Colecciones'
+        indexes = [
+            models.Index(fields=['start_date']),
+            models.Index(fields=['end_date']),
+        ]
     
     def __str__(self):
         return self.name

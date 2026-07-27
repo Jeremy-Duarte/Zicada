@@ -1,4 +1,3 @@
-from datetime import timezone
 from decimal import Decimal
 import decimal
 
@@ -107,15 +106,6 @@ MSG_COLLECTION_CONFIRM_RESTORE = 'Confirmo que deseo restaurar esta colección'
 MSG_COLLECTION_RESTORE_PRODUCTS_TYPE = 'Actualizar tipo de productos'
 MSG_COLLECTION_RESTORE_PRODUCTS_TYPE_HELP = 'Si está activado, los productos de esta colección pasarán a "Colección limitada" si no están en otra colección publicada.'
 
-# Configuración de tarjetas (labels)
-LABEL_CARD_BG_COLOR = 'Color de fondo de tarjetas'
-LABEL_CARD_TITLE_COLOR = 'Color del título'
-LABEL_CARD_PRICE_COLOR = 'Color del precio'
-LABEL_CARD_BORDER_RADIUS = 'Radio de borde'
-LABEL_CARD_SHADOW = 'Sombra de tarjeta'
-LABEL_CARD_HOVER_SCALE = 'Escala al hover'
-LABEL_CARD_SHOW_CATEGORY = 'Mostrar categoría'
-LABEL_CARD_SHOW_STOCK_BADGE = 'Mostrar badge de stock'
 
 
 # =============================================================================
@@ -597,13 +587,12 @@ class ProductImageCreateForm(FormStyleMixin, forms.ModelForm):
         image = self.cleaned_data.get('image')
         
         if image:
+            mime = image.content_type
+            if mime not in ['image/jpeg', 'image/png', 'image/webp', 'image/gif']:
+                raise ValidationError(f'Tipo de archivo no permitido: {mime}')
+            
             if image.size > MAX_IMAGE_SIZE:
                 raise ValidationError(IMAGE_SIZE_ERROR)
-            
-            import os
-            ext = os.path.splitext(image.name)[1].lower()
-            if ext not in ALLOWED_IMAGE_EXTENSIONS:
-                raise ValidationError(IMAGE_EXTENSION_ERROR)
         
         return image
 
