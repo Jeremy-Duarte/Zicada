@@ -1,4 +1,4 @@
-from django.db import models
+from django.db import models, transaction
 from django.core.exceptions import ValidationError
 from django.conf import settings
 from django.utils import timezone
@@ -63,7 +63,6 @@ class Order(models.Model):
     )
     customer_email = models.EmailField(
         blank=True,
-        null=True,
         verbose_name='Correo electrónico',
         help_text='Para enviar confirmación y seguimiento'
     )
@@ -110,7 +109,8 @@ class Order(models.Model):
         max_length=20,
         choices=STATUS_CHOICES,
         default='pendiente',
-        verbose_name='Estado'
+        verbose_name='Estado',
+        db_index=True,
     )
     cancelled_reason = models.TextField(
         blank=True,
@@ -124,12 +124,12 @@ class Order(models.Model):
         blank=True,
         related_name='assigned_orders',
         verbose_name='Entregador asignado',
-        limit_choices_to={'is_delivery': True}
+        limit_choices_to={'is_delivery': True},
+        db_index=True,
     )
 
     payment_session_id = models.CharField(
         max_length=100,
-        unique=True,
         null=True,
         blank=True,
         verbose_name='ID de sesión de pago',
@@ -165,6 +165,9 @@ class Order(models.Model):
         ordering = ['-created_at']
         verbose_name = 'Pedido'
         verbose_name_plural = 'Pedidos'
+        indexes = [
+            models.Index(fields=['is_paid'], name='orders_ispaid_idx'),
+        ]
     
     # ======================================================================
     # MÉTODOS DE NEGOCIO
@@ -195,21 +198,28 @@ class Order(models.Model):
         if not self.can_transition_to('confirmado'):
             raise ValidationError(f'No se puede confirmar un pedido en estado {self.status}.')
         
-        for item in self.items.all():
-            if item.variant and item.variant.stock < item.quantity:
-                raise ValidationError(f'Stock insuficiente para {item.product_name_snapshot}')
-        
-        self.status = 'confirmado'
-        self.save()
-        
-        for item in self.items.all():
-            if item.variant:
-                item.variant.stock -= item.quantity
-                item.variant.save()
-        
-        if user:
-            self.updated_by = user
-            self.save(update_fields=['updated_by'])
+        from apps.products.models import ProductVariant
+
+        with transaction.atomic():
+            items = list(self.items.select_related('variant').all())
+            variant_ids = [item.variant_id for item in items if item.variant_id]
+
+            if variant_ids:
+                list(ProductVariant.objects.select_for_update().filter(pk__in=variant_ids))
+
+            for item in items:
+                if item.variant and item.variant.stock < item.quantity:
+                    raise ValidationError(f'Stock insuficiente para {item.product_name_snapshot}')
+
+            if user:
+                self.updated_by = user
+            self.status = 'confirmado'
+            self.save()
+
+            for item in items:
+                if item.variant:
+                    item.variant.stock -= item.quantity
+                    item.variant.save()
 
     def cancel(self, reason, user=None):
         """
@@ -226,18 +236,25 @@ class Order(models.Model):
         if not reason:
             raise ValidationError('Debe indicar un motivo de cancelación.')
         
-        self.status = 'cancelado'
-        self.cancelled_reason = reason
-        self.save()
-        
-        for item in self.items.all():
-            if item.variant:
-                item.variant.stock += item.quantity
-                item.variant.save()
-        
-        if user:
-            self.updated_by = user
-            self.save(update_fields=['updated_by'])
+        from apps.products.models import ProductVariant
+
+        with transaction.atomic():
+            items = list(self.items.select_related('variant').all())
+            variant_ids = [item.variant_id for item in items if item.variant_id]
+
+            if variant_ids:
+                list(ProductVariant.objects.select_for_update().filter(pk__in=variant_ids))
+
+            if user:
+                self.updated_by = user
+            self.status = 'cancelado'
+            self.cancelled_reason = reason
+            self.save()
+
+            for item in items:
+                if item.variant:
+                    item.variant.stock += item.quantity
+                    item.variant.save()
 
     def mark_as_ready(self, user=None):
         """
@@ -245,11 +262,10 @@ class Order(models.Model):
         """
         if not self.can_transition_to('listo'):
             raise ValidationError(f'No se puede marcar como listo un pedido en estado {self.status}.')
-        self.status = 'listo'
-        self.save()
         if user:
             self.updated_by = user
-            self.save(update_fields=['updated_by'])
+        self.status = 'listo'
+        self.save()
 
     def mark_as_preparing(self, user=None):
         """
@@ -257,11 +273,10 @@ class Order(models.Model):
         """
         if not self.can_transition_to('preparando'):
             raise ValidationError(f'No se puede marcar como preparando un pedido en estado {self.status}.')
-        self.status = 'preparando'
-        self.save()
         if user:
             self.updated_by = user
-            self.save(update_fields=['updated_by'])
+        self.status = 'preparando'
+        self.save()
 
     def assign_delivery(self, delivery_user, user=None):
         """
@@ -271,12 +286,11 @@ class Order(models.Model):
         """
         if self.status != 'listo':
             raise ValidationError('Solo se puede asignar un repartidor a pedidos listos.')
+        if user:
+            self.updated_by = user
         self.assigned_delivery_user = delivery_user
         self.status = 'en_camino'
         self.save()
-        if user:
-            self.updated_by = user
-            self.save(update_fields=['updated_by'])
 
     def mark_as_delivered(self, user=None):
         """
@@ -286,12 +300,11 @@ class Order(models.Model):
         """
         if self.status != 'en_camino':
             raise ValidationError('Solo se puede entregar un pedido que está en camino.')
+        if user:
+            self.updated_by = user
         self.status = 'entregado'
         self.is_paid = True
         self.save()
-        if user:
-            self.updated_by = user
-            self.save(update_fields=['updated_by'])
 
     def __str__(self):
         return f"{self.order_number} - {self.customer_name}"
@@ -398,7 +411,7 @@ class OrderItem(models.Model):
         verbose_name_plural = 'Items del pedido'
     
     def __str__(self):
-        return f"{self.order.order_number} - {self.product_name_snapshot} x{self.quantity}"
+        return f"{self.order_id} - {self.product_name_snapshot} x{self.quantity}"
     
     def clean(self):
         """

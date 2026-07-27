@@ -1,5 +1,6 @@
 from django import forms
 from django.core.exceptions import ValidationError
+from django.db import transaction
 from .models import Order, OrderItem
 from apps.products.models import ProductVariant
 from .constants import (
@@ -240,6 +241,15 @@ class OrderUpdateForm(FormStyleMixin, forms.ModelForm):
         
         return new_cost
 
+    def clean_customer_phone(self):
+        phone = self.cleaned_data.get('customer_phone', '')
+        digits = ''.join(c for c in phone if c.isdigit())
+        if len(digits) < 7:
+            raise ValidationError('El teléfono debe tener al menos 7 dígitos.')
+        if len(digits) > 15:
+            raise ValidationError('El teléfono es demasiado largo (máximo 15 dígitos).')
+        return digits
+
 
 # =============================================================================
 # HU-029 (PARTE): ORDER CONFIRM FORM
@@ -364,67 +374,6 @@ class OrderCancelForm(FormStyleMixin, forms.Form):
 
 
 # =============================================================================
-# HU-029 (PARTE): ORDER CHANGE STATUS FORM (cambios rápidos de estado)
-# =============================================================================
-
-class OrderChangeStatusForm(FormStyleMixin, forms.Form):
-    """
-    HU-029: Cambiar estado de pedido (cambios rápidos)
-    Escenarios: H (transición válida), E (transición inválida)
-    """
-    
-    new_status = forms.ChoiceField(
-        choices=[],
-        label='Nuevo estado',
-        widget=forms.Select()
-    )
-    notes = forms.CharField(
-        required=False,
-        widget=forms.Textarea(attrs={'rows': 2}),
-        label='Notas (opcional)',
-        help_text='Notas internas sobre este cambio de estado'
-    )
-    
-    def __init__(self, *args, **kwargs):
-        self.order = kwargs.pop('order', None)
-        super().__init__(*args, **kwargs)
-        
-        if self.order:
-            # HU-029 | ESCENARIO 2 | H | Muestra solo estados permitidos desde el estado actual
-            choices = [
-                (status, label) for status, label in Order.STATUS_CHOICES
-                if self.order.can_transition_to(status)
-            ]
-            self.fields['new_status'].choices = choices
-            
-            if not choices:
-                self.fields['new_status'].disabled = True
-                self.fields['new_status'].help_text = 'No hay transiciones disponibles para este estado.'
-    
-    def clean(self):
-        """
-        HU-029 | ESCENARIO 1 | H | Transición válida
-        HU-029 | ESCENARIO 3 | E | Transición no permitida → error
-        """
-        cleaned_data = super().clean()
-        
-        # Mover la validación del pedido aquí
-        if not self.order:
-            raise ValidationError(ERROR_ORDER_NOT_SPECIFIED)
-        
-        new_status = cleaned_data.get('new_status')
-        
-        if new_status and not self.order.can_transition_to(new_status):
-            from_status = self.order.get_status_display()
-            to_status = dict(Order.STATUS_CHOICES).get(new_status, new_status)
-            raise ValidationError(ERROR_INVALID_STATUS_TRANSITION.format(
-                from_status=from_status, to_status=to_status
-            ))
-        
-        return cleaned_data
-
-
-# =============================================================================
 # HU-032: ORDER ASSIGN DELIVERY FORM
 # =============================================================================
 
@@ -523,12 +472,6 @@ class OrderMarkAsDeliveredForm(FormStyleMixin, forms.Form):
         label='Confirmo que el pedido ha sido entregado al cliente',
         help_text='Esto marcará el pedido como pagado también.'
     )
-    delivery_evidence = forms.CharField(
-        required=False,
-        widget=forms.Textarea(attrs={'rows': 2, 'placeholder': 'Ej: Recibido por [nombre], firma digital, etc.'}),
-        label='Evidencia o comentario de entrega',
-        help_text='Opcional: información sobre la entrega'
-    )
     
     def __init__(self, *args, **kwargs):
         self.order = kwargs.pop('order', None)
@@ -555,76 +498,6 @@ class OrderMarkAsDeliveredForm(FormStyleMixin, forms.Form):
         confirm = cleaned_data.get('confirm')
         if not confirm:
             raise ValidationError(ERROR_CONFIRM_REQUIRED)
-        
-        return cleaned_data
-
-
-# =============================================================================
-# HU-024 (PARTE): ORDER PAYMENT FORM (generar link de pago)
-# =============================================================================
-
-class OrderPaymentForm(FormStyleMixin, forms.Form):
-    """
-    HU-024 (parte): Generar link de pago Stripe para pedidos pendientes
-    Escenarios: H (método de pago seleccionado), A (sin método seleccionado), E (pedido pagado o no pendiente)
-    """
-    
-    send_email = forms.BooleanField(
-        required=False,
-        initial=True,
-        label='Enviar link de pago al cliente por email',
-        help_text='Si está activado, se enviará un correo con el enlace de pago al cliente.'
-    )
-    
-    send_whatsapp = forms.BooleanField(
-        required=False,
-        initial=False,
-        label='Enviar link de pago por WhatsApp',
-        help_text='El cliente recibirá un mensaje con el enlace de pago (requiere integración con WhatsApp API).'
-    )
-    
-    notify_notes = forms.CharField(
-        required=False,
-        widget=forms.Textarea(attrs={'rows': 2, 'placeholder': 'Notas adicionales para el cliente...'}),
-        label='Notas para el cliente (opcional)',
-        help_text='Estas notas se incluirán en el mensaje al cliente.'
-    )
-    
-    def __init__(self, *args, **kwargs):
-        self.order = kwargs.pop('order', None)
-        super().__init__(*args, **kwargs)
-        
-        if self.order and not self.order.customer_email:
-            self.fields['send_email'].disabled = True
-            self.fields['send_email'].initial = False
-            self.fields['send_email'].help_text = 'El cliente no tiene email registrado.'
-    
-    def clean(self):
-        """
-        HU-024 | ESCENARIO 1 | H | Método de pago seleccionado (email o WhatsApp)
-        HU-024 | ESCENARIO 2 | E | Pedido no está pendiente → error
-        HU-024 | ESCENARIO 2 | E | Pedido ya pagado → error
-        HU-024 | ESCENARIO 2 | A | Sin método de pago seleccionado → error
-        """
-        cleaned_data = super().clean()
-        
-        if not self.order:
-            raise ValidationError(ERROR_ORDER_NOT_SPECIFIED)
-        
-        if self.order.status != 'pendiente':
-            raise ValidationError(ERROR_ONLY_PENDING_CAN_PAY.format(status=self.order.get_status_display()))
-        
-        if self.order.is_paid:
-            raise ValidationError(ERROR_ORDER_ALREADY_PAID)
-        
-        send_email = cleaned_data.get('send_email')
-        send_whatsapp = cleaned_data.get('send_whatsapp')
-        
-        if not send_email and not send_whatsapp:
-            raise ValidationError(ERROR_NO_PAYMENT_METHOD)
-        
-        if send_email and not self.order.customer_email:
-            raise ValidationError(ERROR_NO_EMAIL_FOR_NOTIFICATION)
         
         return cleaned_data
 
@@ -730,28 +603,25 @@ class OrderItemCreateForm(FormStyleMixin, forms.ModelForm):
         instance.order = self.order
         
         if commit:
-            # Obtener la variante con stock actualizado
             variant = instance.variant
             if variant:
-                variant.refresh_from_db()
-                
-                # Verificar stock nuevamente antes de guardar
-                if instance.quantity > variant.stock:
-                    raise ValidationError(
-                        f'Stock insuficiente. Solo hay {variant.stock} unidades disponibles.'
-                    )
-                
-                # Establecer snapshots
-                instance.product_name_snapshot = variant.product.name
-                instance.size_snapshot = variant.size.name
-                instance.unit_price = variant.product.price
-                instance.stock_snapshot = variant.stock - instance.quantity
-                instance.subtotal = instance.unit_price * instance.quantity
-                
-                # Reducir stock
-                variant.stock -= instance.quantity
-                variant.save(update_fields=['stock'])
-            
+                with transaction.atomic():
+                    variant = ProductVariant.objects.select_for_update().get(pk=variant.pk)
+
+                    if instance.quantity > variant.stock:
+                        raise ValidationError(
+                            f'Stock insuficiente. Solo hay {variant.stock} unidades disponibles.'
+                        )
+
+                    instance.product_name_snapshot = variant.product.name
+                    instance.size_snapshot = variant.size.name
+                    instance.unit_price = variant.product.price
+                    instance.stock_snapshot = variant.stock - instance.quantity
+                    instance.subtotal = instance.unit_price * instance.quantity
+
+                    variant.stock -= instance.quantity
+                    variant.save(update_fields=['stock'])
+
             instance.save()
             
             # NOTA: La señal post_save de OrderItem actualizará automáticamente:
@@ -812,23 +682,24 @@ class OrderItemUpdateForm(FormStyleMixin, forms.ModelForm):
         if new_quantity == old_quantity:
             return instance
 
-        variant = instance.variant
-        if variant:
-            variant.refresh_from_db()
-            if new_quantity > old_quantity:
-                increase = new_quantity - old_quantity
-                variant.stock -= increase
-            else:
-                decrease = old_quantity - new_quantity
-                variant.stock += decrease
-            variant.save(update_fields=['stock'])
-            instance.stock_snapshot = variant.stock
+        with transaction.atomic():
+            variant = instance.variant
+            if variant:
+                variant = ProductVariant.objects.select_for_update().get(pk=variant.pk)
+                if new_quantity > old_quantity:
+                    increase = new_quantity - old_quantity
+                    variant.stock -= increase
+                else:
+                    decrease = old_quantity - new_quantity
+                    variant.stock += decrease
+                variant.save(update_fields=['stock'])
+                instance.stock_snapshot = variant.stock
 
-        instance.quantity = new_quantity
-        instance.subtotal = instance.unit_price * new_quantity
+            instance.quantity = new_quantity
+            instance.subtotal = instance.unit_price * new_quantity
 
-        if commit:
-            instance.save(update_fields=['quantity', 'subtotal', 'stock_snapshot'])
+            if commit:
+                instance.save(update_fields=['quantity', 'subtotal', 'stock_snapshot'])
 
         return instance
 

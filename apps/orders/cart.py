@@ -309,8 +309,16 @@ class Cart:
             )
 
         with transaction.atomic():
+            cart_items = self.get_items()
+            variant_ids = [item['variant_id'] for item in cart_items]
+
+            if variant_ids:
+                list(ProductVariant.objects.select_for_update().filter(
+                    id__in=variant_ids, is_active=True
+                ))
+
             order_items = []
-            for item in self.get_items():
+            for item in cart_items:
                 try:
                     variant = ProductVariant.objects.select_related(
                         'product', 'size', 'product_color', 'product_color__color'
