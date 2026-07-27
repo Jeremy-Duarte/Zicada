@@ -10,6 +10,7 @@ from .api import (
     DeliveryMarkAsPaidAPIView,
     DeliveryIncidenceAPIView,
     DeliverySummaryAPIView,
+    get_csrf_token,
 )
 
 app_name = 'delivery'
@@ -60,4 +61,5 @@ urlpatterns = [
     
     # HU-036: Resumen del día
     path('api/summary/', DeliverySummaryAPIView.as_view(), name='api_summary'),
+    path('api/csrf/', get_csrf_token, name='delivery_api_csrf'),
 ]
