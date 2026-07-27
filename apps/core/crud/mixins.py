@@ -13,34 +13,6 @@ from apps.core.url_names import CORE_STAFF_LOGIN, PRODUCTS_CATALOG, DELIVERY_LOG
 
 import json
 
-class AuditMixin:
-    """Maneja campos de auditoría (created_by, updated_by)"""
-    
-    def form_valid(self, form):
-        if not form.instance.pk:  # Creando
-            form.instance.created_by = self.request.user
-        form.instance.updated_by = self.request.user
-        return super().form_valid(form)
-
-
-class SoftDeleteMixin:
-    """Maneja soft delete"""
-    
-    def delete(self, request, *args, **kwargs):
-        self.object = self.get_object()
-        self.object.soft_delete(user=request.user)
-        return redirect(self.get_success_url())
-
-
-class RestoreMixin:
-    """Restaura objetos eliminados suavemente"""
-    
-    def restore(self, request, pk):
-        obj = get_object_or_404(self.model.all_objects, pk=pk, is_active=False)
-        obj.restore(user=request.user)
-        return redirect(self.get_success_url())
-
-
 class PaginationMixin:
     """Paginación configurable"""
     paginate_by = 20
@@ -135,15 +107,6 @@ class FormStyleMixin:
             'is_radio': isinstance(field.field.widget, forms.RadioSelect),
         }
 
-
-class FormSetStyleMixin:
-    """Aplica estilos a todos los formularios en un FormSet"""
-    
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        for form in self.forms:
-            if hasattr(form, '_apply_form_styles'):
-                form._apply_form_styles()
 
 class SortableUpdateMixin:
     """
@@ -251,10 +214,11 @@ class SortableCreateMixin:
         if hasattr(self, 'get_sortable_filter_kwargs'):
             filter_kwargs = self.get_sortable_filter_kwargs()
         
-        max_order = model.objects.filter(**filter_kwargs).aggregate(
-            max_order=Max('sort_order')
-        )['max_order']
-        return (max_order or -1) + 1
+        with transaction.atomic():
+            max_order = model.objects.select_for_update().filter(**filter_kwargs).aggregate(
+                max_order=Max('sort_order')
+            )['max_order']
+            return (max_order or -1) + 1
 
     def save(self, commit=True):
         """Asigna el orden antes de guardar."""

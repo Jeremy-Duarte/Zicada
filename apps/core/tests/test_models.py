@@ -4,18 +4,18 @@ from apps.products.models import Product
 @pytest.mark.django_db
 class TestActiveManager:
     # UT - 001
-    def test_returns_active_objects(self, product_whit_state):
-        product_active = product_whit_state(True)
-        product_inactive = product_whit_state(False)
+    def test_returns_active_objects(self, product_with_state):
+        product_active = product_with_state(True)
+        product_inactive = product_with_state(False)
         result = Product.objects.all()
 
         assert product_active in result
         assert product_inactive not in result
         assert result.count() == 1
     # UT - 002
-    def test_returns_filtered_objects(self, product_whit_state):
-        product_active = product_whit_state(True)
-        product_inactive = product_whit_state(False)
+    def test_returns_filtered_objects(self, product_with_state):
+        product_active = product_with_state(True)
+        product_inactive = product_with_state(False)
         result = Product.all_objects.all()
 
         assert product_active in result

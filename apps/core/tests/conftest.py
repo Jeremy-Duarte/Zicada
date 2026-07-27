@@ -3,7 +3,7 @@ from decimal import Decimal
 from apps.products.models import Product
 
 @pytest.fixture
-def product_whit_state(db, ifactory):
+def product_with_state(db, ifactory):
     def _create_product(status):
         return ifactory.create(
             Product,

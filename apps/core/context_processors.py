@@ -1,4 +1,8 @@
+from urllib.parse import urlencode
+
 from django.urls import reverse, resolve
+from django.urls.exceptions import Resolver404
+from django.core.cache import cache
 from apps.orders.cart import Cart
 from apps.products.models import Product, Collection, Category
 
@@ -44,12 +48,17 @@ def _build_simple_breadcrumb(page_name: str, parent: dict = None) -> list:
 
 def _build_catalog_breadcrumb(category_slug: str = None) -> list:
     if category_slug:
-        category = Category.objects.filter(slug=category_slug).first()
-        if category:
+        cache_key = f'breadcrumb_cat_{category_slug}'
+        category_name = cache.get(cache_key)
+        if category_name is None:
+            category = Category.objects.filter(slug=category_slug).first()
+            category_name = category.name if category else None
+            cache.set(cache_key, category_name, 300)
+        if category_name:
             return [
                 _get_home_breadcrumb(),
                 _get_catalog_breadcrumb(),
-                {'name': category.name, 'url': None},
+                {'name': category_name, 'url': None},
             ]
     return [
         _get_home_breadcrumb(),
@@ -59,7 +68,7 @@ def _build_catalog_breadcrumb(category_slug: str = None) -> list:
 def _build_product_detail_breadcrumb(slug: str) -> list:
     try:
         product = Product.objects.select_related('category').get(slug=slug, is_active=True)
-        category_url = f"{reverse('products:catalog')}?category={product.category.slug}"
+        category_url = f"{reverse('products:catalog')}?{urlencode({'category': product.category.slug})}"
         return [
             _get_home_breadcrumb(),
             _get_catalog_breadcrumb(),
@@ -78,7 +87,7 @@ def _build_collection_detail_breadcrumb(slug: str) -> list:
             _get_collections_breadcrumb(),
             {'name': collection.name, 'url': None},
         ]
-    except (Collection.DoesNotExist, ImportError):
+    except Collection.DoesNotExist:
         return _build_simple_breadcrumb('Colección')
 
 def _build_product_breadcrumbs(request, view_name: str, kwargs: dict) -> list | None:
@@ -172,7 +181,7 @@ def breadcrumbs(request):
         resolver = resolve(path)
         view_name = resolver.view_name
         kwargs = resolver.kwargs
-    except Exception:
+    except Resolver404:
         return {'breadcrumbs': _build_simple_breadcrumb('Inicio')}
     
     breadcrumbs_data = _build_product_breadcrumbs(request, view_name, kwargs)

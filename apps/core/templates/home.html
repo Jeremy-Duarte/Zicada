@@ -59,7 +59,7 @@ reflejan tu estilo. Envíos a todo el país.{% endblock %}
                         <img src="{% static 'img/lettering-zicada.png' %}" alt="Lettering Zicada"
                             class="mx-auto max-h-48 md:max-h-64 lg:max-h-80 w-auto object-contain" />
                         {% else %}
-                        {{ slide.title_text|safe|linebreaksbr }}
+                        {{ slide.title_text|linebreaksbr }}
                         {% endif %}
                     </h1>
 
