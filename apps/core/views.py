@@ -1,4 +1,5 @@
 import logging
+import smtplib
 
 from django.conf import settings
 from django.contrib import messages
@@ -6,13 +7,11 @@ from django.contrib.auth import logout
 from django.contrib.auth.views import LoginView
 from django.core.mail import EmailMultiAlternatives
 from django.db.models import Count, Q
-from django.http import JsonResponse, HttpResponseRedirect
 from django.shortcuts import render, redirect, get_object_or_404
 from django.template.loader import render_to_string
 from django.urls import reverse, reverse_lazy
-from django.views.decorators.cache import never_cache
 from django.views.generic import CreateView, UpdateView, DeleteView, ListView, TemplateView
-from django.views.decorators.http import require_GET, require_http_methods, require_POST, require_safe
+from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from .models import HeroConfig
 from apps.products.models import Product, Collection, Category
@@ -41,7 +40,6 @@ from apps.core.url_names import (
 )
 
 from .constants import (
-    URL_HOME,
     # Collection Statuses
     COLLECTION_STATUS_PUBLISHED,
     COLLECTION_STATUS_DRAFT,
@@ -124,7 +122,7 @@ def home(request):
     HU-050-ALT-3: No hay productos → oculta sección
     """
     # HU-050 | H | Carga de slides activos ordenados por sort_order
-    hero_slides = HeroConfig.objects.filter(is_active=True).order_by(HERO_ORDER_BY_SORT)
+    hero_slides = HeroConfig.objects.order_by(HERO_ORDER_BY_SORT)
     
     # HU-050 | H | Carga de colecciones publicadas
     featured_collections = Collection.objects.filter(
@@ -149,22 +147,6 @@ def home(request):
         'categories': categories,
     }
     return render(request, TEMPLATE_HOME, context)
-
-
-@never_cache
-@require_safe
-def pwa_manifest(request):
-    """PWA manifest.json generator."""
-    manifest = {
-        "name": PWA_NAME,
-        "short_name": PWA_SHORT_NAME,
-        "start_url": PWA_START_URL,
-        "display": PWA_DISPLAY,
-        "background_color": PWA_BACKGROUND_COLOR,
-        "theme_color": PWA_THEME_COLOR,
-        "icons": []
-    }
-    return JsonResponse(manifest)
 
 
 @require_GET
@@ -214,7 +196,8 @@ def contact(request):
                     to=[settings.DEFAULT_FROM_EMAIL],
                 )
                 admin_email.attach_alternative(admin_html, "text/html")
-                admin_email.send()
+                from threading import Thread
+                Thread(target=admin_email.send, daemon=True).start()
 
                 # HU-051 | ESCENARIO 2B | H | Enviar confirmación al usuario
                 user_html = render_to_string('emails/contact/user_confirmation.html', context)
@@ -234,7 +217,7 @@ def contact(request):
                 return redirect(CORE_CONTACT_SUCCESS)
 
             # HU-051 | ESCENARIO 3 | E | Error al enviar emails
-            except Exception as e:
+            except (smtplib.SMTPException, ConnectionRefusedError) as e:
                 logger.exception(f"Error al enviar correo de contacto: {str(e)}")
                 messages.error(request, CONTACT_ERROR_MESSAGE)
                 return render(request, TEMPLATE_CONTACT, {'form': form})
@@ -296,9 +279,6 @@ class StaffLoginView(LoginView):
         
         return response
 
-    def form_invalid(self, form):
-        return super().form_invalid(form)
-
     def dispatch(self, request, *args, **kwargs):
         from django.contrib.messages import get_messages
         list(get_messages(request))
@@ -327,7 +307,7 @@ class StaffLoginView(LoginView):
         return context
 
 
-@require_http_methods(['GET', 'POST'])
+@require_POST
 def staff_logout(request):
     """Staff logout view."""
     logout(request)
