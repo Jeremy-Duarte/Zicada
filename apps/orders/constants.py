@@ -30,13 +30,8 @@ STATUS_BADGE_MAP = {
 }
 STATUS_BADGE_DEFAULT = ('Cancelado', 'bg-red-100 text-red-700')
 
-# Webhook settings
-WEBHOOK_MAX_RETRIES = 20
-WEBHOOK_RETRY_DELAY = 0.5
-
 # Stock thresholds
 LOW_STOCK_THRESHOLD = 5
-MAX_QUANTITY_PER_ITEM = 99
 
 # Pagination
 PAGINATE_BY_DEFAULT = 20
