@@ -30,8 +30,8 @@ class TestOrderModel:
         assert order.status == 'confirmado'
 
     # UT - 007
-    def test_shipping_cost_is_calculated(self, order_factory, order_item_factory, product_whit_stock):
-        product, variant = product_whit_stock(stock=1, price=Decimal('100000.00'))
+    def test_shipping_cost_is_calculated(self, order_factory, order_item_factory, product_with_stock):
+        product, variant = product_with_stock(stock=1, price=Decimal('100000.00'))
         order = order_factory()
         order_item = order_item_factory(order=order, variant=variant, price=Decimal('100000.00'))
         order.refresh_from_db()
@@ -39,8 +39,8 @@ class TestOrderModel:
         assert order.total_amount == Decimal('110000.00')
 
     # UT - 008
-    def test_whitout_shipping_cost(self, order_factory, order_item_factory, product_whit_stock):
-        product, variant = product_whit_stock(stock=1, price=Decimal('160000.00'))
+    def test_without_shipping_cost(self, order_factory, order_item_factory, product_with_stock):
+        product, variant = product_with_stock(stock=1, price=Decimal('160000.00'))
         order = order_factory()
         order_item = order_item_factory(order=order, variant=variant, price=Decimal('160000.00'))
         order.refresh_from_db()
@@ -48,8 +48,8 @@ class TestOrderModel:
         assert order.total_amount == Decimal('160000.00')
 
     # UT - 009
-    def test_prevents_double_purchase_of_last_item(self, order_factory, order_item_factory, product_whit_stock):
-        product, variant = product_whit_stock(stock=1, price=Decimal('10000.00'))
+    def test_prevents_double_purchase_of_last_item(self, order_factory, order_item_factory, product_with_stock):
+        product, variant = product_with_stock(stock=1, price=Decimal('10000.00'))
         
         order1 = order_factory()
         order_item1 = order_item_factory(order=order1, variant=variant)
@@ -69,8 +69,8 @@ class TestOrderModel:
 @pytest.mark.django_db
 class TestOrderItemModel:
     # UT - 010
-    def test_stock_reduces_at_confirming_order(self, order_factory, order_item_factory, product_whit_stock):
-        product, variant = product_whit_stock(stock=5, price=Decimal('10000.00'))
+    def test_stock_reduces_at_confirming_order(self, order_factory, order_item_factory, product_with_stock):
+        product, variant = product_with_stock(stock=5, price=Decimal('10000.00'))
         order = order_factory()
         order_item = order_item_factory(order=order, variant=variant, quantity=2)
         
@@ -83,8 +83,8 @@ class TestOrderItemModel:
         assert variant.stock == 3
 
     # UT - 011
-    def test_product_snapshots_are_saved(self, order_factory, product_whit_stock):
-        product, variant = product_whit_stock(stock=3, price=Decimal('15000.00'))
+    def test_product_snapshots_are_saved(self, order_factory, product_with_stock):
+        product, variant = product_with_stock(stock=3, price=Decimal('15000.00'))
         order = order_factory()
         
         order_item = OrderItem.objects.create(
@@ -101,8 +101,8 @@ class TestOrderItemModel:
 @pytest.mark.django_db
 class TestCartModel:
     # UT - 012
-    def test_product_added(self, cart_request, product_whit_stock):
-        product, variant = product_whit_stock(stock=1, price=Decimal('10000.00'))
+    def test_product_added(self, cart_request, product_with_stock):
+        product, variant = product_with_stock(stock=1, price=Decimal('10000.00'))
         cart = Cart(cart_request)
         
         cart.add(variant_id=variant.id, quantity=1)
@@ -113,8 +113,8 @@ class TestCartModel:
         assert cart.get_item(variant.id)['product_name'] == product.name
 
     # UT - 013
-    def test_product_deleted(self, cart_request, product_whit_stock):
-        product, variant = product_whit_stock(stock=1, price=Decimal('10000.00'))
+    def test_product_deleted(self, cart_request, product_with_stock):
+        product, variant = product_with_stock(stock=1, price=Decimal('10000.00'))
         cart = Cart(cart_request)
         
         cart.add(variant_id=variant.id, quantity=1)
@@ -126,8 +126,8 @@ class TestCartModel:
         assert cart.get_item(variant.id) is None
 
     # UT - 014
-    def test_fails_at_adding_product_not_available(self, cart_request, product_whit_stock):
-        product, variant = product_whit_stock(stock=1, price=Decimal('10000.00'))
+    def test_fails_at_adding_product_not_available(self, cart_request, product_with_stock):
+        product, variant = product_with_stock(stock=1, price=Decimal('10000.00'))
         cart = Cart(cart_request)
         
         cart.add(variant_id=variant.id, quantity=1)
@@ -136,8 +136,8 @@ class TestCartModel:
             cart.add(variant_id=variant.id, quantity=1)
 
     # UT - 015
-    def test_total_is_calculated(self, cart_request, product_whit_stock):
-        product, variant = product_whit_stock(stock=2, price=Decimal('90000.00'))
+    def test_total_is_calculated(self, cart_request, product_with_stock):
+        product, variant = product_with_stock(stock=2, price=Decimal('90000.00'))
         cart = Cart(cart_request)
         
         cart.add(variant_id=variant.id, quantity=1)
@@ -147,8 +147,8 @@ class TestCartModel:
         assert cart.get_total() == Decimal('100000.00')
 
     # UT - 016
-    def test_product_is_converted_in_order_item(self, order_factory, cart_request, product_whit_stock):
-        product, variant = product_whit_stock(stock=2, price=Decimal('90000.00'))
+    def test_product_is_converted_in_order_item(self, order_factory, cart_request, product_with_stock):
+        product, variant = product_with_stock(stock=2, price=Decimal('90000.00'))
         cart = Cart(cart_request)
         
         cart.add(variant_id=variant.id, quantity=1)
