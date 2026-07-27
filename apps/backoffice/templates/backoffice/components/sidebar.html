@@ -115,9 +115,12 @@
                     </p>
                 </div>
             </a>
-            <a href="{% url 'core:staff_logout' %}" class="text-gray-400 hover:text-red-400 p-2 transition-colors duration-200" title="Cerrar sesión">
-                <i class="fas fa-sign-out-alt text-base"></i>
-            </a>
+            <form method="POST" action="{% url 'core:staff_logout' %}" class="inline">
+                {% csrf_token %}
+                <button type="submit" class="text-gray-400 hover:text-red-400 p-2 transition-colors duration-200" title="Cerrar sesión">
+                    <i class="fas fa-sign-out-alt text-base"></i>
+                </button>
+            </form>
         </div>
     </div>
 </aside>

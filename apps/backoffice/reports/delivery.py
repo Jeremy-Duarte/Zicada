@@ -1,5 +1,5 @@
 from .base import BaseReport
-from .querys import (
+from .queries import (
     get_delivery_stats_in_range,
     get_delivery_performance_in_range,
     get_daily_deliveries_in_range,

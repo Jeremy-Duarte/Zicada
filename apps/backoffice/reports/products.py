@@ -1,5 +1,5 @@
 from .base import BaseReport
-from .querys import (
+from .queries import (
     get_product_stats_in_range,
     get_category_stats_in_range,
     get_top_selling_products_in_range,

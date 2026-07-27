@@ -13,18 +13,18 @@ def base_product(db, ifactory):
     )
 
 @pytest.fixture
-def product_whit_price(db, ifactory):
+def product_with_price(db, ifactory):
     def _create_product(precio=Decimal('10000.00')):
         return ifactory.create(
             Product,
-            name=f'Procucto {precio}',
+            name=f'Producto {precio}',
             price=precio,
             is_active=True
         )
     return _create_product
 
 @pytest.fixture
-def product_whit_stock(db, ifactory):
+def product_with_stock(db, ifactory):
     def _create_product(stock=10, price=Decimal('10000.00')):
         product = ifactory.create(
             Product,

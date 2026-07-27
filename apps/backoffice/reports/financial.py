@@ -1,5 +1,5 @@
 from .base import BaseReport
-from .querys import (
+from .queries import (
     sum_order_amount_in_range,
     get_daily_data_in_range,
     get_daily_order_counts_in_range,
