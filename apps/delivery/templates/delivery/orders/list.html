@@ -11,7 +11,7 @@
         apiBase: '/delivery/api',
         csrfToken: '{{ csrf_token }}',
         userId: {{ user.id }},
-        initialFilter: '{{ filter|default:"all" }}',
+        initialFilter: '{{ filter|default:"all"|escapejs }}',
         refreshInterval: 30000 // 30 segundos
     };
 </script>

@@ -67,12 +67,12 @@
         
         // Configuración del usuario
         window.ZICADA.CONFIG = {
-            csrfToken: "{{ csrf_token }}",
             userId: {{ user.id|default:'null' }},
+            csrfEndpoint: "{% url 'delivery_api_csrf' %}",
             isAuthenticated: {{ user.is_authenticated|yesno:"true,false" }},
             isDelivery: {{ user.is_delivery|yesno:"true,false" }},
-            userFullName: "{{ user.get_full_name|default:'' }}",
-            userName: "{{ user.username|default:'' }}",
+            userFullName: "{{ user.get_full_name|default:''|escapejs }}",
+            userName: "{{ user.username|default:''|escapejs }}",
         };
         
         // Configuración de la aplicación

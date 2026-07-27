@@ -75,6 +75,8 @@ globalThis.addEventListener('install', function(event) {
     event.waitUntil(
         Promise.resolve().then(function() {
             console.log('[SW] Esperando configuración...');
+        }).then(function() {
+            return self.skipWaiting();
         })
     );
 });
