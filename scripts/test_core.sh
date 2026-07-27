@@ -16,7 +16,7 @@ print_info "=========================================="
 print_info "Testing apps.core"
 print_info "=========================================="
 
-export DJANGO_SETTINGS_MODULE=config.settings
+export DJANGO_SETTINGS_MODULE=config.settings_test
 export PYTHONPATH="$PROJECT_ROOT"
 
 pytest apps/core/tests/ \

@@ -13,7 +13,7 @@ echo "=========================================="
 echo "Testing apps.users"
 echo "=========================================="
 
-export DJANGO_SETTINGS_MODULE=config.settings
+export DJANGO_SETTINGS_MODULE=config.settings_test
 export PYTHONPATH="$PROJECT_ROOT"
 
 pytest apps/users/tests/ \
