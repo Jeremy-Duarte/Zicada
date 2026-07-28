@@ -87,6 +87,10 @@ STOCK_STATUS_UNAVAILABLE = 'unavailable'
 STRIPE_PRODUCT_NAME_TEMPLATE = 'Pedido Zicada - {customer_name}'
 STRIPE_PRODUCT_DESCRIPTION_TEMPLATE = '{total_items} productos'
 
+# Webhook retry settings
+WEBHOOK_MAX_RETRIES = 10
+WEBHOOK_RETRY_DELAY = 0.5
+
 # Context keys
 CONTEXT_ORDER = 'order'
 CONTEXT_ITEMS = 'items'

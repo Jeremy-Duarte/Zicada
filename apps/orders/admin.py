@@ -195,7 +195,7 @@ class OrderAdmin(admin.ModelAdmin):
         order.total_amount = subtotal + (order.shipping_cost or 0)
         order.save(update_fields=['subtotal', 'total_amount'])
 
-    actions = ['confirm_orders', 'mark_as_preparing_orders', 'mark_as_ready_orders', 'mark_as_delivered_orders']
+    actions = ['confirm_orders', 'mark_as_preparing_orders', 'mark_as_ready_orders', 'mark_as_delivered_orders', 'cancel_orders']
 
     def _process_orders_action(self, request, queryset, action_method, action_name, success_message_template):
         """Helper para procesar acciones en lote sobre pedidos."""
@@ -243,6 +243,22 @@ class OrderAdmin(admin.ModelAdmin):
             request, queryset, 'mark_as_delivered', 'marcar como entregados',
             'marcado(s) como entregados'
         )
+
+    @admin.action(description='Cancelar pedidos seleccionados')
+    def cancel_orders(self, request, queryset):
+        """Cancelar pedidos seleccionados (libera stock)."""
+        success_count = 0
+        error_count = 0
+        
+        for order in queryset:
+            try:
+                order.cancel(reason='Cancelación masiva desde el panel de administración.', user=request.user)
+                success_count += 1
+            except ValidationError as e:
+                error_count += 1
+                self.message_user(request, f'Error en {order.order_number}: {e}', level='ERROR')
+        
+        self.message_user(request, f'{success_count} pedido(s) cancelado(s). {error_count} error(es).')
 
     payment_badge.short_description = 'Pago'
     

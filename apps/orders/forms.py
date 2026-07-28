@@ -596,8 +596,9 @@ class OrderItemCreateForm(FormStyleMixin, forms.ModelForm):
     
     def save(self, commit=True):
         """
-        HU-031 | ESCENARIO 1 | H | Guardar OrderItem y reducir stock automáticamente
-        HU-024 (parte) | H | Actualiza subtotal del pedido (la señal se encarga del resto)
+        HU-031 | ESCENARIO 1 | H | Guardar OrderItem
+        El stock solo se descuenta en pedidos no pendientes (ya confirmados).
+        Para pedidos pendientes, el stock se descuenta al ejecutar Order.confirm().
         """
         instance = super().save(commit=False)
         instance.order = self.order
@@ -616,11 +617,14 @@ class OrderItemCreateForm(FormStyleMixin, forms.ModelForm):
                     instance.product_name_snapshot = variant.product.name
                     instance.size_snapshot = variant.size.name
                     instance.unit_price = variant.product.price
-                    instance.stock_snapshot = variant.stock - instance.quantity
+                    instance.stock_snapshot = variant.stock
                     instance.subtotal = instance.unit_price * instance.quantity
 
-                    variant.stock -= instance.quantity
-                    variant.save(update_fields=['stock'])
+                    # Solo reducir stock si el pedido no está pendiente
+                    # (pendiente: stock se reduce en Order.confirm())
+                    if self.order.status != 'pendiente':
+                        variant.stock -= instance.quantity
+                        variant.save(update_fields=['stock'])
 
             instance.save()
             
@@ -686,13 +690,16 @@ class OrderItemUpdateForm(FormStyleMixin, forms.ModelForm):
             variant = instance.variant
             if variant:
                 variant = ProductVariant.objects.select_for_update().get(pk=variant.pk)
-                if new_quantity > old_quantity:
-                    increase = new_quantity - old_quantity
-                    variant.stock -= increase
-                else:
-                    decrease = old_quantity - new_quantity
-                    variant.stock += decrease
-                variant.save(update_fields=['stock'])
+                # Solo ajustar stock si el pedido ya fue confirmado
+                # (pendiente: stock se ajusta en Order.confirm())
+                if instance.order.status != 'pendiente':
+                    if new_quantity > old_quantity:
+                        increase = new_quantity - old_quantity
+                        variant.stock -= increase
+                    else:
+                        decrease = old_quantity - new_quantity
+                        variant.stock += decrease
+                    variant.save(update_fields=['stock'])
                 instance.stock_snapshot = variant.stock
 
             instance.quantity = new_quantity

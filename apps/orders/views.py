@@ -1,5 +1,6 @@
 import json
 import logging
+import time
 from decimal import Decimal
 
 from django.conf import settings
@@ -115,6 +116,9 @@ from .constants import (
     # Stripe product data templates
     STRIPE_PRODUCT_NAME_TEMPLATE,
     STRIPE_PRODUCT_DESCRIPTION_TEMPLATE,
+    # Webhook retry settings
+    WEBHOOK_MAX_RETRIES,
+    WEBHOOK_RETRY_DELAY,
     # Context keys
     CONTEXT_ORDER,
     CONTEXT_ITEMS,
@@ -274,15 +278,22 @@ def cart_add(request):
             return JsonResponse({
                 'error': f'❌ "{variant.product.name}" - {variant.size.name} / {variant.color_name} {MSG_OUT_OF_STOCK}'
             }, status=400)
-        
-        if quantity > variant.stock:
+
+        current_qty = 0
+        item_key = str(variant_id)
+        if item_key in cart.cart_data['items']:
+            current_qty = cart.cart_data['items'][item_key]['quantity']
+
+        new_qty = current_qty + quantity
+
+        if new_qty > variant.stock:
+            max_extra = variant.stock - current_qty
             return JsonResponse({
-                'error': MSG_INSUFFICIENT_STOCK.format(
-                    product=variant.product.name,
-                    size=variant.size.name,
-                    color=variant.color_name,
-                    stock=variant.stock
-                )
+                'error': f'No tenemos suficiente stock de "{variant.product.name}" '
+                         f'({variant.size.name}, {variant.color_name}). '
+                         f'Disponible: {variant.stock}. '
+                         f'Ya tienes {current_qty} en el carrito. '
+                         f'Puedes agregar hasta {max_extra} más.'
             }, status=400)
 
         # HU-019 | ESCENARIO 1 | H | Producto añadido exitosamente
@@ -334,7 +345,7 @@ def cart_remove(request):
             'total_items': cart.get_total_items(),
         })
         
-    except (KeyError, ValidationError):
+    except Exception:
         logger.exception("Error in cart_remove")
         return JsonResponse({'error': MSG_REMOVE_ERROR}, status=400)
 
@@ -416,7 +427,7 @@ def cart_update(request):
         })
     except ValidationError as e:
         return JsonResponse({'error': f'⚠️ {str(e)}'}, status=400)
-    except (KeyError, ValidationError) as e:
+    except Exception:
         logger.exception("Error in cart_update")
         return JsonResponse({'error': MSG_UPDATE_ERROR}, status=400)
 
@@ -453,13 +464,13 @@ def cart_data(request):
     cart = Cart(request)
     summary = cart.get_summary()
 
-    summary['subtotal'] = str(summary['subtotal'])
-    summary['shipping_cost'] = str(summary['shipping_cost'])
-    summary['total'] = str(summary['total'])
+    summary['subtotal'] = float(summary['subtotal'])
+    summary['shipping_cost'] = float(summary['shipping_cost'])
+    summary['total'] = float(summary['total'])
 
     for item in summary['items']:
-        item['subtotal'] = str(Decimal(item['price']) * item['quantity'])
-        item['price'] = str(item['price'])
+        item['price'] = float(item['price'])
+        item['subtotal'] = float(Decimal(item['price']) * item['quantity'])
 
         try:
             variant = ProductVariant.objects.select_related(
@@ -664,7 +675,7 @@ def create_stripe_checkout_session(request):
     order = Order(
         customer_name=customer_name,
         customer_phone=customer_phone,
-        customer_email=customer_email or None,
+        customer_email=customer_email or '',
         shipping_address=shipping_address,
         delivery_notes=delivery_notes,
         subtotal=cart.get_subtotal(),
@@ -751,7 +762,11 @@ def order_confirmation(request, order_number):
         return redirect(PRODUCTS_CATALOG)
 
     if not order.is_paid:
-        order.refresh_from_db()
+        for _ in range(WEBHOOK_MAX_RETRIES):
+            if order.is_paid:
+                break
+            time.sleep(WEBHOOK_RETRY_DELAY)
+            order.refresh_from_db()
 
     if order.is_paid:
         # HU-025 | ESCENARIO 1 | H | Confirmación en pantalla con número de pedido
@@ -828,8 +843,8 @@ def stripe_webhook(request):
             stripe_session = stripe.checkout.Session.retrieve(session_id)
             stripe_amount = stripe_session.get('amount_total', 0)
             if int(order.total_amount * 100) != stripe_amount:
-                logger.error(f"Amount mismatch: order={order.total_amount}, stripe={stripe_amount / 100}")
-                return HttpResponse(status=200)
+                logger.error(f"Discrepancia de monto: order={order.total_amount}, stripe={stripe_amount / 100}")
+                return HttpResponse(status=400)
 
         except Order.DoesNotExist:
             logger.error(f"Pedido no encontrado para session_id: {session_id}")
@@ -840,23 +855,21 @@ def stripe_webhook(request):
             return HttpResponse(status=200)
 
         try:
-            order.is_paid = True
-            order.save(update_fields=['is_paid'])
-            logger.info(f"Pedido {order.order_number} marcado como pagado")
-
+            # HU-024 | ESCENARIO 1 | H | Confirmar pedido y reducir stock ANTES de marcar pagado
             if order.status == STATUS_PENDING:
                 order.confirm(user=None)
 
-                # HU-025 | ESCENARIO 3 | H | Envío de correo de confirmación
-                if order.customer_email:
-                    send_order_confirmation_email(order)
-                    logger.info(f"Correo de confirmación enviado a {order.customer_email}")
-                else:
-                    logger.warning(f"Pedido {order.order_number} no tiene email asociado")
+            order.is_paid = True
+            order.save(update_fields=['is_paid'])
+            logger.info(f"Pedido {order.order_number} confirmado y marcado como pagado")
 
-        except ValidationError as e:
-            logger.exception(f"Pedido {order.order_number} pagado pero error de validación: {e}")
-            return HttpResponse(status=200)
+            # HU-025 | ESCENARIO 3 | H | Envío de correo de confirmación
+            if order.customer_email:
+                send_order_confirmation_email(order)
+                logger.info(f"Correo de confirmación enviado a {order.customer_email}")
+            else:
+                logger.warning(f"Pedido {order.order_number} no tiene email asociado")
+
         except Exception as e:
             logger.exception(f"Error al procesar pedido {order.order_number}: {e}")
             return HttpResponse(status=500)
