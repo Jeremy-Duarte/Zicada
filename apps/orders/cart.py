@@ -289,10 +289,9 @@ class Cart:
 
     def to_order_items(self, order):
         """
-        Convierte los artículos del carrito en objetos OrderItem, reduce el inventario atómicamente
-        y luego vacía el carrito.
-        Realiza una verificación final de inventario bajo una transacción de base de datos con bloqueos
-        pesimistas de fila (select_for_update) para garantizar consistencia.
+        Convierte los artículos del carrito en objetos OrderItem y vacía el carrito.
+        NO reduce inventario — esa responsabilidad es de Order.confirm() al recibir
+        la confirmación de pago del webhook de Stripe.
         """
         from .models import OrderItem
 
@@ -339,9 +338,6 @@ class Cart:
                         f'Error de inventario para "{variant.product.name}". '
                         'Intenta de nuevo.'
                     )
-
-                variant.stock -= item['quantity']
-                variant.save(update_fields=['stock'])
 
                 order_item = OrderItem(
                     order=order,

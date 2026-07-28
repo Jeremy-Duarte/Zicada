@@ -722,11 +722,15 @@ def create_stripe_checkout_session(request):
         messages.error(request, 'Error de conexión con el servicio de pago. Por favor, intenta de nuevo en unos segundos.')
         return redirect(ORDERS_CHECKOUT)
     except stripe.error.StripeError as e:
-        order.cancel(reason=f'Error en Stripe: {str(e)}', user=None)
+        order.status = 'cancelado'
+        order.cancelled_reason = f'Error en Stripe: {str(e)}'
+        order.save()
         messages.error(request, f'Error al procesar el pago: {str(e)}')
         return redirect(ORDERS_CHECKOUT)
     except Exception as e:
-        order.cancel(reason=f'Error al crear sesión de pago: {str(e)}', user=None)
+        order.status = 'cancelado'
+        order.cancelled_reason = f'Error al crear sesión de pago: {str(e)}'
+        order.save()
         messages.error(request, f'Error al procesar el pago: {str(e)}')
         return redirect(ORDERS_CHECKOUT)
 
