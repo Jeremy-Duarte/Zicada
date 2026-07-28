@@ -1,6 +1,7 @@
 import json
 import logging
 import time
+from datetime import timedelta
 from decimal import Decimal
 
 from django.conf import settings
@@ -593,14 +594,32 @@ def _process_checkout_form(request, cart):
     return _render_checkout_form(request, cart, form=form)
 
 
+def _get_saved_checkout_data(request):
+    """Retorna checkout_data de la sesion si existe y no ha expirado (1 dia)."""
+    data = request.session.get('checkout_data')
+    if not data:
+        return None
+    saved_at = data.get('_saved_at')
+    if saved_at:
+        try:
+            saved_dt = timezone.datetime.fromisoformat(saved_at)
+            if timezone.now() - saved_dt > timedelta(days=1):
+                request.session.pop('checkout_data', None)
+                return None
+        except (ValueError, TypeError):
+            pass
+    return data
+
+
 def _save_checkout_data_to_session(request, cleaned_data):
-    """Guarda los datos del checkout en la sesión."""
+    """Guarda los datos del checkout en la sesion con timestamp de 1 dia."""
     request.session['checkout_data'] = {
         'customer_name': cleaned_data['customer_name'],
         'customer_phone': cleaned_data['customer_phone'],
         'customer_email': cleaned_data['customer_email'],
         'shipping_address': cleaned_data['shipping_address'],
         'delivery_notes': cleaned_data['delivery_notes'],
+        '_saved_at': timezone.now().isoformat(),
     }
 
 
@@ -624,9 +643,19 @@ def _get_cart_summary_context(cart):
 
 
 def _render_checkout_form(request, cart, form=None):
-    """Renderiza el formulario de checkout."""
+    """Renderiza el formulario de checkout, auto-prefill con datos guardados."""
     if form is None:
-        form = CheckoutOrderForm()
+        saved = _get_saved_checkout_data(request)
+        initial = {}
+        if saved:
+            initial = {
+                'customer_name': saved.get('customer_name', ''),
+                'customer_phone': saved.get('customer_phone', ''),
+                'customer_email': saved.get('customer_email', ''),
+                'shipping_address': saved.get('shipping_address', ''),
+                'delivery_notes': saved.get('delivery_notes', ''),
+            }
+        form = CheckoutOrderForm(initial=initial)
     
     context = {
         'form': form,
@@ -727,7 +756,6 @@ def create_stripe_checkout_session(request):
 
         order.payment_session_id = checkout_session.id
         order.save(update_fields=['payment_session_id'])
-        del request.session['checkout_data']
         return redirect(checkout_session.url)
 
     except stripe.error.CardError as e:

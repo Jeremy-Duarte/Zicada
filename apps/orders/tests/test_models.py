@@ -165,4 +165,5 @@ class TestCartModel:
         assert order_item.unit_price == Decimal('90000.00')
         assert order_item.product_name_snapshot == product.name
         
-        assert cart.is_empty()
+        assert not cart.is_empty()
+        assert cart.get_total_items() == 1
