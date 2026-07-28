@@ -68,5 +68,10 @@
 </div>
 
 {% block extra_js %}
+<script>
+    globalThis.cartConfig = {
+        csrfToken: "{{ csrf_token|escapejs }}"
+    };
+</script>
 <script src="{% static 'js/orders/cart.js' %}"></script>
 {% endblock %}

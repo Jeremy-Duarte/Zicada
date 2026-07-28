@@ -413,7 +413,7 @@ class CartSidebar {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRFToken': this.getCookie('csrftoken')
+                'X-CSRFToken': this._csrfToken()
             },
             body: JSON.stringify(body)
         })
@@ -459,7 +459,7 @@ class CartSidebar {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-CSRFToken': this.getCookie('csrftoken')
+                        'X-CSRFToken': this._csrfToken()
                     }
                 })
                 .then(response => response.json())
@@ -522,6 +522,14 @@ class CartSidebar {
             }
         };
         document.addEventListener('keydown', escHandler);
+    }
+
+    _csrfToken() {
+        const config = globalThis.cartConfig;
+        if (config && config.csrfToken) {
+            return config.csrfToken;
+        }
+        return this.getCookie('csrftoken');
     }
 
     getCookie(name) {
