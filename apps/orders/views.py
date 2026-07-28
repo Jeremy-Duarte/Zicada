@@ -772,7 +772,10 @@ def order_confirmation(request, order_number):
         # HU-025 | ESCENARIO 1 | H | Confirmación en pantalla con número de pedido
         # HU-025 | ESCENARIO 2 | H | Envío de enlace por WhatsApp (se hace en el webhook)
         # HU-025 | ESCENARIO 3 | H | Envío de correo opcional (se hace en webhook con send_order_confirmation_email)
-        pass
+        cart = Cart(request)
+        if not cart.is_empty():
+            cart.clear()
+        request.session.pop('checkout_data', None)
     else:
         messages.warning(request, MESSAGE_PAYMENT_PROCESSING)
 

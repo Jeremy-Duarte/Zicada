@@ -352,6 +352,5 @@ class Cart:
                 order_items.append(order_item)
 
             OrderItem.objects.bulk_create(order_items)
-            self.clear()
 
         return order_items
