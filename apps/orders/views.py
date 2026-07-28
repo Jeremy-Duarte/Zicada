@@ -675,8 +675,9 @@ def create_stripe_checkout_session(request):
     )
     order.save()
 
-    # Crear items del pedido vía Cart.to_order_items() con bloqueo de stock
-    cart.to_order_items(order)
+    # Guardar totales del carrito antes de vaciarlo
+    cart_total = cart.get_total()
+    cart_items_count = cart.get_total_items()
 
     try:
         success_url = settings.SITE_URL + reverse(
@@ -691,10 +692,10 @@ def create_stripe_checkout_session(request):
             line_items=[{
                 'price_data': {
                     'currency': 'cop',
-                    'unit_amount': int(cart.get_total() * 100),
+                    'unit_amount': int(cart_total * 100),
                     'product_data': {
                         'name': STRIPE_PRODUCT_NAME_TEMPLATE.format(customer_name=customer_name),
-                        'description': STRIPE_PRODUCT_DESCRIPTION_TEMPLATE.format(total_items=cart.get_total_items()),
+                        'description': STRIPE_PRODUCT_DESCRIPTION_TEMPLATE.format(total_items=cart_items_count),
                     },
                 },
                 'quantity': 1,
@@ -709,6 +710,9 @@ def create_stripe_checkout_session(request):
                 'session_key': request.session.session_key,
             }
         )
+
+        # Crear OrderItems y vaciar carrito solo despues de crear la sesion de Stripe
+        cart.to_order_items(order)
 
         order.payment_session_id = checkout_session.id
         order.save(update_fields=['payment_session_id'])
