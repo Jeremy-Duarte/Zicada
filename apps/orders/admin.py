@@ -260,7 +260,6 @@ class OrderAdmin(admin.ModelAdmin):
         
         self.message_user(request, f'{success_count} pedido(s) cancelado(s). {error_count} error(es).')
 
-    payment_badge.short_description = 'Pago'
     
     def get_urls(self):
         from django.urls import path

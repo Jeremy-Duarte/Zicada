@@ -764,17 +764,28 @@ def create_stripe_checkout_session(request):
     except stripe.error.APIConnectionError:
         messages.error(request, 'Error de conexión con el servicio de pago. Por favor, intenta de nuevo en unos segundos.')
         return redirect(ORDERS_CHECKOUT)
-    except stripe.error.StripeError as e:
+    except stripe.error.RateLimitError:
+        messages.error(request, 'Demasiadas solicitudes. Por favor, intenta de nuevo en unos segundos.')
+        return redirect(ORDERS_CHECKOUT)
+    except stripe.error.AuthenticationError as e:
         order.status = 'cancelado'
-        order.cancelled_reason = f'Error en Stripe: {str(e)}'
+        order.cancelled_reason = f'Error de autenticación en Stripe: {str(e)}'
+        order.save()
+        messages.error(request, 'Error de configuración del pago. Contacta al administrador.')
+        return redirect(ORDERS_CHECKOUT)
+    except stripe.error.InvalidRequestError as e:
+        order.status = 'cancelado'
+        order.cancelled_reason = f'Error en solicitud a Stripe: {str(e)}'
         order.save()
         messages.error(request, f'Error al procesar el pago: {str(e)}')
         return redirect(ORDERS_CHECKOUT)
+    except stripe.error.StripeError as e:
+        logger.exception(f"Error de Stripe al crear sesión para {order.order_number}: {e}")
+        messages.error(request, 'Error al procesar el pago. Intenta de nuevo.')
+        return redirect(ORDERS_CHECKOUT)
     except Exception as e:
-        order.status = 'cancelado'
-        order.cancelled_reason = f'Error al crear sesión de pago: {str(e)}'
-        order.save()
-        messages.error(request, f'Error al procesar el pago: {str(e)}')
+        logger.exception(f"Error inesperado al crear sesión de pago para {order.order_number}: {e}")
+        messages.error(request, 'Error al procesar el pago. Intenta de nuevo.')
         return redirect(ORDERS_CHECKOUT)
 
 
@@ -1278,31 +1289,23 @@ class OrderItemUpdateView(StaffPermissionRequiredMixin, UpdateView):
     context_object_name = 'order_item'
 
     def get_object(self, queryset=None):
-        """Asegura que se obtiene el objeto correcto por su pk."""
         obj = super().get_object(queryset)
-        # Forzar recarga desde BD para evitar datos obsoletos
         obj.refresh_from_db()
-        # Guardar el valor viejo AQUÍ, antes de cualquier modificación
-        self.old_quantity = obj.quantity
-        self.product_name = obj.product_name_snapshot
-        self.size = obj.size_snapshot
-        self.color = obj.variant.color_name if obj.variant else 'N/A'
         return obj
 
     def dispatch(self, request, *args, **kwargs):
-        # Obtener el objeto (esto ejecuta get_object y guarda old_quantity)
         self.object = self.get_object()
-        
+
         if self.object.order.status not in ['pendiente', 'confirmado']:
             messages.error(request, f'No se pueden modificar productos de pedidos en estado "{self.object.order.get_status_display()}".')
             return redirect(ORDERS_DETAIL, pk=self.object.order.pk)
-        
+
         return super().dispatch(request, *args, **kwargs)
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         kwargs['instance'] = self.object
-        kwargs['original_quantity'] = self.old_quantity
+        kwargs['original_quantity'] = self.object.quantity
         return kwargs
 
     def get_context_data(self, **kwargs):
@@ -1327,15 +1330,19 @@ class OrderItemUpdateView(StaffPermissionRequiredMixin, UpdateView):
     def form_valid(self, form):
         try:
             form.save()
+            old_quantity = form.original_quantity
             new_quantity = self.object.quantity
-            
-            if new_quantity != self.old_quantity:
+            product_name = self.object.product_name_snapshot
+            size = self.object.size_snapshot
+            color = self.object.variant.color_name if self.object.variant else 'N/A'
+
+            if new_quantity != old_quantity:
                 messages.success(
-                    self.request, 
-                    f'Cantidad de "{self.product_name}" ({self.size}, {self.color}) actualizada: {self.old_quantity} → {new_quantity}.'
+                    self.request,
+                    f'Cantidad de "{product_name}" ({size}, {color}) actualizada: {old_quantity} → {new_quantity}.'
                 )
             else:
-                messages.info(self.request, f'La cantidad de "{self.product_name}" ({self.size}, {self.color}) no ha cambiado.')
+                messages.info(self.request, f'La cantidad de "{product_name}" ({size}, {color}) no ha cambiado.')
 
             return redirect(ORDERS_DETAIL, pk=self.object.order.pk)
 

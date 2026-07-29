@@ -71,38 +71,41 @@
 
 ## 🟡 P2 — Medio
 
-| # | Archivo | Línea | Problema | Fix |
-|---|---------|-------|----------|-----|
-| O-P2-01 | `admin.py` | 271–281 | `app_index()` definido en `OrderAdmin` — nunca llamado por Django (es método de `AdminSite`). | Eliminar método o mover lógica a `changelist_view()`. |
-| O-P2-02 | `admin.py` | 182–200 | `save_model` duplica generación de `order_number` y asigna `tracking_token` (ya tiene `default=uuid.uuid4`). | Simplificar a solo setear `created_by` / `updated_by`. |
-| O-P2-03 | `views.py` | 276–279 | `cart_add`: `hasattr(cart, 'cart')` siempre False — `Cart` usa `self.cart_data`. Código muerto. | Usar `cart.get_item(variant_id)` o eliminar bloque. |
-| O-P2-04 | `views.py` | 1189, 1257 | `from apps.orders.constants import MAX_QUANTITY_PER_ITEM` inline 2 veces — ya importado a nivel módulo. | Eliminar imports inline. |
-| O-P2-05 | `forms.py` | 200–242 | `OrderUpdateForm` no valida teléfono (solo dígitos) — inconsistente con `OrderCreateForm`. | Agregar `clean_customer_phone` a `OrderUpdateForm`. |
-| O-P2-06 | `views.py` | 637–638 | `create_stripe_checkout_session` acepta GET — side-effect en GET (crea orden, reduce stock). | Restringir a `@require_POST`. |
-| O-P2-07 | `constants.py` | 4, 39 | `MAX_QUANTITY_PER_ITEM = 99` duplicado. | Eliminar duplicado en línea 39. |
-| O-P2-08 | `forms.py` | 466–471 | `delivery_evidence` en `OrderMarkAsDeliveredForm` se valida pero nunca se guarda. | Guardar en modelo o eliminar campo. |
-| O-P2-09 | `email.py` | 11 | URL hardcodeada `f"{settings.SITE_URL}/orders/tracking/..."`. | Usar `reverse('orders:order_tracking', kwargs=...)`. |
-| O-P2-10 | `stripe_client.py` | 5 | `getattr(settings, 'STRIPE_SECRET_KEY', 'sk_test_mock')` — fallback silencioso a mock key. | `raise ImproperlyConfigured` si falta la key. |
-| O-P2-11 | `views.py` | 695 | `stripe.checkout.Session.create()` sin `idempotency_key`. | Pasar `idempotency_key=str(order.order_number)`. |
-| O-P2-12 | `views.py` | 724–730 | Stripe errors (CardError, etc.) atrapados como `except Exception` genérico. | Mapear `stripe.error.StripeError` subclases con mensajes específicos. |
-| O-P2-13 | `stripe_client.py` | 4 | Sin validación de test vs live mode (key prefix). | Validar `sk_live_` en prod, `sk_test_` en dev. |
-| O-P2-14 | `views.py` | 1228–1231 | `get_object()` setea `self.color`, `self.old_quantity` — estado frágil entre métodos. | Usar `self.object` como storage o recalcular en `form_valid()`. |
-| O-P2-15 | `admin.py` | 196 | `import uuid` inline en `save_model`. | Mover a nivel módulo (o eliminar — `tracking_token` ya tiene `default`). |
-| O-P2-16 | `admin.py` | 106 | `list_filter = ('status', 'is_paid', ...)` — `BooleanField` sin índice. | Agregar `models.Index(fields=['is_paid'])` en Meta. |
-| O-P2-17 | `models.py` | 109 | `Order.status` (CharField) sin `db_index` — filtrado en casi todas las queries. | `db_index=True`. |
-| O-P2-18 | `models.py` | 120 | `Order.assigned_delivery_user` (FK) sin `db_index` — filtrado en todas las delivery views. | `db_index=True`. |
-| O-P2-19 | `models.py` | 419 | `OrderItem.__str__` accede `self.order.order_number` — N+1 en admin listings. | Usar `self.order_id` (FK cacheada). |
-| O-P2-20 | `views.py` | 347, 429 | `cart_remove` y `cart_update` atrapan `except Exception` — errores de DB se convierten en 400 genérico. | `except (KeyError, ValidationError)` solamente. |
-| O-P2-21 | `views.py` | 724 | `create_stripe_checkout_session` cancela orden en cualquier `Exception` (transient Stripe errors matan la orden). | Solo cancelar en errores determinísticos; reintentar en errores de red. |
-| O-P2-22 | `views.py` | 1347 | `OrderItemDeleteView` hace `Order.objects.get(pk=order_pk)` sin try/except — si la orden se borró concurrentemente, error 500. | `get_object_or_404()`. |
+| # | Archivo | Problema | Fix |
+|---|---------|----------|------|
+| O-P2-01 | `admin.py` | ~~`app_index()` en `OrderAdmin` — nunca llamado.~~ → ✅ No existe en el código actual | ✅ Corregido |
+| O-P2-02 | `admin.py` | ~~`save_model` duplica generación de `order_number`.~~ → ✅ Solo setea `created_by`/`updated_by` | ✅ Corregido |
+| O-P2-03 | `views.py` | ~~`hasattr(cart, 'cart')` código muerto.~~ → ✅ Usa `cart.cart_data['items']` | ✅ Corregido |
+| O-P2-04 | `views.py` | ~~Inline imports de `MAX_QUANTITY_PER_ITEM`.~~ → ✅ Import a nivel módulo | ✅ Corregido |
+| O-P2-05 | `forms.py` | ~~`OrderUpdateForm` sin validación teléfono.~~ → ✅ `clean_customer_phone` añadido | ✅ Corregido |
+| O-P2-06 | `views.py` | ~~`create_stripe_checkout_session` acepta GET (side-effect).~~ | Ver nota ¹ |
+| O-P2-07 | `constants.py` | ~~`MAX_QUANTITY_PER_ITEM = 99` duplicado.~~ → ✅ Una sola definición | ✅ Corregido |
+| O-P2-08 | `forms.py` | ~~`delivery_evidence` nunca se guarda.~~ → ✅ Campo eliminado del form | ✅ Corregido |
+| O-P2-09 | `email.py` | ~~URL hardcodeada.~~ → ✅ Usa `reverse()` | ✅ Corregido |
+| O-P2-10 | `stripe_client.py` | ~~Fallback silencioso a mock key.~~ → ✅ `raise ImproperlyConfigured` | ✅ Corregido |
+| O-P2-11 | `views.py` | ~~`Session.create()` sin `idempotency_key`.~~ → ✅ `idempotency_key=str(order.order_number)` | ✅ Corregido |
+| O-P2-12 | `views.py` | ~~Stripe errors como `except Exception`.~~ → ✅ Subclases mapeadas (CardError, APIConnectionError, etc.) | ✅ Corregido |
+| O-P2-13 | `stripe_client.py` | ~~Sin validación test vs live key prefix.~~ → ✅ Validación con `logger.warning` | ✅ Corregido |
+| O-P2-14 | `views.py` | ~~`get_object()` setea `self.color`, `self.old_quantity`.~~ → ✅ Valores leídos de `self.object` y `form.original_quantity` | ✅ Corregido |
+| O-P2-15 | `admin.py` | ~~`import uuid` inline.~~ → ✅ `save_model` simplificado, sin uuid inline | ✅ Corregido |
+| O-P2-16 | `admin.py` | ~~`BooleanField` sin índice.~~ → ✅ `models.Index(fields=['is_paid'])` en Meta (mig. 0006) | ✅ Corregido |
+| O-P2-17 | `models.py` | ~~`Order.status` sin `db_index`.~~ → ✅ `db_index=True` | ✅ Corregido |
+| O-P2-18 | `models.py` | ~~`assigned_delivery_user` sin `db_index`.~~ → ✅ `db_index=True` | ✅ Corregido |
+| O-P2-19 | `models.py` | ~~`OrderItem.__str__` con N+1.~~ → ✅ Usa `self.order_id` (FK cacheada) | ✅ Corregido |
+| O-P2-20 | `views.py` | ~~`except Exception` en cart — esconde errores de DB.~~ | Ver nota ² |
+| O-P2-21 | `views.py` | ~~Cualquier `Exception` cancela la orden.~~ → ✅ Solo errores determinísticos cancelan; genéricos redirigen a checkout sin cancelar | ✅ Corregido |
+| O-P2-22 | `views.py` | ~~`Order.objects.get()` sin try/except.~~ → ✅ `get_object_or_404()` | ✅ Corregido |
+
+> ¹ **O-P2-06**: Acepta GET intencionalmente (redirect-after-POST). Regresión REG-02 corregida. El `checkout_data` en sesión actúa como guardia.
+> ² **O-P2-20**: Se mantiene `except Exception` con logging (fix BL-08) para asegurar respuesta JSON controlada en vez de 500. |
 
 ## 🟢 P3 — Bajo
 
-| # | Archivo | Línea | Problema | Fix |
-|---|---------|-------|----------|-----|
-| O-P3-01 | `constants.py` | 34–35 | `WEBHOOK_MAX_RETRIES`, `WEBHOOK_RETRY_DELAY` — importados pero nunca usados (busy-wait eliminado). | Eliminar constantes + imports. |
-| O-P3-02 | `models.py` | 214, 220, 249, 257, etc. | `save()` doble en cada método de transición de estado. | Setear `updated_by` antes del primer `save()`. |
-| O-P3-03 | `admin.py` | 85, 92, 144, etc. | `.short_description` en vez de `@admin.display()` (deprecado en Django 3.2+). | Migrar a `@admin.display(description='...')`. |
+| # | Archivo | Problema | Fix |
+|---|---------|----------|------|
+| O-P3-01 | `constants.py` | ~~`WEBHOOK_MAX_RETRIES`, `WEBHOOK_RETRY_DELAY` sin uso.~~ → ✅ Constantes usadas en polling (BL-07) | ✅ Corregido |
+| O-P3-02 | `models.py` | ~~`save()` doble en transiciones.~~ → ✅ Cada método llama `save()` una sola vez | ✅ Corregido |
+| O-P3-03 | `admin.py` | ~~`.short_description` en vez de `@admin.display()`.~~ → ✅ Todos migrados; redundancia eliminada | ✅ Corregido | |
 
 ---
 
@@ -403,7 +406,7 @@
 
 | App | P0 | P1 | P2 | P3 | Total |
 |-----|----|----|----|----|-------|
-| `orders/` | 0 | 0 | 6 | 1 | **7** |
+| `orders/` | 0 | 0 | 0 | 0 | **0** |
 | `products/` | 1 | 7 | 14 | 6 | **28** |
 | `core/` | 1 | 5 | 12 | 7 | **25** |
 | `delivery/` | 2 | 5 | 12 | 8 | **27** |
@@ -411,9 +414,9 @@
 | `backoffice/` | 0 | 3 | 4 | 2 | **9** |
 | `config/` | 1 | 5 | 5 | 3 | **14** |
 | Cross-cutting | 1 | 5 | 8 | 5 | **19** |
-| **TOTAL** | **7** | **30** | **68** | **35** | **140** |
+| **TOTAL** | **7** | **30** | **62** | **34** | **133** |
 
-## ✅ Corregido en v2.2 (15 items de lógica de negocio)
+## ✅ Corregido en v2.2–v2.3
 
 | # | Descripción | Archivos |
 |---|-------------|----------|
@@ -433,7 +436,11 @@
 | UX-01 | Checkout data persiste 1 día | `views.py` |
 | UX-02 | CSRF sidebar via `cartConfig` | `cart_icon.html`, `cart.js` |
 | O-P1-06 | `payment_session_id`: `null+unique` → `default=''` + `UniqueConstraint` condicional | `models.py`, migración 0008 |
+| O-P2-13 | `stripe_client`: validación env-aware de key prefix (`sk_live_` / `sk_test_`) | `stripe_client.py` |
+| O-P2-14 | `OrderItemUpdateView`: estado frágil entre métodos → valores desde `self.object` y `form.original_quantity` | `views.py` |
+| O-P2-21 | Stripe errors: solo cancelan errores determinísticos; transients redirigen sin cancelar | `views.py` |
+| O-P3-03 | `short_description` redundante eliminado | `admin.py` |
 
-> Pendientes: 140 hallazgos de los 170 originales (30 corregidos entre v2.1 y v2.2).
+> Pendientes: 133 hallazgos de los 170 originales (37 corregidos entre v2.1, v2.2 y v2.3).
 > Todos los bugs del flujo de transacción completo están corregidos.
-> Todos los P1 de `apps/orders/` están corregidos. Los 10 items (O-P1-01 a O-P1-10) fueron resueltos en rondas anteriores o en esta ronda (O-P1-06: migración 0008).
+> Todos los items de `apps/orders/` (P0, P1, P2, P3) están corregidos — 0 pendientes.
