@@ -57,7 +57,7 @@
             serviceWorker: "{% url 'delivery:service_worker' %}",
             manifest: "{% url 'delivery:pwa_manifest' %}",
             offline: "{% url 'delivery:offline' %}",
-            apiBase: "/delivery/api",
+            apiBase: "{% url 'delivery:api_orders' %}".replace(/\/orders\/$/, ''),
             login: "{% url 'delivery:login' %}",
             dashboard: "{% url 'delivery:dashboard' %}",
             orders: "{% url 'delivery:orders' %}",
