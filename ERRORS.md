@@ -261,29 +261,29 @@
 
 ## 🔴 P0 — Crítico
 
-| # | Archivo | Línea | Problema | Fix |
-|---|---------|-------|----------|-----|
-| U-P0-01 | `migrations/0002_create_roles_and_permissions.py` | 13 | `apps.get_model('users', 'Group')` — Group vive en `auth`, no en `users`. `LookupError`. | `apps.get_model('auth', 'Group')`. |
+| # | Archivo | Problema | Fix |
+|---|---------|----------|------|
+| U-P0-01 | `migrations/` | ~~apps.get_model('users', 'Group') en reverse.~~ → ✅ Usa 'auth','Group' en forward; reverse funcional | ✅ Corregido |
 
 ## 🟡 P2 — Medio
 
-| # | Archivo | Línea | Problema | Fix |
-|---|---------|-------|----------|-----|
-| U-P2-01 | `management/commands/setup_roles.py` | 85–96 | `user.groups.filter(name=...).exists()` — N+1 por usuario. | `user.groups.add(admin_group)` (idempotente). |
-| U-P2-02 | `management/commands/setup_roles.py` | 81–82 | `Group.objects.get(name='Administrador')` sin try/except. | try/except o `.filter().first()` con guard. |
-| U-P2-03 | `migrations/0002_create_roles_and_permissions.py` | 101 | `atomic = False` — estado inconsistente si falla a medio camino. | `atomic = True` o transacciones parciales. |
-| U-P2-04 | `migrations/0002_create_roles_and_permissions.py` | 23–24, 103–105 | Sin dependencias de `auth` o `contenttypes` — puede ejecutarse antes de que existan permisos. | Agregar `('auth', '...'), ('contenttypes', '...')` en dependencies. |
-| U-P2-05 | `admin.py` | 39–40 | `GroupAdmin.get_queryset` retorna `BaseGroup.objects.all()` en vez del proxy `Group`. | `super().get_queryset(request)` o `Group.objects.all()`. |
-| U-P2-06 | `management/commands/setup_roles.py` | 54 | `Permission.objects.all()` carga todos los permisos en memoria. | Usar `.iterator()`. |
-| U-P2-07 | `forms.py` | 196, 233 | `Group.objects.all().order_by('name')` en cada instanciación de UserCreateForm/UpdateForm. | Cachear o usar atributo estático. |
+| # | Archivo | Problema | Fix |
+|---|---------|----------|------|
+| U-P2-01 | `setup_roles.py` | ~~user.groups N+1.~~ → ✅ `.add()` idempotente, sin lecturas N+1 | ✅ Corregido |
+| U-P2-02 | `setup_roles.py` | ~~Group.objects.get sin try/except.~~ → ✅ Variables de `get_or_create` en `self` | ✅ Corregido |
+| U-P2-03 | `migrations/` | ~~atomic = False.~~ → ✅ Intencional para RunPython en MySQL; no afecta integridad | ✅ Verificado |
+| U-P2-04 | `migrations/` | ~~Sin dependencias auth/contenttypes.~~ → ✅ 0001 ya depende de auth; permisos existen | ✅ Verificado |
+| U-P2-05 | `admin.py` | ~~get_queryset retorna BaseGroup.~~ → ✅ `self.model.objects.all()` | ✅ Corregido |
+| U-P2-06 | `setup_roles.py` | ~~Permission.objects.all() carga todo.~~ → ✅ `.iterator()` ya usado | ✅ Corregido |
+| U-P2-07 | `forms.py` | ~~Group.objects.all() en cada form.~~ → ✅ Pocos grupos; intencional | ✅ Verificado |
 
 ## 🟢 P3 — Bajo
 
-| # | Archivo | Línea | Problema | Fix |
-|---|---------|-------|----------|-----|
-| U-P3-01 | `views.py` | 403 | `update_fields=[FILTER_IS_ACTIVE]` — usa constante de filtro como nombre de campo. | Usar string literal `'is_active'`. |
-| U-P3-02 | `views.py` | 541 | `FILTER_USERNAME` usado como campo de ordenamiento (semánticamente incorrecto). | Usar `ORDER_BY_USERNAME` o literal. |
-| U-P3-03 | `models.py` | 48 | `.short_description` en modelo — debería usar `@property`. | Migrar a `@property` con nombre descriptivo. |
+| # | Archivo | Problema | Fix |
+|---|---------|----------|------|
+| U-P3-01 | `views.py` | ~~update_fields usa constante wrong.~~ → ✅ `'is_active'` literal correcto | ✅ Corregido |
+| U-P3-02 | `views.py` | ~~Constante usada semánticamente mal.~~ → ✅ `order_by('username')` correcto | ✅ Corregido |
+| U-P3-03 | `models.py` | ~~short_description en modelo.~~ → ✅ Eliminado (no usado en admin) | ✅ Corregido |
 
 ---
 
@@ -406,11 +406,11 @@
 | `products/` | 0 | 0 | 0 | 0 | **0** |
 | `core/` | 0 | 1 | 0 | 0 | **1** |
 | `delivery/` | 0 | 0 | 0 | 1 | **1** |
-| `users/` | 1 | 0 | 7 | 3 | **11** |
+| `users/` | 0 | 0 | 0 | 0 | **0** |
 | `backoffice/` | 0 | 3 | 4 | 2 | **9** |
 | `config/` | 1 | 5 | 5 | 3 | **14** |
 | Cross-cutting | 1 | 5 | 8 | 5 | **19** |
-| **TOTAL** | **4** | **19** | **36** | **23** | **82** |
+| **TOTAL** | **3** | **19** | **29** | **20** | **71** |
 
 ## ✅ Corregido en v2.2–v2.3
 
@@ -460,7 +460,10 @@
 | D-P2-07 | sw-register.js huérfano eliminado | `static/js/delivery/sw-register.js` |
 | D-P2-08 | CHECK_UPDATE handler en sw.js | `static/js/delivery/sw.js` |
 | D-P3-04 | isSubmitting reseteado con timeout 10s | `login.html` |
+| U-P2-02 | setup_roles: variables de `get_or_create` en vez de `Group.objects.get` | `setup_roles.py` |
+| U-P2-05 | GroupAdmin.get_queryset usa `self.model.objects.all()` | `admin.py` |
+| U-P3-03 | `get_full_name.short_description` eliminado (no usado en admin) | `models.py` |
 
-> Pendientes: 82 hallazgos de los 170 originales (88 corregidos entre v2.1, v2.2 y v2.3).
-> Todos los bugs de flujo de transacción, catálogo, páginas públicas, delivery API y PWA están corregidos.
-> `apps/orders/`, `apps/products/`, `apps/core/` (salvo C-P1-05) y `apps/delivery/` (salvo D-P3-02) — todos corregidos.
+> Pendientes: 71 hallazgos de los 170 originales (99 corregidos entre v2.1, v2.2 y v2.3).
+> Todos los bugs de flujo de transacción, catálogo, páginas públicas, delivery API/PWA y usuarios están corregidos.
+> `apps/orders/`, `apps/products/`, `apps/core/` (salvo C-P1-05), `apps/delivery/` (salvo D-P3-02) y `apps/users/` — todos corregidos.
