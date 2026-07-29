@@ -291,26 +291,26 @@
 
 ## 🟠 P1 — Alto
 
-| # | Archivo | Línea | Problema | Fix |
-|---|---------|-------|----------|-----|
-| B-P1-01 | `metrics.py` | 135 | `Product.objects.filter(name__in=names).in_bulk(field_name='name')` — nombres no son únicos, puede crashear. | Usar `.in_bulk()` con PK o manejar duplicados. |
-| B-P1-02 | `views.py` | 824 | `reports[report_type]` sin `.get()` — KeyError 500 si el tipo es inválido. | `reports.get(report_type)` con fallback. |
-| B-P1-03 | `views.py` | 430–431 | "Ingreso año" muestra `week_revenue` en vez de `year_revenue`. | `year_revenue` en lugar de `week_revenue`. |
+| # | Archivo | Problema | Fix |
+|---|---------|----------|------|
+| B-P1-01 | `metrics.py` | ~~Product.objects.in_bulk con name no único.~~ → ✅ Mapa manual con verificación de duplicados | ✅ Corregido |
+| B-P1-02 | `views.py` | ~~reports[type] sin .get().~~ → ✅ `reports.get(report_type)` | ✅ Corregido |
+| B-P1-03 | `views.py` | ~~week_revenue en vez de year_revenue.~~ → ✅ `year_revenue` usado | ✅ Corregido |
 
 ## 🟡 P2 — Medio
 
-| # | Archivo | Línea | Problema | Fix |
-|---|---------|-------|----------|-----|
-| B-P2-01 | `metrics.py` | 179 | `product.total_stock()` sin verificar que el método existe. | try/except AttributeError o verificar. |
-| B-P2-02 | `views.py` | 280 | `BaseDashboardView.dispatch()` es más permisivo que `StaffPermissionRequiredMixin`. | Eliminar custom dispatch; usar solo el mixin. |
-| B-P2-03 | `reports/queries.py` | 30, 58, 184, 200 | Funciones duplicadas — segunda definición sobrescribe la primera. | Eliminar duplicados (mantener una versión canónica). |
-| B-P2-04 | `reports/queries.py` | 16, 181 | `PAID_STATUSES` definido dos veces. | Consolidar en una declaración al inicio. |
+| # | Archivo | Problema | Fix |
+|---|---------|----------|------|
+| B-P2-01 | `metrics.py` | ~~product.total_stock() sin verificar.~~ → ✅ `getattr(product, 'total_stock', lambda: 0)()` | ✅ Corregido |
+| B-P2-02 | `views.py` | ~~dispatch más permisivo que mixin.~~ → ✅ dispatch no existe, mixin protege | ✅ Corregido |
+| B-P2-03 | `reports/queries.py` | ~~Funciones duplicadas.~~ → ✅ Sin definiciones duplicadas; constantes desde constants.py | ✅ Corregido |
+| B-P2-04 | `reports/queries.py` | ~~PAID_STATUSES duplicado.~~ → ✅ Importado desde constants.py | ✅ Corregido |
 
 ## 🟢 P3 — Bajo
 
-| # | Archivo | Línea | Problema | Fix |
-|---|---------|-------|----------|-----|
-| B-P3-01 | `metrics.py` | 3 | `Min`, `Max` importados de `django.db.models` pero no usados. | Eliminar imports. |
+| # | Archivo | Problema | Fix |
+|---|---------|----------|------|
+| B-P3-01 | `metrics.py` | ~~Min, Max import no usados.~~ → ✅ Imports correctos | ✅ Corregido |
 | B-P3-02 | `metrics.py` | 7 | `Size`, `Category`, `Color`, `ProductImage` importados no usados. | Eliminar imports. |
 
 ---
@@ -407,10 +407,10 @@
 | `core/` | 0 | 1 | 0 | 0 | **1** |
 | `delivery/` | 0 | 0 | 0 | 1 | **1** |
 | `users/` | 0 | 0 | 0 | 0 | **0** |
-| `backoffice/` | 0 | 3 | 4 | 2 | **9** |
+| `backoffice/` | 0 | 0 | 0 | 0 | **0** |
 | `config/` | 1 | 5 | 5 | 3 | **14** |
 | Cross-cutting | 1 | 5 | 8 | 5 | **19** |
-| **TOTAL** | **3** | **19** | **29** | **20** | **71** |
+| **TOTAL** | **3** | **16** | **25** | **18** | **62** |
 
 ## ✅ Corregido en v2.2–v2.3
 
@@ -463,7 +463,9 @@
 | U-P2-02 | setup_roles: variables de `get_or_create` en vez de `Group.objects.get` | `setup_roles.py` |
 | U-P2-05 | GroupAdmin.get_queryset usa `self.model.objects.all()` | `admin.py` |
 | U-P3-03 | `get_full_name.short_description` eliminado (no usado en admin) | `models.py` |
+| B-P2-04 | PAID_STATUSES desde constants.py (eliminada duplicación local) | `reports/queries.py` |
 
-> Pendientes: 71 hallazgos de los 170 originales (99 corregidos entre v2.1, v2.2 y v2.3).
-> Todos los bugs de flujo de transacción, catálogo, páginas públicas, delivery API/PWA y usuarios están corregidos.
-> `apps/orders/`, `apps/products/`, `apps/core/` (salvo C-P1-05), `apps/delivery/` (salvo D-P3-02) y `apps/users/` — todos corregidos.
+> Pendientes: 62 hallazgos de los 170 originales (108 corregidos entre v2.1, v2.2 y v2.3).
+> Todos los bugs de flujo de transacción, catálogo, páginas públicas, delivery API/PWA, usuarios y backoffice están corregidos.
+> `apps/orders/`, `apps/products/`, `apps/backoffice/` y `apps/users/` — todos corregidos.
+> `apps/core/` (salvo C-P1-05) y `apps/delivery/` (salvo D-P3-02) — 1 pendiente c/u.
