@@ -4,7 +4,6 @@
     {% for field in form %}
     <div>
         {% include 'backoffice/components/atoms/form_label.html' with for=field.id_for_label text=field.label required=field.field.required %}
-        {{ field }}
         {% include 'backoffice/components/atoms/form_input.html' with field=field %}
     </div>
     {% endfor %}

@@ -1,8 +1,7 @@
 /**
  * Inicializacion del login de Delivery
  * - Toggle de visibilidad de contrasena
- * - Validacion basica de formulario
- * - Prevencion de doble envio
+ * - Validacion + prevencion de doble envio en un solo handler
  * - Limpieza de Service Workers obsoletos
  */
 
@@ -19,14 +18,14 @@
 })();
 
 // Toggle password visibility (accesible)
-const togglePassword = document.getElementById('togglePassword');
-const passwordInput = document.getElementById('password');
+var togglePassword = document.getElementById('togglePassword');
+var passwordInput = document.getElementById('password');
 
 if (togglePassword && passwordInput) {
     togglePassword.addEventListener('click', function() {
-        const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+        var type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
         passwordInput.setAttribute('type', type);
-        const icon = this.querySelector('i');
+        var icon = this.querySelector('i');
         icon.classList.toggle('fa-eye');
         icon.classList.toggle('fa-eye-slash');
         this.setAttribute('aria-label', type === 'password' ? 'Mostrar contrasena' : 'Ocultar contrasena');
@@ -40,43 +39,38 @@ if (togglePassword && passwordInput) {
     });
 }
 
-// Validacion basica en cliente
-const loginForm = document.querySelector('form');
-if (loginForm) {
-    loginForm.addEventListener('submit', function(e) {
-        const username = document.getElementById('username').value.trim();
-        const password = document.getElementById('password').value;
-
-        if (!username) {
-            e.preventDefault();
-            if (window.showToast) {
-                window.showToast('Por favor ingresa tu usuario', 'error');
-            }
-            document.getElementById('username').focus();
-            return false;
-        }
-
-        if (!password) {
-            e.preventDefault();
-            if (window.showToast) {
-                window.showToast('Por favor ingresa tu contrasena', 'error');
-            }
-            document.getElementById('password').focus();
-            return false;
-        }
-
-        return true;
-    });
-}
-
-// Prevenir submit multiple
+// Validacion + prevencion de doble envio (un solo handler)
+var loginForm = document.querySelector('form');
 var isSubmitting = false;
+
 if (loginForm) {
     loginForm.addEventListener('submit', function(e) {
         if (isSubmitting) {
             e.preventDefault();
             return false;
         }
+
+        var username = document.getElementById('username');
+        var password = document.getElementById('password');
+
+        if (username && !username.value.trim()) {
+            e.preventDefault();
+            if (window.showToast) {
+                window.showToast('Por favor ingresa tu usuario', 'error');
+            }
+            username.focus();
+            return false;
+        }
+
+        if (password && !password.value) {
+            e.preventDefault();
+            if (window.showToast) {
+                window.showToast('Por favor ingresa tu contrasena', 'error');
+            }
+            password.focus();
+            return false;
+        }
+
         isSubmitting = true;
         var submitBtn = this.querySelector('button[type="submit"]');
         if (submitBtn) {

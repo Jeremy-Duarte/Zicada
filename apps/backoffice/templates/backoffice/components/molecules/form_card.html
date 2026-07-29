@@ -1,6 +1,6 @@
 {% comment %} Props: title, subtitle, form, submit_text, cancel_url, enctype {% endcomment %}
 {% include 'backoffice/components/atoms/page_title.html' with title=title subtitle=subtitle %}
-{% include 'backoffice/components/atoms/card.html' %}
+<div class="bg-white rounded-xl shadow-sm p-6">
   <form method="POST" {% if enctype %}enctype="{{ enctype }}"{% endif %}>
     {% csrf_token %}
     {% include 'backoffice/components/crud/form_fields.html' %}

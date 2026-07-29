@@ -1,0 +1,27 @@
+{% comment %} Datos de configuracion embebidos desde Django — leidos por sw-init.js {% endcomment %}
+<script>
+    window.ZICADA_URLS = {
+        serviceWorker: "{% url 'delivery:service_worker' %}",
+        manifest: "{% url 'delivery:pwa_manifest' %}",
+        offline: "{% url 'delivery:offline' %}",
+        apiBase: "{% url 'delivery:api_orders' %}".replace(/\/orders\/$/, ''),
+        login: "{% url 'delivery:login' %}",
+        dashboard: "{% url 'delivery:dashboard' %}",
+        orders: "{% url 'delivery:orders' %}",
+        summary: "{% url 'delivery:summary' %}",
+        logout: "{% url 'delivery:logout' %}",
+    };
+    window.ZICADA_CONFIG = {
+        userId: {{ user.id|default:'null' }},
+        csrfEndpoint: "{% url 'delivery_api_csrf' %}",
+        isAuthenticated: {{ user.is_authenticated|yesno:"true,false" }},
+        isDelivery: {{ user.is_delivery|yesno:"true,false" }},
+        userFullName: "{{ user.get_full_name|default:''|escapejs }}",
+        userName: "{{ user.username|default:''|escapejs }}",
+    };
+    window.ZICADA_SETTINGS = {
+        refreshInterval: 30000,
+        version: "1.1.0",
+        environment: "{{ settings.DEBUG|yesno:'development,production' }}",
+    };
+</script>

@@ -1,19 +1,18 @@
 {% comment %} Props: title, message, confirm_url, confirm_text, cancel_url, extra_fields? {% endcomment %}
 <div class="max-w-lg mx-auto mt-10">
-  {% include 'backoffice/components/atoms/card.html' with padding='lg' %}
-    <div class="text-center">
-      <div class="w-12 h-12 mx-auto bg-red-100 rounded-full flex items-center justify-center mb-4">
-        <i class="fas fa-exclamation-triangle text-red-600"></i>
-      </div>
-      <h2 class="text-xl font-bold text-gray-900 mb-2">{{ title }}</h2>
-      <p class="text-sm text-gray-500 mb-6">{{ message }}</p>
-      <form method="POST" action="{{ confirm_url }}">
-        {% csrf_token %}
-        {{ extra_fields }}
-        <div class="flex justify-center gap-3">
-          {% include 'backoffice/components/atoms/btn_secondary.html' with href=cancel_url text='Cancelar' %}
-          {% include 'backoffice/components/atoms/btn_danger.html' with type='submit' text=confirm_text|default:'Confirmar' %}
-        </div>
-      </form>
+  <div class="bg-white rounded-xl shadow-sm p-8 text-center">
+    <div class="w-12 h-12 mx-auto bg-red-100 rounded-full flex items-center justify-center mb-4">
+      <i class="fas fa-exclamation-triangle text-red-600"></i>
     </div>
+    <h2 class="text-xl font-bold text-gray-900 mb-2">{{ title }}</h2>
+    <p class="text-sm text-gray-500 mb-6">{{ message }}</p>
+    <form method="POST" action="{{ confirm_url }}">
+      {% csrf_token %}
+      {{ extra_fields }}
+      <div class="flex justify-center gap-3">
+        {% include 'backoffice/components/atoms/btn_secondary.html' with href=cancel_url text='Cancelar' %}
+        {% include 'backoffice/components/atoms/btn_danger.html' with type='submit' text=confirm_text|default:'Confirmar' %}
+      </div>
+    </form>
   </div>
+</div>
