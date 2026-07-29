@@ -421,11 +421,11 @@ def register_incidence(request, order_id):
 
         try:
             with transaction.atomic():
-    order = get_object_or_404(
-        Order.objects.prefetch_related('items'),
-        id=order_id,
-        assigned_delivery_user=request.user
-    )
+                order = get_object_or_404(
+                    Order.objects.select_for_update().prefetch_related('items'),
+                    id=order_id,
+                    assigned_delivery_user=request.user
+                )
                 if action == 'cancel':
                     reason = json.dumps(incidence_data, ensure_ascii=False)
                     order.cancel(reason, user=request.user)

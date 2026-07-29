@@ -4,7 +4,13 @@ import smtplib
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import logout
-from django.contrib.auth.views import LoginView
+from django.contrib.auth.views import (
+    LoginView,
+    PasswordResetView as BasePasswordResetView,
+    PasswordResetDoneView as BasePasswordResetDoneView,
+    PasswordResetConfirmView as BasePasswordResetConfirmView,
+    PasswordResetCompleteView as BasePasswordResetCompleteView,
+)
 from django.core.mail import EmailMultiAlternatives
 from django.db.models import Count, Q
 from django.shortcuts import render, redirect, get_object_or_404
@@ -58,6 +64,12 @@ from .constants import (
     TEMPLATE_HERO_CONFIRM_DELETE,
     TEMPLATE_HERO_RESTORE,
     TEMPLATE_HERO_TRASHCAN,
+    # Password Reset Templates
+    TEMPLATE_PASSWORD_RESET_FORM,
+    TEMPLATE_PASSWORD_RESET_DONE,
+    TEMPLATE_PASSWORD_RESET_CONFIRM,
+    TEMPLATE_PASSWORD_RESET_COMPLETE,
+    TEMPLATE_PASSWORD_RESET_EMAIL,
     # Email Configuration
     EMAIL_SUBJECT_PREFIX,
     EMAIL_USER_SUBJECT,
@@ -511,3 +523,22 @@ class HeroConfigTrashcanView(StaffPermissionRequiredMixin, ListView):
         context[CONTEXT_HEADERS] = HEADERS_HERO_TRASHCAN
         return context
     # HU-057 | ESCENARIO 3 | A | Papelera vacía (template muestra mensaje)
+
+
+class PasswordResetView(BasePasswordResetView):
+    template_name = TEMPLATE_PASSWORD_RESET_FORM
+    email_template_name = TEMPLATE_PASSWORD_RESET_EMAIL
+    success_url = reverse_lazy('core:password_reset_done')
+
+
+class PasswordResetDoneView(BasePasswordResetDoneView):
+    template_name = TEMPLATE_PASSWORD_RESET_DONE
+
+
+class PasswordResetConfirmView(BasePasswordResetConfirmView):
+    template_name = TEMPLATE_PASSWORD_RESET_CONFIRM
+    success_url = reverse_lazy('core:password_reset_complete')
+
+
+class PasswordResetCompleteView(BasePasswordResetCompleteView):
+    template_name = TEMPLATE_PASSWORD_RESET_COMPLETE
