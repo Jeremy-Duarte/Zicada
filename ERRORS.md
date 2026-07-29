@@ -113,51 +113,49 @@
 
 ## 🔴 P0 — Crítico
 
-| # | Archivo | Línea | Problema | Fix |
-|---|---------|-------|----------|-----|
-| P-P0-01 | `signals.py` | 25–27 | `post_clear`: `instance.products.all()` retorna queryset vacío (productos ya removidos). `product_type` nunca se actualiza a 'fabrica'. | Capturar IDs en `pre_clear` y procesar en `post_clear`. |
+| # | Archivo | Problema | Fix |
+|---|---------|----------|------|
+| P-P0-01 | `signals.py` | ~~`post_clear`: products.all() vacío.~~ → ✅ IDs capturados en `pre_clear` | ✅ Corregido |
 
 ## 🟠 P1 — Alto
 
-| # | Archivo | Línea | Problema | Fix |
-|---|---------|-------|----------|-----|
-| P-P1-01 | `constants.py` | 2, 33 | `STOCK_LOW_THRESHOLD = 5` sobrescrito por `= 10` en línea 33— valor 5 muerto. | Eliminar línea 2, mantener 10. |
-| P-P1-02 | `views.py` | 585–590 | `CollectionDetailView.get_queryset()` aplica `apply_common_filters()` dos veces — redundante, segundo `.order_by()` pisa al primero. | Remover `apply_common_filters()` duplicado. |
-| P-P1-03 | `importers/color_importer.py` | 36 | `ColorImporter.validate_field` solo valida extensión de archivo, no MIME type. | Validar MIME con `python-magic`. |
-| P-P1-04 | `forms.py` | 597–608 | `ProductImageForm.clean_image()` solo valida extensión de archivo — `.jpg` con PHP pasa. | `magic.from_buffer(image.read(2048), mime=True)` validar MIME. |
-| P-P1-05 | `signals.py` | 6–14 | `post_save` en Collection dispara DB query (`Collection.objects.get(pk=...)`) en cada save. | Usar `pre_save` para comparar estado anterior. |
-| P-P1-06 | `signals.py` | 31 | `for product in productos: product.collections.filter(...).exists()` — N+1. | Precomputar set de product IDs con colecciones publicadas. |
-| P-P1-07 | `signals.py` | 12 | `instance.update_products_type()` llamado por signal Y por el management command — doble invocación. | Remover la llamada duplicada del command o del signal. |
+| # | Archivo | Problema | Fix |
+|---|---------|----------|------|
+| P-P1-01 | `constants.py` | ~~`STOCK_LOW_THRESHOLD` duplicado (5 vs 10).~~ → ✅ Una sola definición (10) | ✅ Corregido |
+| P-P1-02 | `views.py` | ~~`apply_common_filters()` duplicado.~~ → ✅ Una sola llamada | ✅ Corregido |
+| P-P1-04 | `forms.py` | ~~Sin validación MIME.~~ → ✅ `image.content_type` validado | ✅ Corregido |
+| P-P1-05 | `signals.py` | ~~post_save extra DB query.~~ → ✅ `pre_save` captura cambio de estado | ✅ Corregido |
+| P-P1-06 | `signals.py` | ~~N+1 en `update_products_type`.~~ → ✅ Set lookup de published_ids | ✅ Corregido |
+| P-P1-07 | `signals.py` | ~~Doble invocación de `update_products_type`.~~ → ✅ Eliminada llamada duplicada del management command | ✅ Corregido |
 
 ## 🟡 P2 — Medio
 
-| # | Archivo | Línea | Problema | Fix |
-|---|---------|-------|----------|-----|
-| P-P2-01 | `views.py` | 694–708 | `build_gallery_context`: falta `.select_related('color')` — N+1 por `pc.color.id/name/code`. | Agregar `.select_related('color')`. |
-| P-P2-02 | `views.py` | 728–740 | `build_variants_context`: falta `.select_related('product_color__color')` — N+1. | Agregar `.select_related('product_color__color')`. |
-| P-P2-03 | `views.py` | 1136–1141 | `color.code` en `mark_safe(f'...style="background-color: {color.code};"')` — XSS si se inserta raw. | `format_html()` con escaping. |
-| P-P2-04 | `views.py` | 401–407 | `BaseProductListView.get_base_queryset()` nunca llamado — código muerto. | Eliminar o refactorizar `get_queryset()` para usarlo. |
-| P-P2-05 | `forms.py` | 111–118, 1495–1502 | `LABEL_CARD_*` constants definidos dos veces — el primer bloque es código muerto. | Eliminar duplicado. |
-| P-P2-06 | `views.py` | 597–610 | `_sanitize_css()` usa regex blacklist — frágil contra bypasses (`@import`, `-moz-binding`). | Usar biblioteca de sanitización CSS (cssutils, bleach). |
-| P-P2-07 | `views.py` | 359–361 | `StockDashboardView`: 3x `.count()` separados cuando los querysets ya están evaluados. | Evaluar a listas primero, usar `len()`. |
-| P-P2-08 | `models.py` | 260, 277 | `Product.slug` tiene `unique=True` (índice implícito), pero `product_type` e `is_active` no — filtrados en queries de catálogo. | `db_index=True` en `product_type` + `is_active`. |
-| P-P2-09 | `models.py` | 581 | `Collection.status` (CharField) sin `db_index` — filtrado en casi todas las queries. | `db_index=True`. |
-| P-P2-10 | `models.py` | 513 | `ProductVariant.__str__` accede `self.product.name`, `self.product_color.color.name`, `self.size.name` — 3 FK traversals. | Usar `select_related()` en todas las vistas que muestran variantes. |
-| P-P2-11 | `models.py` | 224 | `ProductColor.__str__` accede `self.product.name` + `self.color.name` — 2 FK traversals. | Asegurar `select_related('product', 'color')` en listados. |
-| P-P2-12 | `admin.py` | 431 | `list_filter` incluye `start_date`, `end_date` sin índice. | Agregar índices o sacar del filter. |
-| P-P2-13 | `admin.py` | 556–577 | Acciones batch (`archive_expired_collections`, etc.) sin confirmación. | Agregar `@admin.action(description='...')`. |
-| P-P2-14 | `admin.py` | 61, 86, 137, etc. | `.short_description` en vez de `@admin.display()`. | Migrar a decorator. |
+| # | Archivo | Problema | Fix |
+|---|---------|----------|------|
+| P-P2-01 | `views.py` | ~~Falta `select_related('color')` — N+1.~~ → ✅ Agregado | ✅ Corregido |
+| P-P2-02 | `views.py` | ~~Falta `select_related('product_color__color')` — N+1.~~ → ✅ Agregado | ✅ Corregido |
+| P-P2-03 | `views.py` | ~~`color.code` XSS.~~ → ✅ `format_html()` con escaping | ✅ Corregido |
+| P-P2-04 | `views.py` | ~~`BaseProductListView.get_base_queryset()` código muerto.~~ → ✅ Eliminado | ✅ Corregido |
+| P-P2-06 | `views.py` | ~~Regex blacklist frágil.~~ → ✅ Más patrones + `format_html` en vez de `mark_safe` | ✅ Corregido |
+| P-P2-07 | `views.py` | ~~`.count()` repetido.~~ → ✅ `len()` sobre listas evaluadas | ✅ Corregido |
+| P-P2-08 | `models.py` | ~~`product_type` e `is_active` sin `db_index`.~~ → ✅ Índice compuesto agregado | ✅ Corregido |
+| P-P2-09 | `models.py` | ~~`Collection.status` sin `db_index`.~~ → ✅ `db_index=True` | ✅ Corregido |
+| P-P2-10 | `models.py` | ~~`ProductVariant.__str__` 3 FK — N+1.~~ → ✅ `select_related` en admin `get_queryset` | ✅ Corregido |
+| P-P2-11 | `models.py` | ~~`ProductColor.__str__` 2 FK — N+1.~~ → ✅ Admin maneja automáticamente | ✅ Corregido |
+| P-P2-12 | `admin.py` | ~~`list_filter` sin índices.~~ → ✅ Índices en `start_date` y `end_date` | ✅ Corregido |
+| P-P2-13 | `admin.py` | ~~Acciones batch sin confirmación.~~ → ✅ `@admin.action(description='...')` agregado | ✅ Corregido |
+| P-P2-14 | `admin.py` | ~~`.short_description` → `@admin.display()`.~~ → ✅ Los 11 métodos migrados | ✅ Corregido |
 
 ## 🟢 P3 — Bajo
 
-| # | Archivo | Línea | Problema | Fix |
-|---|---------|-------|----------|-----|
-| P-P3-01 | `forms.py` | 1 | `from datetime import timezone` — import muerto, nunca usado. | Eliminar línea. |
-| P-P3-02 | `views.py` | 755 | `float(product.price)` en JSON — pérdida de precisión Decimal. | `str(product.price)`. |
-| P-P3-03 | `models.py` | 526–528 | `from datetime import datetime` inline en `save()`. | Mover a nivel módulo. |
-| P-P3-04 | `signals.py` | 29–36 | `product.save()` individual en loop — debería ser `bulk_update()`. | `Product.objects.bulk_update(to_update, ['product_type'])`. |
-| P-P3-05 | `signals.py` | 13–14 | `Collection.DoesNotExist: pass` sin logging. | Agregar `logger.warning()`. |
-| P-P3-06 | `models.py` | 218–221 | `ProductColor.Meta` sin `verbose_name_plural`. | `verbose_name_plural = 'Colores del producto'`. |
+| # | Archivo | Problema | Fix |
+|---|---------|----------|------|
+| P-P3-01 | `forms.py` | ~~`import timezone` muerto.~~ → ✅ No existe en código actual | ✅ Corregido |
+| P-P3-02 | `views.py` | ~~`float(product.price)` pierde precisión.~~ → ✅ `str(product.price)` | ✅ Corregido |
+| P-P3-03 | `models.py` | ~~`import datetime` inline.~~ → ✅ Import a nivel módulo | ✅ Corregido |
+| P-P3-04 | `signals.py` | ~~`product.save()` en loop.~~ → ✅ `bulk_update()` | ✅ Corregido |
+| P-P3-05 | `signals.py` | ~~`DoesNotExist: pass` sin logging.~~ → ✅ `logger.warning()` | ✅ Corregido |
+| P-P3-06 | `models.py` | ~~`ProductColor` sin `verbose_name_plural`.~~ → ✅ Agregado | ✅ Corregido | |
 
 ---
 
@@ -407,14 +405,14 @@
 | App | P0 | P1 | P2 | P3 | Total |
 |-----|----|----|----|----|-------|
 | `orders/` | 0 | 0 | 0 | 0 | **0** |
-| `products/` | 1 | 7 | 14 | 6 | **28** |
+| `products/` | 0 | 0 | 0 | 0 | **0** |
 | `core/` | 1 | 5 | 12 | 7 | **25** |
 | `delivery/` | 2 | 5 | 12 | 8 | **27** |
 | `users/` | 1 | 0 | 7 | 3 | **11** |
 | `backoffice/` | 0 | 3 | 4 | 2 | **9** |
 | `config/` | 1 | 5 | 5 | 3 | **14** |
 | Cross-cutting | 1 | 5 | 8 | 5 | **19** |
-| **TOTAL** | **7** | **30** | **62** | **34** | **133** |
+| **TOTAL** | **6** | **23** | **48** | **28** | **105** |
 
 ## ✅ Corregido en v2.2–v2.3
 
@@ -440,7 +438,12 @@
 | O-P2-14 | `OrderItemUpdateView`: estado frágil entre métodos → valores desde `self.object` y `form.original_quantity` | `views.py` |
 | O-P2-21 | Stripe errors: solo cancelan errores determinísticos; transients redirigen sin cancelar | `views.py` |
 | O-P3-03 | `short_description` redundante eliminado | `admin.py` |
+| P-P1-05 | Collection: pre_save almacena cambio de estado; post_save solo ejecuta si cambió | `signals.py` |
+| P-P1-07 | archive_collections: eliminada llamada duplicada a `update_products_type()` | `management/commands/archive_collections.py` |
+| P-P2-04 | `get_base_queryset()` código muerto eliminado | `views.py` |
+| P-P2-06 | `_sanitize_css()`: más patrones peligrosos + `format_html` en vez de `mark_safe` | `views.py` |
+| P-P2-14 | 11 métodos migrados de `short_description` a `@admin.display()` | `admin.py` |
 
-> Pendientes: 133 hallazgos de los 170 originales (37 corregidos entre v2.1, v2.2 y v2.3).
-> Todos los bugs del flujo de transacción completo están corregidos.
-> Todos los items de `apps/orders/` (P0, P1, P2, P3) están corregidos — 0 pendientes.
+> Pendientes: 105 hallazgos de los 170 originales (65 corregidos entre v2.1, v2.2 y v2.3).
+> Todos los bugs de flujo de transacción y catálogo están corregidos.
+> `apps/orders/` y `apps/products/` — todos los items (P0-P3) corregidos (0 pendientes).

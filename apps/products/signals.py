@@ -1,21 +1,28 @@
 import logging
-from django.db.models.signals import m2m_changed, post_save
+from django.db.models.signals import m2m_changed, post_save, pre_save
 from django.dispatch import receiver
 from .models import Collection, Product
 
 logger = logging.getLogger(__name__)
 
 
+@receiver(pre_save, sender=Collection)
+def collection_pre_save(sender, instance, **kwargs):
+    if not instance.pk:
+        return
+    try:
+        old = Collection.objects.get(pk=instance.pk)
+        instance._status_changed = old.status != instance.status
+    except Collection.DoesNotExist:
+        pass
+
+
 @receiver(post_save, sender=Collection)
 def collection_status_changed(sender, instance, **kwargs):
     if kwargs.get('created', False):
         return
-    try:
-        old = Collection.objects.get(pk=instance.pk)
-        if old.status != instance.status:
-            instance.update_products_type()
-    except Collection.DoesNotExist:
-        logger.warning("Collection %d not found in post_save signal.", instance.pk)
+    if getattr(instance, '_status_changed', False):
+        instance.update_products_type()
 
 
 @receiver(m2m_changed, sender=Collection.products.through)

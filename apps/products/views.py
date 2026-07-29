@@ -13,8 +13,8 @@ from django.urls import reverse, reverse_lazy
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView, TemplateView, FormView
 from django.views import View
 from apps.core.crud.mixins import StaffPermissionRequiredMixin
-from django.utils.safestring import mark_safe
 from django.utils.html import format_html
+from django.utils.safestring import mark_safe
 from django.views.decorators.http import require_GET
 from django.http import HttpResponse
 
@@ -403,14 +403,6 @@ class BaseProductListView(PaginationMixin, FilterMixin, ListView):
             return qs.order_by(order_by)
         return qs.order_by(default_order)
     
-    def get_base_queryset(self):
-        """Retorna el queryset base con prefetch relacionado."""
-        return super().get_queryset().filter(is_active=PRODUCT_FILTER_ACTIVE).select_related(
-            'category'
-        ).prefetch_related(
-            'product_colors', 'product_colors__images', 'variants', 'variants__size'
-        )
-    
     def apply_common_filters(self, qs):
         # Aplica TODOS los filtros comunes a un queryset
         qs = self.apply_search_filter(qs)
@@ -603,7 +595,7 @@ class CollectionDetailView(BaseProductListView):
             return ''
         
         dangerous = re.compile(
-            r'(javascript:|expression\(|behavior\s*:|vbscript:|<script|</script|on\w+\s*=)',
+            r'(javascript:|expression\(|behavior\s*:|vbscript:|<script|</script|on\w+\s*=|@import|@charset)',
             re.IGNORECASE
         )
         cleaned = dangerous.sub('', raw_css)
@@ -611,7 +603,7 @@ class CollectionDetailView(BaseProductListView):
         if len(cleaned) > 5000:
             cleaned = cleaned[:5000]
         
-        return mark_safe(cleaned)
+        return format_html('{}', cleaned)
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

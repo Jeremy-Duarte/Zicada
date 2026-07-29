@@ -18,7 +18,6 @@ class Command(BaseCommand):
         for collection in expiradas:
             collection.status = 'archivada'
             collection.save(update_fields=['status'])
-            collection.update_products_type()
             count += 1
             self.stdout.write(f'Archivada: {collection.name}')
         

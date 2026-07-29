@@ -55,10 +55,10 @@ class CategoryAdmin(admin.ModelAdmin):
     prepopulated_fields = {'slug': ('name',)}
     list_per_page = 20
     
+    @admin.display(description='Productos')
     def product_count(self, obj):
         count = obj.products.count()
         return f"{count} productos"
-    product_count.short_description = 'Productos'
 
 
 @admin.register(ProductImage)
@@ -79,11 +79,11 @@ class ProductImageAdmin(admin.ModelAdmin):
         }),
     )
     
+    @admin.display(description='Vista previa')
     def image_preview(self, obj):
         if obj.image:
             return format_html('<img src="{}" width="50" height="50" style="object-fit: cover;" />', obj.image.url)
         return "Sin imagen"
-    image_preview.short_description = 'Vista previa'
 
 
 class ProductColorInline(admin.TabularInline):
@@ -127,6 +127,7 @@ class ColorAdmin(admin.ModelAdmin):
         )
         return form
     
+    @admin.display(description='Vista previa')
     def color_preview(self, obj):
         if obj.code:
             return format_html(
@@ -134,7 +135,6 @@ class ColorAdmin(admin.ModelAdmin):
                 obj.code
             )
         return "—"
-    color_preview.short_description = 'Vista previa'
 
 
 @admin.register(ProductColor)
@@ -156,15 +156,15 @@ class ProductColorAdmin(admin.ModelAdmin):
         }),
     )
     
+    @admin.display(description='Cantidad de imágenes')
     def images_count(self, obj):
         return obj.images.count()
-    images_count.short_description = 'Cantidad de imágenes'
     
+    @admin.display(description='Imagen destacada')
     def featured_image_preview(self, obj):
         if obj.featured_image and obj.featured_image.image:
             return format_html('<img src="{}" width="40" height="40" style="object-fit: cover;" />', obj.featured_image.image.url)
         return "—"
-    featured_image_preview.short_description = 'Imagen destacada'
 
 
 class ProductVariantInline(admin.TabularInline):
@@ -200,16 +200,16 @@ class ProductAdmin(admin.ModelAdmin):
         }),
     )
     
+    @admin.display(description='Precio', ordering='price')
     def price_display(self, obj):
         return f"${obj.price:,.0f} COP"
-    price_display.short_description = 'Precio'
-    price_display.admin_order_field = 'price'
     
+    @admin.display(description='Stock total')
     def total_stock(self, obj):
         total = sum(v.stock for v in obj.variants.filter(is_active=True))
         return f"{total} unidades"
-    total_stock.short_description = 'Stock total'
     
+    @admin.display(description='Stock')
     def stock_display(self, obj):
         total = sum(v.stock for v in obj.variants.filter(is_active=True))
         if total == 0:
@@ -217,11 +217,10 @@ class ProductAdmin(admin.ModelAdmin):
         elif total < 5:
             return f"Bajo stock ({total})"
         return f"Disponible ({total})"
-    stock_display.short_description = 'Stock'
     
+    @admin.display(description='Colores')
     def colors_count(self, obj):
         return obj.product_colors.count()
-    colors_count.short_description = 'Colores'
     
     def save_model(self, request, obj, form, change):
         if not change:
@@ -256,13 +255,12 @@ class ProductVariantAdmin(admin.ModelAdmin):
         }),
     )
     
+    @admin.display(description='Producto', ordering='product__name')
     def product_link(self, obj):
         if obj and obj.product and obj.product.id:
             url = reverse('admin:products_product_change', args=[obj.product.id])
             return format_html('<a href="{}">{}</a>', url, obj.product.name)
         return "Sin producto"
-    product_link.short_description = 'Producto'
-    product_link.admin_order_field = 'product__name'
     
     def save_model(self, request, obj, form, change):
         if not change:
@@ -537,12 +535,12 @@ class CollectionAdmin(admin.ModelAdmin):
             </details>
         '''
     
+    @admin.display(description='Productos')
     def product_count(self, obj):
         count = obj.products.count()
         if count == 0:
             return "0 productos (vacía)"
         return f"{count} productos"
-    product_count.short_description = 'Productos'
     
     def save_model(self, request, obj, form, change):
         if not change:
