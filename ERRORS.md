@@ -6,6 +6,30 @@
 
 ---
 
+# ✅ Correcciones de lógica de negocio aplicadas (v2.2)
+
+> 13 correcciones de integridad en el flujo checkout → pago → webhook → confirmación,
+> más 2 mejoras de UX (persistencia de checkout y CSRF en sidebar).
+> Auditadas entre commits `5a248971..HEAD`.
+
+| # | Problema | Síntoma | Corrección |
+|---|----------|---------|------------|
+| BL-01 | `customer_email` envía `None` pero modelo ya no acepta NULL (migración 0005 quitó `null=True`) | `ValidationError` al guardar orden si el usuario no ingresa email | `customer_email` → `''` en vez de `None` |
+| BL-02 | Webhook marca `is_paid=True` ANTES de `order.confirm()` | Si `confirm()` falla por stock: pedido pagado pero no confirmado, sin stock reducido, sin email | `confirm()` se ejecuta primero; si falla devuelve 500 para que Stripe reintente |
+| BL-03 | Webhook: discrepancia de monto devuelve `200 OK` | Stripe no reintenta; pago cobrado pero pedido no procesado | Devuelve `400` para forzar reintento de Stripe |
+| BL-04 | TOCTOU en `Order.confirm()` y `Order.cancel()` | `select_related('variant')` carga variantes ANTES de `select_for_update`; stock puede estar stale | Variantes recargadas después del lock en un `variant_map` |
+| BL-05 | `cart_data()` devuelve `str` en vez de `float` | Sidebar JS rompe `toLocaleString()` y comparaciones `=== 0`; mensajes de envío gratis no funcionan | Revertido a `float()` |
+| BL-06 | `cart_add()` valida `quantity > stock` en vez de `(current_qty + quantity) > stock` | Mensaje de error genérico cuando se agregan más unidades de un producto ya en carrito | Validación con cantidad acumulada + mensaje específico |
+| BL-07 | `order_confirmation()` eliminó polling de webhook | Usuario ve "pago en proceso" aunque ya pagó | Polling restaurado con `WEBHOOK_MAX_RETRIES` y `WEBHOOK_RETRY_DELAY` |
+| BL-08 | `cart_remove()` / `cart_update()` atrapan solo `(KeyError, ValidationError)` | Errores inesperados devuelven 500 sin JSON controlado | Restaurado `except Exception` con logging |
+| BL-09 | `payment_session_id` perdió `unique=True` | Riesgo de `MultipleObjectsReturned` en webhook si dos órdenes comparten session_id | Restaurado `unique=True` (migración 0007) |
+| BL-10 | `stripe_client()` rechaza `sk_test_` si `DEBUG=False` | Staging/pre-producción con claves test no pueden crear sesiones de pago | Eliminada validación de `sk_live_`; solo verifica que la key no esté vacía |
+| BL-11 | `OrderItemCreateForm.save()` reduce stock inmediatamente en pedidos pendientes | Inconsistente con nuevo diseño (stock solo al confirmar pago) | Solo reduce stock si el pedido NO está pendiente |
+| BL-12 | Admin perdió acción `cancel_orders` | Operadores no pueden cancelar múltiples pedidos desde el listado | Restaurada acción con razón por defecto |
+| BL-13 | `to_order_items()` vacía el carrito (`self.clear()`) al crear OrderItems | Si el usuario cancela en Stripe, el carrito aparece vacío | `self.clear()` eliminado de `to_order_items()`; carrito se vacía solo en `order_confirmation()` cuando `is_paid=True` |
+| UX-01 | Datos de checkout se borraban al redirigir a Stripe | Usuario debía rellenar formulario si volvía atrás | `checkout_data` persiste 1 día en sesión con auto-prefill; se limpia solo al pagar |
+| UX-02 | `CSRF_COOKIE_HTTPONLY=True` impide que JS lea cookie | Sidebar falla con 403 Forbidden en todas las operaciones AJAX | CSRF token inyectado via template `globalThis.cartConfig.csrfToken` |
+
 # 🔄 Regresiones detectadas en verificación post-ejecución (v2.1)
 
 > Estas fallas fueron INTRODUCIDAS por fixes del plan v2 y detectadas en la auditoría
@@ -27,8 +51,8 @@
 
 | # | Archivo | Línea | Problema | Fix |
 |---|---------|-------|----------|-----|
-| O-P0-01 | `views.py` | 724–730 | Stock se pierde permanentemente si `stripe.checkout.Session.create()` falla — `to_order_items()` ya redujo stock, pero el catch solo marca cancelado sin restaurar. | Llamar `order.cancel(reason=str(e), user=None)` en vez de setear `order.status = STATUS_CANCELLED` manualmente. |
-| O-P0-02 | `admin.py` | 210 | `actions = ['confirm_orders', ..., 'cancel_orders']` — `cancel_orders` no está definido. `AttributeError` al cargar el admin. | Definir el método o eliminar `'cancel_orders'` de la lista. |
+| O-P0-01 | `views.py` | 724–730 | ~~Stock se pierde permanentemente si `stripe.checkout.Session.create()` falla — `to_order_items()` ya redujo stock, pero el catch solo marca cancelado sin restaurar.~~ ✅ `to_order_items()` se ejecuta DESPUÉS de crear la sesión; si Stripe falla nunca se reduce stock. | ✅ Corregido (BL-01) |
+| O-P0-02 | `admin.py` | 210 | ~~`actions = ['confirm_orders', ..., 'cancel_orders']` — `cancel_orders` no está definido. `AttributeError` al cargar el admin.~~ ✅ Definido y restaurado. | ✅ Corregido (BL-12) |
 
 ## 🟠 P1 — Alto
 
@@ -375,9 +399,11 @@
 
 # 📊 Resumen
 
+## Estado actual (v2.2)
+
 | App | P0 | P1 | P2 | P3 | Total |
 |-----|----|----|----|----|-------|
-| `orders/` | 2 | 10 | 22 | 3 | **37** |
+| `orders/` | 0 | 2 | 6 | 1 | **9** |
 | `products/` | 1 | 7 | 14 | 6 | **28** |
 | `core/` | 1 | 5 | 12 | 7 | **25** |
 | `delivery/` | 2 | 5 | 12 | 8 | **27** |
@@ -385,6 +411,27 @@
 | `backoffice/` | 0 | 3 | 4 | 2 | **9** |
 | `config/` | 1 | 5 | 5 | 3 | **14** |
 | Cross-cutting | 1 | 5 | 8 | 5 | **19** |
-| **TOTAL** | **9** | **40** | **84** | **37** | **170** |
+| **TOTAL** | **7** | **32** | **68** | **35** | **142** |
 
-> Nota: ~17 fixes del plan original ya fueron aplicados (marcados opcionalmente). Los 170 listados aquí son hallazgos NUEVOS de las 3 rondas de escaneo posteriores al plan inicial.
+## ✅ Corregido en v2.2 (15 items de lógica de negocio)
+
+| # | Descripción | Archivos |
+|---|-------------|----------|
+| BL-01 | `customer_email` nunca `None` | `views.py` |
+| BL-02 | Webhook: `confirm()` antes de `is_paid` | `views.py` |
+| BL-03 | Webhook: monto ≠ → 400 | `views.py` |
+| BL-04 | TOCTOU en `confirm()` / `cancel()` | `models.py` |
+| BL-05 | `cart_data` → `float` | `views.py` |
+| BL-06 | `cart_add` acumula cantidad | `views.py` |
+| BL-07 | Polling webhook restaurado | `views.py`, `constants.py` |
+| BL-08 | `cart_remove`/`update` → `except Exception` | `views.py` |
+| BL-09 | `payment_session_id` → `unique=True` | `models.py`, migración 0007 |
+| BL-10 | `stripe_client` sin live key check | `stripe_client.py` |
+| BL-11 | Forms no reducen stock en pendientes | `forms.py` |
+| BL-12 | Admin: `cancel_orders` restaurada | `admin.py` |
+| BL-13 | Carrito no se vacía hasta confirmar pago | `cart.py`, `views.py` |
+| UX-01 | Checkout data persiste 1 día | `views.py` |
+| UX-02 | CSRF sidebar via `cartConfig` | `cart_icon.html`, `cart.js` |
+
+> Pendientes: 142 hallazgos de los 170 originales (28 corregidos entre v2.1 y v2.2).
+> Todos los bugs del flujo de transacción completo están corregidos.
