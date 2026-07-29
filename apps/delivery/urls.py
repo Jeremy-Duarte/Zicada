@@ -2,7 +2,6 @@
 
 from django.urls import path
 from . import views
-from django.views.static import serve
 from django.conf import settings
 from .api import (
     DeliveryOrdersAPIView,
@@ -19,10 +18,7 @@ urlpatterns = [
     # PWA endpoints
     path('manifest.json', views.pwa_manifest, name='pwa_manifest'),
     path('offline/', views.offline_page, name='offline'),
-    path('sw.js', serve, {
-        'path': 'js/delivery/sw.js',
-        'document_root': settings.STATIC_ROOT if not settings.DEBUG else settings.BASE_DIR / 'static',
-    }, name='service_worker'),
+    path('sw.js', views.service_worker, name='service_worker'),
     path('sw-config.json', views.sw_config, name='sw_config'),
     path('health/', views.health_check, name='health_check'),
     

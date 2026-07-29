@@ -104,16 +104,17 @@ class OrderSummarySerializer(serializers.Serializer):
     incidences = serializers.ListField(child=serializers.DictField())
 
 
+INCIDENCE_CHOICES = [
+    ('customer_not_home', 'Cliente no estaba'),
+    ('wrong_address', 'Dirección incorrecta'),
+    ('customer_cancelled', 'Cliente canceló'),
+    ('product_rejected', 'Producto rechazado'),
+    ('other', 'Otro'),
+]
+
+
 class IncidenceSerializer(serializers.Serializer):
     """Serializer para reportar incidencia (HU-035)"""
-    # NOTA: Las opciones de incidence_type están duplicadas con INCIDENCE_TYPES en views.py.
-    # Mantener ambas versiones sincronizadas si se añaden o modifican tipos de incidencia.
-    incidence_type = serializers.ChoiceField(choices=[
-        ('customer_not_home', 'Cliente no estaba'),
-        ('wrong_address', 'Dirección incorrecta'),
-        ('customer_cancelled', 'Cliente canceló'),
-        ('product_rejected', 'Producto rechazado'),
-        ('other', 'Otro'),
-    ])
+    incidence_type = serializers.ChoiceField(choices=INCIDENCE_CHOICES)
     comments = serializers.CharField(required=False, allow_blank=True)
     action = serializers.ChoiceField(choices=['report', 'cancel'], default='report')

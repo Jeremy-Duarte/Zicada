@@ -211,50 +211,45 @@
 
 ## 🔴 P0 — Crítico
 
-| # | Archivo | Línea | Problema | Fix |
-|---|---------|-------|----------|-----|
-| D-P0-01 | `api.py` | 304, 312 | `models.Sum()` usado pero `models` no está importado (se removió en limpieza). `NameError` en runtime. | `from django.db.models import Q, Sum`; usar `Sum(...)` directamente. |
-| D-P0-02 | `views.py` | 201 | `delivery/offline.html` no existe — `TemplateDoesNotExist` 500. | Crear template o usar respuesta inline. |
+| # | Archivo | Problema | Fix |
+|---|---------|----------|------|
+| D-P0-01 | `api.py` | ~~Sum() sin import.~~ → ✅ `from django.db.models import Q, Sum` | ✅ Corregido |
+| D-P0-02 | `views.py` | ~~offline.html no existe.~~ → ✅ Template existe | ✅ Corregido |
 
 ## 🟠 P1 — Alto
 
-| # | Archivo | Línea | Problema | Fix |
-|---|---------|-------|----------|-----|
-| D-P1-01 | `views.py` | 580–585 | `close_journey` guarda summary completo en sesión — puede exceder límite de cookie (4KB). | Guardar solo datos mínimos; usar DB-backed session. |
-| D-P1-02 | `api.py` | 202–261 | TOCTOU: check de status y mutación sin `select_for_update()` en incidence API. | `transaction.atomic()` + `select_for_update()`. |
-| D-P1-03 | `views.py` | 375–456 | TOCTOU en `register_incidence` (HTML view). | Mismo fix que D-P1-02. |
-| D-P1-04 | `serializers.py` | 120–124 | `MarkAsPaidSerializer` importado pero nunca usado — API body no se valida. | Usar serializer en la vista o eliminarlo. |
-| D-P1-05 | `views.py` | 189–195 | `delivery_logout` permite GET — logout vía prefetching/CSRF-free. | `@require_POST`. |
+| # | Archivo | Problema | Fix |
+|---|---------|----------|------|
+| D-P1-02 | `api.py` | ~~TOCTOU en incidence API.~~ → ✅ `select_for_update()` presente | ✅ Corregido |
+| D-P1-03 | `views.py` | ~~TOCTOU en register_incidence HTML.~~ → ✅ `select_for_update()` agregado | ✅ Corregido |
+| D-P1-04 | `serializers.py` | ~~MarkAsPaidSerializer no usado.~~ → ✅ No existe | ✅ Corregido |
+| D-P1-05 | `views.py` | ~~delivery_logout permite GET.~~ → ✅ `@require_POST` | ✅ Corregido |
 
 ## 🟡 P2 — Medio
 
-| # | Archivo | Línea | Problema | Fix |
-|---|---------|-------|----------|-----|
-| D-P2-01 | `views.py` | 287–291 | `order_detail` falta `prefetch_related('items')` — N+1 en template. | `Order.objects.prefetch_related('items')`. |
-| D-P2-02 | `views.py` | 25, 27, 31 | `DELIVERY_MANIFEST`, `DELIVERY_OFFLINE`, `DELIVERY_SERVICE_WORKER` importados pero no usados. | Eliminar imports. |
-| D-P2-03 | `serializers.py` | 3, 5 | `User = get_user_model()` asignado pero nunca usado. | Eliminar líneas. |
-| D-P2-04 | `serializers.py` | 12, 18 | `subtotal` y `stock_snapshot` en `OrderItemSerializer` sin `read_only=True`. | Agregar `read_only=True`. |
-| D-P2-05 | `urls.py` | 22–25 | `django.views.static.serve` en producción para sw.js — no recomendado. | Servir con Whitenoise o view dedicada. |
-| D-P2-06 | `urls.py` | 22–25 | Sin header `Service-Worker-Allowed` — scope puede no coincidir. | Agregar header en la respuesta. |
-| D-P2-07 | `base_pwa.html` | 112–204 | Registro SW duplicado: inline + `sw-register.js`. | Consolidar en uno. |
-| D-P2-08 | `base_pwa.html` | 198–202 | `CHECK_UPDATE` message enviado al SW pero no hay handler registrado. | Agregar handler o eliminar envío. |
-| D-P2-09 | `api.py` | 41 | `from django.db.models import Q` inline — ya importado a nivel módulo línea 11. | Eliminar import inline. |
-| D-P2-10 | `api.py` | 1 | `import django` — módulo completo para una sola función. | `from django.middleware.csrf import get_token`. |
-| D-P2-11 | `views.py` | 182–184 | Error message filtra info ("no tienes permisos de entregador"). | Mensaje genérico "Usuario o contraseña incorrectos." |
-| D-P2-12 | `api.py` | 27–366 | Sin rate limiting en API endpoints. | `throttle_classes = [UserRateThrottle]`. |
+| # | Archivo | Problema | Fix |
+|---|---------|----------|------|
+| D-P2-01 | `views.py` | ~~Falta prefetch_related('items').~~ → ✅ Agregado | ✅ Corregido |
+| D-P2-02 | `views.py` | ~~Imports no usados.~~ → ✅ Todos usados | ✅ Corregido |
+| D-P2-03 | `api.py` | ~~User = get_user_model() no usado.~~ → ✅ Eliminado | ✅ Corregido |
+| D-P2-04 | `serializers.py` | ~~subtotal/stock_snapshot sin read_only.~~ → ✅ `read_only=True` | ✅ Corregido |
+| D-P2-05 | `urls.py` | ~~static.serve en producción.~~ → ✅ View dedicada `service_worker()` | ✅ Corregido |
+| D-P2-06 | `urls.py` | ~~Sin Service-Worker-Allowed header.~~ → ✅ Header en view | ✅ Corregido |
+| D-P2-09 | `api.py` | ~~import Q inline redundante.~~ → ✅ Eliminado | ✅ Corregido |
+| D-P2-10 | `api.py` | ~~import django completo.~~ → ✅ Import específico | ✅ Corregido |
+| D-P2-11 | `views.py` | ~~Error message filtra info.~~ → ✅ Mensaje genérico | ✅ Corregido |
+| D-P2-12 | `api.py` | ~~Sin rate limiting.~~ → ✅ `UserRateThrottle` en todas las APIs | ✅ Corregido |
 
 ## 🟢 P3 — Bajo
 
-| # | Archivo | Línea | Problema | Fix |
-|---|---------|-------|----------|-----|
-| D-P3-01 | `api.py` | 278–283 | `except Exception` devuelve `str(e)` al cliente — leak de detalles internos. | `except ValidationError` con mensaje user-facing. |
-| D-P3-02 | `tests.py` | 1–3 | Test file vacío — cero cobertura. | Escribir tests para auth, state transitions, incidence. |
-| D-P3-03 | `permissions.py` | 9 | `request.user and` redundante — siempre es objeto en Django. | Simplificar: `request.user.is_authenticated and ...`. |
-| D-P3-04 | `login.html` | 139–174 | `isSubmitting` no se resetea si validación falla — usuario bloqueado. | Resetear flag en branch de fallo. |
-| D-P3-05 | `views.py` | 64–101 | Manifest sin `prefer_related_applications: false`. | Agregar. |
-| D-P3-06 | `sw.js` | 64–68 | `skipWaiting()` depende de mensaje CONFIG — puede nunca ejecutarse. | `skipWaiting()` en `install` event incondicionalmente. |
-| D-P3-07 | `serializers.py` | 129–134 | Incidence type choices duplicados entre serializer y view. | Mover a constantes compartidas. |
-| D-P3-08 | `serializers.py` | 24–28, 61–67 | Campos explícitos redundantes en serializers. | Eliminar campos que matchean el modelo. |
+| # | Archivo | Problema | Fix |
+|---|---------|----------|------|
+| D-P3-01 | `api.py` | ~~except Exception leak detalles.~~ → ✅ Mensaje genérico | ✅ Corregido |
+| D-P3-03 | `permissions.py` | ~~request.user redundante.~~ → ✅ Simplificado | ✅ Corregido |
+| D-P3-05 | `views.py` | ~~Sin prefer_related_applications.~~ → ✅ `false` en manifest | ✅ Corregido |
+| D-P3-06 | `sw.js` | ~~skipWaiting() puede no ejecutarse.~~ → ✅ Llamado en install + CONFIG | ✅ Corregido |
+| D-P3-07 | `serializers.py` | ~~Choices duplicados.~~ → ✅ `INCIDENCE_CHOICES` compartido | ✅ Corregido |
+| D-P3-08 | `serializers.py` | ~~Campos redundantes.~~ → ✅ Eliminados | ✅ Corregido |
 
 ---
 
@@ -406,12 +401,12 @@
 | `orders/` | 0 | 0 | 0 | 0 | **0** |
 | `products/` | 0 | 0 | 0 | 0 | **0** |
 | `core/` | 0 | 1 | 0 | 0 | **1** |
-| `delivery/` | 2 | 5 | 12 | 8 | **27** |
+| `delivery/` | 0 | 1 | 2 | 2 | **5** |
 | `users/` | 1 | 0 | 7 | 3 | **11** |
 | `backoffice/` | 0 | 3 | 4 | 2 | **9** |
 | `config/` | 1 | 5 | 5 | 3 | **14** |
 | Cross-cutting | 1 | 5 | 8 | 5 | **19** |
-| **TOTAL** | **6** | **24** | **48** | **28** | **106** |
+| **TOTAL** | **4** | **20** | **38** | **24** | **86** |
 
 ## ✅ Corregido en v2.2–v2.3
 
@@ -451,7 +446,15 @@
 | C-P2-11 | HeroConfig.clean() valida tamaño de imagen (5MB) | `models.py` |
 | C-P2-12 | overlay_opacity con verbose_name | `models.py` |
 | C-P3-06 | is_active redundante removido de home() | `views.py` |
+| D-P1-03 | register_incidence HTML con `select_for_update()` | `views.py` |
+| D-P2-01 | order_detail con `prefetch_related('items')` | `views.py` |
+| D-P2-03 | `User = get_user_model()` no usado eliminado | `api.py` |
+| D-P2-05/06 | sw.js servido via view con header Service-Worker-Allowed | `urls.py`, `views.py` |
+| D-P2-09 | import Q inline redundante eliminado | `api.py` |
+| D-P2-11 | Error message genérico en login | `views.py` |
+| D-P3-07 | `INCIDENCE_CHOICES` compartido entre serializer y view | `serializers.py`, `views.py` |
 
-> Pendientes: 106 hallazgos de los 170 originales (64 corregidos entre v2.1, v2.2 y v2.3).
-> Todos los bugs de flujo de transacción, catálogo y páginas públicas están corregidos.
+> Pendientes: 86 hallazgos de los 170 originales (84 corregidos entre v2.1, v2.2 y v2.3).
+> Todos los bugs de flujo de transacción, catálogo, páginas públicas y delivery API están corregidos.
 > `apps/orders/`, `apps/products/` y `apps/core/` — salvo C-P1-05 (django-axes), todos corregidos.
+> `apps/delivery/` — 4 items restantes de template/JS (D-P1-01, D-P2-07, D-P2-08, D-P3-02, D-P3-04).

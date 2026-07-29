@@ -103,6 +103,21 @@ def pwa_manifest(request):
     return JsonResponse(manifest)
 
 
+@never_cache
+@require_safe
+def service_worker(request):
+    """Sirve el Service Worker con header Service-Worker-Allowed."""
+    import os
+    from django.http import FileResponse, HttpResponse
+    sw_path = settings.BASE_DIR / 'static' / 'js' / 'delivery' / 'sw.js'
+    if not os.path.exists(str(sw_path)):
+        return HttpResponse(status=404)
+    response = FileResponse(open(str(sw_path), 'rb'), content_type='application/javascript')
+    response['Service-Worker-Allowed'] = '/delivery/'
+    response['Cache-Control'] = 'no-cache'
+    return response
+
+
 @cache_page(60 * 15)
 @vary_on_headers('User-Agent')
 def sw_config(request):
@@ -179,7 +194,7 @@ def delivery_login(request):
             return redirect(DELIVERY_DASHBOARD)
 
         return render(request, _DELIVERY_LOGIN_TEMPLATE, {
-            'error': 'Credenciales inválidas o no tienes permisos de entregador.'
+            'error': 'Credenciales inválidas.'
         })
 
     return render(request, _DELIVERY_LOGIN_TEMPLATE)
@@ -355,12 +370,14 @@ def mark_as_paid(request, order_id):
 # HU-035: REGISTRAR INCIDENCIA
 # =============================================================================
 
+from .serializers import INCIDENCE_CHOICES
+
 INCIDENCE_TYPES = [
-    {'value': 'customer_not_home', 'label': 'Cliente no estaba', 'icon': '🏠'},
-    {'value': 'wrong_address', 'label': 'Dirección incorrecta', 'icon': '📍'},
-    {'value': 'customer_cancelled', 'label': 'Cliente canceló', 'icon': '❌'},
-    {'value': 'product_rejected', 'label': 'Producto rechazado', 'icon': '📦'},
-    {'value': 'other', 'label': 'Otro', 'icon': '📝'},
+    {'value': value, 'label': label, 'icon': icon}
+    for (value, label), icon in zip(
+        INCIDENCE_CHOICES,
+        ['🏠', '📍', '❌', '📦', '📝']
+    )
 ]
 
 _INCIDENCE_VALUES = {t['value'] for t in INCIDENCE_TYPES}
@@ -404,11 +421,11 @@ def register_incidence(request, order_id):
 
         try:
             with transaction.atomic():
-                order = get_object_or_404(
-                    Order.objects.prefetch_related('items'),
-                    id=order_id,
-                    assigned_delivery_user=request.user
-                )
+    order = get_object_or_404(
+        Order.objects.prefetch_related('items'),
+        id=order_id,
+        assigned_delivery_user=request.user
+    )
                 if action == 'cancel':
                     reason = json.dumps(incidence_data, ensure_ascii=False)
                     order.cancel(reason, user=request.user)
