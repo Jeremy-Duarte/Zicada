@@ -1,54 +1,51 @@
 {% load static %}
-<div class="bg-white rounded-xl shadow-sm overflow-hidden">
-    <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-                <tr>
-                    {% for header in headers %}
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ header }}</th>
-                    {% endfor %}
-                    {% if show_actions %}
-                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
-                    {% endif %}
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-200 bg-white">
-                {% for row in rows %}
-                <tr class="hover:bg-gray-50 transition">
-                    {% for value in row.values %}
-                    <td class="px-6 py-4 text-sm text-gray-700">{% if value is not None %}{{ value }}{% else %}—{% endif %}</td>
-                    {% endfor %}
-                    {% if show_actions %}
-                    <td class="px-6 py-4 text-sm text-right space-x-3">
-                        {% if edit_url_name and row.pk %}
-                        <a href="{% url edit_url_name row.pk %}" class="text-blue-600 hover:text-blue-800" title="Editar">
-                            <i class="fas fa-edit"></i>
-                        </a>
-                        {% endif %}
-                        {% if style_url_name and row.pk %}
-                        <a href="{% url style_url_name row.pk %}" class="text-purple-600 hover:text-purple-800" title="Estilos">
-                            <i class="fas fa-palette"></i>
-                        </a>
-                        {% endif %}
-                        {% if delete_url_name and row.pk %}
-                        <a href="{% url delete_url_name row.pk %}" class="text-red-600 hover:text-red-800" title="Eliminar">
-                            <i class="fas fa-trash-alt"></i>
-                        </a>
-                        {% endif %}
-                    </td>
-                    {% endif %}
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="{{ headers|length|add:show_actions|yesno:'1,0' }}" class="px-6 py-12 text-center text-gray-400">
-                        <i class="fas fa-inbox text-3xl mb-2 block"></i>
-                        {{ empty_message|default:"No hay registros" }}
-                    </td>
-                </tr>
+<div class="overflow-x-auto rounded-xl border border-gray-200 shadow-sm">
+    <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+            <tr>
+                {% for header in headers %}
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ header }}</th>
                 {% endfor %}
-            </tbody>
-        </table>
-    </div>
+                {% if show_actions %}
+                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                {% endif %}
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200 bg-white">
+            {% for row in rows %}
+            <tr class="hover:bg-gray-50 transition">
+                {% for value in row.values %}
+                <td class="px-6 py-4 text-sm text-gray-700">{% if value is not None %}{{ value }}{% else %}—{% endif %}</td>
+                {% endfor %}
+                {% if show_actions %}
+                <td class="px-6 py-4 text-sm text-right space-x-3">
+                    {% if edit_url_name and row.pk %}
+                    <a href="{% url edit_url_name row.pk %}" class="inline-flex items-center justify-center w-8 h-8 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition" aria-label="Editar" title="Editar">
+                        <i class="fas fa-edit"></i>
+                    </a>
+                    {% endif %}
+                    {% if style_url_name and row.pk %}
+                    <a href="{% url style_url_name row.pk %}" class="inline-flex items-center justify-center w-8 h-8 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition" aria-label="Estilos" title="Estilos">
+                        <i class="fas fa-palette"></i>
+                    </a>
+                    {% endif %}
+                    {% if delete_url_name and row.pk %}
+                    <a href="{% url delete_url_name row.pk %}" class="inline-flex items-center justify-center w-8 h-8 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition" aria-label="Eliminar" title="Eliminar">
+                        <i class="fas fa-trash-alt"></i>
+                    </a>
+                    {% endif %}
+                </td>
+                {% endif %}
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="{{ headers|length|add:show_actions|yesno:'1,0' }}" class="px-6 py-12">
+                    {% include 'backoffice/components/atoms/empty_state.html' with title=empty_message|default:"No hay registros" icon="fas fa-inbox" %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
     {% if page_obj %}
     <div class="px-6 py-3 border-t border-gray-100">
         {% include 'backoffice/components/crud/pagination.html' %}
