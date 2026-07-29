@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'cloudinary_storage',
     'django_crontab',
     'anymail',
+    'axes',
     # Zicada Apps
     'apps.core',
     'apps.users',
@@ -60,6 +61,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'axes.middleware.AxesMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -215,6 +217,12 @@ CSRF_COOKIE_SAMESITE = 'Lax'
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = 'Lax'
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# django-axes: proteccion contra fuerza bruta (produccion: mas restrictivo)
+AXES_FAILURE_LIMIT = 5
+AXES_COOLOFF_TIME = 1
+AXES_LOCKOUT_PARAMETERS = [['username', 'ip_address']]
+AXES_RESET_ON_SUCCESS = True
 
 # LOGGING PARA PRODUCCIÓN
 LOGGING = {

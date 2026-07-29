@@ -175,7 +175,7 @@
 | C-P1-02 | `context_processors.py` | ~~breadcrumbs sin cache.~~ → ✅ Cache en category, product y collection | ✅ Corregido |
 | C-P1-03 | `forms.py` | ~~DB queries en cada instanciación.~~ → ✅ `cache.set()` 5 min TTL | ✅ Corregido |
 | C-P1-04 | `forms.py` | ~~StaffLoginForm.clean() reimplementado.~~ → ✅ `confirm_login_allowed()` override (REG-05) | ✅ Corregido |
-| C-P1-05 | `views.py` | ~~Sin protección fuerza bruta.~~ → Requiere django-axes (pendiente) | Pendiente ¹ |
+| C-P1-05 | `views.py` | ~~Sin protección fuerza bruta.~~ → ✅ django-axes configurado (dev/prod) | ✅ Corregido |
 
 ## 🟡 P2 — Medio
 
@@ -202,8 +202,6 @@
 | C-P3-04 | `context_processors.py` | ~~ImportError nunca ocurre.~~ → ✅ Solo `except Collection.DoesNotExist` | ✅ Corregido |
 | C-P3-06 | `views.py` | ~~is_active redundante con ActiveManager.~~ → ✅ Eliminado | ✅ Corregido |
 | C-P3-07 | `admin.py` | ~~.short_description.~~ → ✅ `@admin.display()` | ✅ Corregido |
-
-> ¹ **C-P1-05**: Pendiente de instalación de django-axes (terceros). Sin él, no hay rate limiting nativo en Django LoginView. |
 
 ---
 
@@ -372,7 +370,7 @@
 | X-P1-02 | `orders/list.html` | ~~filter param sin escapejs.~~ → ✅ Template refactorizado | ✅ Corregido |
 | X-P1-03 | `home.html` | ~~title_text safe → XSS.~~ → ✅ `linebreaksbr` (escapa HTML) | ✅ Corregido |
 | X-P1-04 | `emails/` | ~~URL hardcodeada.~~ → ✅ `{{ site_url }}` + `reverse()` | ✅ Corregido |
-| X-P1-05 | Proyecto | ~~Sin password reset.~~ → Requiere feature completo (nuevas vistas/URLs/emails) | Pendiente ¹ |
+| X-P1-05 | Proyecto | ~~Sin password reset.~~ → ✅ Vistas nativas Django + templates | ✅ Corregido |
 
 ## 🟡 P2 — Medio
 
@@ -397,10 +395,9 @@
 | X-P3-04 | `core/views.py` | ~~Contact form sin rate limiting.~~ → Requiere django-ratelimit | Pendiente ⁴ |
 | X-P3-05 | `products/models.py` | ~~alt_text vacío.~~ → ✅ `__str__` maneja blank | ✅ Corregido |
 
-> ¹ **X-P1-05**: Password reset requiere nuevas URLs, vistas, templates y emails — feature no implementada.
-> ² **X-P2-07**: CSP nonce requiere migración de 48 templates con `<script>` inline a archivos .js externos.
-> ³ **X-P3-02**: SRI hashes cambian con cada versión de CDN; mantenimiento automatizado necesario.
-> ⁴ **X-P3-04**: Rate limiting requiere django-ratelimit u otro middleware de throttle externo.
+> ¹ **X-P2-07**: CSP nonce requiere migración de 48 templates con `<script>` inline a archivos .js externos.
+> ² **X-P3-02**: SRI hashes cambian con cada versión de CDN; mantenimiento automatizado necesario.
+> ³ **X-P3-04**: Rate limiting requiere django-ratelimit u otro middleware de throttle externo.
 
 ---
 
@@ -412,13 +409,13 @@
 |-----|----|----|----|----|-------|
 | `orders/` | 0 | 0 | 0 | 0 | **0** |
 | `products/` | 0 | 0 | 0 | 0 | **0** |
-| `core/` | 0 | 1 | 0 | 0 | **1** |
+| `core/` | 0 | 0 | 0 | 0 | **0** |
 | `delivery/` | 0 | 0 | 0 | 1 | **1** |
 | `users/` | 0 | 0 | 0 | 0 | **0** |
 | `backoffice/` | 0 | 0 | 0 | 0 | **0** |
 | `config/` | 0 | 0 | 1 | 1 | **2** |
-| Cross-cutting | 0 | 1 | 1 | 2 | **4** |
-| **TOTAL** | **1** | **12** | **18** | **15** | **46** |
+| Cross-cutting | 0 | 0 | 1 | 2 | **3** |
+| **TOTAL** | **0** | **0** | **2** | **4** | **6** |
 
 ## ✅ Corregido en v2.2–v2.3
 
@@ -476,8 +473,10 @@
 | CF-P3-02 | logging.disable(ERROR) en vez de CRITICAL | `settings_test.py` |
 | X-P2-01 | base.html: `/delivery/login/` → `{% url "delivery:login" %}` | `base.html` |
 | X-P2-04 | base_pwa.html: apiBase desde `{% url %}` | `base_pwa.html` |
+| X-P1-05 | Password reset: vistas nativas Django + 5 templates + enlace en login | `urls.py`, `staff_login.html`, `templates/registration/` |
+| C-P1-05 | django-axes configurado (5 intentos, 30 min cooloff) | `settings.py`, `settings_production.py`, `requirements.txt` |
 
-> Pendientes: 46 hallazgos de los 170 originales (124 corregidos entre v2.1, v2.2 y v2.3).
-> 124 hallazgos corregidos de 170 originales (73%).
-> Todos los bugs críticos (P0) están corregidos — solo 1 P0 restante.
-> `apps/orders/`, `apps/products/`, `apps/backoffice/`, `apps/users/` — 100% corregidos.
+> Pendientes: 6 hallazgos de los 170 originales (164 corregidos entre v2.1, v2.2 y v2.3).
+> 164 hallazgos corregidos de 170 originales (96%).
+> Solo quedan 6 items de infraestructura/templates/refactor.
+> `apps/orders/`, `apps/products/`, `apps/backoffice/`, `apps/users/`, `apps/core/` — 100% corregidos.

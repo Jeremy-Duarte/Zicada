@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'cloudinary',
     'cloudinary_storage',
     'django_crontab',
+    # 'axes',  # Instalar django-axes: pip install django-axes==7.2.0
     'apps.core',
     'apps.users',
     'apps.products',

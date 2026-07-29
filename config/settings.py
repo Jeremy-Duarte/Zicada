@@ -46,6 +46,13 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'
 SECURE_REFERRER_POLICY = 'same-origin'
 
+# django-axes: proteccion contra fuerza bruta
+AXES_FAILURE_LIMIT = 5
+AXES_COOLOFF_TIME = 0.5
+AXES_LOCKOUT_PARAMETERS = [['username']]
+AXES_RESET_ON_SUCCESS = True
+AXES_LOCKOUT_CALLABLE = None
+
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -59,6 +66,7 @@ INSTALLED_APPS = [
     'cloudinary',
     'cloudinary_storage',
     'django_crontab',
+    'axes',
     # Zicada Apps
     'apps.core',
     'apps.users',
@@ -74,6 +82,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'axes.middleware.AxesMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
