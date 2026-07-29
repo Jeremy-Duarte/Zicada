@@ -81,6 +81,10 @@ The `setup_roles` command (in `apps.users.management.commands.setup_roles`) crea
 - **Cron**: `update_collections_status` runs Sundays at 2am Colombia time (UTC-5). Uses `django-crontab`.
 - **CSV importers** live in `apps/products/importers/` (categories, colors, sizes).
 
+## Commit convention
+
+Al final de cada sesión de trabajo, commitea los cambios al repositorio usando `git add` + `git commit`. Usa el formato `tipo(area): descripción en español`.
+
 ## CI (SonarCloud)
 
 The GitHub Actions workflow (`build.yml`) runs on pushes to `main` and PRs:

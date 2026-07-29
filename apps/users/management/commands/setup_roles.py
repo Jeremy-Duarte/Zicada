@@ -78,8 +78,8 @@ class Command(BaseCommand):
 
     def _assign_users_to_groups(self):
         """Assigns existing users to their corresponding groups."""
-        admin_group = Group.objects.get(name='Administrador')
-        delivery_group = Group.objects.get(name='Entregador')
+        admin_group = self.admin_group
+        delivery_group = self.delivery_group
         
         # Assign staff users to Administrator group
         staff_users = User.objects.filter(is_staff=True)
@@ -99,24 +99,24 @@ class Command(BaseCommand):
         self.stdout.write('Configuring system roles...')
         
         # Create or retrieve Administrator group
-        admin_group, created = Group.objects.get_or_create(name='Administrador')
+        self.admin_group, created = Group.objects.get_or_create(name='Administrador')
         if created:
             self.stdout.write('Administrator group created')
         else:
             self.stdout.write('Administrator group already exists')
         
         # Create or retrieve Delivery group
-        delivery_group, created = Group.objects.get_or_create(name='Entregador')
+        self.delivery_group, created = Group.objects.get_or_create(name='Entregador')
         if created:
             self.stdout.write('Delivery group created')
         else:
             self.stdout.write('Delivery group already exists')
         
         # Configure Administrator role
-        self._setup_administrator_role(admin_group, force)
+        self._setup_administrator_role(self.admin_group, force)
         
         # Configure Delivery role
-        self._setup_delivery_role(delivery_group, force)
+        self._setup_delivery_role(self.delivery_group, force)
         
         # Assign existing users
         self._assign_users_to_groups()

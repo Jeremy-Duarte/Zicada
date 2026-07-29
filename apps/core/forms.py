@@ -5,6 +5,7 @@ from django.core.exceptions import ValidationError
 from .models import HeroConfig
 from apps.products.models import Collection, Product
 from apps.core.crud.widgets import CloudinarySingleImageWidget, SortableOrderWidget
+from django.core.cache import cache
 from apps.core.utils import safe_reverse
 from django.contrib.auth import get_user_model
 from .constants import LOGIN_ERROR_MESSAGE, LOGIN_INACTIVE_MESSAGE
@@ -329,6 +330,11 @@ def get_button_url_choices():
     """
     HU-053 | ESCENARIO 1 | H | Carga dinámica de opciones de URL para el botón
     """
+    cache_key = 'button_url_choices'
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+    
     choices = [
         (safe_reverse('products:catalog'), '📦 Catálogo general'),
         (safe_reverse('products:collections_list'), '🎨 Todas las colecciones'),
@@ -346,6 +352,7 @@ def get_button_url_choices():
             f'👕 Producto: {product.name}'
         ))
     
+    cache.set(cache_key, choices, 300)
     return choices
 
 

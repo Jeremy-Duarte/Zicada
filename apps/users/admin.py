@@ -37,4 +37,4 @@ class GroupAdmin(admin.ModelAdmin):
     filter_horizontal = ('permissions',)
     
     def get_queryset(self, request):
-        return BaseGroup.objects.all()
+        return self.model.objects.all()

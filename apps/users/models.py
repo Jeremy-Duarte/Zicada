@@ -44,8 +44,6 @@ class User(AbstractUser):
         if self.first_name and self.last_name:
             return f"{self.first_name} {self.last_name}"
         return self.username
-    
-    get_full_name.short_description = 'Nombre completo'
 
 
 # =============================================================================

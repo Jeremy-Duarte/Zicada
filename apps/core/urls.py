@@ -21,6 +21,18 @@ urlpatterns = [
     path('terminos/', views.terms, name='terms'),
     path('staff/login/', views.StaffLoginView.as_view(), name='staff_login'),
     path('staff/logout/', views.staff_logout, name='staff_logout'),
+    path('staff/password-reset/',
+        views.PasswordResetView.as_view(),
+        name='password_reset'),
+    path('staff/password-reset/done/',
+        views.PasswordResetDoneView.as_view(),
+        name='password_reset_done'),
+    path('staff/password-reset/<uidb64>/<token>/',
+        views.PasswordResetConfirmView.as_view(),
+        name='password_reset_confirm'),
+    path('staff/password-reset/complete/',
+        views.PasswordResetCompleteView.as_view(),
+        name='password_reset_complete'),
         #Crud Paths
     path('admin/', include(admin_patterns)),
 ]

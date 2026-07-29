@@ -9,6 +9,7 @@ coverage==7.14.1
 cssselect2==0.9.0
 Django==6.0.4
 django-anymail==15.0
+django-axes==8.3.1
 django-cloudinary-storage==0.3.0
 django-crontab==0.7.1
 django-environ==0.13.0

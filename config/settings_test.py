@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'cloudinary',
     'cloudinary_storage',
     'django_crontab',
+    # 'axes',  # Instalar django-axes: pip install django-axes==7.2.0
     'apps.core',
     'apps.users',
     'apps.products',
@@ -152,7 +153,7 @@ PASSWORD_HASHERS = [
     'django.contrib.auth.hashers.MD5PasswordHasher',
 ]
 
-logging.disable(logging.WARNING)
+logging.disable(logging.ERROR)
 
 CRONJOBS = []
 CRONTAB_LOCK_JOBS = False

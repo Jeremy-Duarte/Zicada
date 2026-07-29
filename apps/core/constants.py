@@ -85,3 +85,10 @@ PWA_THEME_COLOR = "#1a1a1a"
 
 # Hero Section Object Names
 HERO_OBJECT_NAME = 'Slide del Hero'
+
+# Password Reset Templates
+TEMPLATE_PASSWORD_RESET_FORM = 'core/registration/password_reset_form.html'
+TEMPLATE_PASSWORD_RESET_DONE = 'core/registration/password_reset_done.html'
+TEMPLATE_PASSWORD_RESET_CONFIRM = 'core/registration/password_reset_confirm.html'
+TEMPLATE_PASSWORD_RESET_COMPLETE = 'core/registration/password_reset_complete.html'
+TEMPLATE_PASSWORD_RESET_EMAIL = 'core/registration/password_reset_email.html'

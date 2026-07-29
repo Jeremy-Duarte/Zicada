@@ -1,5 +1,7 @@
 import json
 import logging
+import time
+from datetime import timedelta
 from decimal import Decimal
 
 from django.conf import settings
@@ -115,6 +117,9 @@ from .constants import (
     # Stripe product data templates
     STRIPE_PRODUCT_NAME_TEMPLATE,
     STRIPE_PRODUCT_DESCRIPTION_TEMPLATE,
+    # Webhook retry settings
+    WEBHOOK_MAX_RETRIES,
+    WEBHOOK_RETRY_DELAY,
     # Context keys
     CONTEXT_ORDER,
     CONTEXT_ITEMS,
@@ -274,15 +279,22 @@ def cart_add(request):
             return JsonResponse({
                 'error': f'❌ "{variant.product.name}" - {variant.size.name} / {variant.color_name} {MSG_OUT_OF_STOCK}'
             }, status=400)
-        
-        if quantity > variant.stock:
+
+        current_qty = 0
+        item_key = str(variant_id)
+        if item_key in cart.cart_data['items']:
+            current_qty = cart.cart_data['items'][item_key]['quantity']
+
+        new_qty = current_qty + quantity
+
+        if new_qty > variant.stock:
+            max_extra = variant.stock - current_qty
             return JsonResponse({
-                'error': MSG_INSUFFICIENT_STOCK.format(
-                    product=variant.product.name,
-                    size=variant.size.name,
-                    color=variant.color_name,
-                    stock=variant.stock
-                )
+                'error': f'No tenemos suficiente stock de "{variant.product.name}" '
+                         f'({variant.size.name}, {variant.color_name}). '
+                         f'Disponible: {variant.stock}. '
+                         f'Ya tienes {current_qty} en el carrito. '
+                         f'Puedes agregar hasta {max_extra} más.'
             }, status=400)
 
         # HU-019 | ESCENARIO 1 | H | Producto añadido exitosamente
@@ -334,7 +346,7 @@ def cart_remove(request):
             'total_items': cart.get_total_items(),
         })
         
-    except (KeyError, ValidationError):
+    except Exception:
         logger.exception("Error in cart_remove")
         return JsonResponse({'error': MSG_REMOVE_ERROR}, status=400)
 
@@ -416,7 +428,7 @@ def cart_update(request):
         })
     except ValidationError as e:
         return JsonResponse({'error': f'⚠️ {str(e)}'}, status=400)
-    except (KeyError, ValidationError) as e:
+    except Exception:
         logger.exception("Error in cart_update")
         return JsonResponse({'error': MSG_UPDATE_ERROR}, status=400)
 
@@ -453,13 +465,13 @@ def cart_data(request):
     cart = Cart(request)
     summary = cart.get_summary()
 
-    summary['subtotal'] = str(summary['subtotal'])
-    summary['shipping_cost'] = str(summary['shipping_cost'])
-    summary['total'] = str(summary['total'])
+    summary['subtotal'] = float(summary['subtotal'])
+    summary['shipping_cost'] = float(summary['shipping_cost'])
+    summary['total'] = float(summary['total'])
 
     for item in summary['items']:
-        item['subtotal'] = str(Decimal(item['price']) * item['quantity'])
-        item['price'] = str(item['price'])
+        item['price'] = float(item['price'])
+        item['subtotal'] = float(Decimal(item['price']) * item['quantity'])
 
         try:
             variant = ProductVariant.objects.select_related(
@@ -582,14 +594,32 @@ def _process_checkout_form(request, cart):
     return _render_checkout_form(request, cart, form=form)
 
 
+def _get_saved_checkout_data(request):
+    """Retorna checkout_data de la sesion si existe y no ha expirado (1 dia)."""
+    data = request.session.get('checkout_data')
+    if not data:
+        return None
+    saved_at = data.get('_saved_at')
+    if saved_at:
+        try:
+            saved_dt = timezone.datetime.fromisoformat(saved_at)
+            if timezone.now() - saved_dt > timedelta(days=1):
+                request.session.pop('checkout_data', None)
+                return None
+        except (ValueError, TypeError):
+            pass
+    return data
+
+
 def _save_checkout_data_to_session(request, cleaned_data):
-    """Guarda los datos del checkout en la sesión."""
+    """Guarda los datos del checkout en la sesion con timestamp de 1 dia."""
     request.session['checkout_data'] = {
         'customer_name': cleaned_data['customer_name'],
         'customer_phone': cleaned_data['customer_phone'],
         'customer_email': cleaned_data['customer_email'],
         'shipping_address': cleaned_data['shipping_address'],
         'delivery_notes': cleaned_data['delivery_notes'],
+        '_saved_at': timezone.now().isoformat(),
     }
 
 
@@ -613,9 +643,19 @@ def _get_cart_summary_context(cart):
 
 
 def _render_checkout_form(request, cart, form=None):
-    """Renderiza el formulario de checkout."""
+    """Renderiza el formulario de checkout, auto-prefill con datos guardados."""
     if form is None:
-        form = CheckoutOrderForm()
+        saved = _get_saved_checkout_data(request)
+        initial = {}
+        if saved:
+            initial = {
+                'customer_name': saved.get('customer_name', ''),
+                'customer_phone': saved.get('customer_phone', ''),
+                'customer_email': saved.get('customer_email', ''),
+                'shipping_address': saved.get('shipping_address', ''),
+                'delivery_notes': saved.get('delivery_notes', ''),
+            }
+        form = CheckoutOrderForm(initial=initial)
     
     context = {
         'form': form,
@@ -664,7 +704,7 @@ def create_stripe_checkout_session(request):
     order = Order(
         customer_name=customer_name,
         customer_phone=customer_phone,
-        customer_email=customer_email or None,
+        customer_email=customer_email or '',
         shipping_address=shipping_address,
         delivery_notes=delivery_notes,
         subtotal=cart.get_subtotal(),
@@ -675,8 +715,9 @@ def create_stripe_checkout_session(request):
     )
     order.save()
 
-    # Crear items del pedido vía Cart.to_order_items() con bloqueo de stock
-    cart.to_order_items(order)
+    # Guardar totales del carrito antes de vaciarlo
+    cart_total = cart.get_total()
+    cart_items_count = cart.get_total_items()
 
     try:
         success_url = settings.SITE_URL + reverse(
@@ -691,10 +732,10 @@ def create_stripe_checkout_session(request):
             line_items=[{
                 'price_data': {
                     'currency': 'cop',
-                    'unit_amount': int(cart.get_total() * 100),
+                    'unit_amount': int(cart_total * 100),
                     'product_data': {
                         'name': STRIPE_PRODUCT_NAME_TEMPLATE.format(customer_name=customer_name),
-                        'description': STRIPE_PRODUCT_DESCRIPTION_TEMPLATE.format(total_items=cart.get_total_items()),
+                        'description': STRIPE_PRODUCT_DESCRIPTION_TEMPLATE.format(total_items=cart_items_count),
                     },
                 },
                 'quantity': 1,
@@ -710,9 +751,11 @@ def create_stripe_checkout_session(request):
             }
         )
 
+        # Crear OrderItems y vaciar carrito solo despues de crear la sesion de Stripe
+        cart.to_order_items(order)
+
         order.payment_session_id = checkout_session.id
         order.save(update_fields=['payment_session_id'])
-        del request.session['checkout_data']
         return redirect(checkout_session.url)
 
     except stripe.error.CardError as e:
@@ -721,13 +764,28 @@ def create_stripe_checkout_session(request):
     except stripe.error.APIConnectionError:
         messages.error(request, 'Error de conexión con el servicio de pago. Por favor, intenta de nuevo en unos segundos.')
         return redirect(ORDERS_CHECKOUT)
-    except stripe.error.StripeError as e:
-        order.cancel(reason=f'Error en Stripe: {str(e)}', user=None)
+    except stripe.error.RateLimitError:
+        messages.error(request, 'Demasiadas solicitudes. Por favor, intenta de nuevo en unos segundos.')
+        return redirect(ORDERS_CHECKOUT)
+    except stripe.error.AuthenticationError as e:
+        order.status = 'cancelado'
+        order.cancelled_reason = f'Error de autenticación en Stripe: {str(e)}'
+        order.save()
+        messages.error(request, 'Error de configuración del pago. Contacta al administrador.')
+        return redirect(ORDERS_CHECKOUT)
+    except stripe.error.InvalidRequestError as e:
+        order.status = 'cancelado'
+        order.cancelled_reason = f'Error en solicitud a Stripe: {str(e)}'
+        order.save()
         messages.error(request, f'Error al procesar el pago: {str(e)}')
         return redirect(ORDERS_CHECKOUT)
+    except stripe.error.StripeError as e:
+        logger.exception(f"Error de Stripe al crear sesión para {order.order_number}: {e}")
+        messages.error(request, 'Error al procesar el pago. Intenta de nuevo.')
+        return redirect(ORDERS_CHECKOUT)
     except Exception as e:
-        order.cancel(reason=f'Error al crear sesión de pago: {str(e)}', user=None)
-        messages.error(request, f'Error al procesar el pago: {str(e)}')
+        logger.exception(f"Error inesperado al crear sesión de pago para {order.order_number}: {e}")
+        messages.error(request, 'Error al procesar el pago. Intenta de nuevo.')
         return redirect(ORDERS_CHECKOUT)
 
 
@@ -743,13 +801,20 @@ def order_confirmation(request, order_number):
         return redirect(PRODUCTS_CATALOG)
 
     if not order.is_paid:
-        order.refresh_from_db()
+        for _ in range(WEBHOOK_MAX_RETRIES):
+            if order.is_paid:
+                break
+            time.sleep(WEBHOOK_RETRY_DELAY)
+            order.refresh_from_db()
 
     if order.is_paid:
         # HU-025 | ESCENARIO 1 | H | Confirmación en pantalla con número de pedido
         # HU-025 | ESCENARIO 2 | H | Envío de enlace por WhatsApp (se hace en el webhook)
         # HU-025 | ESCENARIO 3 | H | Envío de correo opcional (se hace en webhook con send_order_confirmation_email)
-        pass
+        cart = Cart(request)
+        if not cart.is_empty():
+            cart.clear()
+        request.session.pop('checkout_data', None)
     else:
         messages.warning(request, MESSAGE_PAYMENT_PROCESSING)
 
@@ -820,8 +885,8 @@ def stripe_webhook(request):
             stripe_session = stripe.checkout.Session.retrieve(session_id)
             stripe_amount = stripe_session.get('amount_total', 0)
             if int(order.total_amount * 100) != stripe_amount:
-                logger.error(f"Amount mismatch: order={order.total_amount}, stripe={stripe_amount / 100}")
-                return HttpResponse(status=200)
+                logger.error(f"Discrepancia de monto: order={order.total_amount}, stripe={stripe_amount / 100}")
+                return HttpResponse(status=400)
 
         except Order.DoesNotExist:
             logger.error(f"Pedido no encontrado para session_id: {session_id}")
@@ -832,23 +897,21 @@ def stripe_webhook(request):
             return HttpResponse(status=200)
 
         try:
-            order.is_paid = True
-            order.save(update_fields=['is_paid'])
-            logger.info(f"Pedido {order.order_number} marcado como pagado")
-
+            # HU-024 | ESCENARIO 1 | H | Confirmar pedido y reducir stock ANTES de marcar pagado
             if order.status == STATUS_PENDING:
                 order.confirm(user=None)
 
-                # HU-025 | ESCENARIO 3 | H | Envío de correo de confirmación
-                if order.customer_email:
-                    send_order_confirmation_email(order)
-                    logger.info(f"Correo de confirmación enviado a {order.customer_email}")
-                else:
-                    logger.warning(f"Pedido {order.order_number} no tiene email asociado")
+            order.is_paid = True
+            order.save(update_fields=['is_paid'])
+            logger.info(f"Pedido {order.order_number} confirmado y marcado como pagado")
 
-        except ValidationError as e:
-            logger.exception(f"Pedido {order.order_number} pagado pero error de validación: {e}")
-            return HttpResponse(status=200)
+            # HU-025 | ESCENARIO 3 | H | Envío de correo de confirmación
+            if order.customer_email:
+                send_order_confirmation_email(order)
+                logger.info(f"Correo de confirmación enviado a {order.customer_email}")
+            else:
+                logger.warning(f"Pedido {order.order_number} no tiene email asociado")
+
         except Exception as e:
             logger.exception(f"Error al procesar pedido {order.order_number}: {e}")
             return HttpResponse(status=500)
@@ -1226,31 +1289,23 @@ class OrderItemUpdateView(StaffPermissionRequiredMixin, UpdateView):
     context_object_name = 'order_item'
 
     def get_object(self, queryset=None):
-        """Asegura que se obtiene el objeto correcto por su pk."""
         obj = super().get_object(queryset)
-        # Forzar recarga desde BD para evitar datos obsoletos
         obj.refresh_from_db()
-        # Guardar el valor viejo AQUÍ, antes de cualquier modificación
-        self.old_quantity = obj.quantity
-        self.product_name = obj.product_name_snapshot
-        self.size = obj.size_snapshot
-        self.color = obj.variant.color_name if obj.variant else 'N/A'
         return obj
 
     def dispatch(self, request, *args, **kwargs):
-        # Obtener el objeto (esto ejecuta get_object y guarda old_quantity)
         self.object = self.get_object()
-        
+
         if self.object.order.status not in ['pendiente', 'confirmado']:
             messages.error(request, f'No se pueden modificar productos de pedidos en estado "{self.object.order.get_status_display()}".')
             return redirect(ORDERS_DETAIL, pk=self.object.order.pk)
-        
+
         return super().dispatch(request, *args, **kwargs)
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         kwargs['instance'] = self.object
-        kwargs['original_quantity'] = self.old_quantity
+        kwargs['original_quantity'] = self.object.quantity
         return kwargs
 
     def get_context_data(self, **kwargs):
@@ -1275,15 +1330,19 @@ class OrderItemUpdateView(StaffPermissionRequiredMixin, UpdateView):
     def form_valid(self, form):
         try:
             form.save()
+            old_quantity = form.original_quantity
             new_quantity = self.object.quantity
-            
-            if new_quantity != self.old_quantity:
+            product_name = self.object.product_name_snapshot
+            size = self.object.size_snapshot
+            color = self.object.variant.color_name if self.object.variant else 'N/A'
+
+            if new_quantity != old_quantity:
                 messages.success(
-                    self.request, 
-                    f'Cantidad de "{self.product_name}" ({self.size}, {self.color}) actualizada: {self.old_quantity} → {new_quantity}.'
+                    self.request,
+                    f'Cantidad de "{product_name}" ({size}, {color}) actualizada: {old_quantity} → {new_quantity}.'
                 )
             else:
-                messages.info(self.request, f'La cantidad de "{self.product_name}" ({self.size}, {self.color}) no ha cambiado.')
+                messages.info(self.request, f'La cantidad de "{product_name}" ({size}, {color}) no ha cambiado.')
 
             return redirect(ORDERS_DETAIL, pk=self.object.order.pk)
 

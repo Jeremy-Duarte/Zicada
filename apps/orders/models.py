@@ -130,8 +130,8 @@ class Order(models.Model):
 
     payment_session_id = models.CharField(
         max_length=100,
-        null=True,
         blank=True,
+        default='',
         verbose_name='ID de sesión de pago',
         help_text='Identificador de la sesión/transacción en la pasarela de pagos'
     )
@@ -167,6 +167,13 @@ class Order(models.Model):
         verbose_name_plural = 'Pedidos'
         indexes = [
             models.Index(fields=['is_paid'], name='orders_ispaid_idx'),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['payment_session_id'],
+                condition=~models.Q(payment_session_id=''),
+                name='unique_payment_session_id',
+            ),
         ]
     
     # ======================================================================
@@ -204,11 +211,15 @@ class Order(models.Model):
             items = list(self.items.select_related('variant').all())
             variant_ids = [item.variant_id for item in items if item.variant_id]
 
+            # Bloquear y recargar variantes para evitar TOCTOU
+            variant_map = {}
             if variant_ids:
-                list(ProductVariant.objects.select_for_update().filter(pk__in=variant_ids))
+                for v in ProductVariant.objects.select_for_update().filter(pk__in=variant_ids):
+                    variant_map[v.id] = v
 
             for item in items:
-                if item.variant and item.variant.stock < item.quantity:
+                variant = variant_map.get(item.variant_id) if item.variant_id else None
+                if variant and variant.stock < item.quantity:
                     raise ValidationError(f'Stock insuficiente para {item.product_name_snapshot}')
 
             if user:
@@ -217,9 +228,10 @@ class Order(models.Model):
             self.save()
 
             for item in items:
-                if item.variant:
-                    item.variant.stock -= item.quantity
-                    item.variant.save()
+                variant = variant_map.get(item.variant_id) if item.variant_id else None
+                if variant:
+                    variant.stock -= item.quantity
+                    variant.save()
 
     def cancel(self, reason, user=None):
         """
@@ -242,8 +254,11 @@ class Order(models.Model):
             items = list(self.items.select_related('variant').all())
             variant_ids = [item.variant_id for item in items if item.variant_id]
 
+            # Bloquear y recargar variantes para evitar TOCTOU
+            variant_map = {}
             if variant_ids:
-                list(ProductVariant.objects.select_for_update().filter(pk__in=variant_ids))
+                for v in ProductVariant.objects.select_for_update().filter(pk__in=variant_ids):
+                    variant_map[v.id] = v
 
             if user:
                 self.updated_by = user
@@ -252,9 +267,10 @@ class Order(models.Model):
             self.save()
 
             for item in items:
-                if item.variant:
-                    item.variant.stock += item.quantity
-                    item.variant.save()
+                variant = variant_map.get(item.variant_id) if item.variant_id else None
+                if variant:
+                    variant.stock += item.quantity
+                    variant.save()
 
     def mark_as_ready(self, user=None):
         """

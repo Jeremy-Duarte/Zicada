@@ -29,10 +29,9 @@
     <link rel="stylesheet" href="{% static 'css/custom.css' %}">
     
     <script>
-        // Si la aplicación se abre en modo PWA (standalone), forzar la navegación al área de entregas
         if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
             if (!window.location.pathname.startsWith('/delivery/')) {
-                window.location.href = '/delivery/login/';
+                window.location.href = '{% url "delivery:login" %}';
             }
         }
     </script>

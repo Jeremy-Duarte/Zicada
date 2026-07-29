@@ -1,8 +1,11 @@
+import logging
 from urllib.parse import urlencode
 
 from django.urls import reverse, resolve
 from django.urls.exceptions import Resolver404
 from django.core.cache import cache
+
+logger = logging.getLogger(__name__)
 from apps.orders.cart import Cart
 from apps.products.models import Product, Collection, Category
 
@@ -66,27 +69,39 @@ def _build_catalog_breadcrumb(category_slug: str = None) -> list:
     ]
 
 def _build_product_detail_breadcrumb(slug: str) -> list:
+    cache_key = f'breadcrumb_prod_{slug}'
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
     try:
         product = Product.objects.select_related('category').get(slug=slug, is_active=True)
         category_url = f"{reverse('products:catalog')}?{urlencode({'category': product.category.slug})}"
-        return [
+        result = [
             _get_home_breadcrumb(),
             _get_catalog_breadcrumb(),
             {'name': product.category.name, 'url': category_url},
             {'name': product.name, 'url': None},
         ]
+        cache.set(cache_key, result, 300)
+        return result
     except Product.DoesNotExist:
         return _build_simple_breadcrumb('Producto')
 
 def _build_collection_detail_breadcrumb(slug: str) -> list:
+    cache_key = f'breadcrumb_coll_{slug}'
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
     try:
         from apps.products.models import Collection
         collection = Collection.objects.get(slug=slug, is_active=True)
-        return [
+        result = [
             _get_home_breadcrumb(),
             _get_collections_breadcrumb(),
             {'name': collection.name, 'url': None},
         ]
+        cache.set(cache_key, result, 300)
+        return result
     except Collection.DoesNotExist:
         return _build_simple_breadcrumb('Colección')
 
@@ -184,17 +199,21 @@ def breadcrumbs(request):
     except Resolver404:
         return {'breadcrumbs': _build_simple_breadcrumb('Inicio')}
     
-    breadcrumbs_data = _build_product_breadcrumbs(request, view_name, kwargs)
-    if breadcrumbs_data is not None:
-        return {'breadcrumbs': breadcrumbs_data}
-    
-    breadcrumbs_data = _build_order_breadcrumbs(view_name, kwargs)
-    if breadcrumbs_data is not None:
-        return {'breadcrumbs': breadcrumbs_data}
-    
-    breadcrumbs_data = _build_core_breadcrumbs(view_name)
-    if breadcrumbs_data is not None:
-        return {'breadcrumbs': breadcrumbs_data}
+    try:
+        breadcrumbs_data = _build_product_breadcrumbs(request, view_name, kwargs)
+        if breadcrumbs_data is not None:
+            return {'breadcrumbs': breadcrumbs_data}
+        
+        breadcrumbs_data = _build_order_breadcrumbs(view_name, kwargs)
+        if breadcrumbs_data is not None:
+            return {'breadcrumbs': breadcrumbs_data}
+        
+        breadcrumbs_data = _build_core_breadcrumbs(view_name)
+        if breadcrumbs_data is not None:
+            return {'breadcrumbs': breadcrumbs_data}
+    except Exception:
+        logger.exception("Error building breadcrumbs")
+        return {'breadcrumbs': _build_simple_breadcrumb('Inicio')}
     
     return {'breadcrumbs': _build_simple_breadcrumb('Inicio')}
 

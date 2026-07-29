@@ -10,7 +10,6 @@ from django.http import JsonResponse
 from django.utils import timezone
 from django.db import transaction
 from django.db.models import Q, Sum
-from django.contrib.auth import get_user_model
 from django.middleware.csrf import get_token as csrf_get_token
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_GET
@@ -23,7 +22,6 @@ from .serializers import (
 from .permissions import IsDeliveryUser
 
 logger = logging.getLogger(__name__)
-User = get_user_model()
 
 
 class DeliveryOrdersAPIView(APIView):
@@ -41,7 +39,6 @@ class DeliveryOrdersAPIView(APIView):
         # Obtener pedidos asignados al usuario que:
         # 1. Están pendientes activos (listo o en camino)
         # O 2. Fueron completados o cancelados hoy (acción realizada hoy)
-        from django.db.models import Q
         orders = Order.objects.filter(
             Q(assigned_delivery_user=user) &
             (Q(status__in=['listo', 'en_camino']) | Q(status__in=['entregado', 'cancelado'], updated_at__date=today))
