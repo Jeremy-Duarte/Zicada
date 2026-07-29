@@ -1,0 +1,88 @@
+/**
+ * Inicializacion del login de Delivery
+ * - Toggle de visibilidad de contrasena
+ * - Validacion basica de formulario
+ * - Prevencion de doble envio
+ * - Limpieza de Service Workers obsoletos
+ */
+
+// Limpiar Service Workers obsoletos al llegar al login
+(function cleanupOldServiceWorkers() {
+    if (!('serviceWorker' in navigator)) {
+        return;
+    }
+    navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        registrations.forEach(function(registration) {
+            registration.update().catch(function() {});
+        });
+    }).catch(function() {});
+})();
+
+// Toggle password visibility (accesible)
+const togglePassword = document.getElementById('togglePassword');
+const passwordInput = document.getElementById('password');
+
+if (togglePassword && passwordInput) {
+    togglePassword.addEventListener('click', function() {
+        const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+        passwordInput.setAttribute('type', type);
+        const icon = this.querySelector('i');
+        icon.classList.toggle('fa-eye');
+        icon.classList.toggle('fa-eye-slash');
+        this.setAttribute('aria-label', type === 'password' ? 'Mostrar contrasena' : 'Ocultar contrasena');
+    });
+
+    togglePassword.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            this.click();
+        }
+    });
+}
+
+// Validacion basica en cliente
+const loginForm = document.querySelector('form');
+if (loginForm) {
+    loginForm.addEventListener('submit', function(e) {
+        const username = document.getElementById('username').value.trim();
+        const password = document.getElementById('password').value;
+
+        if (!username) {
+            e.preventDefault();
+            if (window.showToast) {
+                window.showToast('Por favor ingresa tu usuario', 'error');
+            }
+            document.getElementById('username').focus();
+            return false;
+        }
+
+        if (!password) {
+            e.preventDefault();
+            if (window.showToast) {
+                window.showToast('Por favor ingresa tu contrasena', 'error');
+            }
+            document.getElementById('password').focus();
+            return false;
+        }
+
+        return true;
+    });
+}
+
+// Prevenir submit multiple
+var isSubmitting = false;
+if (loginForm) {
+    loginForm.addEventListener('submit', function(e) {
+        if (isSubmitting) {
+            e.preventDefault();
+            return false;
+        }
+        isSubmitting = true;
+        var submitBtn = this.querySelector('button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Iniciando sesion...';
+        }
+        setTimeout(function() { isSubmitting = false; }, 10000);
+    });
+}
