@@ -59,6 +59,7 @@ TEMPLATE_ORDER_ITEM_CONFIRM_DELETE = 'backoffice/orders/orderitem_confirm_delete
 MESSAGE_CART_EMPTY = 'Tu carrito está vacío. Agrega productos antes de continuar.'
 MESSAGE_CART_CLEARED = 'Carrito vaciado correctamente'
 MESSAGE_ORDER_NOT_FOUND = 'Pedido no encontrado.'
+MESSAGE_ORDER_NOT_FOUND_OR_ASSIGNED = 'Pedido no encontrado o no asignado a ti'
 MESSAGE_PAYMENT_PROCESSING = 'Tu pago está siendo procesado. Se actualizará automáticamente en breve.'
 MESSAGE_NO_SHIPPING_DATA = 'No se encontraron datos de envío. Por favor, vuelve a intentarlo.'
 MESSAGE_STOCK_INSUFFICIENT = 'stock insuficiente'
