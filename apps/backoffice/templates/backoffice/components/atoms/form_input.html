@@ -1,0 +1,8 @@
+{% comment %} Props: field (Django form field), extra_classes, placeholder {% endcomment %}
+{{ field }}
+{% if field.errors %}
+  <p class="mt-1 text-xs text-red-500">{{ field.errors.0 }}</p>
+{% endif %}
+{% if field.help_text %}
+  <p class="mt-1 text-xs text-gray-400">{{ field.help_text }}</p>
+{% endif %}

@@ -1,0 +1,11 @@
+{% comment %} Props: icon, title, description, action_url, action_text {% endcomment %}
+<div class="text-center py-12">
+  <div class="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-4">
+    <i class="{{ icon|default:'fas fa-inbox' }} text-gray-400 text-xl"></i>
+  </div>
+  <h3 class="text-lg font-medium text-gray-900 mb-1">{{ title }}</h3>
+  {% if description %}<p class="text-sm text-gray-500 mb-4">{{ description }}</p>{% endif %}
+  {% if action_url %}
+    {% include 'backoffice/components/atoms/btn_primary.html' with href=action_url text=action_text %}
+  {% endif %}
+</div>

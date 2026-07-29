@@ -1,0 +1,22 @@
+{% comment %} Props: text, href|type|submit, size(sm|md|lg), extra_classes, disabled {% endcomment %}
+{% if href %}
+<a href="{{ href }}"
+   class="inline-flex items-center justify-center
+     {% if size == 'sm' %}px-3 py-1.5 text-xs{% elif size == 'lg' %}px-6 py-3 text-base{% else %}px-5 py-2 text-sm{% endif %}
+     bg-zicada-accent text-white font-medium rounded-xl
+     hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-zicada-accent focus:ring-offset-2
+     transition-all duration-150 {{ extra_classes }}
+     {% if disabled %}aria-disabled="true" tabindex="-1"{% endif %}">
+  {{ text }}
+</a>
+{% else %}
+<button type="{{ type|default:'button' }}"
+   class="inline-flex items-center justify-center
+     {% if size == 'sm' %}px-3 py-1.5 text-xs{% elif size == 'lg' %}px-6 py-3 text-base{% else %}px-5 py-2 text-sm{% endif %}
+     bg-zicada-accent text-white font-medium rounded-xl
+     hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-zicada-accent focus:ring-offset-2
+     transition-all duration-150 {{ extra_classes }}"
+   {% if disabled %}disabled{% endif %}>
+  {{ text }}
+</button>
+{% endif %}

@@ -1,0 +1,20 @@
+{% comment %} Props: text, href, type, size(sm|md|lg), extra_classes {% endcomment %}
+{% if href %}
+<a href="{{ href }}"
+   class="inline-flex items-center justify-center
+     {% if size == 'sm' %}px-3 py-1.5 text-xs{% elif size == 'lg' %}px-6 py-3 text-base{% else %}px-5 py-2 text-sm{% endif %}
+     border border-gray-300 text-gray-700 bg-white font-medium rounded-xl
+     hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2
+     transition-all duration-150 {{ extra_classes }}">
+  {{ text }}
+</a>
+{% else %}
+<button type="{{ type|default:'button' }}"
+   class="inline-flex items-center justify-center
+     {% if size == 'sm' %}px-3 py-1.5 text-xs{% elif size == 'lg' %}px-6 py-3 text-base{% else %}px-5 py-2 text-sm{% endif %}
+     border border-gray-300 text-gray-700 bg-white font-medium rounded-xl
+     hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2
+     transition-all duration-150 {{ extra_classes }}">
+  {{ text }}
+</button>
+{% endif %}

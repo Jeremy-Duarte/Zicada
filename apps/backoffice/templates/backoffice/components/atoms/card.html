@@ -1,0 +1,6 @@
+{% comment %} Props: extra_classes, padding(none|sm|md|lg) {% endcomment %}
+<div class="bg-white rounded-xl shadow-sm
+  {% if padding == 'none' %}{% elif padding == 'sm' %}p-4{% elif padding == 'lg' %}p-8{% else %}p-6{% endif %}
+  {{ extra_classes }}">
+  {% block card_content %}{% endblock %}
+</div>
