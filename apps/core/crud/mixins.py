@@ -6,12 +6,15 @@ from django.db.models import F, Max
 from apps.core.crud.widgets import SortableOrderWidget
 from django.contrib import messages
 from django.contrib.auth.mixins import PermissionRequiredMixin as BasePermissionRequiredMixin
-from django.urls import reverse
+from django.urls import reverse, NoReverseMatch
 from django.core.exceptions import ImproperlyConfigured
 
-from apps.core.url_names import CORE_STAFF_LOGIN, PRODUCTS_CATALOG, DELIVERY_LOGIN
+from apps.core.url_names import CORE_STAFF_LOGIN, PRODUCTS_CATALOG, DELIVERY_LOGIN, DELIVERY_DASHBOARD, BACKOFFICE_DASHBOARD
 
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 class PaginationMixin:
     """Paginación configurable"""
@@ -289,6 +292,13 @@ class StaffPermissionRequiredMixin(BasePermissionRequiredMixin):
     permission_denied_message = 'No tienes permisos para acceder a esta sección. Por favor, contacta al administrador.'
     authentication_required_message = 'Debes iniciar sesión para acceder a esta sección.'
     
+    def _safe_redirect(self, url_name, fallback_url=CORE_STAFF_LOGIN):
+        try:
+            return redirect(reverse(url_name))
+        except NoReverseMatch:
+            logger.error(f'URL "{url_name}" no encontrada, usando fallback')
+            return redirect(reverse(fallback_url))
+    
     def has_permission(self):
         user = self.request.user
         
@@ -309,7 +319,6 @@ class StaffPermissionRequiredMixin(BasePermissionRequiredMixin):
             else:
                 perms = self.permission_required
             
-            # Superusuarios y miembros del grupo Administrador tienen acceso total
             if not (user.is_superuser or user.groups.filter(name='Administrador').exists()):
                 if not user.has_perms(perms):
                     return False
@@ -321,33 +330,27 @@ class StaffPermissionRequiredMixin(BasePermissionRequiredMixin):
         
         if not user.is_authenticated:
             messages.error(self.request, self.authentication_required_message)
-            return redirect(f'{reverse(CORE_STAFF_LOGIN)}?next={self.request.path}')
+            return self._safe_redirect(CORE_STAFF_LOGIN, CORE_STAFF_LOGIN)
         
         if user.groups.filter(name='Entregador').exists():
             messages.error(self.request, 'Los entregadores no tienen acceso al panel de administración.')
-            # TODO: cambiar ruta a delivery dashboard cuando exista
-            return redirect(reverse(CORE_STAFF_LOGIN))
+            return self._safe_redirect(DELIVERY_DASHBOARD, CORE_STAFF_LOGIN)
         
         is_admin = (
             user.is_staff or 
             user.groups.filter(name='Administrador').exists()
         )
         
-        if self.request.user.groups.filter(name='Entregador').exists():
-            return redirect(reverse(DELIVERY_LOGIN))
         if not is_admin:
             messages.error(self.request, self.permission_denied_message)
-            return redirect(reverse(PRODUCTS_CATALOG))
+            return self._safe_redirect(PRODUCTS_CATALOG, CORE_STAFF_LOGIN)
         
         if hasattr(self, 'permission_required') and self.permission_required:
             messages.error(
                 self.request, 
                 'No tienes el permiso específico necesario para realizar esta acción.'
             )
-            try:
-                return redirect(reverse(BACKOFFICE_DASHBOARD))
-            except:
-                return redirect(reverse(CORE_STAFF_LOGIN))
+            return self._safe_redirect(BACKOFFICE_DASHBOARD, CORE_STAFF_LOGIN)
         
         messages.error(self.request, self.permission_denied_message)
-        return redirect(reverse(PRODUCTS_CATALOG))
+        return self._safe_redirect(PRODUCTS_CATALOG, CORE_STAFF_LOGIN)
