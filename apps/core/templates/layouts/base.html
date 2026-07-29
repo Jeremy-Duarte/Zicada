@@ -6,27 +6,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     
     {% include 'components/seo_tags.html' %}
+    {% include 'components/theme.html' %}
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
-    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+    <script defer src="https://unpkg.com/htmx.org@2.0.4"></script>
 
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        'zicada-dark': '#1a1a1a',
-                        'zicada-primary': '#2d2d2d',
-                        'zicada-accent': '#a91600',
-                        'zicada-light': '#f5f5f5',
-                    }
-                }
-            }
-        }
-    </script>
-    
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{% static 'css/custom.css' %}">
     
     <script>
         if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
@@ -39,11 +23,11 @@
     {% block extra_css %}{% endblock %}
     {% block extra_head %}{% endblock %}
 </head>
-<body class="bg-white font-['Inter'] antialiased flex flex-col min-h-screen">
+<body class="bg-white font-sans antialiased flex flex-col min-h-screen">
     
     {% include 'components/header.html' %}
     
-    <main class="flex-grow" style="margin-top: -16.666vh; padding-top: 16.666vh;">
+    <main class="grow" style="margin-top: -16.666vh; padding-top: 16.666vh;">
         {% include 'components/breadcrumbs.html' %}
         {% include 'components/messages.html' %}
         
@@ -52,8 +36,7 @@
     
     {% include 'components/footer.html' %}
     
-    <script src="{% static 'js/main.js' %}"></script>
-    <script src="{% static 'js/core/filter-sidebar.js' %}"></script>
+    <script defer src="{% static 'js/core/filter-sidebar.js' %}"></script>
 
     <script>
         function updateCartCount(count) {

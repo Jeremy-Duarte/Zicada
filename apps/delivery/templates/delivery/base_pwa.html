@@ -10,40 +10,11 @@
     
     <title>{% block title %}Zicada Delivery{% endblock %}</title>
     
-    <!-- Skip navigation link for accessibility -->
-    <style>
-        .skip-link {
-            position: absolute;
-            top: -40px;
-            left: 0;
-            background: #000;
-            color: white;
-            padding: 8px;
-            text-decoration: none;
-            z-index: 100;
-        }
-        .skip-link:focus {
-            top: 0;
-        }
-    </style>
+    {% include 'components/theme.html' %}
     
     <!-- PWA Manifest -->
     <link rel="manifest" href="{% url 'delivery:pwa_manifest' %}">
     
-    <!-- Tailwind + Font Awesome -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        primary: '#000000',
-                        secondary: '#1a1a1a',
-                    }
-                }
-            }
-        }
-    </script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <!-- Custom CSS -->
@@ -87,9 +58,8 @@
     
     {% block extra_head %}{% endblock %}
 </head>
-<body class="bg-gray-50">
-    <!-- Skip to main content link -->
-    <a href="#main-content" class="skip-link">Saltar al contenido principal</a>
+<body class="bg-gray-50 font-sans antialiased">
+    <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-0 focus:left-0 focus:bg-black focus:text-white focus:p-2 focus:z-50">Saltar al contenido principal</a>
     
     <!-- Componentes globales -->
     {% include 'delivery/components/offline_indicator.html' %}
@@ -205,7 +175,7 @@
     </script>
     
     <!-- JavaScript base común -->
-    <script src="{% static 'js/delivery/base.js' %}"></script>
+    <script defer src="{% static 'js/delivery/base.js' %}"></script>
     
     <!-- JavaScript específico de cada página -->
     {% block extra_js %}{% endblock %}
