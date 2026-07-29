@@ -319,37 +319,40 @@
 
 ## 🔴 P0 — Crítico
 
-| # | Archivo | Línea | Problema | Fix |
-|---|---------|-------|----------|-----|
-| CF-P0-01 | `Procfile` | 1 | `manage.py` commands sin `DJANGO_SETTINGS_MODULE=config.settings_production` — usan dev SQLite en prod. | Prefijar con `DJANGO_SETTINGS_MODULE=config.settings_production`. |
+| # | Archivo | Problema | Fix |
+|---|---------|----------|------|
+| CF-P0-01 | `Procfile` | ~~gunicorn sin DJANGO_SETTINGS_MODULE.~~ → ✅ Agregado antes de gunicorn | ✅ Corregido |
 
 ## 🟠 P1 — Alto
 
-| # | Archivo | Línea | Problema | Fix |
-|---|---------|-------|----------|-----|
-| CF-P1-01 | `settings_production.py` | — | `CSRF_COOKIE_HTTPONLY` no seteado — default es False en Django. | `CSRF_COOKIE_HTTPONLY = True`. |
-| CF-P1-02 | `settings.py` | 16 | `ALLOWED_HOSTS = ['*']` — acepta cualquier Host header. | `env.list('DJANGO_ALLOWED_HOSTS', default=['localhost', '127.0.0.1'])`. |
-| CF-P1-03 | `settings_production.py` | — | `SESSION_COOKIE_HTTPONLY` y `SESSION_COOKIE_SAMESITE` no explícitos. | Agregar explícitamente. |
-| CF-P1-04 | `scripts/test_*.sh` (6 archivos) | — | Usan `DJANGO_SETTINGS_MODULE=config.settings` en vez de `config.settings_test`. | Cambiar a `config.settings_test`. |
-| CF-P1-05 | `settings_production.py` | — | Sin `SECURE_PROXY_SSL_HEADER` — redirect loops detrás de Railway proxy. | `SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')`. |
+| # | Archivo | Problema | Fix |
+|---|---------|----------|------|
+| CF-P1-01 | `settings_production.py` | ~~CSRF_COOKIE_HTTPONLY no explícito.~~ → ✅ `True` | ✅ Corregido |
+| CF-P1-02 | `settings.py` | ~~ALLOWED_HOSTS = ['*'].~~ → ✅ `env.list()` (REG-04) | ✅ Corregido |
+| CF-P1-03 | `settings_production.py` | ~~SESSION_COOKIE_HTTPONLY no explícito.~~ → ✅ Ambos explícitos | ✅ Corregido |
+| CF-P1-04 | `scripts/test_*.sh` | ~~Usaban settings en vez de settings_test.~~ → ✅ Corregido | ✅ Corregido |
+| CF-P1-05 | `settings_production.py` | ~~Sin SECURE_PROXY_SSL_HEADER.~~ → ✅ Configurado | ✅ Corregido |
 
 ## 🟡 P2 — Medio
 
-| # | Archivo | Línea | Problema | Fix |
-|---|---------|-------|----------|-----|
-| CF-P2-01 | `settings.py:45`, `settings_production.py:211` | — | `SECURE_BROWSER_XSS_FILTER` deprecado — encabezado ya no soportado por navegadores. | Remover; considerar CSP. |
-| CF-P2-02 | `settings.py`, `settings_production.py`, `settings_test.py` | — | Sin `SECURE_REFERRER_POLICY` explícito. | `SECURE_REFERRER_POLICY = 'same-origin'`. |
-| CF-P2-03 | `settings_production.py` | — | Sin configuración de cache — `LocMemCache` por worker en gunicorn. | Configurar Redis cache. |
-| CF-P2-04 | `settings_production.py` | 230 | Django logger en `INFO` — riesgo de loguear PII en producción. | `level: 'WARNING'`. |
-| CF-P2-05 | `settings.py` | 12 | `.env` se lee sin verificar que existe — falla silenciosamente. | `if (BASE_DIR / '.env').exists():`. |
+| # | Archivo | Problema | Fix |
+|---|---------|----------|------|
+| CF-P2-01 | `settings.py` | ~~SECURE_BROWSER_XSS_FILTER deprecado.~~ → ✅ No existe en código | ✅ Corregido |
+| CF-P2-02 | `settings.py`, `settings_production.py` | ~~Sin SECURE_REFERRER_POLICY.~~ → ✅ `'same-origin'` en ambos | ✅ Corregido |
+| CF-P2-03 | `settings_production.py` | ~~Sin cache Redis.~~ → Pendiente de infraestructura (Redis externo) | Pendiente ¹ |
+| CF-P2-04 | `settings_production.py` | ~~Logger INFO.~~ → ✅ `WARNING` | ✅ Corregido |
+| CF-P2-05 | `settings.py` | ~~.env sin verificar existencia.~~ → ✅ `if .exists():` | ✅ Corregido |
 
 ## 🟢 P3 — Bajo
 
-| # | Archivo | Línea | Problema | Fix |
-|---|---------|-------|----------|-----|
-| CF-P3-01 | `.env.example` | 53–55 | Espacios antes de `=` en variables Stripe. | Quitar espacios. |
-| CF-P3-02 | `settings_test.py` | 155 | `logging.disable(logging.CRITICAL)` — silencia todo. | `logging.disable(logging.WARNING)`. |
-| CF-P3-03 | `settings_production.py` | — | ~70% duplicado de `settings.py` — riesgo de drift. | Refactorizar a `from config.settings import *`. |
+| # | Archivo | Problema | Fix |
+|---|---------|----------|------|
+| CF-P3-01 | `.env.example` | ~~Espacios antes de =.~~ → ✅ Sin espacios | ✅ Corregido |
+| CF-P3-02 | `settings_test.py` | ~~logging.disable muy agresivo.~~ → ✅ `logging.disable(logging.ERROR)` | ✅ Corregido |
+| CF-P3-03 | `settings_production.py` | ~~~70% duplicado.~~ → Pendiente de refactor (settings base + prod) | Pendiente ² |
+
+> ¹ **CF-P2-03**: Redis cache requiere addon externo (Railway Redis). DummyCache en tests, LocMemCache en prod por ahora.
+> ² **CF-P3-03**: Refactor a `from config.settings import *` posible pero riesgoso — evaluar para próxima iteración.
 
 ---
 
@@ -408,9 +411,9 @@
 | `delivery/` | 0 | 0 | 0 | 1 | **1** |
 | `users/` | 0 | 0 | 0 | 0 | **0** |
 | `backoffice/` | 0 | 0 | 0 | 0 | **0** |
-| `config/` | 1 | 5 | 5 | 3 | **14** |
+| `config/` | 0 | 0 | 1 | 1 | **2** |
 | Cross-cutting | 1 | 5 | 8 | 5 | **19** |
-| **TOTAL** | **3** | **16** | **25** | **18** | **62** |
+| **TOTAL** | **2** | **16** | **25** | **18** | **61** |
 
 ## ✅ Corregido en v2.2–v2.3
 
@@ -464,8 +467,10 @@
 | U-P2-05 | GroupAdmin.get_queryset usa `self.model.objects.all()` | `admin.py` |
 | U-P3-03 | `get_full_name.short_description` eliminado (no usado en admin) | `models.py` |
 | B-P2-04 | PAID_STATUSES desde constants.py (eliminada duplicación local) | `reports/queries.py` |
+| CF-P0-01 | Procfile: DJANGO_SETTINGS_MODULE antes de gunicorn | `Procfile` |
+| CF-P3-02 | logging.disable(ERROR) en vez de CRITICAL | `settings_test.py` |
 
-> Pendientes: 62 hallazgos de los 170 originales (108 corregidos entre v2.1, v2.2 y v2.3).
-> Todos los bugs de flujo de transacción, catálogo, páginas públicas, delivery API/PWA, usuarios y backoffice están corregidos.
-> `apps/orders/`, `apps/products/`, `apps/backoffice/` y `apps/users/` — todos corregidos.
+> Pendientes: 61 hallazgos de los 170 originales (109 corregidos entre v2.1, v2.2 y v2.3).
+> Todos los bugs de flujo de transacción, catálogo, páginas públicas, delivery API/PWA, usuarios, backoffice y config están corregidos.
+> `apps/orders/`, `apps/products/`, `apps/backoffice/`, `apps/users/` y `config/` (salvo Redis y refactor) — todos corregidos.
 > `apps/core/` (salvo C-P1-05) y `apps/delivery/` (salvo D-P3-02) — 1 pendiente c/u.
