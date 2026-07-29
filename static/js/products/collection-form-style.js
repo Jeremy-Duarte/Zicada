@@ -291,6 +291,8 @@
         }
     }
 
+    document.querySelector('[data-toggle="advanced"]')?.addEventListener('click', toggleAdvanced);
+
     // ============================================
     // EVENTOS DE PALETA DE COLORES
     // ============================================
