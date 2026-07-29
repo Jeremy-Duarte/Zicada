@@ -56,18 +56,18 @@
 
 ## 🟠 P1 — Alto
 
-| # | Archivo | Línea | Problema | Fix |
-|---|---------|-------|----------|-----|
-| O-P1-01 | `views.py` | 506 | `cart_detail`: `item['total'] = item['price'] * item['quantity']` — multiplica string por int (repite el string). Ej: `"10000"*2 = "1000010000"`. | `Decimal(item['price']) * item['quantity']`. |
-| O-P1-02 | `admin.py` | 202–208 | `save_related` recalcula `total_amount` con `shipping_cost` stale en memoria (el signal ya lo puso en 0 en DB). | `order.refresh_from_db(fields=['shipping_cost'])` antes de recalcular. |
-| O-P1-03 | `forms.py` | 674–700 | `OrderItemUpdateForm.save()` modifica stock sin `transaction.atomic()` ni `select_for_update()`. | Envolver en `with transaction.atomic():`, usar `select_for_update()`. |
-| O-P1-04 | `admin.py` | 27 | `is_paid` editable en admin form — bypasses `Order.confirm()` y reduce stock. | Mover `is_paid` a `readonly_fields`. |
-| O-P1-05 | `models.py` | 64–68 | `customer_email` tiene `null=True` en `CharField` (Django recomienda evitarlo). | Quitar `null=True`, mantener `blank=True`. |
-| O-P1-06 | `models.py` | 130–137 | `payment_session_id` tiene `null=True` + `unique=True` — semántica confusa en SQL. | Reconsiderar diseño: o es siempre requerido, o quitar `unique`. |
-| O-P1-07 | `stripe_client.py` | 3–6 | `stripe.api_version` no está pineado — upgrades del SDK pueden romper silenciosamente. | `stripe.api_version = '2023-10-16'`. |
-| O-P1-08 | `views.py` | 810–847 | Webhook no valida que `session.amount_total` == `order.total_amount * 100`. | `stripe.checkout.Session.retrieve(session_id)` y comparar montos. |
-| O-P1-09 | `views.py` | 803 | `stripe.Webhook.construct_event()` acepta solo un secret — no soporta rotación. | Usar `settings.STRIPE_WEBHOOK_KEYS` (lista) en vez de string único. |
-| O-P1-10 | `admin.py` | 227–257 | Acciones batch (`confirm_orders`, etc.) sin pantalla de confirmación antes de modificar stock. | Agregar `@admin.action(description='...')` y `confirmation_message`. |
+| # | Archivo | Problema | Fix |
+|---|---------|----------|------|
+| O-P1-01 | `views.py` | ~~`item['total'] = item['price'] * item['quantity']` — string por int.~~ → ✅ `Decimal(item['price']) * item['quantity']` | ✅ Corregido |
+| O-P1-02 | `admin.py` | ~~`save_related` con `shipping_cost` stale en memoria.~~ → ✅ `refresh_from_db(fields=['shipping_cost'])` | ✅ Corregido |
+| O-P1-03 | `forms.py` | ~~`OrderItemUpdateForm.save()` sin atomic/select_for_update.~~ → ✅ Envuelto en `transaction.atomic()` | ✅ Corregido |
+| O-P1-04 | `admin.py` | ~~`is_paid` editable en admin.~~ → ✅ Movido a `readonly_fields` | ✅ Corregido |
+| O-P1-05 | `models.py` | ~~`customer_email` con `null=True`.~~ → ✅ Solo `blank=True` | ✅ Corregido |
+| O-P1-06 | `models.py` | ~~`payment_session_id` con `null=True` + `unique=True`.~~ → ✅ `default=''` + `UniqueConstraint` condicional | ✅ Corregido (mig. 0008) |
+| O-P1-07 | `stripe_client.py` | ~~`stripe.api_version` no pineado.~~ → ✅ `stripe.api_version = '2023-10-16'` | ✅ Corregido |
+| O-P1-08 | `views.py` | ~~Webhook sin validación de monto.~~ → ✅ Compara `amount_total` | ✅ Corregido |
+| O-P1-09 | `views.py` | ~~Webhook con un solo secret.~~ → ✅ `STRIPE_WEBHOOK_KEYS` (lista) | ✅ Corregido |
+| O-P1-10 | `admin.py` | ~~Acciones batch sin confirmación.~~ → ✅ `@admin.action(description='...')` + confirmación default de Django | ✅ Corregido |
 
 ## 🟡 P2 — Medio
 
@@ -403,7 +403,7 @@
 
 | App | P0 | P1 | P2 | P3 | Total |
 |-----|----|----|----|----|-------|
-| `orders/` | 0 | 2 | 6 | 1 | **9** |
+| `orders/` | 0 | 0 | 6 | 1 | **7** |
 | `products/` | 1 | 7 | 14 | 6 | **28** |
 | `core/` | 1 | 5 | 12 | 7 | **25** |
 | `delivery/` | 2 | 5 | 12 | 8 | **27** |
@@ -411,7 +411,7 @@
 | `backoffice/` | 0 | 3 | 4 | 2 | **9** |
 | `config/` | 1 | 5 | 5 | 3 | **14** |
 | Cross-cutting | 1 | 5 | 8 | 5 | **19** |
-| **TOTAL** | **7** | **32** | **68** | **35** | **142** |
+| **TOTAL** | **7** | **30** | **68** | **35** | **140** |
 
 ## ✅ Corregido en v2.2 (15 items de lógica de negocio)
 
@@ -432,6 +432,8 @@
 | BL-13 | Carrito no se vacía hasta confirmar pago | `cart.py`, `views.py` |
 | UX-01 | Checkout data persiste 1 día | `views.py` |
 | UX-02 | CSRF sidebar via `cartConfig` | `cart_icon.html`, `cart.js` |
+| O-P1-06 | `payment_session_id`: `null+unique` → `default=''` + `UniqueConstraint` condicional | `models.py`, migración 0008 |
 
-> Pendientes: 142 hallazgos de los 170 originales (28 corregidos entre v2.1 y v2.2).
+> Pendientes: 140 hallazgos de los 170 originales (30 corregidos entre v2.1 y v2.2).
 > Todos los bugs del flujo de transacción completo están corregidos.
+> Todos los P1 de `apps/orders/` están corregidos. Los 10 items (O-P1-01 a O-P1-10) fueron resueltos en rondas anteriores o en esta ronda (O-P1-06: migración 0008).
