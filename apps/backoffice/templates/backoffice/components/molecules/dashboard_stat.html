@@ -1,0 +1,13 @@
+{% comment %} Props: icon, value, label, link?, extra_classes {% endcomment %}
+<a {% if link %}href="{{ link }}"{% endif %}
+   class="bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition {% if link %}cursor-pointer{% endif %} {{ extra_classes }}">
+  <div class="flex items-center gap-4">
+    <div class="w-12 h-12 rounded-lg bg-zicada-accent/10 flex items-center justify-center shrink-0">
+      <i class="{{ icon }} text-zicada-accent text-xl"></i>
+    </div>
+    <div>
+      <p class="text-2xl font-bold text-gray-900">{{ value }}</p>
+      <p class="text-sm text-gray-500">{{ label }}</p>
+    </div>
+  </div>
+</a>
