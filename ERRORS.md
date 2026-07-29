@@ -220,6 +220,7 @@
 
 | # | Archivo | Problema | Fix |
 |---|---------|----------|------|
+| D-P1-01 | `views.py` | ~~Session puede exceder cookie 4KB.~~ → ✅ `SESSION_ENGINE=db` (DB, no cookie); summary_light es mínimo | ✅ Corregido |
 | D-P1-02 | `api.py` | ~~TOCTOU en incidence API.~~ → ✅ `select_for_update()` presente | ✅ Corregido |
 | D-P1-03 | `views.py` | ~~TOCTOU en register_incidence HTML.~~ → ✅ `select_for_update()` agregado | ✅ Corregido |
 | D-P1-04 | `serializers.py` | ~~MarkAsPaidSerializer no usado.~~ → ✅ No existe | ✅ Corregido |
@@ -235,6 +236,8 @@
 | D-P2-04 | `serializers.py` | ~~subtotal/stock_snapshot sin read_only.~~ → ✅ `read_only=True` | ✅ Corregido |
 | D-P2-05 | `urls.py` | ~~static.serve en producción.~~ → ✅ View dedicada `service_worker()` | ✅ Corregido |
 | D-P2-06 | `urls.py` | ~~Sin Service-Worker-Allowed header.~~ → ✅ Header en view | ✅ Corregido |
+| D-P2-07 | `base_pwa.html` | ~~Registro SW duplicado.~~ → ✅ sw-register.js eliminado | ✅ Corregido |
+| D-P2-08 | `base_pwa.html` | ~~CHECK_UPDATE sin handler.~~ → ✅ Handler agregado en sw.js | ✅ Corregido |
 | D-P2-09 | `api.py` | ~~import Q inline redundante.~~ → ✅ Eliminado | ✅ Corregido |
 | D-P2-10 | `api.py` | ~~import django completo.~~ → ✅ Import específico | ✅ Corregido |
 | D-P2-11 | `views.py` | ~~Error message filtra info.~~ → ✅ Mensaje genérico | ✅ Corregido |
@@ -246,6 +249,7 @@
 |---|---------|----------|------|
 | D-P3-01 | `api.py` | ~~except Exception leak detalles.~~ → ✅ Mensaje genérico | ✅ Corregido |
 | D-P3-03 | `permissions.py` | ~~request.user redundante.~~ → ✅ Simplificado | ✅ Corregido |
+| D-P3-04 | `login.html` | ~~isSubmitting no se resetea.~~ → ✅ Timeout 10s + página recarga en error | ✅ Corregido |
 | D-P3-05 | `views.py` | ~~Sin prefer_related_applications.~~ → ✅ `false` en manifest | ✅ Corregido |
 | D-P3-06 | `sw.js` | ~~skipWaiting() puede no ejecutarse.~~ → ✅ Llamado en install + CONFIG | ✅ Corregido |
 | D-P3-07 | `serializers.py` | ~~Choices duplicados.~~ → ✅ `INCIDENCE_CHOICES` compartido | ✅ Corregido |
@@ -401,12 +405,12 @@
 | `orders/` | 0 | 0 | 0 | 0 | **0** |
 | `products/` | 0 | 0 | 0 | 0 | **0** |
 | `core/` | 0 | 1 | 0 | 0 | **1** |
-| `delivery/` | 0 | 1 | 2 | 2 | **5** |
+| `delivery/` | 0 | 0 | 0 | 1 | **1** |
 | `users/` | 1 | 0 | 7 | 3 | **11** |
 | `backoffice/` | 0 | 3 | 4 | 2 | **9** |
 | `config/` | 1 | 5 | 5 | 3 | **14** |
 | Cross-cutting | 1 | 5 | 8 | 5 | **19** |
-| **TOTAL** | **4** | **20** | **38** | **24** | **86** |
+| **TOTAL** | **4** | **19** | **36** | **23** | **82** |
 
 ## ✅ Corregido en v2.2–v2.3
 
@@ -453,8 +457,10 @@
 | D-P2-09 | import Q inline redundante eliminado | `api.py` |
 | D-P2-11 | Error message genérico en login | `views.py` |
 | D-P3-07 | `INCIDENCE_CHOICES` compartido entre serializer y view | `serializers.py`, `views.py` |
+| D-P2-07 | sw-register.js huérfano eliminado | `static/js/delivery/sw-register.js` |
+| D-P2-08 | CHECK_UPDATE handler en sw.js | `static/js/delivery/sw.js` |
+| D-P3-04 | isSubmitting reseteado con timeout 10s | `login.html` |
 
-> Pendientes: 86 hallazgos de los 170 originales (84 corregidos entre v2.1, v2.2 y v2.3).
-> Todos los bugs de flujo de transacción, catálogo, páginas públicas y delivery API están corregidos.
-> `apps/orders/`, `apps/products/` y `apps/core/` — salvo C-P1-05 (django-axes), todos corregidos.
-> `apps/delivery/` — 4 items restantes de template/JS (D-P1-01, D-P2-07, D-P2-08, D-P3-02, D-P3-04).
+> Pendientes: 82 hallazgos de los 170 originales (88 corregidos entre v2.1, v2.2 y v2.3).
+> Todos los bugs de flujo de transacción, catálogo, páginas públicas, delivery API y PWA están corregidos.
+> `apps/orders/`, `apps/products/`, `apps/core/` (salvo C-P1-05) y `apps/delivery/` (salvo D-P3-02) — todos corregidos.

@@ -171,6 +171,7 @@
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Iniciando sesión...';
         }
+        setTimeout(function() { isSubmitting = false; }, 10000);
     });
 </script>
 {% endblock %}

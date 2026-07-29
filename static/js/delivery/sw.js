@@ -45,6 +45,14 @@ globalThis.addEventListener('message', function(event) {
         
         // Iniciar cacheo después de recibir configuración
         initializeCache();
+    } else if (configType === 'CHECK_UPDATE') {
+        event.ports?.[0]?.postMessage({
+            type: 'UPDATE_CHECK',
+            version: SW_VERSION,
+            cacheName: CACHE_NAME,
+            timestamp: Date.now()
+        });
+        console.log('[SW] Verificación de versión:', SW_VERSION);
     }
 });
 
