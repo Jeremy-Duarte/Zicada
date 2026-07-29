@@ -252,6 +252,7 @@
 | D-P3-06 | `sw.js` | ~~skipWaiting() puede no ejecutarse.~~ → ✅ Llamado en install + CONFIG | ✅ Corregido |
 | D-P3-07 | `serializers.py` | ~~Choices duplicados.~~ → ✅ `INCIDENCE_CHOICES` compartido | ✅ Corregido |
 | D-P3-08 | `serializers.py` | ~~Campos redundantes.~~ → ✅ Eliminados | ✅ Corregido |
+| D-P3-02 | `tests.py` | Test file placeholder vacío (sin cobertura) | Pendiente (escribir tests) |
 
 ---
 
@@ -476,7 +477,7 @@
 | X-P1-05 | Password reset: vistas nativas Django + 5 templates + enlace en login | `urls.py`, `staff_login.html`, `templates/registration/` |
 | C-P1-05 | django-axes configurado (5 intentos, 30 min cooloff) | `settings.py`, `settings_production.py`, `requirements.txt` |
 
-> Pendientes: 6 hallazgos de los 170 originales (164 corregidos entre v2.1, v2.2 y v2.3).
-> 164 hallazgos corregidos de 170 originales (96%).
-> Solo quedan 6 items de infraestructura/templates/refactor.
+> Pendientes: 5 hallazgos de los 170 originales (165 corregidos entre v2.1, v2.2 y v2.3).
+> 165 hallazgos corregidos de 170 originales (97%).
+> Solo quedan 5 items de infraestructura/templates/refactor.
 > `apps/orders/`, `apps/products/`, `apps/backoffice/`, `apps/users/`, `apps/core/` — 100% corregidos.
