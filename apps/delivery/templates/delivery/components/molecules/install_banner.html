@@ -1,0 +1,19 @@
+{% comment %} Props: platform (android|ios), on_dismiss {% endcomment %}
+<div class="bg-gradient-to-r from-zicada-accent via-gray-900 to-black text-white rounded-xl p-4 mb-6 shadow-md relative overflow-hidden">
+  {# decorative blur circles #}
+  <div class="absolute -top-4 -right-4 w-20 h-20 bg-white/5 rounded-full blur-xl"></div>
+  <div class="absolute -bottom-4 -left-4 w-16 h-16 bg-white/5 rounded-full blur-xl"></div>
+  <div class="relative">
+    <p class="text-sm font-semibold mb-1">
+      {% if platform == 'android' %}Instala la app{% else %}Anade a la pantalla de inicio{% endif %}
+    </p>
+    <p class="text-xs text-white/80 mb-3">
+      {% if platform == 'android' %}Toca el menu y selecciona "Instalar app"{% else %}Toca el boton compartir y "Anadir a pantalla de inicio"{% endif %}
+    </p>
+    <button data-dismiss-install-banner
+            class="text-xs text-white/70 hover:text-white underline underline-offset-2 transition"
+            aria-label="Cerrar banner de instalacion">
+      Cerrar
+    </button>
+  </div>
+</div>

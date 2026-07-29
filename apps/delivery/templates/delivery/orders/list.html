@@ -19,7 +19,7 @@
 
 {% block header %}
 {% url 'delivery:dashboard' as default_back_url %}
-{% include 'delivery/components/header_simple.html' with page_title="Mis Pedidos" page_subtitle=today|date:"l, j \d\e F" back_url=back_url|default:default_back_url show_logout=True %}
+{% include 'delivery/components/molecules/page_header.html' with type="simple" title="Mis Pedidos" back_url=back_url|default:default_back_url %}
 {% endblock %}
 
 {% block content %}
@@ -51,15 +51,8 @@
     <div id="ordersList"></div>
     
     <!-- Empty state (hidden by default) -->
-    <div id="emptyState" class="hidden flex flex-col items-center justify-center py-16 text-center">
-        <div class="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-            <i class="fas fa-truck text-gray-400 text-4xl"></i>
-        </div>
-        <h3 class="text-lg font-semibold text-gray-900 mb-2">No tienes pedidos asignados para hoy</h3>
-        <p class="text-sm text-gray-500 mb-6">Los nuevos pedidos aparecerán automáticamente aquí</p>
-        <button id="emptyRefreshBtn" class="bg-black text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-gray-800 transition">
-            <i class="fas fa-sync-alt mr-2"></i> Actualizar
-        </button>
+    <div id="emptyState" class="hidden">
+        {% include 'delivery/components/molecules/empty_state.html' with title="No tienes pedidos asignados para hoy" description="Los nuevos pedidos apareceran automaticamente aqui" icon="fas fa-truck" %}
     </div>
 </div>
 {% endblock %}
