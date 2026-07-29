@@ -20,6 +20,7 @@ from .serializers import (
     IncidenceSerializer
 )
 from .permissions import IsDeliveryUser
+from apps.orders.constants import MESSAGE_ORDER_NOT_FOUND_OR_ASSIGNED
 
 logger = logging.getLogger(__name__)
 
@@ -83,7 +84,7 @@ class DeliveryOrderDetailAPIView(APIView):
         except Order.DoesNotExist:
             return Response({
                 'success': False,
-                'message': 'Pedido no encontrado o no asignado a ti'
+                'message': MESSAGE_ORDER_NOT_FOUND_OR_ASSIGNED
             }, status=status.HTTP_404_NOT_FOUND)
         
         serializer = OrderDetailSerializer(order)
@@ -133,7 +134,7 @@ class DeliveryMarkAsPaidAPIView(APIView):
         except Order.DoesNotExist:
             return Response({
                 'success': False,
-                'message': 'Pedido no encontrado o no asignado a ti'
+                'message': MESSAGE_ORDER_NOT_FOUND_OR_ASSIGNED
             }, status=status.HTTP_404_NOT_FOUND)
 
         if order.status == 'entregado':
@@ -165,7 +166,7 @@ class DeliveryMarkAsPaidAPIView(APIView):
                 'delivered_at': timezone.now().isoformat(),
             })
         except Exception as exc:
-            logger.error("Error al confirmar entrega del pedido %s: %s", order.id, exc)
+            logging.exception("Error al confirmar entrega del pedido %s: %s", order.id, exc)
             return Response({
                 'success': False,
                 'message': 'Error al confirmar la entrega.'
@@ -183,13 +184,13 @@ class DeliveryIncidenceAPIView(APIView):
     def post(self, request):
         user = request.user
         order_id = request.data.get('order_id')
-        
+
         if not order_id:
             return Response({
                 'success': False,
                 'message': 'Se requiere order_id'
             }, status=status.HTTP_400_BAD_REQUEST)
-        
+
         # Validar datos (fuera del bloque atómico)
         serializer = IncidenceSerializer(data=request.data)
         if not serializer.is_valid():
@@ -197,93 +198,106 @@ class DeliveryIncidenceAPIView(APIView):
                 'success': False,
                 'errors': serializer.errors
             }, status=status.HTTP_400_BAD_REQUEST)
-        
+
         data = serializer.validated_data
-        incidence_type = data['incidence_type']
-        comments = data.get('comments', '')
         action = data.get('action', 'report')
-        
+
         # Construir objeto incidencia
-        incidence_data = {
-            'type': incidence_type,
-            'type_label': dict(serializer.fields['incidence_type'].choices).get(incidence_type, ''),
-            'comments': comments,
+        incidence_data = self._build_incidence_data(serializer, data, user, action)
+
+        try:
+            with transaction.atomic():
+                order = self._get_order(order_id, user)
+
+                # Validar que el pedido no esté entregado o cancelado
+                validation_error = self._validate_order_not_final(order)
+                if validation_error:
+                    return validation_error
+
+                if action == 'cancel':
+                    return self._cancel_order(order, incidence_data, user)
+                return self._report_incidence(order, incidence_data)
+
+        except Order.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': MESSAGE_ORDER_NOT_FOUND_OR_ASSIGNED
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logging.exception(f"Error al reportar incidencia en pedido {order_id}: {str(e)}")
+            return Response({
+                'success': False,
+                'message': 'Error interno al procesar la incidencia'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def _build_incidence_data(self, serializer, data, user, action):
+        return {
+            'type': data['incidence_type'],
+            'type_label': dict(serializer.fields['incidence_type'].choices).get(data['incidence_type'], ''),
+            'comments': data.get('comments', ''),
             'reported_by': user.id,
             'reported_by_name': user.get_full_name() or user.username,
             'reported_at': timezone.now().isoformat(),
             'action_taken': action,
         }
-        
-        try:
-            with transaction.atomic():
-                order = Order.objects.select_for_update().get(
-                    id=order_id,
-                    assigned_delivery_user=user
-                )
-                
-                # Validar que el pedido no esté entregado o cancelado
-                if order.status in ['entregado', 'cancelado']:
-                    return Response({
-                        'success': False,
-                        'message': f'No se puede reportar incidencia en pedido con estado: {order.get_status_display()}'
-                    }, status=status.HTTP_400_BAD_REQUEST)
-                
-                if action == 'cancel':
-                    # Cancelar el pedido
-                    reason = json.dumps(incidence_data, ensure_ascii=False)
-                    order.cancel(reason, user=user)
-                    logger.info(f"Pedido {order.order_number} cancelado por incidencia: {incidence_type}")
-                    
-                    return Response({
-                        'success': True,
-                        'message': f'Pedido {order.order_number} cancelado por: {incidence_data["type_label"]}',
-                        'order_id': order.id,
-                        'order_number': order.order_number,
-                        'status': 'cancelado',
-                        'incidence': incidence_data,
-                    })
-                else:
-                    # Solo reportar incidencia (guardar en cancelled_reason como JSON)
-                    existing_incidences = []
-                    if order.cancelled_reason:
-                        try:
-                            existing = json.loads(order.cancelled_reason)
-                            if isinstance(existing, list):
-                                existing_incidences = existing
-                            elif isinstance(existing, dict):
-                                existing_incidences = [existing]
-                        except json.JSONDecodeError:
-                            pass
-                    
-                    existing_incidences.append(incidence_data)
-                    order.cancelled_reason = json.dumps(existing_incidences, ensure_ascii=False)
-                    order.save(update_fields=['cancelled_reason', 'updated_at'])
-                    
-                    # Enviar notificación al admin (implementar después)
-                    # send_admin_notification(order, incidence_data)
-                    
-                    logger.info(f"Incidencia {incidence_type} reportada en pedido {order.order_number}")
-                    
-                    return Response({
-                        'success': True,
-                        'message': f'Incidencia reportada: {incidence_data["type_label"]}',
-                        'order_id': order.id,
-                        'order_number': order.order_number,
-                        'status': order.status,
-                        'incidence': incidence_data,
-                    })
-                    
-        except Order.DoesNotExist:
+
+    def _get_order(self, order_id, user):
+        return Order.objects.select_for_update().get(
+            id=order_id,
+            assigned_delivery_user=user
+        )
+
+    def _validate_order_not_final(self, order):
+        if order.status in ['entregado', 'cancelado']:
             return Response({
                 'success': False,
-                'message': 'Pedido no encontrado o no asignado a ti'
-            }, status=status.HTTP_404_NOT_FOUND)
-        except Exception as e:
-            logger.error(f"Error al reportar incidencia en pedido {order_id}: {str(e)}")
-            return Response({
-                'success': False,
-                'message': 'Error interno al procesar la incidencia'
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                'message': f'No se puede reportar incidencia en pedido con estado: {order.get_status_display()}'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        return None
+
+    def _cancel_order(self, order, incidence_data, user):
+        reason = json.dumps(incidence_data, ensure_ascii=False)
+        order.cancel(reason, user=user)
+        logger.info(f"Pedido {order.order_number} cancelado por incidencia: {incidence_data['type']}")
+
+        return Response({
+            'success': True,
+            'message': f'Pedido {order.order_number} cancelado por: {incidence_data["type_label"]}',
+            'order_id': order.id,
+            'order_number': order.order_number,
+            'status': 'cancelado',
+            'incidence': incidence_data,
+        })
+
+    def _report_incidence(self, order, incidence_data):
+        existing_incidences = []
+        if order.cancelled_reason:
+            try:
+                existing = json.loads(order.cancelled_reason)
+                if isinstance(existing, list):
+                    existing_incidences = existing
+                elif isinstance(existing, dict):
+                    existing_incidences = [existing]
+            except json.JSONDecodeError:
+                pass
+
+        existing_incidences.append(incidence_data)
+        order.cancelled_reason = json.dumps(existing_incidences, ensure_ascii=False)
+        order.save(update_fields=['cancelled_reason', 'updated_at'])
+
+        # Enviar notificación al admin (implementar después)
+        # send_admin_notification(order, incidence_data)
+
+        logger.info(f"Incidencia {incidence_data['type']} reportada en pedido {order.order_number}")
+
+        return Response({
+            'success': True,
+            'message': f'Incidencia reportada: {incidence_data["type_label"]}',
+            'order_id': order.id,
+            'order_number': order.order_number,
+            'status': order.status,
+            'incidence': incidence_data,
+        })
 
 
 class DeliverySummaryAPIView(APIView):
