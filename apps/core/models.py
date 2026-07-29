@@ -119,6 +119,7 @@ class HeroConfig(BaseAuditModel):
     )
     overlay_opacity = models.FloatField(
         default=0.5,
+        verbose_name='Opacidad del overlay',
         help_text='Opacidad del overlay oscuro (0 = transparente, 1 = negro total).'
     )    
     title_text = models.CharField(
@@ -232,9 +233,19 @@ class HeroConfig(BaseAuditModel):
     def __str__(self):
         return f"Hero: {self.title_text}"
     
+    def clean(self):
+        if self.background_image:
+            try:
+                if self.background_image.size > 5 * 1024 * 1024:
+                    from django.core.exceptions import ValidationError
+                    raise ValidationError({'background_image': 'La imagen no puede superar los 5MB.'})
+            except OSError:
+                pass
+
     def save(self, *args, **kwargs):
         """
         HU-053 | ESCENARIO 1 | H | Guardado normal del slide
         HU-054 | ESCENARIO 1 | H | Guardado al actualizar slide
         """
+        self.full_clean()
         super().save(*args, **kwargs)

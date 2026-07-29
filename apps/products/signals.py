@@ -1,7 +1,8 @@
 import logging
-from django.db.models.signals import m2m_changed, post_save, pre_save
+from django.core.cache import cache
+from django.db.models.signals import m2m_changed, post_save, post_delete, pre_save
 from django.dispatch import receiver
-from .models import Collection, Product
+from .models import Collection, Product, ProductImage
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +45,11 @@ def collection_products_changed(sender, instance, action, reverse, model, pk_set
     if action in ('post_add', 'post_remove') and instance.status == 'publicada':
         products = model.objects.filter(pk__in=pk_set)
         _update_product_types(products)
+
+
+@receiver([post_save, post_delete], sender=ProductImage)
+def clear_product_images_cache(sender, **kwargs):
+    cache.delete('product_images_all')
 
 
 def _update_product_types(products):

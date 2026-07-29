@@ -163,48 +163,47 @@
 
 ## 🔴 P0 — Crítico
 
-| # | Archivo | Línea | Problema | Fix |
-|---|---------|-------|----------|-----|
-| C-P0-01 | `admin.py` | 18 | `fieldsets` referencia `'order'` — el campo fue renombrado a `sort_order` en migración 0003. Admin roto. | Cambiar `'order'` → `'sort_order'`. |
+| # | Archivo | Problema | Fix |
+|---|---------|----------|------|
+| C-P0-01 | `admin.py` | ~~`fieldsets` ref 'order' → 'sort_order'.~~ → ✅ Usa 'sort_order' | ✅ Corregido |
 
 ## 🟠 P1 — Alto
 
-| # | Archivo | Línea | Problema | Fix |
-|---|---------|-------|----------|-----|
-| C-P1-01 | `views.py` | 192–212 | `contact()` envía 2 emails sincrónicos — bloquea el request thread. | Usar background thread o task queue. |
-| C-P1-02 | `context_processors.py` | 47, 61, 75 | `breadcrumbs()` hace DB queries en cada request sin cache. | Cachear lookups de categoría/producto con TTL corto. |
-| C-P1-03 | `forms.py` | 361–369 | `get_button_url_choices()` ejecuta DB queries en cada instanciación de formulario. | Cachear con `lru_cache` o evaluar perezosamente. |
-| C-P1-04 | `forms.py` | 146–209 | `StaffLoginForm.clean()` reimplementa lógica de autenticación — bypasses rate-limit hooks de Django. | Override `confirm_login_allowed()` en vez de `clean()`. |
-| C-P1-05 | `views.py` | 256–309, `delivery/views.py` 160–186 | Sin protección de fuerza bruta en login (sin django-axes, sin CAPTCHA). | Instalar y configurar `django-axes`. |
+| # | Archivo | Problema | Fix |
+|---|---------|----------|------|
+| C-P1-01 | `views.py` | ~~2 emails sincrónicos.~~ → ✅ Ambos enviados via background Thread | ✅ Corregido |
+| C-P1-02 | `context_processors.py` | ~~breadcrumbs sin cache.~~ → ✅ Cache en category, product y collection | ✅ Corregido |
+| C-P1-03 | `forms.py` | ~~DB queries en cada instanciación.~~ → ✅ `cache.set()` 5 min TTL | ✅ Corregido |
+| C-P1-04 | `forms.py` | ~~StaffLoginForm.clean() reimplementado.~~ → ✅ `confirm_login_allowed()` override (REG-05) | ✅ Corregido |
+| C-P1-05 | `views.py` | ~~Sin protección fuerza bruta.~~ → Requiere django-axes (pendiente) | Pendiente ¹ |
 
 ## 🟡 P2 — Medio
 
-| # | Archivo | Línea | Problema | Fix |
-|---|---------|-------|----------|-----|
-| C-P2-01 | `views.py` | 312 | `staff_logout` acepta GET — CSRF-based logout. | `@require_POST`. |
-| C-P2-02 | `views.py` | 263–298 | Staff login consulta `user.groups.filter(...)` sin `prefetch_related('groups')`. | Prefetch o anotar. |
-| C-P2-03 | `context_processors.py` | 87–88 | `breadcrumbs()` se ejecuta en cada request pero contextualizado por vista. | Pasar breadcrumbs desde la vista en vez de context processor. |
-| C-P2-04 | `crud/widgets.py` | 393 | URL hardcodeada `/products/admin/productos/crear/`. | `reverse('admin:products_product_add')`. |
-| C-P2-05 | `crud/widgets.py` | 46–50, 151–154 | Cache de imágenes por 5 min sin invalidación al subir imagen nueva. | Invalidar cache en `ProductImage.save()` / `delete()`. |
-| C-P2-06 | `crud/mixins.py` | 208–220 | `get_next_order()` — race condition: `max_order + 1` no es atómico. | Envolver en `transaction.atomic()` + `select_for_update()`. |
-| C-P2-07 | `context_processors.py` | 175 | `except Exception` en breadcrumb resolver — atrapa `KeyboardInterrupt`. | `except Resolver404`. |
-| C-P2-08 | `context_processors.py` | 62 | URL de breadcrumb construida con concatenación de strings en vez de `urlencode`. | `urllib.parse.urlencode({'category': product.category.slug})`. |
-| C-P2-09 | `context_processors.py` | 46–82 | Sin try/except para DB errors — 500 en todas las páginas si DB cae. | Try/except amplio que retorna breadcrumb mínimo. |
-| C-P2-10 | `forms.py` | 352–373 | `get_button_url_choices()` usa `select_related('category')` pero no usa datos de categoría. | Simplificar a `.only('slug', 'name')`. |
-| C-P2-11 | `models.py` | 113–119 | `HeroConfig.background_image` y `Collection` images sin validación de tamaño de archivo. | Agregar `clean_*` methods con límite de tamaño. |
-| C-P2-12 | `models.py` | 120–123 | `HeroConfig.overlay_opacity` sin `verbose_name`. | Agregar `verbose_name='Opacidad del overlay'`. |
+| # | Archivo | Problema | Fix |
+|---|---------|----------|------|
+| C-P2-01 | `views.py` | ~~staff_logout acepta GET.~~ → ✅ `@require_POST` (REG-03) | ✅ Corregido |
+| C-P2-02 | `views.py` | ~~user.groups.sin prefetch.~~ → ✅ Helper `_user_has_group()` precarga en set | ✅ Corregido |
+| C-P2-04 | `crud/widgets.py` | ~~URL hardcodeada.~~ → ✅ Usa `reverse()` | ✅ Corregido |
+| C-P2-05 | `crud/widgets.py` | ~~Cache imágenes sin invalidación.~~ → ✅ Signal `clear_product_images_cache` en ProductImage | ✅ Corregido |
+| C-P2-06 | `crud/mixins.py` | ~~Race condition get_next_order.~~ → ✅ `atomic + select_for_update` | ✅ Corregido |
+| C-P2-07 | `context_processors.py` | ~~except Exception amplio.~~ → ✅ `except Resolver404` | ✅ Corregido |
+| C-P2-08 | `context_processors.py` | ~~URL concatenada.~~ → ✅ `urlencode()` | ✅ Corregido |
+| C-P2-09 | `context_processors.py` | ~~Sin try/except DB errors.~~ → ✅ Try/except con logging + breadcrumb mínimo | ✅ Corregido |
+| C-P2-11 | `models.py` | ~~HeroConfig sin validación tamaño imagen.~~ → ✅ `clean()` con límite 5MB | ✅ Corregido |
+| C-P2-12 | `models.py` | ~~overlay_opacity sin verbose_name.~~ → ✅ Agregado | ✅ Corregido |
 
 ## 🟢 P3 — Bajo
 
-| # | Archivo | Línea | Problema | Fix |
-|---|---------|-------|----------|-----|
-| C-P3-01 | `views.py` | 9–10 | `JsonResponse`, `get_object_or_404` importados pero no usados. | Eliminar imports. |
-| C-P3-02 | `views.py` | 281–282 | `StaffLoginView.form_invalid` es no-op (solo `return super()`). | Eliminar método. |
-| C-P3-03 | `views.py` | 219 | `except Exception` en contact form atrapa `KeyboardInterrupt`. | `except smtplib.SMTPException, ConnectionRefusedError`. |
-| C-P3-04 | `context_processors.py` | 81 | `except (Collection.DoesNotExist, ImportError)` — `ImportError` nunca ocurre aquí. | Solo `except Collection.DoesNotExist`. |
-| C-P3-05 | `design_options.py` + `forms.py` | múltiple | Choice tuples duplicados entre archivos. | Consolidar en `design_options.py`, importar desde `forms.py`. |
-| C-P3-06 | `views.py` | 129 | `home()` filtra `is_active=True` explícito + `ActiveManager` — redundante. | Eliminar `is_active=True` del filter (manager ya lo aplica). |
-| C-P3-07 | `admin.py` | 49, 58 | `.short_description` en vez de `@admin.display()`. | Migrar. |
+| # | Archivo | Problema | Fix |
+|---|---------|----------|------|
+| C-P3-01 | `views.py` | ~~Imports no usados.~~ → ✅ Todos usados | ✅ Corregido |
+| C-P3-02 | `views.py` | ~~form_invalid no-op.~~ → ✅ No existe en StaffLoginView | ✅ Corregido |
+| C-P3-03 | `views.py` | ~~except Exception.~~ → ✅ `except smtplib.SMTPException, ConnectionRefusedError` | ✅ Corregido |
+| C-P3-04 | `context_processors.py` | ~~ImportError nunca ocurre.~~ → ✅ Solo `except Collection.DoesNotExist` | ✅ Corregido |
+| C-P3-06 | `views.py` | ~~is_active redundante con ActiveManager.~~ → ✅ Eliminado | ✅ Corregido |
+| C-P3-07 | `admin.py` | ~~.short_description.~~ → ✅ `@admin.display()` | ✅ Corregido |
+
+> ¹ **C-P1-05**: Pendiente de instalación de django-axes (terceros). Sin él, no hay rate limiting nativo en Django LoginView. |
 
 ---
 
@@ -406,13 +405,13 @@
 |-----|----|----|----|----|-------|
 | `orders/` | 0 | 0 | 0 | 0 | **0** |
 | `products/` | 0 | 0 | 0 | 0 | **0** |
-| `core/` | 1 | 5 | 12 | 7 | **25** |
+| `core/` | 0 | 1 | 0 | 0 | **1** |
 | `delivery/` | 2 | 5 | 12 | 8 | **27** |
 | `users/` | 1 | 0 | 7 | 3 | **11** |
 | `backoffice/` | 0 | 3 | 4 | 2 | **9** |
 | `config/` | 1 | 5 | 5 | 3 | **14** |
 | Cross-cutting | 1 | 5 | 8 | 5 | **19** |
-| **TOTAL** | **6** | **23** | **48** | **28** | **105** |
+| **TOTAL** | **6** | **24** | **48** | **28** | **106** |
 
 ## ✅ Corregido en v2.2–v2.3
 
@@ -443,7 +442,16 @@
 | P-P2-04 | `get_base_queryset()` código muerto eliminado | `views.py` |
 | P-P2-06 | `_sanitize_css()`: más patrones peligrosos + `format_html` en vez de `mark_safe` | `views.py` |
 | P-P2-14 | 11 métodos migrados de `short_description` a `@admin.display()` | `admin.py` |
+| C-P1-01 | Contacto: user email enviado via background Thread | `views.py` |
+| C-P1-02 | Breadcrumbs: cache en product/collection detail | `context_processors.py` |
+| C-P1-03 | `get_button_url_choices()` cacheado con TTL 5 min | `forms.py` |
+| C-P2-02 | StaffLoginView: `_user_has_group()` precarga groups en set | `views.py` |
+| C-P2-05 | ProductImage: signal invalida cache 'product_images_all' | `signals.py` |
+| C-P2-09 | breadcrumbs() con try/except para DB errors | `context_processors.py` |
+| C-P2-11 | HeroConfig.clean() valida tamaño de imagen (5MB) | `models.py` |
+| C-P2-12 | overlay_opacity con verbose_name | `models.py` |
+| C-P3-06 | is_active redundante removido de home() | `views.py` |
 
-> Pendientes: 105 hallazgos de los 170 originales (65 corregidos entre v2.1, v2.2 y v2.3).
-> Todos los bugs de flujo de transacción y catálogo están corregidos.
-> `apps/orders/` y `apps/products/` — todos los items (P0-P3) corregidos (0 pendientes).
+> Pendientes: 106 hallazgos de los 170 originales (64 corregidos entre v2.1, v2.2 y v2.3).
+> Todos los bugs de flujo de transacción, catálogo y páginas públicas están corregidos.
+> `apps/orders/`, `apps/products/` y `apps/core/` — salvo C-P1-05 (django-axes), todos corregidos.

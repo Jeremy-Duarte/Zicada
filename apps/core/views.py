@@ -124,10 +124,8 @@ def home(request):
     # HU-050 | H | Carga de slides activos ordenados por sort_order
     hero_slides = HeroConfig.objects.order_by(HERO_ORDER_BY_SORT)
     
-    # HU-050 | H | Carga de colecciones publicadas
     featured_collections = Collection.objects.filter(
-        status=COLLECTION_STATUS_PUBLISHED,
-        is_active=True
+        status=COLLECTION_STATUS_PUBLISHED
     ).order_by('-created_at')[:FEATURED_COLLECTIONS_LIMIT]
     
     # HU-050 | H | Carga de productos activos
@@ -210,7 +208,7 @@ def contact(request):
                     to=[email],
                 )
                 user_email.attach_alternative(user_html, "text/html")
-                user_email.send(fail_silently=True)
+                Thread(target=user_email.send, kwargs={'fail_silently': True}, daemon=True).start()
 
                 # HU-051 | ESCENARIO 2C | H | Mensaje de éxito y redirección
                 messages.success(request, CONTACT_SUCCESS_MESSAGE)
@@ -259,16 +257,24 @@ class StaffLoginView(LoginView):
     authentication_form = StaffLoginForm
     redirect_authenticated_user = True
 
+    def _user_has_group(self, user, group_name: str) -> bool:
+        if not user.is_authenticated:
+            return False
+        if not hasattr(user, '_prefetched_groups'):
+            user._prefetched_groups = set(
+                user.groups.values_list('name', flat=True)
+            )
+        return group_name in user._prefetched_groups
+
     def get_success_url(self):
         user = self.request.user
         
-        if user.is_staff or user.groups.filter(name='Administrador').exists():
+        if user.is_staff or self._user_has_group(user, 'Administrador'):
             return reverse_lazy(BACKOFFICE_DASHBOARD)
         
-        if getattr(user, 'is_delivery', False) or user.groups.filter(name='Entregador').exists():
+        if getattr(user, 'is_delivery', False) or self._user_has_group(user, 'Entregador'):
             return reverse_lazy(DELIVERY_DASHBOARD)
         
-        # Por defecto → catálogo
         return reverse_lazy(PRODUCTS_CATALOG)
 
     def form_valid(self, form):
@@ -290,10 +296,10 @@ class StaffLoginView(LoginView):
             
             user = request.user
             
-            if user.is_staff or user.groups.filter(name='Administrador').exists():
+            if user.is_staff or self._user_has_group(user, 'Administrador'):
                 return redirect(BACKOFFICE_DASHBOARD)
             
-            if getattr(user, 'is_delivery', False) or user.groups.filter(name='Entregador').exists():
+            if getattr(user, 'is_delivery', False) or self._user_has_group(user, 'Entregador'):
                 return redirect(DELIVERY_DASHBOARD)
             
             return redirect(PRODUCTS_CATALOG)
