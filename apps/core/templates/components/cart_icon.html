@@ -15,7 +15,7 @@
 
 <!-- NOSONAR:Web:S6819 - Usamos role="dialog" porque <dialog> nativo no permite diseño sidebar lateral deslizable -->
 <div id="cart-sidebar" 
-     class="fixed inset-0 z-50 hidden font-poppins" 
+     class="fixed top-0 left-0 w-screen h-screen z-50 hidden font-poppins" 
      aria-labelledby="cart-title" 
      role="dialog"
      aria-modal="true"
@@ -30,7 +30,7 @@
     
     <!-- Panel lateral -->
     <div id="cart-sidebar-content" 
-         class="absolute inset-y-0 right-0 w-full sm:w-96 md:w-[32rem] bg-neutral-950 shadow-2xl translate-x-full transition-transform duration-300 ease-out flex flex-col text-white">
+         class="absolute top-0 right-0 bottom-0 w-full sm:w-96 md:w-[32rem] bg-neutral-950 shadow-2xl translate-x-full transition-transform duration-300 ease-out flex flex-col text-white">
         
         <!-- Header fijo -->
         <div class="flex justify-between items-center p-5 border-b border-neutral-800 bg-neutral-950 rounded-tl-2xl">
