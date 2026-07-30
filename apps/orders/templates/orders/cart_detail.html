@@ -1,18 +1,16 @@
 {% extends "layouts/base.html" %}
-{% load static %}
+{% load static humanize %}
 
-{% block title %}Carrito de compras - Zicada{% endblock %}
-
-{% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/orders/cart_detail.css' %}">
-{% endblock %}
+{% block title %}Carrito - Zicada{% endblock %}
 
 {% block content %}
-<div class="container mx-auto px-4 py-8 max-w-7xl">
-    <h1 class="font-poppins text-3xl font-bold text-gray-900 mb-8">Tu carrito</h1>
-    
-    <div id="cart-container">
-        {% include "orders/cart_partial.html" %}
+<div class="bg-black text-white font-poppins min-h-dvh flex flex-col">
+    <div class="max-w-[1360px] mx-auto w-full px-4 py-8 md:py-12 flex flex-col gap-8 flex-1">
+        <h1 class="text-3xl md:text-4xl font-extrabold tracking-tight">TU CARRITO</h1>
+        {% csrf_token %}
+        <div id="cart-container" class="flex-1 flex flex-col">
+            {% include "orders/cart_partial.html" %}
+        </div>
     </div>
 </div>
 {% endblock %}
