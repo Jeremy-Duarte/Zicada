@@ -1,13 +1,82 @@
-{% comment %} Props: icon, value, label, link?, extra_classes {% endcomment %}
-<a {% if link %}href="{{ link }}"{% endif %}
-   class="bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition {% if link %}cursor-pointer{% endif %} {{ extra_classes }}">
-  <div class="flex items-center gap-4">
-    <div class="w-12 h-12 rounded-lg bg-zicada-accent/10 flex items-center justify-center shrink-0">
-      <i class="{{ icon }} text-zicada-accent text-xl"></i>
+{% comment %}
+Props:
+  variant: 'default' (border-left) | 'link' (clickable + link text) | 'big' (centered circle + footer stats)
+  Default (also used by stat_card):
+    icon, value, label, color (border/icon accent), icon_bg, subtitle, change
+  Link (also used by stat_card_link):
+    icon, value, label, url, border_color, icon_bg, icon_color, link_text, link_color
+  Big (also used by stat_card_big):
+    icon, value, label, icon_bg, ring_color, value_color, stats_list, description
+{% endcomment %}
+
+{% if variant == 'big' %}
+<div class="bg-white rounded-xl shadow-sm hover:shadow-md transition overflow-hidden h-full flex flex-col">
+  <div class="p-6 text-center flex-1 flex flex-col items-center justify-center">
+    <div class="relative inline-block">
+      <div class="w-32 h-32 rounded-full bg-gradient-to-br from-{{ ring_color|default:'zicada-accent' }}/10 to-{{ ring_color|default:'zicada-accent' }}/5 flex items-center justify-center mx-auto">
+        <div class="text-4xl md:text-5xl font-bold text-{{ value_color|default:'zicada-accent' }}">{{ value|default:"0" }}</div>
+      </div>
+      {% if icon %}
+      <div class="absolute -bottom-2 -right-2 w-8 h-8 rounded-full bg-{{ icon_bg|default:'zicada-accent' }} flex items-center justify-center shadow-md">
+        <i class="fas fa-{{ icon }} text-white text-xs"></i>
+      </div>
+      {% endif %}
     </div>
-    <div>
-      <p class="text-2xl font-bold text-gray-900">{{ value }}</p>
-      <p class="text-sm text-gray-500">{{ label }}</p>
+    <p class="text-gray-700 font-bold text-lg mt-4">{{ label|default:"Estadística" }}</p>
+    {% if description %}<p class="text-xs text-gray-400 mt-1">{{ description }}</p>{% endif %}
+  </div>
+  {% if stats_list %}
+  <div class="border-t border-gray-100 bg-gray-50 mt-auto">
+    <div class="flex divide-x divide-gray-100">
+      {% for stat in stats_list %}
+      <div class="flex-1 p-3 text-center">
+        <div class="flex items-center justify-center gap-1 mb-1">
+          <div class="w-2 h-2 rounded-full bg-{{ stat.color|default:'gray-400' }}"></div>
+          <p class="text-xs text-gray-400">{{ stat.label }}</p>
+        </div>
+        <p class="text-sm font-bold text-gray-800">{{ stat.value }}</p>
+      </div>
+      {% endfor %}
     </div>
   </div>
+  {% endif %}
+</div>
+
+{% elif variant == 'link' %}
+<a href="{{ url }}" class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-{{ border_color|default:'gray-500' }} hover:shadow-md transition block group">
+  <div class="flex justify-between items-start">
+    <div>
+      <p class="text-gray-500 text-sm font-medium mb-1">{{ label|default:"Estadística" }}</p>
+      <p class="text-3xl font-bold text-gray-800">{{ value|default:"0" }}</p>
+    </div>
+    <div class="w-10 h-10 bg-{{ icon_bg|default:'gray-100' }} rounded-lg flex items-center justify-center group-hover:scale-105 transition">
+      <i class="fas fa-{{ icon|default:'chart-line' }} text-{{ icon_color|default:'gray-500' }} text-lg"></i>
+    </div>
+  </div>
+  <p class="text-xs text-{{ link_color|default:'zicada-accent' }} mt-2 flex items-center gap-1">
+    {{ link_text|default:"Ver todos" }} <i class="fas fa-arrow-right text-xs"></i>
+  </p>
 </a>
+
+{% else %}
+<div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-{{ color|default:'zicada-accent' }}">
+  <div class="flex justify-between items-start">
+    <div>
+      <p class="text-gray-500 text-sm font-medium mb-1">{{ label|default:"Estadística" }}</p>
+      <p class="text-3xl font-bold text-gray-800">{{ value|default:"0" }}</p>
+      {% if subtitle %}<p class="text-xs text-gray-400 mt-2">{{ subtitle }}</p>{% endif %}
+    </div>
+    <div class="w-10 h-10 bg-{{ icon_bg|default:'gray-100' }} rounded-lg flex items-center justify-center">
+      <i class="fas fa-{{ icon|default:'chart-line' }} text-{{ icon_color|default:'blue-500' }} text-lg"></i>
+    </div>
+  </div>
+  {% if change %}
+  <div class="mt-3 flex items-center gap-1 text-xs">
+    <span class="{% if change > 0 %}text-green-500{% else %}text-red-500{% endif %}">
+      <i class="fas fa-arrow-{% if change > 0 %}up{% else %}down{% endif %}"></i> {{ change }}%
+    </span>
+    <span class="text-gray-400">vs mes anterior</span>
+  </div>
+  {% endif %}
+</div>
+{% endif %}

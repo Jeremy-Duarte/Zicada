@@ -10,24 +10,6 @@
     
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        .sidebar-item {
-            @apply flex items-center gap-3 px-4 py-3 rounded-xl transition-colors duration-200 text-gray-300 hover:bg-gray-800 hover:text-white;
-        }
-        .sidebar-item.active {
-            @apply bg-zicada-accent text-white;
-        }
-        .scrollbar-thin::-webkit-scrollbar {
-            width: 6px;
-        }
-        .scrollbar-thin::-webkit-scrollbar-track {
-            background: #1f2937;
-        }
-        .scrollbar-thin::-webkit-scrollbar-thumb {
-            background: #4b5563;
-            border-radius: 3px;
-        }
-    </style>
     {% block extra_css %}{% endblock %}
     {% block extra_head %}{% endblock %}
 </head>
@@ -44,10 +26,8 @@
 </div>
 
 <script defer>
-    document.querySelectorAll('.sidebar-item').forEach(item => {
-        if (item.classList.contains('active')) {
-            item.scrollIntoView({ block: 'nearest' });
-        }
+    document.querySelectorAll('aside a[class*="bg-zicada-accent"]').forEach(item => {
+        item.scrollIntoView({ block: 'nearest' });
     });
 </script>
 {% block extra_js %}

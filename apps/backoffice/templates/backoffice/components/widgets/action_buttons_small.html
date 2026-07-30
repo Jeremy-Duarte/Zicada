@@ -1,15 +1,1 @@
-{% load static %}
-<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
-    {% for button in buttons %}
-    <a href="{{ button.url }}" 
-       class="group flex flex-col items-center justify-center p-6 bg-white rounded-xl shadow-md border border-gray-100 hover:shadow-lg hover:border-zicada-accent/30 transition-all duration-200 hover:-translate-y-1">
-        <div class="w-16 h-16 rounded-full bg-gradient-to-br from-{{ button.bg_from|default:'gray-50' }} to-{{ button.bg_to|default:'gray-100' }} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-            <i class="fas fa-{{ button.icon }} text-{{ button.icon_color|default:'zicada-accent' }} text-2xl"></i>
-        </div>
-        <span class="text-base font-semibold text-gray-700 group-hover:text-zicada-accent transition">{{ button.title }}</span>
-        {% if button.badge %}
-        <span class="mt-1 text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{{ button.badge }}</span>
-        {% endif %}
-    </a>
-    {% endfor %}
-</div>
+{% include 'backoffice/components/molecules/action_buttons.html' with size='small' buttons=buttons %}
