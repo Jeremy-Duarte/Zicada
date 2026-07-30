@@ -165,9 +165,9 @@ reflejan tu estilo. Envíos a todo el país.{% endblock %}
     {% if promos %}
         {% for promo in promos %}
         {% if promo.link_url %}
-        <a href="{{ promo.link_url }}" class="block h-dvh w-full overflow-hidden relative focus:outline-none focus-visible:ring-2 focus-visible:ring-zicada-accent" aria-label="{{ promo.title|default:'Publicidad Zicada' }}">
+        <a href="{{ promo.link_url }}" class="block w-full aspect-[3/2] md:h-dvh md:aspect-auto overflow-hidden relative focus:outline-none focus-visible:ring-2 focus-visible:ring-zicada-accent" aria-label="{{ promo.title|default:'Publicidad Zicada' }}">
         {% else %}
-        <div class="h-dvh w-full overflow-hidden relative">
+        <div class="w-full aspect-[3/2] md:h-dvh md:aspect-auto overflow-hidden relative">
         {% endif %}
             <img src="{{ promo.image.url }}" alt="{{ promo.title|default:'' }}"
                 class="w-full h-full object-cover"
