@@ -11,27 +11,18 @@
     var lastTs = 0;
     var halfway = 0;
     var itemWidth = 0;
-    var containerWidth = 0;
-    var totalFigs = 0;
-    var currentIdx = 0;
 
     var targetPos = null;
     var EASING = 0.08;
 
     function measure() {
         halfway = 0;
-        totalFigs = track.children.length / 2;
-        for (var i = 0; i < totalFigs; i++) {
+        var count = track.children.length / 2;
+        for (var i = 0; i < count; i++) {
             var child = track.children[i];
             if (child) halfway += child.offsetWidth + 24;
         }
         itemWidth = track.children[0] ? track.children[0].offsetWidth + 24 : 300;
-        containerWidth = track.parentElement.clientWidth;
-    }
-
-    function posToIdx(pos) {
-        var centerPos = pos + containerWidth / 2;
-        return Math.round(centerPos / halfway * totalFigs) % (totalFigs * 2);
     }
 
     function wrap(pos) {
@@ -62,7 +53,6 @@
         }
 
         if (targetPos === null) position = wrap(position);
-        currentIdx = posToIdx(position);
         track.style.transform = 'translateX(' + (-position) + 'px)';
         lastTs = ts;
         raf = requestAnimationFrame(loop);
@@ -98,14 +88,7 @@
 
         fig.addEventListener('click', function (e) {
             paused = true;
-
-            var off = fig.offsetLeft;
-            var centerAdjust = (containerWidth - fig.offsetWidth) / 2;
-            var raw = off - centerAdjust;
-            var t1 = raw;
-            var t2 = raw + halfway;
-
-            targetPos = Math.abs(t1 - position) <= Math.abs(t2 - position) ? t1 : t2;
+            targetPos = position + itemWidth;
         });
     });
 
