@@ -73,18 +73,26 @@
     track.addEventListener('mouseenter', pause);
     track.addEventListener('mouseleave', resume);
 
-    if (prevBtn) prevBtn.addEventListener('click', function () {
-        targetPos = null;
-        position -= itemWidth;
-        position = wrap(position);
-        track.style.transform = 'translateX(' + (-position) + 'px)';
-    });
-    if (nextBtn) nextBtn.addEventListener('click', function () {
-        targetPos = null;
-        position += itemWidth;
-        position = wrap(position);
-        track.style.transform = 'translateX(' + (-position) + 'px)';
-    });
+    if (prevBtn) {
+        prevBtn.addEventListener('click', function () {
+            targetPos = null;
+            position -= itemWidth;
+            position = wrap(position);
+            track.style.transform = 'translateX(' + (-position) + 'px)';
+        });
+        prevBtn.addEventListener('mouseenter', pause);
+        prevBtn.addEventListener('mouseleave', resume);
+    }
+    if (nextBtn) {
+        nextBtn.addEventListener('click', function () {
+            targetPos = null;
+            position += itemWidth;
+            position = wrap(position);
+            track.style.transform = 'translateX(' + (-position) + 'px)';
+        });
+        nextBtn.addEventListener('mouseenter', pause);
+        nextBtn.addEventListener('mouseleave', resume);
+    }
 
     // Click sobre imagen original → centrar con animacion + cooldown
     Array.prototype.forEach.call(track.children, function (fig, i) {
