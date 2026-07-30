@@ -152,17 +152,17 @@ reflejan tu estilo. Envíos a todo el país.{% endblock %}
 
                 {% with products=collection.products.all %}
                 {% if products %}
-                {% with total=products|length %}
                 <div class="flex flex-wrap justify-center gap-6">
                     {% for product in products %}
-                    <div class="w-full sm:w-[calc(50%-0.75rem)] max-w-sm
-                                {% if total == 1 %}md:max-w-md{% endif %}
-                                {% if total >= 3 %}lg:w-[calc(33.333%-0.75rem)]{% endif %}">
-                        {% include 'components/product_card.html' with product=product card_style='default' %}
-                    </div>
+                        {% for product_color in product.product_colors.all %}
+                        <div class="w-full sm:w-[calc(50%-0.75rem)] max-w-sm
+                                    {% if products|length == 1 and product.product_colors.all|length == 1 %}md:max-w-md{% endif %}
+                                    lg:w-[calc(33.333%-0.75rem)]">
+                            {% include 'components/product_card.html' with product=product product_color=product_color %}
+                        </div>
+                        {% endfor %}
                     {% endfor %}
                 </div>
-                {% endwith %}
                 {% else %}
                 <div class="text-center py-10 text-gray-500 border border-neutral-800 rounded-xl">
                     <p>Esta colección aún no tiene productos publicados.</p>

@@ -145,8 +145,9 @@ def home(request):
                     Prefetch(
                         'product_colors',
                         queryset=ProductColor.objects
-                            .select_related('featured_image')
+                            .select_related('color', 'featured_image')
                             .prefetch_related('images')
+                            .order_by('sort_order')
                     ),
                     'variants',
                 )
