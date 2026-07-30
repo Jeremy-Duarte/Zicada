@@ -18,7 +18,19 @@
 
         <hr class="border-neutral-800 mb-6">
 
-        <div class="flex items-center justify-between gap-4 mb-8">
+        <div class="flex flex-wrap items-center justify-between gap-4 mb-8">
+            <div class="hidden lg:flex items-center gap-2" role="group" aria-label="Vista de productos">
+                <button data-cols="3" class="layout-btn w-9 h-9 flex items-center justify-center rounded-lg border border-white text-white bg-zicada-accent transition" aria-label="3 columnas">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="4" width="5.5" height="16" rx="1"/><rect x="9.25" y="4" width="5.5" height="16" rx="1"/><rect x="16.5" y="4" width="5.5" height="16" rx="1"/></svg>
+                </button>
+                <button data-cols="4" class="layout-btn w-9 h-9 flex items-center justify-center rounded-lg border border-neutral-700 text-neutral-400 hover:text-white hover:border-white transition" aria-label="4 columnas">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><rect x="1.5" y="4" width="4" height="16" rx="1"/><rect x="7" y="4" width="4" height="16" rx="1"/><rect x="12.5" y="4" width="4" height="16" rx="1"/><rect x="18" y="4" width="4" height="16" rx="1"/></svg>
+                </button>
+                <button data-cols="5" class="layout-btn w-9 h-9 flex items-center justify-center rounded-lg border border-neutral-700 text-neutral-400 hover:text-white hover:border-white transition" aria-label="5 columnas">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><rect x="1" y="4" width="3.5" height="16" rx="1"/><rect x="5.5" y="4" width="3.5" height="16" rx="1"/><rect x="10" y="4" width="3.5" height="16" rx="1"/><rect x="14.5" y="4" width="3.5" height="16" rx="1"/><rect x="19" y="4" width="3.5" height="16" rx="1"/></svg>
+                </button>
+            </div>
+
             <div class="flex items-center gap-3">
                 <label for="sort-select" class="text-sm text-gray-400 font-semibold whitespace-nowrap">ORDENAR POR</label>
                 <select id="sort-select"
@@ -40,6 +52,25 @@
 {{ block.super }}
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    var container = document.getElementById('products-grid');
+    var btns = document.querySelectorAll('.layout-btn');
+    if (!container || !btns.length) return;
+
+    btns.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var cols = this.getAttribute('data-cols');
+            btns.forEach(function (b) {
+                b.classList.remove('bg-zicada-accent', 'border-white', 'text-white');
+                b.classList.add('border-neutral-700', 'text-neutral-400');
+            });
+            this.classList.add('bg-zicada-accent', 'border-white', 'text-white');
+            this.classList.remove('border-neutral-700', 'text-neutral-400');
+
+            container.classList.remove('lg:grid-cols-3', 'lg:grid-cols-4', 'lg:grid-cols-5');
+            container.classList.add('lg:grid-cols-' + cols);
+        });
+    });
+
     var sortSelect = document.getElementById('sort-select');
     if (sortSelect) {
         sortSelect.addEventListener('change', function () {
