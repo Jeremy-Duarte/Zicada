@@ -101,6 +101,41 @@ Crear `/apps/core/templates/components/theme.html`:
 
 ## 2. Parte A: App Clientes — Pendiente
 
+### 2.0 Especificación del cliente — Home (Julio 2026)
+
+> **Estado:** en ejecución. El cliente definió la nueva identidad del home.
+> **Alcance:** SOLO `home.html` de `core`. El hero slides **NO se toca** (el cliente lo aprobó tal cual).
+
+#### Paleta de colores del home
+| Token | Valor | Uso |
+|-------|-------|-----|
+| Fondo | Negro (`bg-black`) | Toda la página |
+| Texto | Blanco (`text-white`) | Todo el texto |
+| Botones/acentos | Vinotinto (`bg-zicada-accent`) | CTAs, acentos |
+| Footer | **Sin cambios** | No editar |
+
+#### Tipografía
+- **Open Sans** (Google Fonts) para el home. El resto del sitio conserva Inter.
+- Pesos: 400 regular, 600 semibold, 700 bold, 800 extrabold (títulos).
+- Implementación: `font-opensans` en `tailwind.config` (theme.html), wrapper en home.
+
+#### Estructura del home (después del hero)
+1. **Explora la colección + título** — header de la sección de colecciones.
+2. **Colecciones** — cards de imagen sin texto encima; nombre y descripción del producto **debajo** de la imagen.
+3. **Espacio de publicidad** — modelo programable `HomePromo` (settings): imagen publicitaria de ancho completo, **de 1 a 3** activos configurables (título/subtítulo/CTA opcionales).
+4. **Galería estilo TikTok/celular** — nuevo modelo `Gallery`:
+   - Fila superior: texto con redirección a Instagram `@zicada_lu` (izquierda) y título **GALERIA** (derecha).
+   - Carrusel de imágenes verticales con rotación suave automática.
+   - Texto final: "explorar más".
+   - Modelo `Gallery`: `description`, `image`, `alt_text` (SEO), `sort_order`. Soft-delete vía `BaseAuditModel`.
+   - *(No planear uso futuro del modelo; solo home.)*
+
+#### UX global (navbar + breadcrumbs)
+- **Navbar compacto**: de `16.666vh` a altura fija (`h-16`/`h-20`). Menos espacio desperdiciado.
+- **Auto-hide on scroll**: navbar + breadcrumbs se ocultan al bajar (`-translate-y-full`) y reaparecen al subir. JS pasivo (`static/js/core/navbar-hide.js`).
+- Breadcrumbs integrados al mismo wrapper sticky (`#site-header`) para que se oculten junto con el navbar.
+- Mejoras de hover y accesibilidad (focus-visible, aria-current) sin opacar la idea del cliente.
+
 ### 2.1 Alcance
 
 Esta sección queda **pendiente de ejecución** hasta que el cliente defina la nueva identidad visual para el frontend público. Se documenta aquí la deuda técnica detectada para que la reforma futura sea informada.

@@ -12,15 +12,14 @@ from django.contrib.auth.views import (
     PasswordResetCompleteView as BasePasswordResetCompleteView,
 )
 from django.core.mail import EmailMultiAlternatives
-from django.db.models import Count, Q
 from django.shortcuts import render, redirect, get_object_or_404
 from django.template.loader import render_to_string
 from django.urls import reverse, reverse_lazy
 from django.views.generic import CreateView, UpdateView, DeleteView, ListView, TemplateView
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
-from .models import HeroConfig
-from apps.products.models import Product, Collection, Category
+from .models import Gallery, HeroConfig, HomePromo
+from apps.products.models import Collection
 from apps.core.crud.mixins import StaffPermissionRequiredMixin
 from .forms import ContactForm, StaffLoginForm, HeroConfigCreateForm, HeroConfigUpdateForm, HeroConfigDeleteForm, HeroConfigRestoreForm
 from apps.products.views import (
@@ -111,8 +110,7 @@ from .constants import (
     HERO_ORDER_BY_DELETED_AT,
     # Display Limits
     FEATURED_COLLECTIONS_LIMIT,
-    LATEST_PRODUCTS_LIMIT,
-    FEATURED_CATEGORIES_LIMIT,
+    HOME_PROMOS_LIMIT,
     # PWA Manifest Configuration
     PWA_NAME,
     PWA_SHORT_NAME,
@@ -131,30 +129,25 @@ def home(request):
     HU-050 | Página de inicio personalizada
     HU-050-ALT-1: No hay slides activos → muestra hero por defecto
     HU-050-ALT-2: No hay colecciones → oculta sección
-    HU-050-ALT-3: No hay productos → oculta sección
     """
     # HU-050 | H | Carga de slides activos ordenados por sort_order
     hero_slides = HeroConfig.objects.order_by(HERO_ORDER_BY_SORT)
-    
+
     featured_collections = Collection.objects.filter(
         status=COLLECTION_STATUS_PUBLISHED
     ).order_by('-created_at')[:FEATURED_COLLECTIONS_LIMIT]
-    
-    # HU-050 | H | Carga de productos activos
-    latest_products = Product.objects.filter(
-        is_active=True
-    ).select_related('category').prefetch_related('variants')[:LATEST_PRODUCTS_LIMIT]
-    
-    # HU-050 | H | Carga de categorías
-    categories = Category.objects.annotate(
-        product_count=Count('products', filter=Q(products__is_active=True))
-    ).order_by('sort_order')[:FEATURED_CATEGORIES_LIMIT]
+
+    # Espacios publicitarios configurables (máximo 3 activos)
+    promos = HomePromo.objects.order_by(HERO_ORDER_BY_SORT)[:HOME_PROMOS_LIMIT]
+
+    # Galería de fotos estilo TikTok
+    gallery_items = Gallery.objects.order_by(HERO_ORDER_BY_SORT)
 
     context = {
         CONTEXT_HERO_SLIDES: hero_slides,
         'featured_collections': featured_collections,
-        'latest_products': latest_products,
-        'categories': categories,
+        'promos': promos,
+        'gallery_items': gallery_items,
     }
     return render(request, TEMPLATE_HOME, context)
 

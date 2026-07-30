@@ -9,8 +9,6 @@
     {% include 'components/theme.html' %}
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
     <script defer src="https://unpkg.com/htmx.org@2.0.4"></script>
-
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     
     <script>
         if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
@@ -24,19 +22,22 @@
     {% block extra_head %}{% endblock %}
 </head>
 <body class="bg-white font-sans antialiased flex flex-col min-h-screen">
-    
-    {% include 'components/header.html' %}
-    
-    <main class="grow" style="margin-top: -16.666vh; padding-top: 16.666vh;">
+
+    <header id="site-header" class="sticky top-0 z-50 transition-transform duration-300">
+        {% include 'components/header.html' %}
         {% include 'components/breadcrumbs.html' %}
+    </header>
+
+    <main class="grow">
         {% include 'components/messages.html' %}
-        
+
         {% block content %}{% endblock %}
     </main>
-    
+
     {% include 'components/footer.html' %}
-    
+
     <script defer src="{% static 'js/core/filter-sidebar.js' %}"></script>
+    <script defer src="{% static 'js/core/navbar-hide.js' %}"></script>
 
     <script>
         function updateCartCount(count) {
