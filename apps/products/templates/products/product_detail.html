@@ -7,7 +7,6 @@
 {{ block.super }}
 <style>
     #gallery-viewport {
-        scroll-snap-type: y mandatory;
         scroll-behavior: smooth;
         overscroll-behavior: contain;
         -webkit-overflow-scrolling: touch;
@@ -15,7 +14,6 @@
     }
     #gallery-viewport::-webkit-scrollbar { display: none; }
     .gallery-slide {
-        scroll-snap-align: center;
         max-height: 55dvh;
         flex-shrink: 0;
         margin-bottom: 0.75rem;
@@ -62,10 +60,10 @@
             <div class="lg:col-span-1 order-2 flex flex-col items-center gap-3">
                 {# Navigation arrow up #}
                 <button id="gallery-arrow-up"
-                        class="w-10 h-10 flex items-center justify-center text-neutral-400 hover:text-white transition disabled:opacity-30"
+                        class="w-9 h-9 bg-white rounded-full flex items-center justify-center text-black shadow-md transition hover:bg-neutral-200 disabled:opacity-30 disabled:cursor-not-allowed"
                         aria-label="Imagen anterior">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/>
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 4l-8 8h16z"/>
                     </svg>
                 </button>
 
@@ -92,10 +90,10 @@
 
                 {# Navigation arrow down #}
                 <button id="gallery-arrow-down"
-                        class="w-10 h-10 flex items-center justify-center text-neutral-400 hover:text-white transition disabled:opacity-30"
+                        class="w-9 h-9 bg-white rounded-full flex items-center justify-center text-black shadow-md transition hover:bg-neutral-200 disabled:opacity-30 disabled:cursor-not-allowed"
                         aria-label="Imagen siguiente">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 20l8-8H4z"/>
                     </svg>
                 </button>
 
@@ -181,6 +179,7 @@
     var currentColor = colorsData.length ? colorsData[0].pc_id : null;
     var currentImageIdx = 0;
     var selectedSize = null;
+    var isScrollingGallery = false;
 
     /* ── DOM refs ── */
     var galleryTrack   = document.getElementById('gallery-track');
@@ -231,11 +230,12 @@
 
     function scrollToImage(idx) {
         var slides = galleryTrack.querySelectorAll('.gallery-slide');
-        if (!slides.length) return;
-        var idxClamped = Math.min(Math.max(idx, 0), slides.length - 1);
-        var slide = slides[idxClamped];
-        var target = slide.offsetTop - (galleryViewport.clientHeight / 2) + (slide.offsetHeight / 2);
-        galleryViewport.scrollTo({ top: target, behavior: 'smooth' });
+        if (!slides.length || !slides[idx]) return;
+        var slide = slides[idx];
+        var rect = slide.getBoundingClientRect();
+        var viewportRect = galleryViewport.getBoundingClientRect();
+        var offset = rect.top - viewportRect.top - (galleryViewport.clientHeight / 2) + (rect.height / 2);
+        galleryViewport.scrollBy({ top: offset, behavior: 'smooth' });
     }
 
     function highlightActiveThumbnail(idx) {
@@ -256,9 +256,11 @@
         var slides = galleryTrack.querySelectorAll('.gallery-slide');
         if (idx < 0 || idx >= slides.length) return;
         currentImageIdx = idx;
+        isScrollingGallery = true;
         scrollToImage(idx);
         updateArrows(slides.length);
         highlightActiveThumbnail(idx);
+        setTimeout(galleryScrollEnd, 400);
     }
 
     /* ── Size buttons ── */
@@ -337,14 +339,20 @@
     }
 
     /* ── Gallery navigation ── */
+    function galleryScrollEnd() {
+        isScrollingGallery = false;
+    }
+
     if (arrowUp) {
         arrowUp.addEventListener('click', function () {
             var slides = galleryTrack.querySelectorAll('.gallery-slide');
             if (currentImageIdx <= 0) return;
             currentImageIdx--;
+            isScrollingGallery = true;
             scrollToImage(currentImageIdx);
             updateArrows(slides.length);
             highlightActiveThumbnail(currentImageIdx);
+            setTimeout(galleryScrollEnd, 400);
         });
     }
     if (arrowDown) {
@@ -352,9 +360,43 @@
             var slides = galleryTrack.querySelectorAll('.gallery-slide');
             if (currentImageIdx >= slides.length - 1) return;
             currentImageIdx++;
+            isScrollingGallery = true;
             scrollToImage(currentImageIdx);
             updateArrows(slides.length);
             highlightActiveThumbnail(currentImageIdx);
+            setTimeout(galleryScrollEnd, 400);
+        });
+    }
+
+    /* ── Scroll detection for manual gallery scroll ── */
+    if (galleryViewport) {
+        galleryViewport.addEventListener('scroll', function () {
+            if (isScrollingGallery) return;
+            var slides = galleryTrack.querySelectorAll('.gallery-slide');
+            if (!slides.length) return;
+            var viewportCenter = galleryViewport.scrollTop + galleryViewport.clientHeight / 2;
+            var atBottom = galleryViewport.scrollTop + galleryViewport.clientHeight >= galleryViewport.scrollHeight - 2;
+            if (atBottom) {
+                var lastIdx = slides.length - 1;
+                if (lastIdx !== currentImageIdx) {
+                    currentImageIdx = lastIdx;
+                    highlightActiveThumbnail(lastIdx);
+                    updateArrows(slides.length);
+                }
+                return;
+            }
+            var closest = 0;
+            var closestDist = Infinity;
+            for (var i = 0; i < slides.length; i++) {
+                var c = slides[i].offsetTop + slides[i].offsetHeight / 2;
+                var d = Math.abs(c - viewportCenter);
+                if (d < closestDist) { closestDist = d; closest = i; }
+            }
+            if (closest !== currentImageIdx) {
+                currentImageIdx = closest;
+                highlightActiveThumbnail(closest);
+                updateArrows(slides.length);
+            }
         });
     }
 
