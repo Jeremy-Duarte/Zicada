@@ -1,15 +1,15 @@
 {% comment %}
 Catalog card — mismo aspecto visual que product_card.html.
-La imagen ocupa todo el espacio disponible arriba (flex-1) y se centra
-con object-contain; el texto queda al fondo en una linea.
+Imagen con aspect ratio fijo segun layout (product-card-aspect),
+object-contain para centrar, texto en una linea abajo.
 Espera: product (con .slug, .name) + product_color (con .color.name, .featured_image, .images).
 {% endcomment %}
 {% load static %}
 
 {% with image=product_color.featured_image|default:product_color.images.first %}
 <a href="{% url 'products:product_detail' product.slug %}"
-   class="group flex flex-col h-full focus:outline-none focus-visible:ring-2 focus-visible:ring-zicada-accent">
-    <div class="flex-1 min-h-0 flex items-center justify-center overflow-hidden">
+   class="group block w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-zicada-accent">
+    <div class="product-card-aspect overflow-hidden bg-neutral-900">
         {% if image and image.image %}
         <img src="{{ image.image.url }}"
              alt="{{ product.name }} {{ product_color.color.name }}"
