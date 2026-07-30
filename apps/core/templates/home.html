@@ -161,16 +161,16 @@ reflejan tu estilo. Envíos a todo el país.{% endblock %}
         {% endfor %}
     {% endif %}
 
-    <!-- Publicidad: altura adaptativa segun aspect ratio del viewport -->
+    <!-- Publicidad: contenedor 3:2 que se adapta a cualquier aspect ratio -->
     {% if promos %}
         {% for promo in promos %}
         {% if promo.link_url %}
-        <a href="{{ promo.link_url }}" class="block w-full h-[clamp(50dvh,70vw,100dvh)] overflow-hidden relative focus:outline-none focus-visible:ring-2 focus-visible:ring-zicada-accent" aria-label="{{ promo.title|default:'Publicidad Zicada' }}">
+        <a href="{{ promo.link_url }}" class="block w-full max-w-[150vh] aspect-[3/2] mx-auto overflow-hidden relative focus:outline-none focus-visible:ring-2 focus-visible:ring-zicada-accent" aria-label="{{ promo.title|default:'Publicidad Zicada' }}">
         {% else %}
-        <div class="w-full h-[clamp(50dvh,70vw,100dvh)] overflow-hidden relative">
+        <div class="w-full max-w-[150vh] aspect-[3/2] mx-auto overflow-hidden relative">
         {% endif %}
             <img src="{{ promo.image.url }}" alt="{{ promo.title|default:'' }}"
-                class="w-full h-full object-cover"
+                class="w-full h-full object-cover object-center"
                 loading="lazy">
         {% if promo.link_url %}</a>{% else %}</div>{% endif %}
         {% endfor %}
