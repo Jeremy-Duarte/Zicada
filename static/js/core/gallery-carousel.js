@@ -1,7 +1,3 @@
-/**
- * Galería con carrusel infinito suave.
- * Hover pausa, click centra + cooldown 500ms, flechas navegan.
- */
 (function () {
     var track = document.getElementById('galleryTrack');
     var prevBtn = document.getElementById('galleryPrev');
@@ -19,9 +15,6 @@
 
     var targetPos = null;
     var EASING = 0.08;
-    var cooldown = false;
-    var cdTimer = null;
-    var CD_MS = 450; // tiempo muerto anti-sobreclick
     var activeFig = null;
 
     function measure() {
@@ -56,6 +49,10 @@
             if (Math.abs(targetPos - position) < 0.5) {
                 position = targetPos;
                 targetPos = null;
+                if (activeFig) {
+                    activeFig.style.pointerEvents = '';
+                    activeFig = null;
+                }
             }
         } else if (!paused) {
             position += speed * (delta / 16);
@@ -76,6 +73,7 @@
     if (prevBtn) {
         prevBtn.addEventListener('click', function () {
             targetPos = null;
+            if (activeFig) { activeFig.style.pointerEvents = ''; activeFig = null; }
             position -= itemWidth;
             position = wrap(position);
             track.style.transform = 'translateX(' + (-position) + 'px)';
@@ -86,6 +84,7 @@
     if (nextBtn) {
         nextBtn.addEventListener('click', function () {
             targetPos = null;
+            if (activeFig) { activeFig.style.pointerEvents = ''; activeFig = null; }
             position += itemWidth;
             position = wrap(position);
             track.style.transform = 'translateX(' + (-position) + 'px)';
@@ -94,25 +93,16 @@
         nextBtn.addEventListener('mouseleave', resume);
     }
 
-    // Click sobre imagen original → centrar con animacion + cooldown
+    // Click sobre imagen original → centrar con animacion
     Array.prototype.forEach.call(track.children, function (fig, i) {
         if (i >= track.children.length / 2) return; // solo originales, no clones
 
         fig.addEventListener('click', function (e) {
-            if (cooldown) return;
-            cooldown = true;
             paused = true;
 
-            if (activeFig) activeFig.style.pointerEvents = '';
+            if (activeFig && activeFig !== fig) activeFig.style.pointerEvents = '';
             activeFig = fig;
             activeFig.style.pointerEvents = 'none';
-
-            clearTimeout(cdTimer);
-            cdTimer = setTimeout(function () {
-                cooldown = false;
-                if (activeFig) activeFig.style.pointerEvents = '';
-                activeFig = null;
-            }, CD_MS);
 
             var off = fig.offsetLeft;
             var centerAdjust = (containerWidth - fig.offsetWidth) / 2;
@@ -126,6 +116,5 @@
 
     window.addEventListener('beforeunload', function () {
         if (raf) cancelAnimationFrame(raf);
-        clearTimeout(cdTimer);
     });
 })();

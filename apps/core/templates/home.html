@@ -193,16 +193,14 @@ reflejan tu estilo. Envíos a todo el país.{% endblock %}
                 {% for item in gallery_items %}
                 <figure class="shrink-0 w-[75vw] sm:w-[calc(50%-1rem)] lg:w-[calc(33.333%-1rem)]" data-gallery-original="true">
                     <img src="{{ item.image.url }}" alt="{{ item.alt_text }}"
-                        class="w-full aspect-[4/5] object-cover rounded-lg transition-transform duration-300 hover:scale-[1.02]"
-                        loading="lazy">
+                        class="w-full aspect-[4/5] object-cover rounded-lg transition-transform duration-300 hover:scale-[1.02]">
                     <figcaption class="sr-only">{{ item.description }}</figcaption>
                 </figure>
                 {% endfor %}
                 {% for item in gallery_items %}
                 <figure class="shrink-0 w-[75vw] sm:w-[calc(50%-1rem)] lg:w-[calc(33.333%-1rem)]" aria-hidden="true">
                     <img src="{{ item.image.url }}" alt=""
-                        class="w-full aspect-[4/5] object-cover rounded-lg transition-transform duration-300 hover:scale-[1.02]"
-                        loading="lazy">
+                        class="w-full aspect-[4/5] object-cover rounded-lg transition-transform duration-300 hover:scale-[1.02]">
                 </figure>
                 {% endfor %}
             </div>
