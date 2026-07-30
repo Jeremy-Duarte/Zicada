@@ -12,20 +12,23 @@
     var halfway = 0;
     var itemWidth = 0;
     var containerWidth = 0;
-
-    var targetPos = null;
-    var EASING = 0.08;
-    var activeFig = null;
+    var totalFigs = 0;
+    var currentIdx = 0;
 
     function measure() {
         halfway = 0;
-        var count = track.children.length / 2;
-        for (var i = 0; i < count; i++) {
+        totalFigs = track.children.length / 2;
+        for (var i = 0; i < totalFigs; i++) {
             var child = track.children[i];
             if (child) halfway += child.offsetWidth + 24;
         }
         itemWidth = track.children[0] ? track.children[0].offsetWidth + 24 : 300;
         containerWidth = track.parentElement.clientWidth;
+    }
+
+    function posToIdx(pos) {
+        var centerPos = pos + containerWidth / 2;
+        return Math.round(centerPos / halfway * totalFigs) % (totalFigs * 2);
     }
 
     function wrap(pos) {
@@ -35,6 +38,7 @@
     }
 
     measure();
+
     window.addEventListener('resize', function () {
         measure();
         track.style.transform = 'translateX(' + (-position) + 'px)';
@@ -44,21 +48,12 @@
         if (!lastTs) lastTs = ts;
         var delta = Math.min(ts - lastTs, 200);
 
-        if (targetPos !== null) {
-            position += (targetPos - position) * EASING;
-            if (Math.abs(targetPos - position) < 0.5) {
-                position = targetPos;
-                targetPos = null;
-                if (activeFig) {
-                    activeFig.style.pointerEvents = '';
-                    activeFig = null;
-                }
-            }
-        } else if (!paused) {
+        if (!paused) {
             position += speed * (delta / 16);
         }
 
-        if (targetPos === null) position = wrap(position);
+        position = wrap(position);
+        currentIdx = posToIdx(position);
         track.style.transform = 'translateX(' + (-position) + 'px)';
         lastTs = ts;
         raf = requestAnimationFrame(loop);
@@ -72,8 +67,6 @@
 
     if (prevBtn) {
         prevBtn.addEventListener('click', function () {
-            targetPos = null;
-            if (activeFig) { activeFig.style.pointerEvents = ''; activeFig = null; }
             position -= itemWidth;
             position = wrap(position);
             track.style.transform = 'translateX(' + (-position) + 'px)';
@@ -83,8 +76,6 @@
     }
     if (nextBtn) {
         nextBtn.addEventListener('click', function () {
-            targetPos = null;
-            if (activeFig) { activeFig.style.pointerEvents = ''; activeFig = null; }
             position += itemWidth;
             position = wrap(position);
             track.style.transform = 'translateX(' + (-position) + 'px)';
@@ -93,22 +84,25 @@
         nextBtn.addEventListener('mouseleave', resume);
     }
 
-    // Click sobre imagen original → centrar con animacion
     Array.prototype.forEach.call(track.children, function (fig, i) {
-        if (i >= track.children.length / 2) return; // solo originales, no clones
+        if (i >= track.children.length / 2) return;
 
         fig.addEventListener('click', function (e) {
             paused = true;
 
-            if (activeFig && activeFig !== fig) activeFig.style.pointerEvents = '';
-            activeFig = fig;
-            activeFig.style.pointerEvents = 'none';
+            var candidate1 = i;
+            var candidate2 = i + totalFigs;
+            var d1 = Math.abs(candidate1 - currentIdx);
+            var d2 = Math.abs(candidate2 - currentIdx);
+            var idx = d1 <= d2 ? candidate1 : candidate2;
 
-            var off = fig.offsetLeft;
-            var centerAdjust = (containerWidth - fig.offsetWidth) / 2;
-            var t1 = off - centerAdjust;
-            var t2 = off + halfway - centerAdjust;
-            targetPos = Math.abs(t1 - position) <= Math.abs(t2 - position) ? t1 : t2;
+            var figIdx = idx % totalFigs;
+            var figEl = track.children[figIdx];
+            var off = figEl.offsetLeft;
+            var centerAdjust = (containerWidth - figEl.offsetWidth) / 2;
+            position = idx < totalFigs ? off - centerAdjust : off + halfway - centerAdjust;
+            position = wrap(position);
+            track.style.transform = 'translateX(' + (-position) + 'px)';
         });
     });
 
