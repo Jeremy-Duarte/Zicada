@@ -2,13 +2,24 @@
 
 <div id="products-container" class="flex-1 min-w-0">
     {% if products %}
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-5 gap-y-8">
+    <div id="products-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
         {% for product in products %}
-        <div>{% include 'components/product_card.html' with product=product %}</div>
+            {% for product_color in product.product_colors.all %}
+            <div>
+                {% include 'components/product_card.html' with product=product product_color=product_color %}
+            </div>
+            {% endfor %}
         {% endfor %}
     </div>
     {% include 'components/pagination.html' %}
     {% else %}
-    {% include 'components/empty_state.html' with message="No hay productos disponibles." submessage="¡Vuelve pronto para descubrir nuestros nuevos productos!" %}
+    <div class="text-center py-20 text-neutral-500">
+        <svg class="mx-auto w-16 h-16 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+        </svg>
+        <p class="text-lg font-semibold">No hay productos disponibles</p>
+        <p class="text-sm mt-1">¡Vuelve pronto para descubrir nuestros nuevos productos!</p>
+        <a href="{% url 'products:catalog' %}" class="mt-6 inline-block bg-zicada-accent text-white px-8 py-3 rounded-lg font-semibold hover:bg-zicada-accent/90 transition">Ver todos</a>
+    </div>
     {% endif %}
 </div>
