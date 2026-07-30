@@ -32,23 +32,16 @@
                     {{ product.description|default:"Sin descripción disponible." }}
                 </p>
 
-                {% if colors_data|length > 1 %}
-                <div class="flex flex-wrap gap-2" id="color-thumbnails" role="radiogroup" aria-label="Colores">
-                    {% for color in colors_data %}
+                {% if first_color_images %}
+                <div class="flex flex-wrap gap-2" id="image-thumbnails" role="radiogroup" aria-label="Imágenes">
+                    {% for image_url in first_color_images %}
                     <button type="button"
-                            data-pc-id="{{ color.pc_id }}"
-                            class="color-thumb-btn w-14 h-14 flex-shrink-0 border-2 rounded-lg overflow-hidden transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white
-                                   {% if color.pc_id == first_pc_id %}border-zicada-accent{% else %}border-neutral-800 hover:border-neutral-500{% endif %}"
-                            aria-label="{{ color.color_name }}"
-                            {% if color.pc_id == first_pc_id %}aria-checked="true"{% endif %}>
-                        {% if color.featured_image %}
-                        <img src="{{ color.featured_image }}" alt="{{ color.color_name }}"
-                             class="w-full h-full object-contain bg-neutral-950">
-                        {% else %}
-                        <div class="w-full h-full flex items-center justify-center bg-neutral-900 text-[10px] text-neutral-500">
-                            {{ color.color_name|slice:":2" }}
-                        </div>
-                        {% endif %}
+                            data-index="{{ forloop.counter0 }}"
+                            class="thumb-btn w-14 h-14 flex-shrink-0 border-2 rounded-lg overflow-hidden transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white
+                                   {% if forloop.first %}border-zicada-accent{% else %}border-neutral-800 hover:border-neutral-500{% endif %}"
+                            aria-label="Imagen {{ forloop.counter }}">
+                        <img src="{{ image_url }}" alt="{{ product.name }}"
+                             class="w-full h-full object-contain bg-neutral-950" loading="lazy">
                     </button>
                     {% endfor %}
                 </div>
@@ -190,7 +183,7 @@
     var clearBtn       = document.getElementById('clear-selection-btn');
     var stockHint      = document.getElementById('stock-hint');
     var sizeError      = document.getElementById('size-error');
-    var thumbContainer = document.getElementById('color-thumbnails');
+    var thumbContainer = document.getElementById('image-thumbnails');
 
     /* ── Helpers ── */
     function getColorData(pcId) {
@@ -235,35 +228,11 @@
         }
     }
 
-    function selectColor(pcId) {
-        if (pcId === currentColor && galleryTrack.children.length) return;
-        currentColor = pcId;
-        currentImageIdx = 0;
-
-        var total = buildGalleryImages(pcId);
-        updateArrows(total);
-        snapToImage();
-        updateSizeButtons(pcId);
-        updateStockInfo();
-        updateButtons();
-        highlightThumbnail(pcId);
-        updateTitle(pcId);
-    }
-
-    function updateTitle(pcId) {
-        var titleEl = document.getElementById('detail-title');
-        if (!titleEl) return;
-        var cd = getColorData(pcId);
-        var colorName = cd ? cd.color_name : '';
-        titleEl.textContent = '{{ product.name|escapejs }} ' + colorName;
-    }
-
-    function highlightThumbnail(pcId) {
+    function highlightActiveThumbnail(idx) {
         if (!thumbContainer) return;
-        var btns = thumbContainer.querySelectorAll('.color-thumb-btn');
-        btns.forEach(function (btn) {
-            var p = parseInt(btn.getAttribute('data-pc-id'));
-            if (p === pcId) {
+        var btns = thumbContainer.querySelectorAll('.thumb-btn');
+        btns.forEach(function (btn, i) {
+            if (i === idx) {
                 btn.classList.add('border-zicada-accent');
                 btn.classList.remove('border-neutral-800', 'hover:border-neutral-500');
             } else {
@@ -271,6 +240,15 @@
                 btn.classList.add('border-neutral-800', 'hover:border-neutral-500');
             }
         });
+    }
+
+    function navigateToImage(idx) {
+        var slides = galleryTrack.querySelectorAll('.gallery-slide');
+        if (idx < 0 || idx >= slides.length) return;
+        currentImageIdx = idx;
+        slides[idx].scrollIntoView({ behavior: 'smooth', block: 'center' });
+        updateArrows(slides.length);
+        highlightActiveThumbnail(idx);
     }
 
     /* ── Size buttons ── */
@@ -357,6 +335,7 @@
             var active = slides[currentImageIdx];
             if (active) active.scrollIntoView({ behavior: 'smooth', block: 'center' });
             updateArrows(slides.length);
+            highlightActiveThumbnail(currentImageIdx);
         });
     }
     if (arrowDown) {
@@ -367,16 +346,17 @@
             var active = slides[currentImageIdx];
             if (active) active.scrollIntoView({ behavior: 'smooth', block: 'center' });
             updateArrows(slides.length);
+            highlightActiveThumbnail(currentImageIdx);
         });
     }
 
-    /* ── Color thumbnail clicks ── */
+    /* ── Image thumbnail clicks ── */
     if (thumbContainer) {
         thumbContainer.addEventListener('click', function (e) {
-            var btn = e.target.closest('.color-thumb-btn');
+            var btn = e.target.closest('.thumb-btn');
             if (!btn) return;
-            var pcId = parseInt(btn.getAttribute('data-pc-id'));
-            if (pcId) selectColor(pcId);
+            var idx = parseInt(btn.getAttribute('data-index'));
+            if (!isNaN(idx)) navigateToImage(idx);
         });
     }
 
@@ -457,7 +437,7 @@
         updateSizeButtons(firstPcId);
         updateButtons();
         updateArrows(initialImages);
-        highlightThumbnail(firstPcId);
+        highlightActiveThumbnail(0);
     }
 
     /* ── Keyboard: gallery navigation ── */
