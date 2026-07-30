@@ -189,11 +189,11 @@ reflejan tu estilo. Envíos a todo el país.{% endblock %}
         </div>
 
         <div id="galleryCarousel" class="relative" role="region" aria-label="Galería de fotos">
-            <div id="galleryTrack" class="flex gap-6 overflow-x-auto snap-x snap-mandatory scroll-smooth py-2">
+            <div id="galleryTrack" class="flex gap-6 overflow-x-auto py-2">
                 {% for item in gallery_items %}
-                <figure class="shrink-0 w-[75vw] md:w-[50vw] lg:w-[35vw] snap-center">
+                <figure class="shrink-0 w-[75vw] sm:w-[calc(50%-1rem)] lg:w-[calc(33.333%-1rem)]">
                     <img src="{{ item.image.url }}" alt="{{ item.alt_text }}"
-                        class="w-full aspect-[4/5] object-cover rounded-xl transition-transform duration-300 hover:scale-[1.02]"
+                        class="w-full aspect-[4/5] object-cover rounded-lg transition-transform duration-300 hover:scale-[1.02]"
                         loading="lazy" data-gallery-idx="{{ forloop.counter0 }}">
                     <figcaption class="sr-only">{{ item.description }}</figcaption>
                 </figure>
@@ -213,106 +213,31 @@ reflejan tu estilo. Envíos a todo el país.{% endblock %}
                 </svg>
             </button>
         </div>
-
-        <div class="container mx-auto px-4 mt-10 md:mt-14">
-            <a href="https://instagram.com/zicada_lu" target="_blank" rel="noopener noreferrer"
-                class="inline-flex items-center gap-2 text-zicada-accent font-semibold hover:gap-3 transition-all">
-                explorar más
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                </svg>
-            </a>
-        </div>
     </section>
     {% endif %}
 
     <!-- Conoce más de nosotros — botón estilo hero -->
     <section class="py-20 md:py-28 text-center bg-black">
-        <div class="max-w-3xl mx-auto px-4">
-            <h2 class="text-3xl md:text-5xl font-extrabold tracking-tight mb-4">Conoce más de nosotros</h2>
-            <p class="text-gray-400 text-sm md:text-base max-w-xl mx-auto mb-8">
-                Descubre la historia detrás de Zicada, nuestra pasión por el streetwear y el arte de crear prendas únicas que expresan tu personalidad.
-            </p>
             <a href="{% url 'core:about' %}"
                 class="inline-block bg-zicada-accent hover:bg-zicada-accent/90 text-white font-semibold px-10 py-4 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg">
-                Explorar
+                Explorar más
             </a>
-        </div>
     </section>
 
 </div><!-- /bg-black font-opensans -->
 
 <style>
-    /* Carrusel de galería — scroll snap + smooth */
     #galleryTrack::-webkit-scrollbar { display: none; }
     #galleryTrack { scrollbar-width: none; }
     @media (prefers-reduced-motion: reduce) {
         #galleryTrack { scroll-behavior: auto; }
     }
 </style>
+{% endblock %}
 
-<script>
-    (function () {
-        // Galería auto-avance con pausa en hover
-        document.addEventListener('DOMContentLoaded', function () {
-            const track = document.getElementById('galleryTrack');
-            const prevBtn = document.getElementById('galleryPrev');
-            const nextBtn = document.getElementById('galleryNext');
-            if (!track || track.children.length < 2) return;
-
-            let interval;
-
-            function startAutoSlide() {
-                if (interval) return;
-                interval = setInterval(function () {
-                    var next = track.scrollLeft + track.clientWidth * 0.8;
-                    track.scrollTo({ left: next, behavior: 'smooth' });
-                }, 4000);
-            }
-
-            function stopAutoSlide() {
-                if (interval) {
-                    clearInterval(interval);
-                    interval = null;
-                }
-            }
-
-            function scrollToChild(dir) {
-                var childWidth = track.children[0]?.offsetWidth || 300;
-                var gap = 24; // gap-6
-                var target = dir === 'next'
-                    ? track.scrollLeft + childWidth + gap
-                    : track.scrollLeft - childWidth - gap;
-                track.scrollTo({ left: target, behavior: 'smooth' });
-            }
-
-            if (prevBtn) prevBtn.addEventListener('click', function () { stopAutoSlide(); scrollToChild('prev'); });
-            if (nextBtn) nextBtn.addEventListener('click', function () { stopAutoSlide(); scrollToChild('next'); });
-
-            track.addEventListener('mouseenter', stopAutoSlide);
-            track.addEventListener('mouseleave', startAutoSlide);
-
-            // Al hacer hover sobre una imagen, centrarla
-            Array.from(track.children).forEach(function (fig) {
-                fig.addEventListener('mouseenter', function () {
-                    stopAutoSlide();
-                    var img = fig.querySelector('img');
-                    if (img) {
-                        var gap = 24;
-                        var left = fig.offsetLeft - (track.clientWidth - fig.offsetWidth) / 2 + gap;
-                        track.scrollTo({ left: left, behavior: 'smooth' });
-                    }
-                });
-                fig.addEventListener('mouseleave', function () {
-                    startAutoSlide();
-                });
-            });
-
-            startAutoSlide();
-        });
-    })();
-</script>
-
+{% block extra_js %}
+{{ block.super }}
+<script defer src="{% static 'js/core/gallery-carousel.js' %}"></script>
 <script>
     (function () {
         // Carrusel del hero (aprobado por el cliente — no modificar)
@@ -376,5 +301,4 @@ reflejan tu estilo. Envíos a todo el país.{% endblock %}
         });
     })();
 </script>
-
 {% endblock %}
