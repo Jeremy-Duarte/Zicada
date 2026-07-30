@@ -587,10 +587,12 @@ class CollectionDetailView(BaseProductListView):
         return super().dispatch(request, *args, **kwargs)
     
     def get_queryset(self):
-        # HU-006 | ESCENARIO 1 | H | Productos de la colección filtrados
         qs = super().get_queryset().filter(is_active=PRODUCT_FILTER_ACTIVE)
         qs = qs.filter(collections=self.collection)
-        return qs
+        return qs.select_related('category').prefetch_related(
+            Prefetch('product_colors', queryset=ProductColor.objects.filter(is_active=True).select_related('color').order_by('sort_order')),
+            'product_colors__images',
+        )
     
     def get_template_names(self):
         if self.request.headers.get('HX-Request'):
