@@ -12,9 +12,6 @@
     var halfway = 0;
     var itemWidth = 0;
 
-    var targetPos = null;
-    var EASING = 0.08;
-
     function measure() {
         halfway = 0;
         var count = track.children.length / 2;
@@ -42,17 +39,11 @@
         if (!lastTs) lastTs = ts;
         var delta = Math.min(ts - lastTs, 200);
 
-        if (targetPos !== null) {
-            position += (targetPos - position) * EASING;
-            if (Math.abs(targetPos - position) < 0.5) {
-                position = targetPos;
-                targetPos = null;
-            }
-        } else if (!paused) {
+        if (!paused) {
             position += speed * (delta / 16);
         }
 
-        if (targetPos === null) position = wrap(position);
+        position = wrap(position);
         track.style.transform = 'translateX(' + (-position) + 'px)';
         lastTs = ts;
         raf = requestAnimationFrame(loop);
@@ -82,15 +73,6 @@
         nextBtn.addEventListener('mouseenter', pause);
         nextBtn.addEventListener('mouseleave', resume);
     }
-
-    Array.prototype.forEach.call(track.children, function (fig, i) {
-        if (i >= track.children.length / 2) return;
-
-        fig.addEventListener('click', function (e) {
-            paused = true;
-            targetPos = position + itemWidth;
-        });
-    });
 
     raf = requestAnimationFrame(loop);
 
