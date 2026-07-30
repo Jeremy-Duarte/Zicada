@@ -9,13 +9,13 @@
     <div>
         {% for collection in collections %}
         <a href="{% url 'products:collection_detail' collection.slug %}"
-           class="group block">
-            <div class="px-4 md:px-8 py-5 md:py-7">
+           class="group flex flex-col">
+            <div class="h-[25dvh] flex items-center px-4 md:px-8">
                 <h2 class="font-extrabold text-5xl md:text-7xl lg:text-8xl tracking-tight leading-none">
                     {{ collection.name }}
                 </h2>
             </div>
-            <div class="relative w-full h-dvh overflow-hidden">
+            <div class="relative h-[75dvh] overflow-hidden">
                 {% if collection.cover_image %}
                 <img src="{{ collection.cover_image.url }}" alt="{{ collection.name }}"
                      class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105">
@@ -26,7 +26,7 @@
                 <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
 
                 <div class="absolute bottom-8 md:bottom-12 left-4 md:left-8 z-10">
-                    <span class="flex items-center justify-center w-16 h-16 border border-white text-white rounded-lg text-xs font-semibold tracking-wider
+                    <span class="flex items-center justify-center w-24 h-24 md:w-28 md:h-28 border border-white text-white rounded-xl text-sm md:text-base font-semibold tracking-widest leading-tight text-center p-2
                                  transition group-hover:bg-white/10">
                         BUY<br>NOW
                     </span>
