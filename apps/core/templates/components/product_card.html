@@ -1,16 +1,16 @@
 {% comment %}
-Product Card simplificada para el home.
-Espera: product (objeto Product con .slug, .name) + product_color (ProductColor con .color.name, .featured_image, .images).
-Muestra: foto aspect-[4/5] + "Producto - Color" debajo.
+Product Card simplificada para el home — cada color es su propia tarjeta.
+Espera: product (con .slug, .name) + product_color (con .color.name, .featured_image, .images).
+Muestra: foto aspect-[4/5] con bordes suaves + texto PRODUCTO COLOR en italic.
 {% endcomment %}
 
 {% with image=product_color.featured_image|default:product_color.images.first %}
 <a href="{% url 'products:product_detail' product.slug %}"
-   class="group block w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-zicada-accent rounded-xl overflow-hidden">
-    <div class="aspect-[4/5] overflow-hidden rounded-xl bg-neutral-900">
+   class="group block w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-zicada-accent rounded-lg overflow-hidden">
+    <div class="aspect-[4/5] overflow-hidden rounded-lg bg-neutral-900">
         {% if image and image.image %}
         <img src="{{ image.image.url }}"
-             alt="{{ product.name }} - {{ product_color.color.name }}"
+             alt="{{ product.name }} {{ product_color.color.name }}"
              class="w-full h-full object-cover group-hover:scale-105 transition duration-500"
              loading="lazy">
         {% else %}
@@ -22,8 +22,8 @@ Muestra: foto aspect-[4/5] + "Producto - Color" debajo.
         </div>
         {% endif %}
     </div>
-    <p class="mt-3 text-sm font-semibold text-white group-hover:text-zicada-accent transition line-clamp-1">
-        {{ product.name }} &mdash; {{ product_color.color.name }}
+    <p class="pt-[5%] text-base font-semibold text-white uppercase group-hover:text-zicada-accent transition line-clamp-2 leading-tight">
+        {{ product.name }} <em class="italic">{{ product_color.color.name }}</em>
     </p>
 </a>
 {% endwith %}
