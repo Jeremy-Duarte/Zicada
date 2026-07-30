@@ -8,11 +8,17 @@
 <style>
     #gallery-viewport {
         scroll-snap-type: y mandatory;
+        scroll-behavior: smooth;
+        overscroll-behavior: contain;
         -webkit-overflow-scrolling: touch;
         scrollbar-width: none;
     }
     #gallery-viewport::-webkit-scrollbar { display: none; }
-    .gallery-slide { scroll-snap-align: center; }
+    .gallery-slide {
+        scroll-snap-align: center;
+        max-height: 55dvh;
+        flex-shrink: 0;
+    }
 </style>
 {% endblock %}
 
@@ -62,7 +68,7 @@
                 {# Image viewport — shows current image + glimpses of next/prev #}
                 <div id="gallery-viewport"
                      class="w-full max-w-[500px] mx-auto overflow-y-scroll"
-                     style="max-height: min(70dvh, 600px);">
+                     style="max-height: min(80dvh, 600px);">
 
                     <div id="gallery-track" class="flex flex-col">
                         {% if first_color %}
