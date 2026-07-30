@@ -4,135 +4,463 @@
 {% block title %}{{ product.name }} - Zicada{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/products/product_detail.css' %}">
+{{ block.super }}
+<style>
+    #gallery-viewport {
+        scroll-snap-type: y mandatory;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+    #gallery-viewport::-webkit-scrollbar { display: none; }
+    .gallery-slide { scroll-snap-align: center; }
+</style>
 {% endblock %}
 
 {% block content %}
-<div class="container mx-auto px-4 py-16 max-w-7xl">
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-16">
-        
-        <!-- COLUMNA IZQUIERDA: Galería -->
-        <div>
-            <div class="bg-gray-100 rounded-2xl overflow-hidden mb-4 shadow-sm">
-                <img id="main-image" 
-                    src="{% if gallery_images %}{{ gallery_images.0.image }}{% else %}{% static 'img/product-placeholder.jpeg' %}{% endif %}" 
-                    alt="{{ product.name }}" 
-                    class="w-full aspect-[4/5] max-h-[80dvh] object-cover">
-            </div>
-            
-            {% if gallery_images|length > 1 %}
-            <div class="grid grid-cols-4 gap-3" id="thumbnail-gallery">
-                {% for gallery_item in gallery_images %}
-                <div class="product-gallery-thumb rounded-lg overflow-hidden bg-gray-100 shadow-sm"
-                    data-image="{{ gallery_item.image }}"
-                    data-color-id="{{ gallery_item.color_id }}"
-                    data-color-name="{{ gallery_item.color_name }}">
-                    {% if gallery_item.image %}
-                        <img src="{{ gallery_item.image }}" alt="{{ gallery_item.color_name }}" class="w-full aspect-[4/3] object-cover">
-                    {% else %}
-                        <div class="w-full aspect-[4/3] bg-gray-200 flex items-center justify-center text-xs text-gray-500">
-                            Sin imagen
+<div class="bg-black text-white font-opensans min-h-dvh">
+    <div class="max-w-[1360px] mx-auto px-4 py-8 md:py-12">
+
+        {# ─── Mobile: 1 col | Desktop: 3 cols ─── #}
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-10">
+
+            {# ═══════════ CAJA 1 — Info + Thumbnails ═══════════ #}
+            <div class="lg:col-span-1 order-1 flex flex-col gap-5">
+                <h1 class="font-poppins font-extrabold text-2xl md:text-3xl tracking-tight">
+                    {{ product.name }}
+                </h1>
+                <p class="text-sm md:text-base text-neutral-400 leading-relaxed max-w-prose">
+                    {{ product.description|default:"Sin descripción disponible." }}
+                </p>
+
+                {% if colors_data|length > 1 %}
+                <div class="flex flex-wrap gap-2" id="color-thumbnails" role="radiogroup" aria-label="Colores">
+                    {% for color in colors_data %}
+                    <button type="button"
+                            data-pc-id="{{ color.pc_id }}"
+                            class="color-thumb-btn w-14 h-14 flex-shrink-0 border-2 rounded-lg overflow-hidden transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white
+                                   {% if forloop.first %}border-zicada-accent{% else %}border-neutral-800 hover:border-neutral-500{% endif %}"
+                            aria-label="{{ color.color_name }}"
+                            {% if forloop.first %}aria-checked="true"{% endif %}>
+                        {% if color.featured_image %}
+                        <img src="{{ color.featured_image }}" alt="{{ color.color_name }}"
+                             class="w-full h-full object-contain bg-neutral-950">
+                        {% else %}
+                        <div class="w-full h-full flex items-center justify-center bg-neutral-900 text-[10px] text-neutral-500">
+                            {{ color.color_name|slice:":2" }}
                         </div>
-                    {% endif %}
-                    <div class="text-center text-xs py-1 text-gray-600">{{ gallery_item.color_name }}</div>
+                        {% endif %}
+                    </button>
+                    {% endfor %}
                 </div>
-                {% endfor %}
-            </div>
-            {% endif %}
-        </div>
-        
-        <!-- COLUMNA DERECHA: Información del producto -->
-        <div class="flex flex-col gap-6">
-            <div>
-                <span class="text-sm text-gray-600 uppercase tracking-wider">{{ product.category.name }}</span>
-                <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mt-1">{{ product.name }}</h1>
-            </div>
-            
-            <div class="flex items-baseline gap-2">
-                <span id="product-price" class="text-3xl font-bold product-price">${{ product.price|floatformat:0 }}</span>
-                <span class="text-gray-500">COP</span>
-            </div>
-            
-            <div class="description-text">
-                <p>{{ product.description|default:"Sin descripción disponible." }}</p>
-            </div>
-            
-            <!-- Selector de COLOR -->
-            <div>
-                <h3 class="section-title mb-3">Color</h3>
-                <div class="flex flex-wrap gap-3" id="color-selector"></div>
-            </div>
-            
-            <!-- Selector de TALLA -->
-            <div>
-                <div class="flex justify-between items-center mb-3">
-                    <h3 class="section-title">Talla</h3>
-                    <a href="#" class="text-sm guide-link">Guía de tallas</a>
-                </div>
-                <div class="flex flex-wrap gap-3" id="size-selector"></div>
-                <div id="stock-info" class="mt-2 text-sm text-gray-600"></div>
-            </div>
-            
-            <!-- Selector de CANTIDAD -->
-            <div>
-                <h3 class="section-title mb-3">Cantidad</h3>
-                <div class="flex items-center gap-3">
-                    <button class="quantity-btn" id="decrease-qty">−</button>
-                    <input type="number" id="quantity" value="1" min="1" max="99" class="quantity-input">
-                    <button class="quantity-btn" id="increase-qty">+</button>
-                </div>
+                {% endif %}
             </div>
 
-            <div class="grid grid-cols-2 gap-4">
-                <button id="clear-selection-btn"
-                        class="clear-btn py-3 rounded-lg font-medium">
-                    Limpiar
-            </button>
-                <button id="add-to-cart-btn"
-                        class="add-to-cart-btn py-3 rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed">
-                    Agregar al carrito
+            {# ═══════════ CAJA 2 — Image Gallery ═══════════ #}
+            <div class="lg:col-span-1 order-2 flex flex-col items-center gap-3">
+                {# Navigation arrow up #}
+                <button id="gallery-arrow-up"
+                        class="w-10 h-10 flex items-center justify-center text-neutral-400 hover:text-white transition disabled:opacity-30"
+                        aria-label="Imagen anterior">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/>
+                    </svg>
                 </button>
+
+                {# Image viewport — shows current image + glimpses of next/prev #}
+                <div id="gallery-viewport"
+                     class="w-full max-w-[500px] mx-auto overflow-y-scroll"
+                     style="max-height: min(70dvh, 600px);">
+
+                    <div id="gallery-track" class="flex flex-col">
+                        {% if first_color %}
+                            {% for image_url in first_color.images %}
+                            <img src="{{ image_url }}"
+                                 class="gallery-slide w-full h-auto"
+                                 alt="{{ product.name }} {{ first_color.color_name }}"
+                                 loading="{% if forloop.first %}eager{% else %}lazy{% endif %}">
+                            {% endfor %}
+                        {% else %}
+                            <div class="w-full aspect-[3/4] flex items-center justify-center bg-neutral-900 text-neutral-600 text-sm">
+                                Sin imágenes
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                {# Navigation arrow down #}
+                <button id="gallery-arrow-down"
+                        class="w-10 h-10 flex items-center justify-center text-neutral-400 hover:text-white transition disabled:opacity-30"
+                        aria-label="Imagen siguiente">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                </button>
+
+                <div id="gallery-counter" class="text-xs text-neutral-500">
+                    1 / {{ first_color.images|length|default:"1" }}
+                </div>
             </div>
 
-            <div id="stock-warning" class="stock-warning text-sm hidden">
-                ⚠️ Stock insuficiente
+            {# ═══════════ CAJA 3 — Price + Sizes + Cart ═══════════ #}
+            <div class="lg:col-span-1 order-3 flex flex-col gap-6">
+                <div>
+                    <span class="text-3xl font-bold tracking-tight">${{ product.price|floatformat:0 }}</span>
+                    <span class="text-sm text-neutral-400 ml-1">COP</span>
+                </div>
+
+                <div>
+                    <div class="flex items-baseline gap-4 mb-3">
+                        <h3 class="text-xs font-semibold text-neutral-400 uppercase tracking-wider">Talla</h3>
+                        <span id="size-error" class="hidden text-xs text-zicada-accent">Selecciona una talla</span>
+                    </div>
+                    <div class="flex flex-wrap gap-2" id="size-selector" role="radiogroup" aria-label="Tallas">
+                        {% for size in sizes_data %}
+                        <button type="button"
+                                data-size-id="{{ size.id }}"
+                                class="size-btn px-4 py-2 border border-zicada-accent rounded-lg text-sm transition
+                                       hover:bg-zicada-accent hover:text-white
+                                       focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                                aria-label="Talla {{ size.name }}">
+                            {{ size.name }}
+                        </button>
+                        {% empty %}
+                        <p class="text-sm text-neutral-500">Sin tallas disponibles</p>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="flex flex-col gap-3">
+                    <button id="add-to-cart-btn"
+                            class="w-full bg-zicada-accent text-white py-3.5 rounded-lg font-semibold tracking-wide transition
+                                   hover:bg-zicada-accent/90 active:scale-[0.98]
+                                   disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-zicada-accent"
+                            disabled>
+                        AGREGAR AL CARRITO
+                    </button>
+
+                    <button id="clear-selection-btn"
+                            class="w-full border border-neutral-700 text-neutral-400 py-3 rounded-lg text-sm transition
+                                   hover:border-neutral-500 hover:text-white
+                                   disabled:opacity-30 disabled:cursor-not-allowed"
+                            disabled>
+                        LIMPIAR SELECCIÓN
+                    </button>
+                </div>
+
+                <div id="stock-hint" class="text-xs text-neutral-500"></div>
+            </div>
+
         </div>
     </div>
-        </div>
-
-    {% if related_products %}
-    <section class="mt-24">
-        <h3 class="text-2xl font-bold text-gray-900 mb-8">También te puede interesar</h3>
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
-            {% for related in related_products %}
-                {% include 'components/product_card.html' with product=related %}
-            {% endfor %}
-        </div>
-    </section>
-    {% endif %}
 </div>
 {% endblock %}
 
 {% block extra_js %}
-    {{ product.id|json_script:"product-id" }}
-    
-    <script>
-        (function() {
-            const productIdElement = document.getElementById('product-id');
-            if (!productIdElement) return;
-            
-            globalThis.zicadaData = {
-                variants: JSON.parse('{{ variants_json|escapejs }}'),
-                gallery: JSON.parse('{{ gallery_images_json|escapejs }}'),
-                config: {
-                    cartAddUrl: "{% url 'orders:cart_add' %}",
-                    csrfToken: "{{ csrf_token|escapejs }}",
-                    staticPlaceholder: "{% static 'img/product-placeholder.jpeg' %}",
-                    productId: JSON.parse(productIdElement.textContent)
+{{ block.super }}
+{{ product.id|json_script:"product-id" }}
+
+<script>
+(function() {
+    "use strict";
+
+    /* ── Data from server ── */
+    var colorsData   = JSON.parse('{{ colors_json|escapejs }}');
+    var sizesData    = JSON.parse('{{ sizes_json|escapejs }}');
+    var pcSizes      = JSON.parse('{{ pc_sizes_json|escapejs }}');
+    var firstPcId    = {{ first_pc_id|default:"null" }};
+    var initialImages = {{ first_color_images|length|default:"1" }};
+
+    var cartAddUrl   = "{% url 'orders:cart_add' %}";
+    var csrfToken    = "{{ csrf_token|escapejs }}";
+    var productIdEl  = document.getElementById('product-id');
+    var productId    = productIdEl ? JSON.parse(productIdEl.textContent) : null;
+
+    var currentColor = colorsData.length ? colorsData[0].pc_id : null;
+    var currentImageIdx = 0;
+    var selectedSize = null;
+
+    /* ── DOM refs ── */
+    var galleryTrack   = document.getElementById('gallery-track');
+    var galleryViewport = document.getElementById('gallery-viewport');
+    var arrowUp        = document.getElementById('gallery-arrow-up');
+    var arrowDown      = document.getElementById('gallery-arrow-down');
+    var counter        = document.getElementById('gallery-counter');
+    var sizeSelector   = document.getElementById('size-selector');
+    var addBtn         = document.getElementById('add-to-cart-btn');
+    var clearBtn       = document.getElementById('clear-selection-btn');
+    var stockHint      = document.getElementById('stock-hint');
+    var sizeError      = document.getElementById('size-error');
+    var thumbContainer = document.getElementById('color-thumbnails');
+
+    /* ── Helpers ── */
+    function getColorData(pcId) {
+        for (var i = 0; i < colorsData.length; i++) {
+            if (colorsData[i].pc_id === pcId) return colorsData[i];
+        }
+        return colorsData[0];
+    }
+
+    function getVariant(pcId, sizeId) {
+        if (!pcSizes[String(pcId)]) return null;
+        return pcSizes[String(pcId)][String(sizeId)] || null;
+    }
+
+    function buildGalleryImages(pcId) {
+        var cd = getColorData(pcId);
+        var images = cd ? cd.images : [];
+        galleryTrack.innerHTML = '';
+        for (var i = 0; i < images.length; i++) {
+            var img = document.createElement('img');
+            img.src = images[i];
+            img.className = 'gallery-slide w-full h-auto';
+            img.alt = cd ? cd.color_name : '';
+            img.loading = 'lazy';
+            galleryTrack.appendChild(img);
+        }
+        return images.length;
+    }
+
+    function updateArrows(total) {
+        if (arrowUp) arrowUp.disabled = currentImageIdx <= 0;
+        if (arrowDown) arrowDown.disabled = currentImageIdx >= total - 1;
+        if (counter) counter.textContent = total ? (currentImageIdx + 1) + ' / ' + total : '0 / 0';
+    }
+
+    function snapToImage() {
+        var slides = galleryTrack.querySelectorAll('.gallery-slide');
+        if (!slides.length) return;
+        var active = slides[Math.min(currentImageIdx, slides.length - 1)];
+        if (active) {
+            active.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }
+
+    function selectColor(pcId) {
+        if (pcId === currentColor && galleryTrack.children.length) return;
+        currentColor = pcId;
+        currentImageIdx = 0;
+
+        var total = buildGalleryImages(pcId);
+        updateArrows(total);
+        snapToImage();
+        updateSizeButtons(pcId);
+        updateStockInfo();
+        updateButtons();
+        highlightThumbnail(pcId);
+    }
+
+    function highlightThumbnail(pcId) {
+        if (!thumbContainer) return;
+        var btns = thumbContainer.querySelectorAll('.color-thumb-btn');
+        btns.forEach(function (btn) {
+            var p = parseInt(btn.getAttribute('data-pc-id'));
+            if (p === pcId) {
+                btn.classList.add('border-zicada-accent');
+                btn.classList.remove('border-neutral-800', 'hover:border-neutral-500');
+            } else {
+                btn.classList.remove('border-zicada-accent');
+                btn.classList.add('border-neutral-800', 'hover:border-neutral-500');
+            }
+        });
+    }
+
+    /* ── Size buttons ── */
+    function updateSizeButtons(pcId) {
+        var btns = sizeSelector ? sizeSelector.querySelectorAll('.size-btn') : [];
+        btns.forEach(function (btn) {
+            var sid = parseInt(btn.getAttribute('data-size-id'));
+            var v = getVariant(pcId, sid);
+            if (v && v.available) {
+                btn.classList.remove('border-neutral-700', 'text-neutral-600');
+                btn.classList.add('border-zicada-accent', 'text-white');
+                btn.disabled = false;
+            } else {
+                btn.classList.add('border-neutral-700', 'text-neutral-600');
+                btn.classList.remove('border-zicada-accent', 'text-white', 'bg-zicada-accent');
+                btn.disabled = true;
+                if (selectedSize === sid) selectedSize = null;
+            }
+        });
+        // Clear selection if current size is not available
+        if (selectedSize !== null) {
+            var v = getVariant(pcId, selectedSize);
+            if (!v || !v.available) {
+                selectedSize = null;
+                clearSizeHighlight();
+            }
+        }
+        updateStockInfo();
+        updateButtons();
+    }
+
+    function selectSize(sizeId) {
+        if (selectedSize === sizeId) return;
+        selectedSize = sizeId;
+        highlightSizeButton(sizeId);
+        updateStockInfo();
+        updateButtons();
+        if (sizeError) sizeError.classList.add('hidden');
+    }
+
+    function highlightSizeButton(sizeId) {
+        var btns = sizeSelector ? sizeSelector.querySelectorAll('.size-btn') : [];
+        btns.forEach(function (btn) {
+            var sid = parseInt(btn.getAttribute('data-size-id'));
+            if (sid === sizeId && !btn.disabled) {
+                btn.classList.add('bg-zicada-accent', 'border-zicada-accent', 'text-white');
+            } else if (!btn.disabled) {
+                btn.classList.remove('bg-zicada-accent');
+            }
+        });
+    }
+
+    function clearSizeHighlight() {
+        var btns = sizeSelector ? sizeSelector.querySelectorAll('.size-btn') : [];
+        btns.forEach(function (btn) {
+            btn.classList.remove('bg-zicada-accent');
+        });
+    }
+
+    function updateStockInfo() {
+        if (!stockHint) return;
+        var v = currentColor && selectedSize ? getVariant(currentColor, selectedSize) : null;
+        if (v && v.available) {
+            stockHint.textContent = v.stock > 0 && v.stock <= 5
+                ? 'Quedan ' + v.stock + ' disponibles'
+                : '';
+        } else {
+            stockHint.textContent = '';
+        }
+    }
+
+    function updateButtons() {
+        var hasColorSize = currentColor && selectedSize;
+        if (addBtn) addBtn.disabled = !hasColorSize;
+        if (clearBtn) clearBtn.disabled = !selectedSize;
+    }
+
+    /* ── Gallery navigation ── */
+    if (arrowUp) {
+        arrowUp.addEventListener('click', function () {
+            var slides = galleryTrack.querySelectorAll('.gallery-slide');
+            if (currentImageIdx <= 0) return;
+            currentImageIdx--;
+            var active = slides[currentImageIdx];
+            if (active) active.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            updateArrows(slides.length);
+        });
+    }
+    if (arrowDown) {
+        arrowDown.addEventListener('click', function () {
+            var slides = galleryTrack.querySelectorAll('.gallery-slide');
+            if (currentImageIdx >= slides.length - 1) return;
+            currentImageIdx++;
+            var active = slides[currentImageIdx];
+            if (active) active.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            updateArrows(slides.length);
+        });
+    }
+
+    /* ── Color thumbnail clicks ── */
+    if (thumbContainer) {
+        thumbContainer.addEventListener('click', function (e) {
+            var btn = e.target.closest('.color-thumb-btn');
+            if (!btn) return;
+            var pcId = parseInt(btn.getAttribute('data-pc-id'));
+            if (pcId) selectColor(pcId);
+        });
+    }
+
+    /* ── Size selection ── */
+    if (sizeSelector) {
+        sizeSelector.addEventListener('click', function (e) {
+            var btn = e.target.closest('.size-btn');
+            if (!btn || btn.disabled) return;
+            selectSize(parseInt(btn.getAttribute('data-size-id')));
+        });
+    }
+
+    /* ── Add to cart ── */
+    if (addBtn) {
+        addBtn.addEventListener('click', function () {
+            if (!currentColor || !selectedSize) {
+                if (sizeError) sizeError.classList.remove('hidden');
+                return;
+            }
+            var v = getVariant(currentColor, selectedSize);
+            if (!v || !v.available) return;
+
+            var fd = new FormData();
+            fd.append('variant_id', v.variant_id);
+            fd.append('quantity', '1');
+            fd.append('csrfmiddlewaretoken', csrfToken);
+
+            addBtn.textContent = 'AGREGANDO...';
+            addBtn.disabled = true;
+
+            fetch(cartAddUrl, {
+                method: 'POST',
+                body: fd,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.success) {
+                    addBtn.textContent = 'AGREGADO ✓';
+                    addBtn.classList.add('bg-green-700', 'hover:bg-green-700');
+                    setTimeout(function () {
+                        addBtn.textContent = 'AGREGAR AL CARRITO';
+                        addBtn.classList.remove('bg-green-700', 'hover:bg-green-700');
+                        addBtn.disabled = !(currentColor && selectedSize);
+                    }, 2000);
+                    // update cart count in navbar
+                    var cartCount = document.getElementById('cart-item-count');
+                    if (cartCount && data.cart_count !== undefined) {
+                        cartCount.textContent = data.cart_count;
+                    }
+                } else {
+                    addBtn.textContent = 'ERROR';
+                    addBtn.disabled = !(currentColor && selectedSize);
+                    setTimeout(function () { addBtn.textContent = 'AGREGAR AL CARRITO'; }, 1500);
                 }
-            };
-        })();
-    </script>
-    
-    <script src="{% static 'js/products/product_detail.js' %}"></script>
+            })
+            .catch(function () {
+                addBtn.textContent = 'AGREGAR AL CARRITO';
+                addBtn.disabled = !(currentColor && selectedSize);
+            });
+        });
+    }
+
+    /* ── Clear selection ── */
+    if (clearBtn) {
+        clearBtn.addEventListener('click', function () {
+            selectedSize = null;
+            clearSizeHighlight();
+            updateStockInfo();
+            updateButtons();
+            if (sizeError) sizeError.classList.add('hidden');
+        });
+    }
+
+    /* ── Init ── */
+    if (firstPcId && initialImages > 0) {
+        currentColor = firstPcId;
+        updateSizeButtons(firstPcId);
+        updateButtons();
+        updateArrows(initialImages);
+    }
+
+    /* ── Keyboard: gallery navigation ── */
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (arrowUp && !arrowUp.disabled) arrowUp.click();
+        } else if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (arrowDown && !arrowDown.disabled) arrowDown.click();
+        }
+    });
+
+})();
+</script>
 {% endblock %}

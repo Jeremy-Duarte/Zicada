@@ -676,110 +676,86 @@ def product_detail(request, slug):
     HU-006: Consultar detalle de producto
     HU-008: Consultar disponibilidad de talla
     """
-    # HU-006 | ESCENARIO 1 | H | Producto existe y está activo
-    # HU-006 | ESCENARIO 4 | E | Producto no existe o inactivo → HTTP 404
     product = get_object_or_404(Product, slug=slug, is_active=True)
     
     context = {
         CONTEXT_PRODUCT: product,
-        **build_gallery_context(product),
-        **build_variants_context(product),  # HU-008: tallas con stock
+        **build_product_detail_context(product),
         'related_products': get_related_products(product),
     }
     return render(request, TEMPLATE_PRODUCT_DETAIL, context)
 
 
-def build_gallery_context(product):
+def build_product_detail_context(product):
     """
-    HU-006: Construir galería de imágenes del producto
+    Construye el contexto para la pagina de detalle de producto:
+    - colors: lista de colores con sus imagenes agrupadas
+    - sizes: todas las tallas disponibles
+    - pc_sizes_map: mapeo product_color_id -> [size_ids con stock]
     """
-    # HU-006 | ESCENARIO 1 | H | Imágenes del producto cargadas
     product_colors = product.product_colors.filter(
         is_active=True
-    ).select_related('color').prefetch_related('images').order_by(ORDER_BY_SORT_ORDER)
-    
-    gallery_images = []
-    featured_image = None
-    
+    ).select_related('color', 'featured_image').prefetch_related(
+        Prefetch('images', queryset=ProductImage.objects.order_by('id'))
+    ).order_by('sort_order')
+
+    colors = []
     for pc in product_colors:
-        for img in pc.get_images():
-            image_url = img.image.url if img.image else ''
-            gallery_images.append({
-                'image': image_url,
-                'color_id': pc.color.id,
-                'color_name': pc.color.name,
-                'color_code': pc.color.code or '#cccccc',
-                'is_featured': pc.featured_image == img,
-            })
-            if not featured_image and pc.featured_image == img:
-                featured_image = image_url
-    
-    if not featured_image and gallery_images:
-        featured_image = gallery_images[0]['image']
-    
-    return {
-        'gallery_images': gallery_images,
-        'gallery_images_json': json.dumps(gallery_images),
-        'featured_image': featured_image,
-    }
+        pc_images = pc.get_images()
+        images_list = []
+        featured_url = ''
+        for img in pc_images:
+            url = img.image.url if img.image else ''
+            images_list.append(url)
+            if not featured_url and img == pc.featured_image:
+                featured_url = url
+        if not featured_url and images_list:
+            featured_url = images_list[0]
 
+        colors.append({
+            'pc_id': pc.id,
+            'color_id': pc.color.id,
+            'color_name': pc.color.name,
+            'color_code': pc.color.code or '#cccccc',
+            'images': images_list,
+            'featured_image': featured_url,
+        })
 
-def build_variants_context(product):
-    """
-    HU-008: Consultar disponibilidad de talla
-    """
     variants = product.variants.filter(
         is_active=True
-    ).select_related('product_color__color', 'size')
-    
-    variants_data = []
-    unique_colors = []
-    unique_sizes = []
-    seen_color_ids = set()
-    seen_size_ids = set()
-    
-    for variant in variants:
-        stock_display, stock_message = get_stock_display(variant.stock)
-        color = variant.product_color.color
-        size = variant.size
-        
-        variants_data.append({
-            'id': variant.id,
-            'color_id': color.id,
-            'color_name': color.name,
-            'color_code': color.code or '#cccccc',
-            'size_id': size.id,
-            'size_name': size.name,
-            'stock': variant.stock,
-            # HU-008 | ESCENARIO 1 | H | Talla disponible (stock > 0) → stock_display='available'
-            # HU-008 | ESCENARIO 2 | A | Talla agotada (stock = 0) → stock_display='out_of_stock'
-            'stock_display': stock_display,
-            'stock_message': stock_message,
-            'price': str(product.price),
-            'image': variant.product_color.featured_image.image.url if variant.product_color.featured_image and variant.product_color.featured_image.image else '',
-        })
-        
-        if color.id not in seen_color_ids:
-            seen_color_ids.add(color.id)
-            unique_colors.append({
-                'id': color.id,
-                'name': color.name,
-                'code': color.code or '#cccccc',
-            })
-        
-        if size.id not in seen_size_ids:
-            seen_size_ids.add(size.id)
-            unique_sizes.append({
-                'id': size.id,
-                'name': size.name,
-            })
-    
-    # HU-008 | ESCENARIO 3 | A | Producto sin tallas configuradas → variants vacío, template muestra mensaje
+    ).select_related('product_color', 'size')
+
+    pc_sizes_map = {}
+    all_sizes = {}
+    for v in variants:
+        pid = v.product_color_id
+        sid = v.size_id
+        if pid not in pc_sizes_map:
+            pc_sizes_map[pid] = {}
+        pc_sizes_map[pid][str(sid)] = {
+            'variant_id': v.id,
+            'stock': v.stock,
+            'available': v.stock > 0,
+        }
+        if sid not in all_sizes:
+            all_sizes[sid] = {'id': v.size.id, 'name': v.size.name}
+
+    sizes = sorted(all_sizes.values(), key=lambda s: s['id'])
+
+    first_color = colors[0] if colors else None
+    first_pc_id = first_color['pc_id'] if first_color else None
+    first_sizes = pc_sizes_map.get(first_pc_id, {}) if first_pc_id else {}
+
     return {
-        CONTEXT_VARIANTS: variants,
-        'unique_colors': unique_colors,
-        'unique_sizes': unique_sizes,
-        'variants_json': json.dumps(variants_data),
+        'colors_data': colors,
+        'colors_json': json.dumps(colors),
+        'sizes_data': sizes,
+        'sizes_json': json.dumps(sizes),
+        'pc_sizes_json': json.dumps(pc_sizes_map),
+        'first_color': first_color,
+        'first_color_images': first_color['images'] if first_color else [],
+        'first_pc_id': first_pc_id,
+        'first_sizes': first_sizes,
     }
 
 
