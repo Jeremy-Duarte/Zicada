@@ -24,7 +24,7 @@
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-10">
 
             {# ═══════════ CAJA 1 — Info + Thumbnails ═══════════ #}
-            <div class="lg:col-span-1 order-1 flex flex-col gap-5">
+            <div class="lg:col-span-1 order-1 flex flex-col gap-5 self-center">
                 <h1 id="detail-title" class="font-poppins font-extrabold text-2xl md:text-3xl tracking-tight uppercase">
                     {{ product.name }} {{ first_color.color_name }}
                 </h1>
@@ -95,7 +95,7 @@
             </div>
 
             {# ═══════════ CAJA 3 — Price + Sizes + Cart ═══════════ #}
-            <div class="lg:col-span-1 order-3 flex flex-col gap-6">
+            <div class="lg:col-span-1 order-3 flex flex-col gap-6 self-center">
                 <div>
                     <span class="text-3xl font-bold tracking-tight">${{ product.price|floatformat:0 }}</span>
                     <span class="text-sm text-neutral-400 ml-1">COP</span>
