@@ -5,18 +5,6 @@
 
 {% block extra_css %}
 <style>
-    .color-preview {
-        width: 40px;
-        height: 40px;
-        border-radius: 8px;
-        border: 2px solid #fff;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        cursor: pointer;
-        transition: transform 0.2s ease;
-    }
-    .color-preview:hover { transform: scale(1.05); }
-    .section-card { transition: all 0.2s ease; scroll-margin-top: 1rem; }
-    .section-card:hover { box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
     .nav-link { transition: all 0.2s ease; cursor: pointer; }
     .nav-link:hover { color: #c2a575; border-left-color: #c2a575; }
     .nav-link.active { color: #c2a575; border-left-color: #c2a575; background-color: #fef3c7; }
@@ -97,7 +85,7 @@
                 {% endif %}
 
                 <!-- SECCIÓN: Vista previa en vivo -->
-                <div id="preview" class="section-card scroll-mt-6">
+                <div id="preview" class="section-card scroll-mt-4 transition-all hover:shadow-md scroll-mt-6">
                     <div class="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-6">
                         <div class="flex justify-between items-center mb-4">
                             <h2 class="text-lg font-semibold text-gray-800">
@@ -137,7 +125,7 @@
                 </div>
 
                 <!-- SECCIÓN: Colores -->
-                <div id="colors" class="section-card border rounded-xl p-6">
+                <div id="colors" class="section-card scroll-mt-4 transition-all hover:shadow-md border rounded-xl p-6">
                     <h2 class="text-lg font-semibold text-gray-800 mb-4">
                         <i class="fas fa-palette text-zicada-accent mr-2"></i> Colores de la Colección
                     </h2>
@@ -168,10 +156,10 @@
                                 </div>
                             </div>
                             <div id="palette-preview" class="hidden md:flex gap-1 p-2 bg-white rounded-lg shadow-sm">
-                                <div class="w-6 h-6 rounded-full" style="background-color: #c2a575;"></div>
-                                <div class="w-6 h-6 rounded-full" style="background-color: #8b5e3c;"></div>
-                                <div class="w-6 h-6 rounded-full" style="background-color: #ffffff;"></div>
-                                <div class="w-6 h-6 rounded-full" style="background-color: #1a1a1a;"></div>
+                                <div class="w-6 h-6 rounded-full bg-[#c2a575]"></div>
+                                <div class="w-6 h-6 rounded-full bg-[#8b5e3c]"></div>
+                                <div class="w-6 h-6 rounded-full bg-white"></div>
+                                <div class="w-6 h-6 rounded-full bg-[#1a1a1a]"></div>
                             </div>
                         </div>
                     </div>
@@ -181,7 +169,7 @@
                             <label for="{{ form.primary_color.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">Color principal</label>
                             <div class="flex items-center gap-3">
                                 {{ form.primary_color }}
-                                <div id="primary-color-preview" class="color-preview" style="background-color: {{ form.primary_color.value|default:'#c2a575' }};"></div>
+                                <div id="primary-color-preview" class="w-10 h-10 rounded-lg border-2 border-white shadow cursor-pointer hover:scale-105 transition-transform" style="background-color: {{ form.primary_color.value|default:'#c2a575' }};"></div>
                             </div>
                             <p class="text-xs text-gray-400 mt-1">Botones, enlaces, acentos</p>
                         </div>
@@ -189,7 +177,7 @@
                             <label for="{{ form.secondary_color.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">Color secundario</label>
                             <div class="flex items-center gap-3">
                                 {{ form.secondary_color }}
-                                <div id="secondary-color-preview" class="color-preview" style="background-color: {{ form.secondary_color.value|default:'#8b5e3c' }};"></div>
+                                <div id="secondary-color-preview" class="w-10 h-10 rounded-lg border-2 border-white shadow cursor-pointer hover:scale-105 transition-transform" style="background-color: {{ form.secondary_color.value|default:'#8b5e3c' }};"></div>
                             </div>
                             <p class="text-xs text-gray-400 mt-1">Hover, detalles</p>
                         </div>
@@ -197,7 +185,7 @@
                             <label for="{{ form.background_color.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">Color de fondo</label>
                             <div class="flex items-center gap-3">
                                 {{ form.background_color }}
-                                <div id="background-color-preview" class="color-preview" style="background-color: {{ form.background_color.value|default:'#ffffff' }};"></div>
+                                <div id="background-color-preview" class="w-10 h-10 rounded-lg border-2 border-white shadow cursor-pointer hover:scale-105 transition-transform" style="background-color: {{ form.background_color.value|default:'#ffffff' }};"></div>
                             </div>
                             <p class="text-xs text-gray-400 mt-1">Fondo principal</p>
                         </div>
@@ -205,7 +193,7 @@
                             <label for="{{ form.text_color.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">Color de texto</label>
                             <div class="flex items-center gap-3">
                                 {{ form.text_color }}
-                                <div id="text-color-preview" class="color-preview" style="background-color: {{ form.text_color.value|default:'#1a1a1a' }};"></div>
+                                <div id="text-color-preview" class="w-10 h-10 rounded-lg border-2 border-white shadow cursor-pointer hover:scale-105 transition-transform" style="background-color: {{ form.text_color.value|default:'#1a1a1a' }};"></div>
                             </div>
                             <p class="text-xs text-gray-400 mt-1">Color del texto</p>
                         </div>
@@ -219,7 +207,7 @@
                 </div>
 
                 <!-- SECCIÓN: Efectos de Tarjetas -->
-                <div id="effects" class="section-card border rounded-xl p-6">
+                <div id="effects" class="section-card scroll-mt-4 transition-all hover:shadow-md border rounded-xl p-6">
                     <h2 class="text-lg font-semibold text-gray-800 mb-4">
                         <i class="fas fa-magic text-zicada-accent mr-2"></i> Efectos de Tarjetas
                     </h2>
@@ -282,7 +270,7 @@
                 </div>
 
                 <!-- SECCIÓN: Imagen de fondo -->
-                <div id="background" class="section-card border rounded-xl p-6">
+                <div id="background" class="section-card scroll-mt-4 transition-all hover:shadow-md border rounded-xl p-6">
                     <h2 class="text-lg font-semibold text-gray-800 mb-4">
                         <i class="fas fa-image text-zicada-accent mr-2"></i> Imagen de Fondo
                     </h2>
@@ -313,7 +301,7 @@
                 </div>
 
                 <!-- SECCIÓN: Tipografía -->
-                <div id="typography" class="section-card border rounded-xl p-6">
+                <div id="typography" class="section-card scroll-mt-4 transition-all hover:shadow-md border rounded-xl p-6">
                     <h2 class="text-lg font-semibold text-gray-800 mb-4">
                         <i class="fas fa-font text-zicada-accent mr-2"></i> Tipografía
                     </h2>
@@ -392,7 +380,7 @@
                 </div>
 
                 <!-- SECCIÓN: Configuración de Tarjetas -->
-                <div id="cards" class="section-card border rounded-xl p-6">
+                <div id="cards" class="section-card scroll-mt-4 transition-all hover:shadow-md border rounded-xl p-6">
                     <h2 class="text-lg font-semibold text-gray-800 mb-4">
                         <i class="fas fa-credit-card text-zicada-accent mr-2"></i> Configuración de Tarjetas
                     </h2>
@@ -401,21 +389,21 @@
                             <label for="{{ form.card_background_color.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">Color de fondo</label>
                             <div class="flex items-center gap-3">
                                 {{ form.card_background_color }}
-                                <div id="card-bg-preview" class="color-preview" style="background-color: {{ form.card_background_color.value|default:collection.background_color|default:'#ffffff' }};"></div>
+                                <div id="card-bg-preview" class="w-10 h-10 rounded-lg border-2 border-white shadow cursor-pointer hover:scale-105 transition-transform" style="background-color: {{ form.card_background_color.value|default:collection.background_color|default:'#ffffff' }};"></div>
                             </div>
                         </div>
                         <div>
                             <label for="{{ form.card_title_color.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">Color del título</label>
                             <div class="flex items-center gap-3">
                                 {{ form.card_title_color }}
-                                <div id="card-title-color-preview" class="color-preview" style="background-color: {{ form.card_title_color.value|default:collection.primary_color|default:'#c2a575' }};"></div>
+                                <div id="card-title-color-preview" class="w-10 h-10 rounded-lg border-2 border-white shadow cursor-pointer hover:scale-105 transition-transform" style="background-color: {{ form.card_title_color.value|default:collection.primary_color|default:'#c2a575' }};"></div>
                             </div>
                         </div>
                         <div>
                             <label for="{{ form.card_price_color.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">Color del precio</label>
                             <div class="flex items-center gap-3">
                                 {{ form.card_price_color }}
-                                <div id="card-price-color-preview" class="color-preview" style="background-color: {{ form.card_price_color.value|default:collection.primary_color|default:'#c2a575' }};"></div>
+                                <div id="card-price-color-preview" class="w-10 h-10 rounded-lg border-2 border-white shadow cursor-pointer hover:scale-105 transition-transform" style="background-color: {{ form.card_price_color.value|default:collection.primary_color|default:'#c2a575' }};"></div>
                             </div>
                         </div>
                         <div>
@@ -445,7 +433,7 @@
                     </div>
                 </div>
 
-                <div id="advanced" class="section-card border rounded-xl p-6">
+                <div id="advanced" class="section-card scroll-mt-4 transition-all hover:shadow-md border rounded-xl p-6">
                     <button type="button" class="flex items-center justify-between w-full text-left" data-toggle="advanced">
                         <h2 class="text-lg font-semibold text-gray-800">
                             <i class="fas fa-code text-zicada-accent mr-2"></i> Configuración Avanzada
