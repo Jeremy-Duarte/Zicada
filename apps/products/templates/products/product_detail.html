@@ -38,9 +38,9 @@
                     <button type="button"
                             data-pc-id="{{ color.pc_id }}"
                             class="color-thumb-btn w-14 h-14 flex-shrink-0 border-2 rounded-lg overflow-hidden transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white
-                                   {% if forloop.first %}border-zicada-accent{% else %}border-neutral-800 hover:border-neutral-500{% endif %}"
+                                   {% if color.pc_id == first_pc_id %}border-zicada-accent{% else %}border-neutral-800 hover:border-neutral-500{% endif %}"
                             aria-label="{{ color.color_name }}"
-                            {% if forloop.first %}aria-checked="true"{% endif %}>
+                            {% if color.pc_id == first_pc_id %}aria-checked="true"{% endif %}>
                         {% if color.featured_image %}
                         <img src="{{ color.featured_image }}" alt="{{ color.color_name }}"
                              class="w-full h-full object-contain bg-neutral-950">
@@ -448,6 +448,7 @@
         updateSizeButtons(firstPcId);
         updateButtons();
         updateArrows(initialImages);
+        highlightThumbnail(firstPcId);
     }
 
     /* ── Keyboard: gallery navigation ── */

@@ -677,16 +677,17 @@ def product_detail(request, slug):
     HU-008: Consultar disponibilidad de talla
     """
     product = get_object_or_404(Product, slug=slug, is_active=True)
+    selected_pc_id = request.GET.get('color')
     
     context = {
         CONTEXT_PRODUCT: product,
-        **build_product_detail_context(product),
+        **build_product_detail_context(product, selected_pc_id),
         'related_products': get_related_products(product),
     }
     return render(request, TEMPLATE_PRODUCT_DETAIL, context)
 
 
-def build_product_detail_context(product):
+def build_product_detail_context(product, selected_pc_id=None):
     """
     Construye el contexto para la pagina de detalle de producto:
     - colors: lista de colores con sus imagenes agrupadas
@@ -742,7 +743,16 @@ def build_product_detail_context(product):
 
     sizes = sorted(all_sizes.values(), key=lambda s: s['id'])
 
-    first_color = colors[0] if colors else None
+    first_color = None
+    if selected_pc_id:
+        selected_pc_id_int = int(selected_pc_id) if selected_pc_id.isdigit() else None
+        for c in colors:
+            if c['pc_id'] == selected_pc_id_int:
+                first_color = c
+                break
+    if not first_color:
+        first_color = colors[0] if colors else None
+
     first_pc_id = first_color['pc_id'] if first_color else None
     first_sizes = pc_sizes_map.get(first_pc_id, {}) if first_pc_id else {}
 

@@ -5,7 +5,7 @@ Muestra: foto aspect-[4/5] con bordes suaves + texto PRODUCTO COLOR en italic.
 {% endcomment %}
 
 {% with image=product_color.featured_image|default:product_color.images.first %}
-<a href="{% url 'products:product_detail' product.slug %}"
+<a href="{% url 'products:product_detail' product.slug %}?color={{ product_color.pk }}"
    class="group block w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-zicada-accent overflow-hidden">
     <div class="aspect-[4/5] overflow-hidden bg-neutral-900">
         {% if image and image.image %}
