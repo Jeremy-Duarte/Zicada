@@ -6,6 +6,16 @@
 {% block extra_css %}
 {{ block.super }}
 <style>
+    #products-grid { column-gap: 0.5rem; row-gap: 0.75rem; }
+    @media (min-width: 640px) {
+        #products-grid { column-gap: 0.75rem; row-gap: 1.25rem; }
+    }
+    @media (min-width: 1024px) {
+        #products-grid.lg\:grid-cols-3 { column-gap: 1.5rem; row-gap: 2.5rem; }
+        #products-grid.lg\:grid-cols-4 { column-gap: 1rem;   row-gap: 2rem; }
+        #products-grid.lg\:grid-cols-5 { column-gap: 0.75rem; row-gap: 1.5rem; }
+    }
+
     #products-grid.grid-cols-2 .product-card-aspect { aspect-ratio: 3/2; }
     #products-grid.sm\:grid-cols-3 .product-card-aspect,
     #products-grid.lg\:grid-cols-3 .product-card-aspect { aspect-ratio: 4/5; }
