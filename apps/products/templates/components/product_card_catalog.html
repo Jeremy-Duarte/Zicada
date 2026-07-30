@@ -1,7 +1,6 @@
 {% comment %}
-Catalog card — mismo aspecto visual que product_card.html.
-Imagen con aspect ratio fijo segun layout (product-card-aspect),
-object-contain para centrar, texto en una linea abajo.
+Catalog card — rectangular y delgada, estilo galeria responsive.
+aspect-[3/2] para que sea mas ancha que alta, object-contain centra la imagen.
 Espera: product (con .slug, .name) + product_color (con .color.name, .featured_image, .images).
 {% endcomment %}
 {% load static %}
@@ -9,7 +8,7 @@ Espera: product (con .slug, .name) + product_color (con .color.name, .featured_i
 {% with image=product_color.featured_image|default:product_color.images.first %}
 <a href="{% url 'products:product_detail' product.slug %}"
    class="group block w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-zicada-accent">
-    <div class="product-card-aspect overflow-hidden bg-neutral-900">
+    <div class="aspect-[3/2] overflow-hidden bg-neutral-900">
         {% if image and image.image %}
         <img src="{{ image.image.url }}"
              alt="{{ product.name }} {{ product_color.color.name }}"
@@ -24,8 +23,8 @@ Espera: product (con .slug, .name) + product_color (con .color.name, .featured_i
         </div>
         {% endif %}
     </div>
-    <div class="pt-3 md:pt-4 flex items-start justify-center">
-        <p class="text-sm md:text-base text-white uppercase md:italic text-center group-hover:text-zicada-accent transition truncate">
+    <div class="pt-1 md:pt-2 flex items-start justify-center">
+        <p class="text-[10px] sm:text-xs md:text-sm text-white uppercase md:italic text-center group-hover:text-zicada-accent transition truncate">
             {{ product.name }} {{ product_color.color.name }}
         </p>
     </div>
