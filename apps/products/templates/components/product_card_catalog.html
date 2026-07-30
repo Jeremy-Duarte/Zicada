@@ -1,6 +1,6 @@
 {% comment %}
-Catalog card — rectangular y delgada, estilo galeria responsive.
-aspect-[3/2] para que sea mas ancha que alta, object-contain centra la imagen.
+Catalog card — aspect ratio dinamico segun columnas (3:2, 4:5, 2:3, 9:16),
+object-contain centra la imagen, texto en una linea abajo.
 Espera: product (con .slug, .name) + product_color (con .color.name, .featured_image, .images).
 {% endcomment %}
 {% load static %}
@@ -8,7 +8,7 @@ Espera: product (con .slug, .name) + product_color (con .color.name, .featured_i
 {% with image=product_color.featured_image|default:product_color.images.first %}
 <a href="{% url 'products:product_detail' product.slug %}"
    class="group block w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-zicada-accent">
-    <div class="aspect-[3/2] overflow-hidden bg-neutral-900">
+    <div class="product-card-aspect overflow-hidden bg-neutral-900">
         {% if image and image.image %}
         <img src="{{ image.image.url }}"
              alt="{{ product.name }} {{ product_color.color.name }}"

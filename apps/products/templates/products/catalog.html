@@ -5,6 +5,13 @@
 
 {% block extra_css %}
 {{ block.super }}
+<style>
+    #products-grid.grid-cols-2 .product-card-aspect { aspect-ratio: 3/2; }
+    #products-grid.sm\:grid-cols-3 .product-card-aspect,
+    #products-grid.lg\:grid-cols-3 .product-card-aspect { aspect-ratio: 4/5; }
+    #products-grid.lg\:grid-cols-4 .product-card-aspect { aspect-ratio: 2/3; }
+    #products-grid.lg\:grid-cols-5 .product-card-aspect { aspect-ratio: 9/16; }
+</style>
 {% endblock %}
 
 {% block content %}
