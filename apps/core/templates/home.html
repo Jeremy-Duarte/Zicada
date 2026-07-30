@@ -178,7 +178,7 @@ reflejan tu estilo. Envíos a todo el país.{% endblock %}
 
     <!-- Galería tipo app de fotos — carrusel centrado con snap -->
     {% if gallery_items %}
-    <section class="py-16 md:py-24 overflow-hidden" aria-labelledby="home-gallery-title">
+    <section class="py-16 md:py-24" aria-labelledby="home-gallery-title">
         <div class="container mx-auto px-4 mb-10 md:mb-14 flex items-end justify-between gap-4">
             <a href="https://instagram.com/zicada_lu" target="_blank" rel="noopener noreferrer"
                 class="group inline-flex items-center gap-2 text-gray-300 hover:text-white transition"
@@ -188,14 +188,21 @@ reflejan tu estilo. Envíos a todo el país.{% endblock %}
             <h2 id="home-gallery-title" class="text-3xl md:text-3xl font-extrabold tracking-tight text-right">GALERIA</h2>
         </div>
 
-        <div id="galleryCarousel" class="relative" role="region" aria-label="Galería de fotos">
-            <div id="galleryTrack" class="flex gap-6 overflow-x-auto py-2">
+        <div id="galleryCarousel" class="relative overflow-hidden" role="region" aria-label="Galería de fotos">
+            <div id="galleryTrack" class="flex gap-6 will-change-transform">
                 {% for item in gallery_items %}
-                <figure class="shrink-0 w-[75vw] sm:w-[calc(50%-1rem)] lg:w-[calc(33.333%-1rem)]">
+                <figure class="shrink-0 w-[75vw] sm:w-[calc(50%-1rem)] lg:w-[calc(33.333%-1rem)]" data-gallery-original="true">
                     <img src="{{ item.image.url }}" alt="{{ item.alt_text }}"
                         class="w-full aspect-[4/5] object-cover rounded-lg transition-transform duration-300 hover:scale-[1.02]"
-                        loading="lazy" data-gallery-idx="{{ forloop.counter0 }}">
+                        loading="lazy">
                     <figcaption class="sr-only">{{ item.description }}</figcaption>
+                </figure>
+                {% endfor %}
+                {% for item in gallery_items %}
+                <figure class="shrink-0 w-[75vw] sm:w-[calc(50%-1rem)] lg:w-[calc(33.333%-1rem)]" aria-hidden="true">
+                    <img src="{{ item.image.url }}" alt=""
+                        class="w-full aspect-[4/5] object-cover rounded-lg transition-transform duration-300 hover:scale-[1.02]"
+                        loading="lazy">
                 </figure>
                 {% endfor %}
             </div>
@@ -227,10 +234,8 @@ reflejan tu estilo. Envíos a todo el país.{% endblock %}
 </div><!-- /bg-black font-opensans -->
 
 <style>
-    #galleryTrack::-webkit-scrollbar { display: none; }
-    #galleryTrack { scrollbar-width: none; }
     @media (prefers-reduced-motion: reduce) {
-        #galleryTrack { scroll-behavior: auto; }
+        #galleryTrack { transform: none !important; }
     }
 </style>
 {% endblock %}

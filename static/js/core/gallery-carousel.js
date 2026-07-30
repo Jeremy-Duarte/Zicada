@@ -1,30 +1,47 @@
 /**
- * Galería auto-deslizante con pausa en hover.
- * RequestAnimationFrame para scroll suave, cache de elementos DOM,
- * limpieza en beforeunload.
+ * Galería con carrusel infinito suave.
+ * Transform translateX + dos sets de imágenes para loop continuo.
  */
 (function () {
     var track = document.getElementById('galleryTrack');
-    if (!track || track.children.length === 0) return;
-
-    var speed = 0.8; // píxeles por frame (~60fps → 48px/s)
-    var paused = false;
-    var lastTs = 0;
-    var raf = null;
     var prevBtn = document.getElementById('galleryPrev');
     var nextBtn = document.getElementById('galleryNext');
+    if (!track || track.children.length < 4) return;
 
-    function slide(ts) {
-        if (!lastTs) lastTs = ts;
-        var delta = ts - lastTs;
-        if (!paused && delta < 200) {
-            track.scrollLeft += speed * (delta / 16);
-            if (track.scrollLeft + track.clientWidth >= track.scrollWidth - 1) {
-                track.scrollLeft = 0;
+    var position = 0;
+    var speed = 0.6; // píxeles por frame (~36px/s)
+    var paused = false;
+    var raf = null;
+    var lastTs = 0;
+    var halfway = 0; // ancho del primer set (posición de reinicio)
+    var itemWidth = 0;
+
+    function measure() {
+        halfway = 0;
+        var count = track.children.length / 2;
+        for (var i = 0; i < count; i++) {
+            var child = track.children[i];
+            if (child) {
+                halfway += child.offsetWidth + 24; // gap-6 = 24px
             }
         }
+        itemWidth = track.children[0] ? track.children[0].offsetWidth + 24 : 300;
+    }
+
+    measure();
+    window.addEventListener('resize', measure);
+
+    function loop(ts) {
+        if (!lastTs) lastTs = ts;
+        var delta = Math.min(ts - lastTs, 200);
+        if (!paused) {
+            position += speed * (delta / 16);
+            if (position >= halfway) position -= halfway;
+            else if (position < 0) position += halfway;
+            track.style.transform = 'translateX(' + (-position) + 'px)';
+        }
         lastTs = ts;
-        raf = requestAnimationFrame(slide);
+        raf = requestAnimationFrame(loop);
     }
 
     function pause()  { paused = true; }
@@ -34,22 +51,33 @@
     track.addEventListener('mouseleave', resume);
 
     if (prevBtn) prevBtn.addEventListener('click', function () {
-        track.scrollTo({ left: track.scrollLeft - track.clientWidth * 0.75, behavior: 'smooth' });
+        paused = true;
+        position -= itemWidth;
+        if (position < 0) position += halfway;
+        track.style.transform = 'translateX(' + (-position) + 'px)';
     });
     if (nextBtn) nextBtn.addEventListener('click', function () {
-        track.scrollTo({ left: track.scrollLeft + track.clientWidth * 0.75, behavior: 'smooth' });
+        paused = true;
+        position += itemWidth;
+        if (position >= halfway) position -= halfway;
+        track.style.transform = 'translateX(' + (-position) + 'px)';
     });
 
-    // Hover sobre imagen específica → centrar instantáneo
-    Array.prototype.forEach.call(track.children, function (fig) {
+    // Hover sobre imagen original → centrar
+    Array.prototype.forEach.call(track.children, function (fig, i) {
+        if (i >= track.children.length / 2) return; // solo originales
         fig.addEventListener('mouseenter', function () {
             paused = true;
-            var offset = fig.offsetLeft - (track.clientWidth - fig.offsetWidth) / 2;
-            track.scrollTo({ left: offset, behavior: 'smooth' });
+            var offset = fig.offsetLeft - (track.parentElement.clientWidth - fig.offsetWidth) / 2;
+            position = offset;
+            track.style.transform = 'translateX(' + (-position) + 'px)';
+        });
+        fig.addEventListener('mouseleave', function () {
+            paused = false;
         });
     });
 
-    raf = requestAnimationFrame(slide);
+    raf = requestAnimationFrame(loop);
 
     window.addEventListener('beforeunload', function () {
         if (raf) cancelAnimationFrame(raf);
