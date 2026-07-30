@@ -16,12 +16,9 @@
     var currentIdx = 0;
 
     function measure() {
-        halfway = 0;
         totalFigs = track.children.length / 2;
-        for (var i = 0; i < totalFigs; i++) {
-            var child = track.children[i];
-            if (child) halfway += child.offsetWidth + 24;
-        }
+        var lastOriginal = track.children[totalFigs - 1];
+        halfway = lastOriginal ? lastOriginal.offsetLeft + lastOriginal.offsetWidth + 24 : 0;
         itemWidth = track.children[0] ? track.children[0].offsetWidth + 24 : 300;
         containerWidth = track.parentElement.clientWidth;
     }
@@ -68,7 +65,8 @@
     track.addEventListener('mouseleave', resume);
 
     if (prevBtn) {
-        prevBtn.addEventListener('click', function () {
+        prevBtn.addEventListener('click', function (e) {
+            e.preventDefault();
             var prev = (currentIdx - 1 + totalFigs) % totalFigs;
             position = centerFig(prev);
             position = wrap(position);
@@ -78,7 +76,8 @@
         prevBtn.addEventListener('mouseleave', resume);
     }
     if (nextBtn) {
-        nextBtn.addEventListener('click', function () {
+        nextBtn.addEventListener('click', function (e) {
+            e.preventDefault();
             var next = (currentIdx + 1) % totalFigs;
             position = centerFig(next);
             position = wrap(position);
@@ -87,6 +86,29 @@
         nextBtn.addEventListener('mouseenter', pause);
         nextBtn.addEventListener('mouseleave', resume);
     }
+
+    var touchStartX = 0;
+    var touchMoved = false;
+
+    track.addEventListener('touchstart', function (e) {
+        touchStartX = e.touches[0].clientX;
+        touchMoved = false;
+    }, { passive: true });
+
+    track.addEventListener('touchmove', function (e) {
+        touchMoved = true;
+    }, { passive: true });
+
+    track.addEventListener('touchend', function (e) {
+        if (!touchMoved) return;
+        var dx = e.changedTouches[0].clientX - touchStartX;
+        if (Math.abs(dx) < 40) return;
+        if (dx < 0 && nextBtn) {
+            nextBtn.click();
+        } else if (dx > 0 && prevBtn) {
+            prevBtn.click();
+        }
+    });
 
     raf = requestAnimationFrame(loop);
 

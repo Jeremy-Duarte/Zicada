@@ -9,7 +9,7 @@ reflejan tu estilo. Envíos a todo el país.{% endblock %}
 
 <!-- Hero Carrusel (aprobado por el cliente — no modificar) -->
 {% if hero_slides %}
-<div class="relative h-screen overflow-hidden -mt-16 md:-mt-20">
+<div class="relative h-dvh overflow-hidden -mt-16 md:-mt-20">
     <div id="hero-carousel" class="relative w-full h-full">
         {% for slide in hero_slides %}
         <div class="hero-slide absolute inset-0 w-full h-full transition-opacity duration-1000 ease-in-out"
@@ -98,7 +98,7 @@ reflejan tu estilo. Envíos a todo el país.{% endblock %}
 </div>
 {% else %}
 <!-- Fallback cuando no hay slides activos -->
-<section class="relative bg-gradient-to-r from-gray-100 to-gray-200 text-gray-900 min-h-screen -mt-16 md:-mt-20 pt-16 md:pt-20">
+<section class="relative bg-gradient-to-r from-gray-100 to-gray-200 text-gray-900 min-h-dvh -mt-16 md:-mt-20 pt-16 md:pt-20">
     <div class="absolute inset-0 bg-white opacity-40"></div>
     <div class="container mx-auto px-4 relative z-10 text-center">
         <div class="max-w-4xl mx-auto">
@@ -165,9 +165,9 @@ reflejan tu estilo. Envíos a todo el país.{% endblock %}
     {% if promos %}
         {% for promo in promos %}
         {% if promo.link_url %}
-        <a href="{{ promo.link_url }}" class="block h-screen w-full overflow-hidden relative focus:outline-none focus-visible:ring-2 focus-visible:ring-zicada-accent" aria-label="{{ promo.title|default:'Publicidad Zicada' }}">
+        <a href="{{ promo.link_url }}" class="block h-dvh w-full overflow-hidden relative focus:outline-none focus-visible:ring-2 focus-visible:ring-zicada-accent" aria-label="{{ promo.title|default:'Publicidad Zicada' }}">
         {% else %}
-        <div class="h-screen w-full overflow-hidden relative">
+        <div class="h-dvh w-full overflow-hidden relative">
         {% endif %}
             <img src="{{ promo.image.url }}" alt="{{ promo.title|default:'' }}"
                 class="w-full h-full object-cover"
@@ -178,29 +178,29 @@ reflejan tu estilo. Envíos a todo el país.{% endblock %}
 
     <!-- Galería tipo app de fotos — carrusel centrado con snap -->
     {% if gallery_items %}
-    <section class="py-16 md:py-24" aria-labelledby="home-gallery-title">
-        <div class="container mx-auto px-4 mb-10 md:mb-14 flex items-end justify-between gap-4">
+    <section class="py-8 md:py-16" aria-labelledby="home-gallery-title">
+        <div class="container mx-auto px-4 mb-6 md:mb-10 flex items-end justify-between gap-4">
             <a href="https://instagram.com/zicada_lu" target="_blank" rel="noopener noreferrer"
                 class="group inline-flex items-center gap-2 text-gray-300 hover:text-white transition"
                 aria-label="Instagram de Zicada, @zicada_lu">
-                <span class="text-xl font-semibold">@zicada_lu</span>
+                <span class="text-lg md:text-xl font-semibold">@zicada_lu</span>
             </a>
-            <h2 id="home-gallery-title" class="text-3xl md:text-3xl font-extrabold tracking-tight text-right">GALERIA</h2>
+            <h2 id="home-gallery-title" class="text-2xl md:text-3xl font-extrabold tracking-tight text-right">GALERIA</h2>
         </div>
 
-        <div id="galleryCarousel" class="relative overflow-hidden" role="region" aria-label="Galería de fotos">
+        <div id="galleryCarousel" class="relative overflow-hidden overscroll-x-none touch-pan-y" role="region" aria-label="Galería de fotos">
             <div id="galleryTrack" class="flex gap-6 will-change-transform">
                 {% for item in gallery_items %}
                 <figure class="shrink-0 basis-[calc(50%-0.75rem)] sm:basis-[calc(33.333%-1rem)] md:basis-[calc(25%-1.125rem)] lg:basis-[calc(20%-1.2rem)]" data-gallery-original="true">
                     <img src="{{ item.image.url }}" alt="{{ item.alt_text }}"
-                        class="w-full aspect-[4/5] object-cover rounded-lg transition-transform duration-300 hover:scale-[1.02]">
+                        class="w-full aspect-[4/5] max-h-[80dvh] object-cover rounded-lg transition-transform duration-300 hover:scale-[1.02]">
                     <figcaption class="sr-only">{{ item.description }}</figcaption>
                 </figure>
                 {% endfor %}
                 {% for item in gallery_items %}
                 <figure class="shrink-0 basis-[calc(50%-0.75rem)] sm:basis-[calc(33.333%-1rem)] md:basis-[calc(25%-1.125rem)] lg:basis-[calc(20%-1.2rem)]" aria-hidden="true">
                     <img src="{{ item.image.url }}" alt=""
-                        class="w-full aspect-[4/5] object-cover rounded-lg transition-transform duration-300 hover:scale-[1.02]">
+                        class="w-full aspect-[4/5] max-h-[80dvh] object-cover rounded-lg transition-transform duration-300 hover:scale-[1.02]">
                 </figure>
                 {% endfor %}
             </div>
@@ -222,7 +222,7 @@ reflejan tu estilo. Envíos a todo el país.{% endblock %}
     {% endif %}
 
     <!-- Conoce más de nosotros — botón estilo hero -->
-    <section class="py-20 md:py-28 text-center bg-black">
+    <section class="py-12 md:py-24 min-h-[30dvh] text-center bg-black">
             <a href="{% url 'core:about' %}"
                 class="inline-block bg-zicada-accent hover:bg-zicada-accent/90 text-white font-semibold px-10 py-4 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg">
                 Explorar más
