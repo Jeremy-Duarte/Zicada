@@ -6,8 +6,8 @@ Muestra: foto aspect-[4/5] con bordes suaves + texto PRODUCTO COLOR en italic.
 
 {% with image=product_color.featured_image|default:product_color.images.first %}
 <a href="{% url 'products:product_detail' product.slug %}"
-   class="group block w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-zicada-accent rounded-lg overflow-hidden">
-    <div class="aspect-[4/5] overflow-hidden rounded-lg bg-neutral-900">
+   class="group block w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-zicada-accent overflow-hidden">
+    <div class="aspect-[4/5] overflow-hidden bg-neutral-900">
         {% if image and image.image %}
         <img src="{{ image.image.url }}"
              alt="{{ product.name }} {{ product_color.color.name }}"
@@ -22,7 +22,7 @@ Muestra: foto aspect-[4/5] con bordes suaves + texto PRODUCTO COLOR en italic.
         </div>
         {% endif %}
     </div>
-    <p class="pt-[5%] text-lg text-white uppercase md:italic text-center group-hover:text-zicada-accent transition line-clamp-2 leading-tight">
+    <p class="pt-[12.5%] text-xl text-white uppercase md:italic text-center group-hover:text-zicada-accent transition line-clamp-2 leading-tight">
         {{ product.name }} {{ product_color.color.name }}
     </p>
 </a>

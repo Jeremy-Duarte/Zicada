@@ -132,13 +132,9 @@ reflejan tu estilo. Envíos a todo el país.{% endblock %}
     {% if featured_collections %}
         {% for collection in featured_collections %}
         <section aria-labelledby="coll-title-{{ forloop.counter }}" class="{% if not forloop.first %}border-t border-neutral-800{% endif %}">
-            <div class="max-w-6xl mx-auto px-4 py-12 md:py-16">
-                <div class="text-center mb-6 md:mb-10">
-                    <p class="text-zicada-accent font-semibold text-sm uppercase tracking-[0.2em] mb-0.5">Explora la colección</p>
-                    <h2 id="coll-title-{{ forloop.counter }}" class="text-2xl md:text-4xl font-extrabold tracking-tight">{{ collection.name }}</h2>
-                    {% if collection.description %}
-                        <p class="text-gray-400 text-sm mt-2 max-w-xl mx-auto">{{ collection.description|truncatewords:15 }}</p>
-                    {% endif %}
+            <div class="max-w-[1360px] mx-auto px-4 py-12 md:py-16">
+                <div class="text-center mb-10 md:mb-14">
+                    <h2 id="coll-title-{{ forloop.counter }}" class="text-2xl md:text-4xl tracking-tight">Explora la colección {{ collection.name }}</h2>
                 </div>
 
                 {% with products=collection.products.all %}
@@ -146,9 +142,9 @@ reflejan tu estilo. Envíos a todo el país.{% endblock %}
                 <div class="flex flex-wrap justify-center gap-8">
                     {% for product in products %}
                         {% for product_color in product.product_colors.all %}
-                        <div class="w-full sm:w-[calc(50%-1rem)] max-w-sm lg:max-w-xs
+                        <div class="w-full sm:w-[calc(50%-1rem)] max-w-sm
                                     {% if products|length == 1 and product.product_colors.all|length == 1 %}md:max-w-md{% endif %}
-                                    lg:w-[calc(33.333%-1rem)]">
+                                    lg:max-w-[420px] lg:w-[calc(33.333%-1rem)]">
                             {% include 'components/product_card.html' with product=product product_color=product_color %}
                         </div>
                         {% endfor %}
@@ -160,91 +156,62 @@ reflejan tu estilo. Envíos a todo el país.{% endblock %}
                 </div>
                 {% endif %}
                 {% endwith %}
-                <div class="text-center mt-8">
-                    <a href="{% url 'products:collection_detail' collection.slug %}"
-                        class="inline-flex items-center gap-1 text-zicada-accent text-sm font-semibold hover:gap-2 transition-all">
-                        Ver colección completa
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                        </svg>
-                    </a>
-                </div>
             </div>
         </section>
         {% endfor %}
-
-        <div class="max-w-6xl mx-auto px-4 pb-12 text-center">
-            <a href="{% url 'products:collections_list' %}"
-                class="inline-flex items-center gap-2 text-zicada-accent font-semibold hover:gap-3 transition-all">
-                Ver todas las colecciones
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                </svg>
-            </a>
-        </div>
     {% endif %}
 
-    <!-- Espacio de publicidad (1 a 3 configurables desde el admin) -->
+    <!-- Publicidad: full-screen, 4:3, sin texto, cada una apilada -->
     {% if promos %}
-    <section aria-label="Publicidad">
-        <div class="grid grid-cols-1 {% if promos|length == 2 %}md:grid-cols-2{% elif promos|length >= 3 %}md:grid-cols-3{% endif %}">
-            {% for promo in promos %}
-            {% if promo.link_url %}
-            <a href="{{ promo.link_url }}" class="group relative block overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-zicada-accent">
-            {% else %}
-            <div class="relative overflow-hidden">
-            {% endif %}
-                <img src="{{ promo.image.url }}" alt="{{ promo.title|default:'Publicidad Zicada' }}"
-                    class="w-full h-72 md:h-96 object-cover {% if promo.link_url %}group-hover:scale-105 transition duration-700{% endif %}"
-                    loading="lazy">
-                {% if promo.title or promo.subtitle %}
-                <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-6">
-                    {% if promo.title %}<h3 class="text-2xl font-bold">{{ promo.title }}</h3>{% endif %}
-                    {% if promo.subtitle %}<p class="text-gray-300 mt-1">{{ promo.subtitle }}</p>{% endif %}
-                    {% if promo.link_text and promo.link_url %}
-                    <span class="inline-block mt-4 bg-zicada-accent hover:bg-zicada-accent/90 text-white font-semibold px-6 py-2.5 rounded-lg transition w-fit">
-                        {{ promo.link_text }}
-                    </span>
-                    {% endif %}
-                </div>
-                {% endif %}
-            {% if promo.link_url %}</a>{% else %}</div>{% endif %}
-            {% endfor %}
-        </div>
-    </section>
+        {% for promo in promos %}
+        {% if promo.link_url %}
+        <a href="{{ promo.link_url }}" class="block h-screen w-full overflow-hidden relative focus:outline-none focus-visible:ring-2 focus-visible:ring-zicada-accent" aria-label="{{ promo.title|default:'Publicidad Zicada' }}">
+        {% else %}
+        <div class="h-screen w-full overflow-hidden relative">
+        {% endif %}
+            <img src="{{ promo.image.url }}" alt="{{ promo.title|default:'' }}"
+                class="w-full h-full object-cover"
+                loading="lazy">
+        {% if promo.link_url %}</a>{% else %}</div>{% endif %}
+        {% endfor %}
     {% endif %}
 
-    <!-- Galería estilo TikTok -->
+    <!-- Galería tipo app de fotos — carrusel centrado con snap -->
     {% if gallery_items %}
     <section class="py-16 md:py-24 overflow-hidden" aria-labelledby="home-gallery-title">
         <div class="container mx-auto px-4 mb-10 md:mb-14 flex items-end justify-between gap-4">
             <a href="https://instagram.com/zicada_lu" target="_blank" rel="noopener noreferrer"
                 class="group inline-flex items-center gap-2 text-gray-300 hover:text-white transition"
                 aria-label="Instagram de Zicada, @zicada_lu">
-                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M12 2.2c3.2 0 3.6 0 4.9.1 3.3.1 4.8 1.7 4.9 4.9.1 1.3.1 1.6.1 4.8s0 3.6-.1 4.8c-.1 3.2-1.7 4.8-4.9 4.9-1.3.1-1.6.1-4.9.1-3.2 0-3.6 0-4.8-.1-3.3-.1-4.8-1.7-4.9-4.9-.1-1.3-.1-1.6-.1-4.8s0-3.6.1-4.8C2.4 4 4 2.4 7.2 2.3c1.2-.1 1.6-.1 4.8-.1zM12 7a5 5 0 100 10 5 5 0 000-10zm0 8.2a3.2 3.2 0 110-6.4 3.2 3.2 0 010 6.4zm5.2-9.6a1.2 1.2 0 100 2.4 1.2 1.2 0 000-2.4z"/>
-                </svg>
-                <span class="text-sm font-semibold">@zicada_lu</span>
+                <span class="text-xl font-semibold">@zicada_lu</span>
             </a>
-            <h2 id="home-gallery-title" class="text-3xl md:text-5xl font-extrabold tracking-tight text-right">GALERIA</h2>
+            <h2 id="home-gallery-title" class="text-3xl md:text-3xl font-extrabold tracking-tight text-right">GALERIA</h2>
         </div>
 
-        <div class="gallery-marquee relative" role="region" aria-label="Carrusel de galería de fotos">
-            <div class="gallery-track flex gap-4 px-4">
+        <div id="galleryCarousel" class="relative" role="region" aria-label="Galería de fotos">
+            <div id="galleryTrack" class="flex gap-6 overflow-x-auto snap-x snap-mandatory scroll-smooth py-2">
                 {% for item in gallery_items %}
-                <figure class="shrink-0 w-52 md:w-72">
+                <figure class="shrink-0 w-[75vw] md:w-[50vw] lg:w-[35vw] snap-center">
                     <img src="{{ item.image.url }}" alt="{{ item.alt_text }}"
-                        class="w-full aspect-[9/16] object-cover rounded-xl" loading="lazy">
+                        class="w-full aspect-[4/5] object-cover rounded-xl transition-transform duration-300 hover:scale-[1.02]"
+                        loading="lazy" data-gallery-idx="{{ forloop.counter0 }}">
                     <figcaption class="sr-only">{{ item.description }}</figcaption>
                 </figure>
                 {% endfor %}
-                {% for item in gallery_items %}
-                <figure class="shrink-0 w-52 md:w-72" aria-hidden="true">
-                    <img src="{{ item.image.url }}" alt=""
-                        class="w-full aspect-[9/16] object-cover rounded-xl" loading="lazy">
-                </figure>
-                {% endfor %}
             </div>
+
+            <button id="galleryPrev" aria-label="Anterior"
+                class="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 z-10 w-10 h-10 md:w-12 md:h-12 rounded-full bg-black/50 hover:bg-zicada-accent text-white flex items-center justify-center transition-colors duration-300">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                </svg>
+            </button>
+            <button id="galleryNext" aria-label="Siguiente"
+                class="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 z-10 w-10 h-10 md:w-12 md:h-12 rounded-full bg-black/50 hover:bg-zicada-accent text-white flex items-center justify-center transition-colors duration-300">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+            </button>
         </div>
 
         <div class="container mx-auto px-4 mt-10 md:mt-14">
@@ -259,25 +226,92 @@ reflejan tu estilo. Envíos a todo el país.{% endblock %}
     </section>
     {% endif %}
 
+    <!-- Conoce más de nosotros — botón estilo hero -->
+    <section class="py-20 md:py-28 text-center bg-black">
+        <div class="max-w-3xl mx-auto px-4">
+            <h2 class="text-3xl md:text-5xl font-extrabold tracking-tight mb-4">Conoce más de nosotros</h2>
+            <p class="text-gray-400 text-sm md:text-base max-w-xl mx-auto mb-8">
+                Descubre la historia detrás de Zicada, nuestra pasión por el streetwear y el arte de crear prendas únicas que expresan tu personalidad.
+            </p>
+            <a href="{% url 'core:about' %}"
+                class="inline-block bg-zicada-accent hover:bg-zicada-accent/90 text-white font-semibold px-10 py-4 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg">
+                Explorar
+            </a>
+        </div>
+    </section>
+
 </div><!-- /bg-black font-opensans -->
 
 <style>
-    /* Marquee de la galería — sin utility Tailwind directa (igual que @keyframes en delivery/main.css) */
-    @keyframes gallery-scroll {
-        from { transform: translateX(0); }
-        to { transform: translateX(-50%); }
-    }
-    .gallery-track {
-        width: max-content;
-        animation: gallery-scroll 40s linear infinite;
-    }
-    .gallery-marquee:hover .gallery-track {
-        animation-play-state: paused;
-    }
+    /* Carrusel de galería — scroll snap + smooth */
+    #galleryTrack::-webkit-scrollbar { display: none; }
+    #galleryTrack { scrollbar-width: none; }
     @media (prefers-reduced-motion: reduce) {
-        .gallery-track { animation: none; }
+        #galleryTrack { scroll-behavior: auto; }
     }
 </style>
+
+<script>
+    (function () {
+        // Galería auto-avance con pausa en hover
+        document.addEventListener('DOMContentLoaded', function () {
+            const track = document.getElementById('galleryTrack');
+            const prevBtn = document.getElementById('galleryPrev');
+            const nextBtn = document.getElementById('galleryNext');
+            if (!track || track.children.length < 2) return;
+
+            let interval;
+
+            function startAutoSlide() {
+                if (interval) return;
+                interval = setInterval(function () {
+                    var next = track.scrollLeft + track.clientWidth * 0.8;
+                    track.scrollTo({ left: next, behavior: 'smooth' });
+                }, 4000);
+            }
+
+            function stopAutoSlide() {
+                if (interval) {
+                    clearInterval(interval);
+                    interval = null;
+                }
+            }
+
+            function scrollToChild(dir) {
+                var childWidth = track.children[0]?.offsetWidth || 300;
+                var gap = 24; // gap-6
+                var target = dir === 'next'
+                    ? track.scrollLeft + childWidth + gap
+                    : track.scrollLeft - childWidth - gap;
+                track.scrollTo({ left: target, behavior: 'smooth' });
+            }
+
+            if (prevBtn) prevBtn.addEventListener('click', function () { stopAutoSlide(); scrollToChild('prev'); });
+            if (nextBtn) nextBtn.addEventListener('click', function () { stopAutoSlide(); scrollToChild('next'); });
+
+            track.addEventListener('mouseenter', stopAutoSlide);
+            track.addEventListener('mouseleave', startAutoSlide);
+
+            // Al hacer hover sobre una imagen, centrarla
+            Array.from(track.children).forEach(function (fig) {
+                fig.addEventListener('mouseenter', function () {
+                    stopAutoSlide();
+                    var img = fig.querySelector('img');
+                    if (img) {
+                        var gap = 24;
+                        var left = fig.offsetLeft - (track.clientWidth - fig.offsetWidth) / 2 + gap;
+                        track.scrollTo({ left: left, behavior: 'smooth' });
+                    }
+                });
+                fig.addEventListener('mouseleave', function () {
+                    startAutoSlide();
+                });
+            });
+
+            startAutoSlide();
+        });
+    })();
+</script>
 
 <script>
     (function () {
