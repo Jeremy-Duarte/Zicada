@@ -15,6 +15,9 @@
     var totalFigs = 0;
     var currentIdx = 0;
 
+    var targetPos = null;
+    var EASING = 0.08;
+
     function measure() {
         halfway = 0;
         totalFigs = track.children.length / 2;
@@ -48,11 +51,17 @@
         if (!lastTs) lastTs = ts;
         var delta = Math.min(ts - lastTs, 200);
 
-        if (!paused) {
+        if (targetPos !== null) {
+            position += (targetPos - position) * EASING;
+            if (Math.abs(targetPos - position) < 0.5) {
+                position = targetPos;
+                targetPos = null;
+            }
+        } else if (!paused) {
             position += speed * (delta / 16);
         }
 
-        position = wrap(position);
+        if (targetPos === null) position = wrap(position);
         currentIdx = posToIdx(position);
         track.style.transform = 'translateX(' + (-position) + 'px)';
         lastTs = ts;
@@ -90,19 +99,13 @@
         fig.addEventListener('click', function (e) {
             paused = true;
 
-            var candidate1 = i;
-            var candidate2 = i + totalFigs;
-            var d1 = Math.abs(candidate1 - currentIdx);
-            var d2 = Math.abs(candidate2 - currentIdx);
-            var idx = d1 <= d2 ? candidate1 : candidate2;
+            var off = fig.offsetLeft;
+            var centerAdjust = (containerWidth - fig.offsetWidth) / 2;
+            var raw = off - centerAdjust;
+            var t1 = raw;
+            var t2 = raw + halfway;
 
-            var figIdx = idx % totalFigs;
-            var figEl = track.children[figIdx];
-            var off = figEl.offsetLeft;
-            var centerAdjust = (containerWidth - figEl.offsetWidth) / 2;
-            position = idx < totalFigs ? off - centerAdjust : off + halfway - centerAdjust;
-            position = wrap(position);
-            track.style.transform = 'translateX(' + (-position) + 'px)';
+            targetPos = Math.abs(t1 - position) <= Math.abs(t2 - position) ? t1 : t2;
         });
     });
 
