@@ -1,3 +1,4 @@
+{% load backoffice_tags %}
 {% comment %} Props: status, label {% endcomment %}
 {% with colors=status|backoffice_status_color %}
   <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ colors.0 }} {{ colors.1 }}">
