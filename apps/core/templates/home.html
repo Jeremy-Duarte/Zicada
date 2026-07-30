@@ -191,14 +191,14 @@ reflejan tu estilo. Envíos a todo el país.{% endblock %}
         <div id="galleryCarousel" class="relative overflow-hidden" role="region" aria-label="Galería de fotos">
             <div id="galleryTrack" class="flex gap-6 will-change-transform">
                 {% for item in gallery_items %}
-                <figure class="shrink-0 w-[75vw] sm:w-[calc(50%-1rem)] lg:w-[calc(33.333%-1rem)]" data-gallery-original="true">
+                <figure class="shrink-0 w-[60vw] sm:w-[calc(40%-1rem)] lg:w-[calc(25%-1rem)]" data-gallery-original="true">
                     <img src="{{ item.image.url }}" alt="{{ item.alt_text }}"
                         class="w-full aspect-[4/5] object-cover rounded-lg transition-transform duration-300 hover:scale-[1.02]">
                     <figcaption class="sr-only">{{ item.description }}</figcaption>
                 </figure>
                 {% endfor %}
                 {% for item in gallery_items %}
-                <figure class="shrink-0 w-[75vw] sm:w-[calc(50%-1rem)] lg:w-[calc(33.333%-1rem)]" aria-hidden="true">
+                <figure class="shrink-0 w-[60vw] sm:w-[calc(40%-1rem)] lg:w-[calc(25%-1rem)]" aria-hidden="true">
                     <img src="{{ item.image.url }}" alt=""
                         class="w-full aspect-[4/5] object-cover rounded-lg transition-transform duration-300 hover:scale-[1.02]">
                 </figure>
