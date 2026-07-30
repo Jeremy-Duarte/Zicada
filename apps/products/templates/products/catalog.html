@@ -37,9 +37,15 @@
 
         <div class="flex flex-wrap items-center justify-between gap-4 mb-8">
             <div class="hidden lg:flex items-center gap-2" role="group" aria-label="Vista de productos">
-                <button data-cols="3" class="layout-btn w-9 h-9 rounded-lg border bg-white border-white transition" aria-label="3 columnas"></button>
-                <button data-cols="4" class="layout-btn w-9 h-9 rounded-lg border border-white/30 bg-transparent hover:bg-white/10 hover:border-white transition" aria-label="4 columnas"></button>
-                <button data-cols="5" class="layout-btn w-9 h-9 rounded-lg border border-white/30 bg-transparent hover:bg-white/10 hover:border-white transition" aria-label="5 columnas"></button>
+                <button data-cols="3" class="layout-btn w-9 h-9 flex items-center justify-center rounded-lg text-white transition" aria-label="3 columnas">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="2" y="4" width="5.5" height="16" rx="1"/><rect x="9.25" y="4" width="5.5" height="16" rx="1"/><rect x="16.5" y="4" width="5.5" height="16" rx="1"/></svg>
+                </button>
+                <button data-cols="4" class="layout-btn w-9 h-9 flex items-center justify-center rounded-lg text-neutral-700 hover:text-neutral-400 transition" aria-label="4 columnas">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="1.5" y="4" width="4" height="16" rx="1"/><rect x="7" y="4" width="4" height="16" rx="1"/><rect x="12.5" y="4" width="4" height="16" rx="1"/><rect x="18" y="4" width="4" height="16" rx="1"/></svg>
+                </button>
+                <button data-cols="5" class="layout-btn w-9 h-9 flex items-center justify-center rounded-lg text-neutral-700 hover:text-neutral-400 transition" aria-label="5 columnas">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="1" y="4" width="3.5" height="16" rx="1"/><rect x="5.5" y="4" width="3.5" height="16" rx="1"/><rect x="10" y="4" width="3.5" height="16" rx="1"/><rect x="14.5" y="4" width="3.5" height="16" rx="1"/><rect x="19" y="4" width="3.5" height="16" rx="1"/></svg>
+                </button>
             </div>
 
             <div class="flex items-center gap-3">
@@ -71,11 +77,11 @@ document.addEventListener('DOMContentLoaded', function () {
         btn.addEventListener('click', function () {
             var cols = this.getAttribute('data-cols');
             btns.forEach(function (b) {
-                b.classList.remove('bg-white', 'border-white');
-                b.classList.add('border-white/30', 'bg-transparent');
+                b.classList.remove('text-white');
+                b.classList.add('text-neutral-700');
             });
-            this.classList.remove('border-white/30', 'bg-transparent');
-            this.classList.add('bg-white', 'border-white');
+            this.classList.remove('text-neutral-700');
+            this.classList.add('text-white');
 
             container.classList.remove('lg:grid-cols-3', 'lg:grid-cols-4', 'lg:grid-cols-5');
             container.classList.add('lg:grid-cols-' + cols);
