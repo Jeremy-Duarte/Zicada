@@ -176,7 +176,7 @@ reflejan tu estilo. Envíos a todo el país.{% endblock %}
         {% endfor %}
     {% endif %}
 
-    <!-- Galería tipo app de fotos — carrusel centrado con snap -->
+    <!-- Galería tipo carrusel: aspect-[1/2] + max-w-[50vh] proporcional -->
     {% if gallery_items %}
     <section class="py-8 md:py-16" aria-labelledby="home-gallery-title">
         <div class="container mx-auto px-4 mb-6 md:mb-10 flex items-end justify-between gap-4">
@@ -191,16 +191,16 @@ reflejan tu estilo. Envíos a todo el país.{% endblock %}
         <div id="galleryCarousel" class="relative overflow-hidden overscroll-x-none touch-pan-y" role="region" aria-label="Galería de fotos">
             <div id="galleryTrack" class="flex gap-6 will-change-transform">
                 {% for item in gallery_items %}
-                <figure class="shrink-0 basis-[calc(50%-0.75rem)] sm:basis-[calc(33.333%-1rem)] md:basis-[calc(25%-1.125rem)] lg:basis-[calc(20%-1.2rem)]" data-gallery-original="true">
+                <figure class="shrink-0 basis-[calc(50%-0.75rem)] sm:basis-[calc(33.333%-1rem)] md:basis-[calc(25%-1.125rem)] lg:basis-[calc(20%-1.2rem)] max-w-[50vh] overflow-hidden rounded-lg bg-neutral-900" data-gallery-original="true">
                     <img src="{{ item.image.url }}" alt="{{ item.alt_text }}"
-                        class="w-full aspect-[4/5] max-h-[80dvh] object-cover rounded-lg transition-transform duration-300 hover:scale-[1.02]">
+                        class="w-full aspect-[1/2] object-cover transition-transform duration-300 hover:scale-[1.02]">
                     <figcaption class="sr-only">{{ item.description }}</figcaption>
                 </figure>
                 {% endfor %}
                 {% for item in gallery_items %}
-                <figure class="shrink-0 basis-[calc(50%-0.75rem)] sm:basis-[calc(33.333%-1rem)] md:basis-[calc(25%-1.125rem)] lg:basis-[calc(20%-1.2rem)]" aria-hidden="true">
+                <figure class="shrink-0 basis-[calc(50%-0.75rem)] sm:basis-[calc(33.333%-1rem)] md:basis-[calc(25%-1.125rem)] lg:basis-[calc(20%-1.2rem)] max-w-[50vh] overflow-hidden rounded-lg bg-neutral-900" aria-hidden="true">
                     <img src="{{ item.image.url }}" alt=""
-                        class="w-full aspect-[4/5] max-h-[80dvh] object-cover rounded-lg transition-transform duration-300 hover:scale-[1.02]">
+                        class="w-full aspect-[1/2] object-cover transition-transform duration-300 hover:scale-[1.02]">
                 </figure>
                 {% endfor %}
             </div>
