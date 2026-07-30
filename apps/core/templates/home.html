@@ -152,10 +152,10 @@ reflejan tu estilo. Envíos a todo el país.{% endblock %}
 
                 {% with products=collection.products.all %}
                 {% if products %}
-                <div class="flex flex-wrap justify-center gap-6">
+                <div class="flex flex-wrap justify-center gap-y-8 gap-x-4 sm:gap-6">
                     {% for product in products %}
                         {% for product_color in product.product_colors.all %}
-                        <div class="w-full sm:w-[calc(50%-0.75rem)] max-w-sm
+                        <div class="w-full sm:w-[calc(50%-0.75rem)] max-w-sm lg:max-w-none
                                     {% if products|length == 1 and product.product_colors.all|length == 1 %}md:max-w-md{% endif %}
                                     lg:w-[calc(33.333%-0.75rem)]">
                             {% include 'components/product_card.html' with product=product product_color=product_color %}
