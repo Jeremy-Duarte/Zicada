@@ -5,59 +5,42 @@
 
 {% block content %}
 <div class="bg-black text-white font-poppins">
-    <div class="max-w-[1360px] mx-auto px-4 py-12 md:py-16">
+    <h1 class="text-4xl md:text-6xl font-extrabold tracking-tight px-4 md:px-8 pt-8 md:pt-12 pb-4">
+        COLECCIONES
+    </h1>
+    <hr class="border-neutral-800 mx-4 md:mx-8">
 
-        <div class="text-center mb-14">
-            <h1 class="font-extrabold text-4xl md:text-6xl tracking-tight">COLECCIONES</h1>
-            <p class="mt-4 text-neutral-400 text-sm md:text-base max-w-xl mx-auto">
-                Descubre nuestras colecciones exclusivas, cada una con su propia identidad.
-            </p>
-        </div>
+    {% if collections %}
+    <div>
+        {% for collection in collections %}
+        <a href="{% url 'products:collection_detail' collection.slug %}"
+           class="group relative w-full h-dvh block overflow-hidden">
+            {% if collection.cover_image %}
+            <img src="{{ collection.cover_image.url }}" alt="{{ collection.name }}"
+                 class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105">
+            {% else %}
+            <div class="w-full h-full bg-neutral-900"></div>
+            {% endif %}
 
-        {% if collections %}
-        <div class="flex flex-col gap-8">
-            {% for collection in collections %}
-            <a href="{% url 'products:collection_detail' collection.slug %}"
-               class="group relative w-full min-h-[70dvh] md:min-h-[80dvh] rounded-2xl overflow-hidden block">
-                
-                {% if collection.cover_image %}
-                <img src="{{ collection.cover_image.url }}" alt="{{ collection.name }}"
-                     class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105">
-                {% else %}
-                <div class="absolute inset-0 bg-neutral-900"></div>
-                {% endif %}
-                
-                <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/10"></div>
+            <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
 
-                {% if collection.status == 'publicada' %}
-                <span class="absolute top-6 right-6 z-10 px-3 py-1 rounded-full text-xs font-semibold bg-green-500/80 text-white backdrop-blur-sm">Activa</span>
-                {% elif collection.status == 'archivada' %}
-                <span class="absolute top-6 right-6 z-10 px-3 py-1 rounded-full text-xs font-semibold bg-neutral-500/80 text-white backdrop-blur-sm">Finalizada</span>
-                {% endif %}
-
-                <div class="absolute bottom-0 left-0 right-0 p-8 md:p-12 z-10">
-                    <h2 class="font-extrabold text-3xl md:text-5xl lg:text-6xl tracking-tight">
-                        {{ collection.name }}
-                    </h2>
-                    {% if collection.description %}
-                    <p class="mt-3 text-sm md:text-base text-neutral-300 max-w-xl line-clamp-2">
-                        {{ collection.description }}
-                    </p>
-                    {% endif %}
-                    <span class="inline-block mt-6 px-8 py-3 border-2 border-white text-white rounded-lg font-semibold tracking-wider text-sm
-                                 transition group-hover:bg-white/10">
-                        BUY NOW
-                    </span>
-                </div>
-            </a>
-            {% endfor %}
-        </div>
-        {% else %}
-        <div class="text-center py-20">
-            <p class="text-lg text-neutral-400">No hay colecciones disponibles.</p>
-            <p class="text-sm text-neutral-500 mt-2">¡Vuelve pronto para descubrir nuestras próximas colecciones!</p>
-        </div>
-        {% endif %}
+            <div class="absolute bottom-8 md:bottom-12 left-4 md:left-8 right-4 md:right-8 z-10 flex items-end justify-between gap-4">
+                <h2 class="font-extrabold text-3xl md:text-5xl lg:text-6xl tracking-tight leading-none">
+                    {{ collection.name }}
+                </h2>
+                <span class="flex-shrink-0 px-6 md:px-8 py-3 border-2 border-white text-white rounded-lg font-semibold tracking-wider text-sm
+                             transition group-hover:bg-white/10">
+                    BUY NOW
+                </span>
+            </div>
+        </a>
+        {% endfor %}
     </div>
+    {% else %}
+    <div class="text-center py-20">
+        <p class="text-lg text-neutral-400">No hay colecciones disponibles.</p>
+        <p class="text-sm text-neutral-500 mt-2">¡Vuelve pronto para descubrir nuestras próximas colecciones!</p>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}
