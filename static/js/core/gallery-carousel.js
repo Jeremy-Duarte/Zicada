@@ -86,9 +86,9 @@
         track.style.transform = 'translateX(' + (-position) + 'px)';
     });
 
-    // Hover sobre imagen original → centrar con animacion, bloquear hover mientras
+    // Hover sobre imagen original → centrar y pausar. Mouseleave → reanudar.
     Array.prototype.forEach.call(track.children, function (fig, i) {
-        if (i >= track.children.length / 2) return; // solo originales, no clones
+        if (i >= track.children.length / 2) return;
         fig.addEventListener('mouseenter', function () {
             if (animating) return;
             paused = true;
@@ -97,7 +97,8 @@
             targetPosition = wrapPosition(offset);
         });
         fig.addEventListener('mouseleave', function () {
-            if (animating) return; // ignorar si la animacion no ha terminado
+            animating = false;
+            targetPosition = null;
             paused = false;
         });
     });
