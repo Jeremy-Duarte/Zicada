@@ -15,16 +15,14 @@
                     {{ collection.name }}
                 </h2>
             </div>
-            <div class="h-[75dvh] flex items-center justify-center bg-black overflow-hidden">
-                <div class="w-full max-w-[150vh] aspect-[3/2] mx-auto relative">
-                    {% if collection.cover_image %}
-                    <img src="{{ collection.cover_image.url }}" alt="{{ collection.name }}"
-                         class="w-full h-full object-contain transition-transform duration-700 group-hover:scale-105">
-                    {% else %}
-                    <div class="w-full h-full bg-neutral-900"></div>
-                    {% endif %}
-                    <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none"></div>
-                </div>
+            <div class="relative h-[75dvh] overflow-hidden bg-black">
+                {% if collection.cover_image %}
+                <img src="{{ collection.cover_image.url }}" alt="{{ collection.name }}"
+                     class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105">
+                {% else %}
+                <div class="w-full h-full bg-neutral-900"></div>
+                {% endif %}
+                <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none"></div>
 
                 <div class="absolute bottom-8 md:bottom-12 left-4 md:left-8 z-10">
                     <div class="flex items-center justify-center px-8 md:px-10 py-4 md:py-5 border-2 border-white text-white transition group-hover:bg-white/10 select-none">
