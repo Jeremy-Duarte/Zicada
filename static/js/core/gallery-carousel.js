@@ -61,7 +61,7 @@
             position += speed * (delta / 16);
         }
 
-        position = wrap(position);
+        if (targetPos === null) position = wrap(position);
         track.style.transform = 'translateX(' + (-position) + 'px)';
         lastTs = ts;
         raf = requestAnimationFrame(loop);
@@ -114,8 +114,11 @@
                 activeFig = null;
             }, CD_MS);
 
-            var offset = fig.offsetLeft - (containerWidth - fig.offsetWidth) / 2;
-            targetPos = wrap(offset);
+            var off = fig.offsetLeft;
+            var centerAdjust = (containerWidth - fig.offsetWidth) / 2;
+            var t1 = off - centerAdjust;
+            var t2 = off + halfway - centerAdjust;
+            targetPos = Math.abs(t1 - position) <= Math.abs(t2 - position) ? t1 : t2;
         });
     });
 
