@@ -6,7 +6,7 @@
         {% for product in products %}
             {% for product_color in product.product_colors.all %}
             <div>
-                {% include 'components/product_card.html' with product=product product_color=product_color %}
+                {% include 'components/product_card_catalog.html' with product=product product_color=product_color %}
             </div>
             {% endfor %}
         {% endfor %}
