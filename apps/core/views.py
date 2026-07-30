@@ -12,6 +12,7 @@ from django.contrib.auth.views import (
     PasswordResetCompleteView as BasePasswordResetCompleteView,
 )
 from django.core.mail import EmailMultiAlternatives
+from django.db.models import Prefetch
 from django.shortcuts import render, redirect, get_object_or_404
 from django.template.loader import render_to_string
 from django.urls import reverse, reverse_lazy
@@ -19,7 +20,7 @@ from django.views.generic import CreateView, UpdateView, DeleteView, ListView, T
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from .models import Gallery, HeroConfig, HomePromo
-from apps.products.models import Collection
+from apps.products.models import Collection, Product, ProductColor
 from apps.core.crud.mixins import StaffPermissionRequiredMixin
 from .forms import ContactForm, StaffLoginForm, HeroConfigCreateForm, HeroConfigUpdateForm, HeroConfigDeleteForm, HeroConfigRestoreForm
 from apps.products.views import (
@@ -135,6 +136,21 @@ def home(request):
 
     featured_collections = Collection.objects.filter(
         status=COLLECTION_STATUS_PUBLISHED
+    ).prefetch_related(
+        Prefetch(
+            'products',
+            queryset=Product.objects.filter(is_active=True)
+                .select_related('category')
+                .prefetch_related(
+                    Prefetch(
+                        'product_colors',
+                        queryset=ProductColor.objects
+                            .select_related('featured_image')
+                            .prefetch_related('images')
+                    ),
+                    'variants',
+                )
+        )
     ).order_by('-created_at')[:FEATURED_COLLECTIONS_LIMIT]
 
     # Espacios publicitarios configurables (máximo 3 activos)

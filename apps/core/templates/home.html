@@ -128,54 +128,54 @@ reflejan tu estilo. Envíos a todo el país.{% endblock %}
 <!-- Contenido del home: fondo negro, texto blanco, Open Sans -->
 <div class="bg-black text-white font-opensans">
 
-    <!-- Explora la colección + Colecciones -->
+    <!-- Explora cada colección con sus productos -->
     {% if featured_collections %}
-    <section aria-labelledby="home-collections-title">
-        <div class="container mx-auto px-4 py-16 md:py-24">
-            <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-10 md:mb-14">
-                <div>
-                    <p class="text-zicada-accent font-semibold text-sm uppercase tracking-[0.2em] mb-2">Explora la colección</p>
-                    <h2 id="home-collections-title" class="text-3xl md:text-5xl font-extrabold tracking-tight">Colecciones</h2>
-                </div>
-                <a href="{% url 'products:collections_list' %}"
-                    class="shrink-0 text-sm font-semibold text-gray-300 hover:text-white transition underline-offset-4 hover:underline">
-                    Ver todas
-                </a>
-            </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-                {% for collection in featured_collections %}
-                <a href="{% url 'products:collection_detail' collection.slug %}" class="group block focus:outline-none focus-visible:ring-2 focus-visible:ring-zicada-accent rounded-xl">
-                    <div class="overflow-hidden rounded-xl aspect-[4/5] bg-neutral-900">
-                        {% if collection.background_image %}
-                        <img src="{{ collection.background_image.url }}" alt="{{ collection.name }}"
-                            class="w-full h-full object-cover group-hover:scale-105 transition duration-500"
-                            loading="lazy">
-                        {% elif collection.style_config and collection.style_config.background_image %}
-                        <img src="{{ collection.style_config.background_image }}" alt="{{ collection.name }}"
-                            class="w-full h-full object-cover group-hover:scale-105 transition duration-500"
-                            loading="lazy">
-                        {% else %}
-                        <div class="w-full h-full flex items-center justify-center text-neutral-700">
-                            <span class="text-4xl font-extrabold">{{ collection.name|first }}</span>
-                        </div>
+        {% for collection in featured_collections %}
+        <section aria-labelledby="coll-title-{{ forloop.counter }}" class="{% if not forloop.first %}border-t border-neutral-800{% endif %}">
+            <div class="container mx-auto px-4 py-12 md:py-16">
+                <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-6 md:mb-10">
+                    <div>
+                        <p class="text-zicada-accent font-semibold text-sm uppercase tracking-[0.2em] mb-1">Explora la colección</p>
+                        <h2 id="coll-title-{{ forloop.counter }}" class="text-2xl md:text-4xl font-extrabold tracking-tight">{{ collection.name }}</h2>
+                        {% if collection.description %}
+                            <p class="text-gray-400 text-sm mt-2 max-w-xl">{{ collection.description|truncatewords:15 }}</p>
                         {% endif %}
                     </div>
-                    <div class="pt-4">
-                        <h3 class="text-lg font-bold group-hover:text-zicada-accent transition">{{ collection.name }}</h3>
-                        <p class="text-sm text-gray-400 mt-1 line-clamp-2">{{ collection.description|truncatewords:15 }}</p>
-                        <span class="inline-flex items-center gap-1 text-zicada-accent text-sm font-semibold mt-2 group-hover:gap-2 transition-all">
-                            Ver colección
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                            </svg>
-                        </span>
-                    </div>
-                </a>
-                {% endfor %}
+                    <a href="{% url 'products:collection_detail' collection.slug %}"
+                        class="shrink-0 inline-flex items-center gap-1 text-zicada-accent text-sm font-semibold hover:gap-2 transition-all mt-2 sm:mt-0">
+                        Ver colección completa
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
+                    </a>
+                </div>
+
+                {% with products=collection.products.all %}
+                {% if products %}
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {% for product in products %}
+                        {% include 'components/product_card.html' with product=product card_style='default' %}
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-10 text-gray-500 border border-neutral-800 rounded-xl">
+                    <p>Esta colección aún no tiene productos publicados.</p>
+                </div>
+                {% endif %}
+                {% endwith %}
             </div>
+        </section>
+        {% endfor %}
+
+        <div class="container mx-auto px-4 pb-12 text-center">
+            <a href="{% url 'products:collections_list' %}"
+                class="inline-flex items-center gap-2 text-zicada-accent font-semibold hover:gap-3 transition-all">
+                Ver todas las colecciones
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
+            </a>
         </div>
-    </section>
     {% endif %}
 
     <!-- Espacio de publicidad (1 a 3 configurables desde el admin) -->
