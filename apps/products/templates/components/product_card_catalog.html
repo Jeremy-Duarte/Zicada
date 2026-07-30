@@ -12,7 +12,7 @@ Espera: product (con .slug, .name) + product_color (con .color.name, .featured_i
         {% if image and image.image %}
         <img src="{{ image.image.url }}"
              alt="{{ product.name }} {{ product_color.color.name }}"
-             class="w-full h-full object-cover group-hover:scale-105 transition duration-500"
+             class="w-full h-full object-contain group-hover:scale-105 transition duration-500"
              loading="lazy">
         {% else %}
         <div class="w-full h-full flex items-center justify-center text-neutral-700">
@@ -23,7 +23,7 @@ Espera: product (con .slug, .name) + product_color (con .color.name, .featured_i
         </div>
         {% endif %}
     </div>
-    <p class="pt-[12.5%] text-xl text-white uppercase md:italic text-center group-hover:text-zicada-accent transition line-clamp-2 leading-tight">
+    <p class="pt-3 md:pt-4 text-sm md:text-base text-white uppercase md:italic text-center group-hover:text-zicada-accent transition line-clamp-2 leading-snug">
         {{ product.name }} {{ product_color.color.name }}
     </p>
 </a>
