@@ -17,7 +17,7 @@
                 <img id="main-image" 
                     src="{% if gallery_images %}{{ gallery_images.0.image }}{% else %}{% static 'img/product-placeholder.jpeg' %}{% endif %}" 
                     alt="{{ product.name }}" 
-                    class="w-full h-96 md:h-128 object-cover">
+                    class="w-full aspect-[4/5] max-h-[80dvh] object-cover">
             </div>
             
             {% if gallery_images|length > 1 %}
@@ -28,9 +28,9 @@
                     data-color-id="{{ gallery_item.color_id }}"
                     data-color-name="{{ gallery_item.color_name }}">
                     {% if gallery_item.image %}
-                        <img src="{{ gallery_item.image }}" alt="{{ gallery_item.color_name }}" class="w-full h-24 object-cover">
+                        <img src="{{ gallery_item.image }}" alt="{{ gallery_item.color_name }}" class="w-full aspect-[4/3] object-cover">
                     {% else %}
-                        <div class="w-full h-24 bg-gray-200 flex items-center justify-center text-xs text-gray-500">
+                        <div class="w-full aspect-[4/3] bg-gray-200 flex items-center justify-center text-xs text-gray-500">
                             Sin imagen
                         </div>
                     {% endif %}

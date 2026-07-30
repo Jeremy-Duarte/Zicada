@@ -57,7 +57,7 @@ reflejan tu estilo. Envíos a todo el país.{% endblock %}
                             margin-bottom: {{ slide.title_margin_bottom|default:'1.5rem' }};">
                         {% if "zicada" in slide.title_text|lower %}
                         <img src="{% static 'img/lettering-zicada.png' %}" alt="Lettering Zicada"
-                            class="mx-auto max-h-48 md:max-h-64 lg:max-h-80 w-auto object-contain" />
+                            class="mx-auto max-h-[clamp(96px,25dvh,320px)] w-auto object-contain" />
                         {% else %}
                         {{ slide.title_text|linebreaksbr }}
                         {% endif %}
@@ -142,9 +142,7 @@ reflejan tu estilo. Envíos a todo el país.{% endblock %}
                 <div class="flex flex-wrap justify-center gap-8">
                     {% for product in products %}
                         {% for product_color in product.product_colors.all %}
-                        <div class="w-full sm:w-[calc(50%-1rem)] max-w-sm
-                                    {% if products|length == 1 and product.product_colors.all|length == 1 %}md:max-w-md{% endif %}
-                                    lg:max-w-[420px] lg:w-[calc(33.333%-1rem)]">
+                        <div class="shrink-0 basis-full sm:basis-[calc(50%-1rem)] lg:basis-[calc(33.333%-1.333rem)]">
                             {% include 'components/product_card.html' with product=product product_color=product_color %}
                         </div>
                         {% endfor %}

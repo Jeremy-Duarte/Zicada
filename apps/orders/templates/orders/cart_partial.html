@@ -20,7 +20,7 @@
                     <div class="flex-shrink-0">
                         <img src="{% if item.image %}{{ item.image }}{% else %}{% static 'img/product-placeholder.jpeg' %}{% endif %}" 
                             alt="{{ item.product_name }}" 
-                            class="w-24 h-24 object-cover rounded-lg">
+                            class="w-20 sm:w-24 aspect-square object-cover rounded-lg">
                     </div>
                     
                     <!-- Detalles del producto -->

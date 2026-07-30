@@ -19,7 +19,7 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-10">
                     {% for collection in collections %}
                     {% with upcoming=collection.start_date %}
-                    <div class="group relative h-[420px] rounded-xl overflow-hidden transition-all duration-500 hover:scale-105 hover:shadow-2xl {% if upcoming and upcoming > now %}cursor-default{% else %}cursor-pointer{% endif %}" 
+                    <div class="group relative aspect-[4/5] w-full rounded-xl overflow-hidden transition-all duration-500 hover:scale-105 hover:shadow-2xl {% if upcoming and upcoming > now %}cursor-default{% else %}cursor-pointer{% endif %}" 
                          style="--card-primary: {{ collection.primary_color|default:'#c2a575' }};">
                         
                         {% if collection.cover_image %}
