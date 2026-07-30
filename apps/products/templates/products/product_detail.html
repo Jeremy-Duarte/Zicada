@@ -18,6 +18,10 @@
         scroll-snap-align: center;
         max-height: 55dvh;
         flex-shrink: 0;
+        margin-bottom: 0.75rem;
+    }
+    .gallery-slide:last-child {
+        margin-bottom: 0;
     }
 </style>
 {% endblock %}
@@ -225,13 +229,13 @@
         if (counter) counter.textContent = total ? (currentImageIdx + 1) + ' / ' + total : '0 / 0';
     }
 
-    function snapToImage() {
+    function scrollToImage(idx) {
         var slides = galleryTrack.querySelectorAll('.gallery-slide');
         if (!slides.length) return;
-        var active = slides[Math.min(currentImageIdx, slides.length - 1)];
-        if (active) {
-            active.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
+        var idxClamped = Math.min(Math.max(idx, 0), slides.length - 1);
+        var slide = slides[idxClamped];
+        var target = slide.offsetTop - (galleryViewport.clientHeight / 2) + (slide.offsetHeight / 2);
+        galleryViewport.scrollTo({ top: target, behavior: 'smooth' });
     }
 
     function highlightActiveThumbnail(idx) {
@@ -252,7 +256,7 @@
         var slides = galleryTrack.querySelectorAll('.gallery-slide');
         if (idx < 0 || idx >= slides.length) return;
         currentImageIdx = idx;
-        slides[idx].scrollIntoView({ behavior: 'smooth', block: 'center' });
+        scrollToImage(idx);
         updateArrows(slides.length);
         highlightActiveThumbnail(idx);
     }
@@ -338,8 +342,7 @@
             var slides = galleryTrack.querySelectorAll('.gallery-slide');
             if (currentImageIdx <= 0) return;
             currentImageIdx--;
-            var active = slides[currentImageIdx];
-            if (active) active.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            scrollToImage(currentImageIdx);
             updateArrows(slides.length);
             highlightActiveThumbnail(currentImageIdx);
         });
@@ -349,8 +352,7 @@
             var slides = galleryTrack.querySelectorAll('.gallery-slide');
             if (currentImageIdx >= slides.length - 1) return;
             currentImageIdx++;
-            var active = slides[currentImageIdx];
-            if (active) active.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            scrollToImage(currentImageIdx);
             updateArrows(slides.length);
             highlightActiveThumbnail(currentImageIdx);
         });
