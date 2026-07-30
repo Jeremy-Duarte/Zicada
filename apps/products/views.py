@@ -506,6 +506,13 @@ class ProductCatalogView(BaseProductListView):
         # HU-007 | ESCENARIO 6 | H | Limpiar filtros (botón con clean_url)
         context['clean_url'] = reverse('products:catalog')
         
+        # Total de variantes (cada color = un producto en la grid)
+        queryset = self.get_queryset()
+        context['total_variants'] = ProductColor.objects.filter(
+            product__in=queryset.values('pk'),
+            is_active=True
+        ).count()
+        
         return context
 
 

@@ -8,7 +8,7 @@ Espera: product (con .slug, .name) + product_color (con .color.name, .featured_i
 {% with image=product_color.featured_image|default:product_color.images.first %}
 <a href="{% url 'products:product_detail' product.slug %}"
    class="group block w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-zicada-accent">
-    <div class="product-card-aspect overflow-hidden bg-neutral-900">
+    <div class="product-card-aspect overflow-hidden bg-neutral-900/5">
         {% if image and image.image %}
         <img src="{{ image.image.url }}"
              alt="{{ product.name }} {{ product_color.color.name }}"
