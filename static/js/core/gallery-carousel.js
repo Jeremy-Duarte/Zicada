@@ -11,15 +11,26 @@
     var lastTs = 0;
     var halfway = 0;
     var itemWidth = 0;
+    var containerWidth = 0;
+    var totalFigs = 0;
+    var currentIdx = 0;
 
     function measure() {
         halfway = 0;
-        var count = track.children.length / 2;
-        for (var i = 0; i < count; i++) {
+        totalFigs = track.children.length / 2;
+        for (var i = 0; i < totalFigs; i++) {
             var child = track.children[i];
             if (child) halfway += child.offsetWidth + 24;
         }
         itemWidth = track.children[0] ? track.children[0].offsetWidth + 24 : 300;
+        containerWidth = track.parentElement.clientWidth;
+    }
+
+    function centerFig(idx) {
+        var fig = track.children[idx % totalFigs];
+        var off = fig.offsetLeft;
+        var centerAdjust = (containerWidth - fig.offsetWidth) / 2;
+        return off - centerAdjust;
     }
 
     function wrap(pos) {
@@ -44,6 +55,7 @@
         }
 
         position = wrap(position);
+        currentIdx = Math.round(position / itemWidth) % totalFigs;
         track.style.transform = 'translateX(' + (-position) + 'px)';
         lastTs = ts;
         raf = requestAnimationFrame(loop);
@@ -57,7 +69,8 @@
 
     if (prevBtn) {
         prevBtn.addEventListener('click', function () {
-            position -= itemWidth;
+            var prev = (currentIdx - 1 + totalFigs) % totalFigs;
+            position = centerFig(prev);
             position = wrap(position);
             track.style.transform = 'translateX(' + (-position) + 'px)';
         });
@@ -66,7 +79,8 @@
     }
     if (nextBtn) {
         nextBtn.addEventListener('click', function () {
-            position += itemWidth;
+            var next = (currentIdx + 1) % totalFigs;
+            position = centerFig(next);
             position = wrap(position);
             track.style.transform = 'translateX(' + (-position) + 'px)';
         });
