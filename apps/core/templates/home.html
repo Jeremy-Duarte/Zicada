@@ -132,32 +132,23 @@ reflejan tu estilo. Envíos a todo el país.{% endblock %}
     {% if featured_collections %}
         {% for collection in featured_collections %}
         <section aria-labelledby="coll-title-{{ forloop.counter }}" class="{% if not forloop.first %}border-t border-neutral-800{% endif %}">
-            <div class="container mx-auto px-4 py-12 md:py-16">
-                <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-6 md:mb-10">
-                    <div>
-                        <p class="text-zicada-accent font-semibold text-sm uppercase tracking-[0.2em] mb-1">Explora la colección</p>
-                        <h2 id="coll-title-{{ forloop.counter }}" class="text-2xl md:text-4xl font-extrabold tracking-tight">{{ collection.name }}</h2>
-                        {% if collection.description %}
-                            <p class="text-gray-400 text-sm mt-2 max-w-xl">{{ collection.description|truncatewords:15 }}</p>
-                        {% endif %}
-                    </div>
-                    <a href="{% url 'products:collection_detail' collection.slug %}"
-                        class="shrink-0 inline-flex items-center gap-1 text-zicada-accent text-sm font-semibold hover:gap-2 transition-all mt-2 sm:mt-0">
-                        Ver colección completa
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                        </svg>
-                    </a>
+            <div class="max-w-6xl mx-auto px-4 py-12 md:py-16">
+                <div class="text-center mb-6 md:mb-10">
+                    <p class="text-zicada-accent font-semibold text-sm uppercase tracking-[0.2em] mb-0.5">Explora la colección</p>
+                    <h2 id="coll-title-{{ forloop.counter }}" class="text-2xl md:text-4xl font-extrabold tracking-tight">{{ collection.name }}</h2>
+                    {% if collection.description %}
+                        <p class="text-gray-400 text-sm mt-2 max-w-xl mx-auto">{{ collection.description|truncatewords:15 }}</p>
+                    {% endif %}
                 </div>
 
                 {% with products=collection.products.all %}
                 {% if products %}
-                <div class="flex flex-wrap justify-center gap-y-8 gap-x-4 sm:gap-6">
+                <div class="flex flex-wrap justify-center gap-8">
                     {% for product in products %}
                         {% for product_color in product.product_colors.all %}
-                        <div class="w-full sm:w-[calc(50%-0.75rem)] max-w-sm lg:max-w-none
+                        <div class="w-full sm:w-[calc(50%-1rem)] max-w-sm lg:max-w-xs
                                     {% if products|length == 1 and product.product_colors.all|length == 1 %}md:max-w-md{% endif %}
-                                    lg:w-[calc(33.333%-0.75rem)]">
+                                    lg:w-[calc(33.333%-1rem)]">
                             {% include 'components/product_card.html' with product=product product_color=product_color %}
                         </div>
                         {% endfor %}
@@ -169,11 +160,20 @@ reflejan tu estilo. Envíos a todo el país.{% endblock %}
                 </div>
                 {% endif %}
                 {% endwith %}
+                <div class="text-center mt-8">
+                    <a href="{% url 'products:collection_detail' collection.slug %}"
+                        class="inline-flex items-center gap-1 text-zicada-accent text-sm font-semibold hover:gap-2 transition-all">
+                        Ver colección completa
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
+                    </a>
+                </div>
             </div>
         </section>
         {% endfor %}
 
-        <div class="container mx-auto px-4 pb-12 text-center">
+        <div class="max-w-6xl mx-auto px-4 pb-12 text-center">
             <a href="{% url 'products:collections_list' %}"
                 class="inline-flex items-center gap-2 text-zicada-accent font-semibold hover:gap-3 transition-all">
                 Ver todas las colecciones
