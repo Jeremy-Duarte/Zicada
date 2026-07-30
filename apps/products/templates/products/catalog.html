@@ -5,6 +5,9 @@
 
 {% block extra_css %}
 {{ block.super }}
+<style>
+    #products-grid .card-wrapper { max-width: 310px; margin: 0 auto; }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -13,7 +16,7 @@
 
         <div class="flex items-baseline justify-between gap-4 mb-8">
             <h1 class="text-3xl md:text-5xl font-extrabold tracking-tight">CATÁLOGO</h1>
-            <span class="text-sm md:text-base text-gray-400 font-semibold whitespace-nowrap">{{ paginator.count }} PRODUCTOS</span>
+            <span class="text-sm md:text-base text-gray-400 font-semibold whitespace-nowrap">{{ total_variants }} PRODUCTOS</span>
         </div>
 
         <hr class="border-neutral-800 mb-6">

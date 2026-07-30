@@ -1,7 +1,7 @@
 {% comment %}
 Catalog card — mismo aspecto visual que product_card.html.
 La imagen ocupa todo el espacio disponible arriba (flex-1) y se centra
-con object-contain; el texto queda al fondo con altura fija.
+con object-contain; el texto queda al fondo en una linea.
 Espera: product (con .slug, .name) + product_color (con .color.name, .featured_image, .images).
 {% endcomment %}
 {% load static %}
@@ -9,7 +9,7 @@ Espera: product (con .slug, .name) + product_color (con .color.name, .featured_i
 {% with image=product_color.featured_image|default:product_color.images.first %}
 <a href="{% url 'products:product_detail' product.slug %}"
    class="group flex flex-col h-full focus:outline-none focus-visible:ring-2 focus-visible:ring-zicada-accent">
-    <div class="flex-1 min-h-0 flex items-center justify-center bg-neutral-900 overflow-hidden">
+    <div class="flex-1 min-h-0 flex items-center justify-center overflow-hidden">
         {% if image and image.image %}
         <img src="{{ image.image.url }}"
              alt="{{ product.name }} {{ product_color.color.name }}"
@@ -24,8 +24,8 @@ Espera: product (con .slug, .name) + product_color (con .color.name, .featured_i
         </div>
         {% endif %}
     </div>
-    <div class="pt-3 md:pt-4 min-h-[2.5rem] md:min-h-[3rem] flex items-start justify-center">
-        <p class="text-sm md:text-base text-white uppercase md:italic text-center group-hover:text-zicada-accent transition line-clamp-2 leading-snug">
+    <div class="pt-3 md:pt-4 flex items-start justify-center">
+        <p class="text-sm md:text-base text-white uppercase md:italic text-center group-hover:text-zicada-accent transition truncate">
             {{ product.name }} {{ product_color.color.name }}
         </p>
     </div>
