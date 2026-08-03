@@ -171,6 +171,42 @@ class TestCollectionInteractiveView:
 
 
 @pytest.mark.django_db
+class TestCollectionZoneEditorView:
+    def test_editor_view_renders_with_zones(self, client, product_color_with_collection, ifactory):
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        user = ifactory.create(User, username='editor', is_staff=True, is_superuser=True)
+        client.force_login(user)
+
+        collection, product, product_color = product_color_with_collection()
+        InteractiveZone.objects.create(
+            collection=collection,
+            product_color=product_color,
+            x=Decimal('10'),
+            y=Decimal('10'),
+            width=Decimal('20'),
+            height=Decimal('20'),
+        )
+
+        url = reverse('products:collection_zones', kwargs={'pk': collection.pk})
+        response = client.get(url)
+
+        assert response.status_code == 200
+        content = response.content.decode()
+        assert 'zone-editor-data' in content
+        assert 'interactive/test.png' in content
+        assert collection.name in content
+
+    def test_editor_view_requires_login(self, client, collection_with_interactive):
+        collection = collection_with_interactive()
+
+        url = reverse('products:collection_zones', kwargs={'pk': collection.pk})
+        response = client.get(url)
+
+        assert response.status_code in (302, 403)
+
+
+@pytest.mark.django_db
 class TestCollectionZoneAPI:
     def _login_staff(self, client, ifactory):
         from django.contrib.auth import get_user_model
