@@ -155,6 +155,29 @@ class TestCollectionInteractiveView:
         assert product_color.pk is not None
         assert product.slug in content
 
+    def test_public_view_renders_dot_decimal_coordinates(self, client, product_color_with_collection):
+        """Regresión: el locale es-co localiza Decimal a '0,00' rompiendo el CSS."""
+        collection, product, product_color = product_color_with_collection()
+        InteractiveZone.objects.create(
+            collection=collection,
+            product_color=product_color,
+            x=Decimal('10.50'),
+            y=Decimal('20.25'),
+            width=Decimal('30.75'),
+            height=Decimal('40.50'),
+        )
+
+        url = reverse('products:collection_detail', kwargs={'slug': collection.slug})
+        response = client.get(url)
+
+        assert response.status_code == 200
+        content = response.content.decode()
+        assert 'left: 10.50%;' in content
+        assert 'top: 20.25%;' in content
+        assert 'width: 30.75%;' in content
+        assert 'height: 40.50%;' in content
+        assert ',50%;' not in content
+
     def test_public_view_404_without_interactive_background(self, client, ifactory):
         collection = ifactory.create(
             Collection,

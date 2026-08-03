@@ -1,4 +1,5 @@
 {% extends "layouts/base.html" %}
+{% load l10n %}
 
 {% block title %}{{ collection.name }} - Zicada{% endblock %}
 
@@ -11,7 +12,7 @@
 
         {% for zone in zones %}
         <a href="{% url 'products:product_detail' zone.product_color.product.slug %}?color={{ zone.product_color.pk }}"
-           style="left: {{ zone.x }}%; top: {{ zone.y }}%; width: {{ zone.width }}%; height: {{ zone.height }}%;"
+           style="left: {{ zone.x|unlocalize }}%; top: {{ zone.y|unlocalize }}%; width: {{ zone.width|unlocalize }}%; height: {{ zone.height|unlocalize }}%;"
            class="group absolute z-10 block cursor-pointer transition-all duration-300"
            title="{{ zone.product_color.product.name }} - {{ zone.product_color.color.name }}"
            aria-label="{{ zone.product_color.product.name }} - {{ zone.product_color.color.name }}">
