@@ -84,10 +84,10 @@
     // ============================================
 
     function clampZone(zone) {
-        zone.width = clampNum(zone.width, MIN_SIZE, 100);
-        zone.height = clampNum(zone.height, MIN_SIZE, 100);
-        zone.x = clampNum(zone.x, 0, 100 - zone.width);
-        zone.y = clampNum(zone.y, 0, 100 - zone.height);
+        zone.width = round(clampNum(zone.width, MIN_SIZE, 100));
+        zone.height = round(clampNum(zone.height, MIN_SIZE, 100));
+        zone.x = round(clampNum(zone.x, 0, 100 - zone.width));
+        zone.y = round(clampNum(zone.y, 0, 100 - zone.height));
         return zone;
     }
 

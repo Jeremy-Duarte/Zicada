@@ -241,6 +241,28 @@ class TestCollectionZoneAPI:
         assert response.json()['zone']['label'] == 'Zona central'
         assert InteractiveZone.objects.filter(collection=collection).count() == 1
 
+    def test_api_rounds_decimal_coordinates(self, client, product_color_with_collection, ifactory):
+        collection, product, product_color = product_color_with_collection()
+        self._login_staff(client, ifactory)
+
+        url = reverse('products:collection_zones_api', kwargs={'pk': collection.pk})
+        response = client.post(
+            url,
+            data={
+                'x': 5.123456, 'y': 7.987654, 'width': 20.55555, 'height': 15.44444,
+                'label': 'Zona con decimales',
+                'product_color_id': product_color.pk,
+            },
+            content_type='application/json',
+        )
+
+        assert response.status_code == 201
+        zone = InteractiveZone.objects.get(collection=collection)
+        assert zone.x == Decimal('5.12')
+        assert zone.y == Decimal('7.99')
+        assert zone.width == Decimal('20.56')
+        assert zone.height == Decimal('15.44')
+
     def test_api_rejects_product_not_in_collection(self, client, collection_with_interactive, ifactory):
         collection = collection_with_interactive()
         self._login_staff(client, ifactory)

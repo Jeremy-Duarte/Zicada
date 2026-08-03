@@ -1,6 +1,7 @@
 import json
 import csv
 from datetime import timedelta
+from decimal import Decimal, ROUND_HALF_UP
 
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
@@ -2365,6 +2366,13 @@ class CollectionZoneAPIView(StaffPermissionRequiredMixin, View):
     def get_collection(self):
         return get_object_or_404(Collection, pk=self.kwargs['pk'], is_active=True)
 
+    def _round_coord(self, value):
+        """Redondea una coordenada a 2 decimales (máximo del campo)."""
+        try:
+            return Decimal(str(value)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        except (TypeError, ValueError, decimal.InvalidOperation):
+            return value
+
     def _validate_payload(self, data):
         """Valida coordenadas y producto de una zona."""
         errors = {}
@@ -2427,10 +2435,10 @@ class CollectionZoneAPIView(StaffPermissionRequiredMixin, View):
         zone = InteractiveZone(
             collection=collection,
             product_color_id=int(data['product_color_id']),
-            x=data['x'],
-            y=data['y'],
-            width=data['width'],
-            height=data['height'],
+            x=self._round_coord(data['x']),
+            y=self._round_coord(data['y']),
+            width=self._round_coord(data['width']),
+            height=self._round_coord(data['height']),
             label=data.get('label', '')[:100],
         )
         zone.created_by = request.user
@@ -2482,10 +2490,10 @@ class CollectionZoneDetailAPIView(StaffPermissionRequiredMixin, View):
             return JsonResponse({'errors': errors}, status=400)
 
         zone.product_color_id = int(data['product_color_id'])
-        zone.x = data['x']
-        zone.y = data['y']
-        zone.width = data['width']
-        zone.height = data['height']
+        zone.x = api_view._round_coord(data['x'])
+        zone.y = api_view._round_coord(data['y'])
+        zone.width = api_view._round_coord(data['width'])
+        zone.height = api_view._round_coord(data['height'])
         zone.label = data.get('label', '')[:100]
         zone.updated_by = request.user
         zone.save()
