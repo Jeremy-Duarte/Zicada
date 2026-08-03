@@ -1,0 +1,20 @@
+{% comment %} Props: order (object con status, payment_status, total, items_count, address, id) {% endcomment %}
+<a href="{% url 'delivery:order_detail' order.id %}"
+   class="block bg-white rounded-xl shadow-sm hover:shadow-md active:scale-[0.98] transition-all overflow-hidden mb-3">
+  <div class="p-4">
+    <div class="flex items-start justify-between mb-2">
+      <div class="min-w-0 flex-1 mr-2">
+        <h3 class="font-semibold text-gray-900 truncate">Pedido #{{ order.id }}</h3>
+        <p class="text-xs text-gray-500 truncate mt-0.5">{{ order.address }}</p>
+      </div>
+      {% include 'delivery/components/atoms/badge_status.html' with status=order.status %}
+    </div>
+    <div class="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
+      <div class="flex items-center gap-2">
+        <span class="text-xs text-gray-500">{{ order.items_count }} productos</span>
+        {% include 'delivery/components/atoms/badge_payment.html' with payment_status=order.payment_status %}
+      </div>
+      <span class="text-lg font-bold text-gray-900">${{ order.total }}</span>
+    </div>
+  </div>
+</a>

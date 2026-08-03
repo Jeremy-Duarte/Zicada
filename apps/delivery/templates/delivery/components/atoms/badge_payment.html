@@ -1,0 +1,6 @@
+{% load delivery_tags %}
+{% with palette=payment_status|delivery_payment_color %}
+  <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium {{ palette.bg }} {{ palette.text }}">
+    {% if payment_status == 'pending' %}Pago pendiente{% elif payment_status == 'paid' %}Pagado{% else %}Pago en linea{% endif %}
+  </span>
+{% endwith %}

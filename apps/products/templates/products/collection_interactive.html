@@ -1,0 +1,48 @@
+{% extends "layouts/base.html" %}
+{% load l10n %}
+
+{% block title %}{{ collection.name }} - Zicada{% endblock %}
+
+{% block content %}
+<div class="bg-black text-white font-poppins">
+    <div class="relative w-full">
+        <img src="{{ collection.interactive_background.url }}"
+             alt="{{ collection.name }}"
+             class="w-full h-auto block select-none">
+
+        {% for zone in zones %}
+        <a href="{% url 'products:product_detail' zone.product_color.product.slug %}?color={{ zone.product_color.pk }}"
+           style="left: {{ zone.x|unlocalize }}%; top: {{ zone.y|unlocalize }}%; width: {{ zone.width|unlocalize }}%; height: {{ zone.height|unlocalize }}%;"
+           class="group absolute z-10 block cursor-pointer transition-all duration-300"
+           title="{{ zone.product_color.product.name }} - {{ zone.product_color.color.name }}"
+           aria-label="{{ zone.product_color.product.name }} - {{ zone.product_color.color.name }}">
+
+            <span class="absolute inset-0 bg-white/0 ring-0 transition-all duration-300 group-hover:bg-white/10 group-hover:ring-2 group-hover:ring-white/70"></span>
+
+            <span class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-5 h-5 md:w-6 md:h-6 flex items-center justify-center pointer-events-none">
+                <span class="absolute inset-0 rounded-full bg-white/40 [animation:hotspot_2.5s_ease-out_infinite]"></span>
+                <span class="relative w-2 h-2 md:w-2.5 md:h-2.5 rounded-full bg-white ring-2 ring-zicada-accent shadow-[0_0_8px_rgba(255,255,255,0.9)] transition-transform duration-300 group-hover:scale-125"></span>
+            </span>
+
+            <span class="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 whitespace-nowrap px-2 py-1 text-[10px] md:text-xs font-medium bg-black/85 border border-white/20 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                {{ zone.product_color.product.name }}
+            </span>
+        </a>
+        {% endfor %}
+    </div>
+
+    <div class="py-4 text-center text-xs text-neutral-500 select-none">
+        <i class="fas fa-hand-pointer mr-1"></i> Toca un punto para descubrir el producto
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+{{ block.super }}
+<style>
+    @keyframes hotspot {
+        0%   { transform: scale(0.4); opacity: 0.9; }
+        60%, 100% { transform: scale(1.8); opacity: 0; }
+    }
+</style>
+{% endblock %}

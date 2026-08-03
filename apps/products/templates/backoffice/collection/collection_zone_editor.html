@@ -1,0 +1,144 @@
+{% extends "backoffice/layouts/backoffice_base.html" %}
+{% load static %}
+
+{% block title %}Zonas interactivas de {{ collection.name }} - Zicada{% endblock %}
+
+{% block extra_css %}
+<style>
+    .zone-rect:hover .zone-delete { opacity: 1; }
+    .zone-rect.selected { outline: 2px solid #c2a575; outline-offset: 1px; }
+    #btn-draw.active {
+        background-color: #c2a575;
+        color: #ffffff;
+        border-color: #c2a575;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="bg-white rounded-xl shadow-sm p-6">
+        <div class="flex justify-between items-center mb-4">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800">Zonas interactivas de {{ collection.name }}</h1>
+                <p class="text-sm text-gray-500 mt-1">Dibuja zonas clicables sobre la imagen de la colección</p>
+            </div>
+            <div class="flex flex-col items-end gap-2">
+                <div class="flex gap-3">
+                    <a href="{% url 'products:collection_list' %}" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition">
+                        <i class="fas fa-arrow-left mr-1"></i> Volver
+                    </a>
+                    <button id="btn-draw" type="button" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition">
+                        <i class="fas fa-plus mr-1"></i> Crear zona
+                    </button>
+                    <button id="btn-edit" type="button" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition" disabled>
+                        <i class="fas fa-edit mr-1"></i> Editar seleccionada
+                    </button>
+                    <button id="btn-save" type="button" class="px-6 py-2 bg-zicada-accent hover:bg-red-700 text-white rounded-lg font-semibold transition">
+                        <i class="fas fa-save mr-1"></i> Guardar
+                    </button>
+                </div>
+                <p id="zone-save-status" class="text-sm font-medium text-green-600 h-4"></p>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Lienzo -->
+        <div class="lg:col-span-2 bg-white rounded-xl shadow-sm p-6">
+            <div id="zone-canvas" class="relative select-none">
+                <img id="zone-image" src="{{ collection.interactive_background.url }}" alt="Imagen interactiva de {{ collection.name }}" class="w-full h-auto block">
+            </div>
+            <p class="text-xs text-gray-400 mt-3 text-center">
+                <i class="fas fa-info-circle mr-1"></i>
+                Haz clic en "Dibujar zona" y arrastra sobre la imagen para crear una zona clicable.
+            </p>
+        </div>
+
+        <!-- Lista de zonas -->
+        <div class="bg-white rounded-xl shadow-sm p-6">
+            <div id="zone-sidebar">
+                <h2 class="text-lg font-semibold text-gray-800 mb-4">
+                    <i class="fas fa-list text-zicada-accent mr-2"></i> Zonas
+                </h2>
+                <ul id="zone-list" class="space-y-2"></ul>
+                <div class="mt-4 p-3 bg-gray-50 rounded-lg text-xs text-gray-500 space-y-1">
+                    <p><i class="fas fa-plus text-zicada-accent mr-1"></i> Usa "Crear zona" y arrastra sobre la imagen para agregar una zona clicable.</p>
+                    <p><i class="fas fa-mouse-pointer text-zicada-accent mr-1"></i> Clic en una zona para seleccionarla y arrastra para moverla.</p>
+                    <p><i class="fas fa-expand-alt text-zicada-accent mr-1"></i> Arrastra los bordes para redimensionar.</p>
+                    <p><i class="fas fa-edit text-zicada-accent mr-1"></i> "Editar seleccionada" o doble clic para cambiar el producto o la etiqueta.</p>
+                    <p><i class="fas fa-trash text-zicada-accent mr-1"></i> Pasa el cursor sobre una zona y usa <span class="text-red-600 font-semibold">×</span> para eliminarla.</p>
+                    <p><i class="fas fa-save text-zicada-accent mr-1"></i> Confirma los cambios con el botón "Guardar".</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: buscador de productos -->
+<div id="product-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col">
+        <div class="flex justify-between items-center px-5 py-4 border-b border-gray-200">
+            <h3 class="text-lg font-semibold text-gray-800">
+                <i class="fas fa-search text-zicada-accent mr-2"></i> Buscar producto
+            </h3>
+            <button type="button" id="btn-product-close" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="p-4">
+            <input id="product-search" type="text" placeholder="Buscar producto o color..." class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-zicada-accent focus:ring-zicada-accent">
+        </div>
+        <div id="product-results" class="overflow-y-auto px-4 pb-4 space-y-2"></div>
+    </div>
+</div>
+
+<!-- Modal: formulario de zona -->
+<div id="zone-form-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md">
+        <div class="flex justify-between items-center px-5 py-4 border-b border-gray-200">
+            <h3 class="text-lg font-semibold text-gray-800">
+                <i class="fas fa-th-large text-zicada-accent mr-2"></i> Configurar zona
+            </h3>
+            <button type="button" id="btn-zone-close" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="p-5 space-y-4">
+            <div>
+                <label for="zone-label-input" class="block text-sm font-medium text-gray-700 mb-2">Etiqueta (opcional)</label>
+                <input id="zone-label-input" type="text" placeholder="Ej: Camiseta Premium" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-zicada-accent focus:ring-zicada-accent">
+            </div>
+            <div>
+                <label for="zone-product-select" class="block text-sm font-medium text-gray-700 mb-2">Producto</label>
+                <select id="zone-product-select" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-zicada-accent focus:ring-zicada-accent">
+                    <option value="">-- Selecciona un producto --</option>
+                    {% for pc in product_colors %}
+                    <option value="{{ pc.pk }}">{{ pc.product.name }} - {{ pc.color.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="flex justify-end gap-3 pt-2">
+                <button type="button" id="btn-zone-cancel" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition">Cancelar</button>
+                <button type="button" id="btn-zone-save" class="px-6 py-2 bg-zicada-accent hover:bg-red-700 text-white rounded-lg font-semibold transition">
+                    <i class="fas fa-check mr-1"></i> Guardar zona
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<form class="hidden" aria-hidden="true" method="post">{% csrf_token %}</form>
+
+<script id="zone-editor-data" type="application/json">
+{
+    "zonesUrl": "{{ zones_url }}",
+    "zones": {{ zones_json|safe }},
+    "csrftoken": "{{ csrftoken }}"
+}
+</script>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/products/collection-zone-editor.js' %}"></script>
+{% endblock %}

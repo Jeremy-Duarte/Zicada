@@ -1,0 +1,13 @@
+{% comment %} Props: icon, title, description, action_url, action_text {% endcomment %}
+<div class="text-center py-16 px-4">
+  <div class="w-24 h-24 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-4">
+    <i class="{{ icon|default:'fas fa-box-open' }} text-gray-400 text-3xl"></i>
+  </div>
+  <h3 class="text-lg font-semibold text-gray-900 mb-1">{{ title }}</h3>
+  {% if description %}<p class="text-sm text-gray-500 mb-6">{{ description }}</p>{% endif %}
+  {% if action_url %}
+    <a href="{{ action_url }}" class="inline-block bg-black text-white px-6 py-3 rounded-xl font-semibold hover:bg-gray-900 transition">
+      {{ action_text }}
+    </a>
+  {% endif %}
+</div>

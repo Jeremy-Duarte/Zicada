@@ -2,18 +2,18 @@
 <div class="flex justify-center mt-12 gap-3">
     {% if page_obj.has_previous %}
     <a href="?page=1{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" 
-       class="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition">« Primera</a>
+       class="px-4 py-2 rounded-lg border border-neutral-700 text-neutral-300 hover:text-white hover:border-white transition text-sm">« Primera</a>
     <a href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" 
-       class="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition">Anterior</a>
+       class="px-4 py-2 rounded-lg border border-neutral-700 text-neutral-300 hover:text-white hover:border-white transition text-sm">Anterior</a>
     {% endif %}
     
-    <span class="px-4 py-2 rounded-lg bg-zicada-accent text-white">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+    <span class="px-4 py-2 rounded-lg bg-zicada-accent text-white text-sm font-semibold">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
     
     {% if page_obj.has_next %}
     <a href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" 
-       class="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition">Siguiente</a>
+       class="px-4 py-2 rounded-lg border border-neutral-700 text-neutral-300 hover:text-white hover:border-white transition text-sm">Siguiente</a>
     <a href="?page={{ page_obj.paginator.num_pages }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" 
-       class="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition">Última »</a>
+       class="px-4 py-2 rounded-lg border border-neutral-700 text-neutral-300 hover:text-white hover:border-white transition text-sm">Última »</a>
     {% endif %}
 </div>
 {% endif %}

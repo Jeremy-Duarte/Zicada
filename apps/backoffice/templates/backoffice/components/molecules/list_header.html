@@ -1,0 +1,10 @@
+{% comment %} Props: title, create_url, create_text, filter_form? {% endcomment %}
+<div class="flex items-center justify-between mb-6">
+  {% include 'backoffice/components/atoms/page_title.html' with title=title %}
+  {% if create_url %}
+    {% include 'backoffice/components/atoms/btn_primary.html' with href=create_url text=create_text|default:'Crear' %}
+  {% endif %}
+</div>
+{% if filter_form %}
+  {% include 'backoffice/components/crud/list_filters.html' with form=filter_form %}
+{% endif %}

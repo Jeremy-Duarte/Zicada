@@ -1,0 +1,28 @@
+{% comment %} Props: type(simple|dashboard), title, back_url?, extra_classes {% endcomment %}
+<header class="bg-white shadow-sm sticky top-0 z-40 {{ extra_classes }}">
+  <div class="flex items-center justify-between px-4 py-3">
+    <div class="flex items-center min-w-0">
+      {% if back_url %}
+        <a href="{{ back_url }}" class="mr-3 text-gray-500 hover:text-gray-700 transition" aria-label="Volver">
+          <i class="fas fa-arrow-left text-lg"></i>
+        </a>
+      {% endif %}
+      <h1 class="font-semibold text-gray-900 truncate {% if type == 'dashboard' %}text-lg{% else %}text-base{% endif %}">
+        {{ title }}
+      </h1>
+    </div>
+    <div class="flex items-center gap-2 shrink-0">
+      {% if type == 'dashboard' %}
+        <a href="{% url 'delivery:summary' %}" class="text-gray-500 hover:text-gray-700 p-2 transition" aria-label="Resumen diario">
+          <i class="fas fa-chart-simple"></i>
+        </a>
+      {% endif %}
+      <form method="POST" action="{% url 'delivery:logout' %}" class="inline">
+        {% csrf_token %}
+        <button type="submit" class="text-red-600 hover:text-red-700 text-sm font-medium transition" aria-label="Cerrar sesion">
+          <i class="fas fa-right-from-bracket"></i>
+        </button>
+      </form>
+    </div>
+  </div>
+</header>

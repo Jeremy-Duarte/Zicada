@@ -1,0 +1,41 @@
+{% load static %}
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Open+Sans:wght@400;600;700;800&family=Poppins:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                colors: {
+                    'zicada-dark': '#1a1a1a',
+                    'zicada-primary': '#2d2d2d',
+                    'zicada-accent': '#a91600',
+                    'zicada-light': '#f5f5f5',
+                },
+                fontFamily: {
+                    'sans': ['Inter', 'system-ui', 'sans-serif'],
+                    'opensans': ['Open Sans', 'system-ui', 'sans-serif'],
+                    'poppins': ['Poppins', 'system-ui', 'sans-serif'],
+                }
+            }
+        }
+    }
+</script>
+<style>
+    @theme {
+        --color-brand-dark: #1a1a1a;
+        --color-brand-primary: #2d2d2d;
+        --color-brand-accent: #a91600;
+        --color-brand-light: #f5f5f5;
+        --color-brand-surface: #ffffff;
+        --font-sans: 'Inter', system-ui, sans-serif;
+        --font-opensans: 'Open Sans', system-ui, sans-serif;
+        --font-poppins: 'Poppins', system-ui, sans-serif;
+        --spacing-container: 1280px;
+        --radius-card: 0.75rem;
+        --radius-button: 0.5rem;
+        --radius-modal: 1rem;
+        --shadow-card: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+        --shadow-elevated: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+        --transition-base: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+    }
+</style>

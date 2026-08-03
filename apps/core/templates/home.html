@@ -7,9 +7,9 @@ reflejan tu estilo. Envíos a todo el país.{% endblock %}
 
 {% block content %}
 
-<!-- Hero Carrusel -->
+<!-- Hero Carrusel (aprobado por el cliente — no modificar) -->
 {% if hero_slides %}
-<div class="relative h-screen overflow-hidden" style="margin-top: -16.666vh;">
+<div class="relative h-dvh overflow-hidden -mt-16 md:-mt-20">
     <div id="hero-carousel" class="relative w-full h-full">
         {% for slide in hero_slides %}
         <div class="hero-slide absolute inset-0 w-full h-full transition-opacity duration-1000 ease-in-out"
@@ -27,7 +27,7 @@ reflejan tu estilo. Envíos a todo el país.{% endblock %}
             <!-- Overlay con opacidad configurable -->
             {% if slide.background_image and slide.background_image.url %}
             {% with opacity=slide.overlay_opacity|default:0.3 %}
-            <div class="absolute inset-0 
+            <div class="absolute inset-0
                         {% if opacity >= 0.9 %}bg-black bg-opacity-90
                         {% elif opacity >= 0.8 %}bg-black bg-opacity-80
                         {% elif opacity >= 0.7 %}bg-black bg-opacity-70
@@ -49,24 +49,24 @@ reflejan tu estilo. Envíos a todo el país.{% endblock %}
                     {% elif slide.content_alignment == 'right' %}text-right
                     {% else %}text-center{% endif %}">
 
-                    <h1 class="tracking-tight px-4 md:px-8" style="font-family: {{ slide.title_font_family }}; 
-                            font-size: {{ slide.title_font_size }}; 
-                            font-weight: {{ slide.title_font_weight }}; 
-                            line-height: {{ slide.title_line_height }}; 
+                    <h1 class="tracking-tight px-4 md:px-8" style="font-family: {{ slide.title_font_family }};
+                            font-size: {{ slide.title_font_size }};
+                            font-weight: {{ slide.title_font_weight }};
+                            line-height: {{ slide.title_line_height }};
                             color: {{ slide.title_color }};
                             margin-bottom: {{ slide.title_margin_bottom|default:'1.5rem' }};">
                         {% if "zicada" in slide.title_text|lower %}
                         <img src="{% static 'img/lettering-zicada.png' %}" alt="Lettering Zicada"
-                            class="mx-auto max-h-48 md:max-h-64 lg:max-h-80 w-auto object-contain" />
+                            class="mx-auto max-h-[clamp(96px,25dvh,320px)] w-auto object-contain" />
                         {% else %}
                         {{ slide.title_text|linebreaksbr }}
                         {% endif %}
                     </h1>
 
-                    <p class="max-w-2xl mx-auto px-4 md:px-8" style="font-family: {{ slide.subtitle_font_family }}; 
-                               font-size: {{ slide.subtitle_font_size }}; 
-                               font-weight: {{ slide.subtitle_font_weight }}; 
-                               line-height: {{ slide.subtitle_line_height }}; 
+                    <p class="max-w-2xl mx-auto px-4 md:px-8" style="font-family: {{ slide.subtitle_font_family }};
+                               font-size: {{ slide.subtitle_font_size }};
+                               font-weight: {{ slide.subtitle_font_weight }};
+                               line-height: {{ slide.subtitle_line_height }};
                                color: {{ slide.subtitle_color }};
                                margin-bottom: {{ slide.subtitle_margin_bottom|default:'2.5rem' }};">
                         {{ slide.subtitle_text }}
@@ -91,19 +91,18 @@ reflejan tu estilo. Envíos a todo el país.{% endblock %}
             {% for slide in hero_slides %}
             <button class="carousel-dot w-3 h-3 rounded-full transition-all duration-300 mx-1
                           {% if forloop.first %}bg-white w-6{% else %}bg-white/50{% endif %}"
-                data-index="{{ forloop.counter0 }}" style="cursor: pointer;"></button>
+                data-index="{{ forloop.counter0 }}" aria-label="Ir al slide {{ forloop.counter }}"></button>
             {% endfor %}
         </div>
     </div>
 </div>
 {% else %}
 <!-- Fallback cuando no hay slides activos -->
-<section class="relative bg-gradient-to-r from-gray-100 to-gray-200 text-gray-900"
-    style="height: 100vh; margin-top: -16.666vh; padding-top: 16.666vh;">
+<section class="relative bg-gradient-to-r from-gray-100 to-gray-200 text-gray-900 min-h-dvh -mt-16 md:-mt-20 pt-16 md:pt-20">
     <div class="absolute inset-0 bg-white opacity-40"></div>
     <div class="container mx-auto px-4 relative z-10 text-center">
         <div class="max-w-4xl mx-auto">
-            <h1 class="text-5xl md:text-7xl font-bold mb-4 leading-tight text-gray-900">
+            <h1 class="font-poppins text-5xl md:text-7xl font-bold mb-4 leading-tight text-gray-900">
                 LA MODA SE VA,<br>
                 <span class="text-zicada-accent">TU ESTILO PERMANECE</span>
             </h1>
@@ -126,142 +125,123 @@ reflejan tu estilo. Envíos a todo el país.{% endblock %}
 </section>
 {% endif %}
 
-<!-- Colecciones destacadas -->
-{% if featured_collections %}
-<section class="py-20 bg-white">
-    <div class="container mx-auto px-4">
-        <div class="text-center mb-12">
-            <div class="inline-block bg-zicada-accent/10 backdrop-blur-sm rounded-full px-6 py-2 mb-4">
-                <span class="text-zicada-accent font-semibold text-sm uppercase tracking-wide">Exclusividad</span>
-            </div>
-            <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-3">Colecciones destacadas</h2>
-            <div class="w-20 h-1 bg-zicada-accent mx-auto my-4 rounded-full"></div>
-            <p class="text-gray-600 max-w-2xl mx-auto">Descubre nuestras colecciones más recientes, cada una con un
-                estilo único y personalidad propia.</p>
-        </div>
+<!-- Contenido del home: fondo negro, texto blanco, Open Sans -->
+<div class="bg-black text-white font-opensans">
 
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {% for collection in featured_collections %}
-            <div
-                class="group relative overflow-hidden rounded-xl shadow-lg hover:shadow-xl transition-all duration-300">
-                <div class="aspect-w-16 aspect-h-9">
-                    {% if collection.style_config and collection.style_config.background_image %}
-                    <img src="{{ collection.style_config.background_image }}" alt="{{ collection.name }}"
-                        class="w-full h-64 object-cover group-hover:scale-110 transition duration-500 brightness-95 group-hover:brightness-100">
-                    {% else %}
-                    <div class="w-full h-64 bg-gradient-to-r from-gray-200 to-gray-300"></div>
-                    {% endif %}
+    <!-- Explora cada colección con sus productos -->
+    {% if featured_collections %}
+        {% for collection in featured_collections %}
+        <section aria-labelledby="coll-title-{{ forloop.counter }}" class="{% if not forloop.first %}border-t border-neutral-800{% endif %}">
+            <div class="max-w-[1360px] mx-auto px-4 py-12 md:py-16">
+                <div class="text-center mb-10 md:mb-14">
+                    <h2 id="coll-title-{{ forloop.counter }}" class="font-poppins text-2xl md:text-4xl tracking-tight">Explora la colección {{ collection.name }}</h2>
                 </div>
-                <div
-                    class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent flex flex-col justify-end p-6">
-                    <h3 class="text-white text-xl font-bold mb-2">{{ collection.name }}</h3>
-                    <p class="text-gray-200 text-sm mb-3 line-clamp-2">{{ collection.description|truncatewords:15 }}</p>
-                    <a href="{% url 'products:collection_detail' collection.slug %}"
-                        class="inline-flex items-center text-zicada-accent font-semibold hover:text-red-400 transition group">
-                        Ver colección
-                        <svg class="w-4 h-4 ml-1 transform group-hover:translate-x-1 transition" fill="none"
-                            stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
-                            </path>
-                        </svg>
-                    </a>
-                </div>
-            </div>
-            {% endfor %}
-        </div>
 
-        <div class="text-center mt-12">
-            <a href="{% url 'products:collections_list' %}"
-                class="inline-block border border-zicada-accent text-zicada-accent hover:bg-zicada-accent hover:text-white px-8 py-3 rounded-lg transition-all duration-300">
-                Ver todas las colecciones
+                {% with products=collection.products.all %}
+                {% if products %}
+                <div class="flex flex-wrap justify-center gap-8">
+                    {% for product in products %}
+                        {% for product_color in product.product_colors.all %}
+                        <div class="shrink-0 basis-full sm:basis-[calc(50%-1rem)] lg:basis-[calc(33.333%-1.333rem)]">
+                            {% include 'components/product_card.html' with product=product product_color=product_color %}
+                        </div>
+                        {% endfor %}
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-10 text-gray-500 border border-neutral-800 rounded-xl">
+                    <p>Esta colección aún no tiene productos publicados.</p>
+                </div>
+                {% endif %}
+                {% endwith %}
+            </div>
+        </section>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Publicidad: contenedor 3:2 que se adapta a cualquier aspect ratio -->
+    {% if promos %}
+        {% for promo in promos %}
+        {% if promo.link_url %}
+        <a href="{{ promo.link_url }}" class="block w-full max-w-[150vh] aspect-[3/2] mx-auto overflow-hidden relative focus:outline-none focus-visible:ring-2 focus-visible:ring-zicada-accent" aria-label="{{ promo.title|default:'Publicidad Zicada' }}">
+        {% else %}
+        <div class="w-full max-w-[150vh] aspect-[3/2] mx-auto overflow-hidden relative">
+        {% endif %}
+            <img src="{{ promo.image.url }}" alt="{{ promo.title|default:'' }}"
+                class="w-full h-full object-cover object-center"
+                loading="lazy">
+        {% if promo.link_url %}</a>{% else %}</div>{% endif %}
+        {% endfor %}
+    {% endif %}
+
+    <!-- Galería: cada imagen conserva su aspect ratio original (camara/tiktok/ig) -->
+    {% if gallery_items %}
+    <section class="py-8 md:py-16" aria-labelledby="home-gallery-title">
+        <div class="container mx-auto px-4 mb-6 md:mb-10 flex items-end justify-between gap-4">
+            <a href="https://instagram.com/zicada_lu" target="_blank" rel="noopener noreferrer"
+                class="group inline-flex items-center gap-2 text-gray-300 hover:text-white transition"
+                aria-label="Instagram de Zicada, @zicada_lu">
+                <span class="text-lg md:text-xl font-semibold">@zicada_lu</span>
             </a>
+            <h2 id="home-gallery-title" class="font-poppins text-2xl md:text-3xl font-extrabold tracking-tight text-right">GALERIA</h2>
         </div>
-    </div>
-</section>
-{% endif %}
 
-<!-- Productos más recientes -->
-<section class="py-20 bg-gray-50">
-    <div class="container mx-auto px-4">
-        <div class="text-center mb-12">
-            <div class="inline-block bg-zicada-accent/10 backdrop-blur-sm rounded-full px-6 py-2 mb-4">
-                <span class="text-zicada-accent font-semibold text-sm uppercase tracking-wide">Novedades</span>
+        <div id="galleryCarousel" class="relative overflow-hidden overscroll-x-none touch-pan-y" role="region" aria-label="Galería de fotos">
+            <div id="galleryTrack" class="flex gap-6 items-center will-change-transform">
+                {% for item in gallery_items %}
+                <figure class="shrink-0 basis-[calc(50%-0.75rem)] sm:basis-[calc(33.333%-1rem)] md:basis-[calc(25%-1.125rem)] lg:basis-[calc(20%-1.2rem)] max-w-[50vh] overflow-hidden bg-neutral-900" data-gallery-original="true">
+                    <img src="{{ item.image.url }}" alt="{{ item.alt_text }}"
+                        class="w-full h-auto transition-transform duration-300 hover:scale-[1.02]">
+                    <figcaption class="sr-only">{{ item.description }}</figcaption>
+                </figure>
+                {% endfor %}
+                {% for item in gallery_items %}
+                <figure class="shrink-0 basis-[calc(50%-0.75rem)] sm:basis-[calc(33.333%-1rem)] md:basis-[calc(25%-1.125rem)] lg:basis-[calc(20%-1.2rem)] max-w-[50vh] overflow-hidden bg-neutral-900" aria-hidden="true">
+                    <img src="{{ item.image.url }}" alt=""
+                        class="w-full h-auto transition-transform duration-300 hover:scale-[1.02]">
+                </figure>
+                {% endfor %}
             </div>
-            <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-3">Últimos productos</h2>
-            <div class="w-20 h-1 bg-zicada-accent mx-auto my-4 rounded-full"></div>
-            <p class="text-gray-600 max-w-2xl mx-auto">Las últimas prendas que se han unido a nuestro catálogo.
-                Encuentra tu próximo favorito.</p>
-        </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {% for product in latest_products %}
-            {% include 'components/product_card.html' with product=product %}
-            {% empty %}
-            <p class="text-center text-gray-500 col-span-full">No hay productos disponibles.</p>
-            {% endfor %}
+            <button id="galleryPrev" aria-label="Anterior"
+                class="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 z-10 w-10 h-10 md:w-12 md:h-12 rounded-full bg-black/50 hover:bg-zicada-accent text-white flex items-center justify-center transition-colors duration-300">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                </svg>
+            </button>
+            <button id="galleryNext" aria-label="Siguiente"
+                class="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 z-10 w-10 h-10 md:w-12 md:h-12 rounded-full bg-black/50 hover:bg-zicada-accent text-white flex items-center justify-center transition-colors duration-300">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+            </button>
         </div>
+    </section>
+    {% endif %}
 
-        <div class="text-center mt-12">
-            <a href="{% url 'products:catalog' %}"
-                class="inline-block bg-zicada-accent hover:bg-red-700 text-white font-semibold px-8 py-3 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg">
-                Ver todo el catálogo
+    <!-- Conoce más de nosotros — botón estilo hero -->
+    <section class="py-12 md:py-24 min-h-[30dvh] text-center bg-black">
+            <a href="{% url 'core:about' %}"
+                class="inline-block bg-zicada-accent hover:bg-zicada-accent/90 text-white font-semibold px-10 py-4 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg">
+                Explorar más
             </a>
-        </div>
-    </div>
-</section>
+    </section>
 
-<!-- Categorías destacadas -->
-{% if categories %}
-<section class="py-20 bg-white">
-    <div class="container mx-auto px-4">
-        <div class="text-center mb-12">
-            <div class="inline-block bg-zicada-accent/10 backdrop-blur-sm rounded-full px-6 py-2 mb-4">
-                <span class="text-zicada-accent font-semibold text-sm uppercase tracking-wide">Categorías</span>
-            </div>
-            <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-3">Explora por categoría</h2>
-            <div class="w-20 h-1 bg-zicada-accent mx-auto my-4 rounded-full"></div>
-            <p class="text-gray-600 max-w-2xl mx-auto">Encuentra lo que buscas según el tipo de prenda que necesitas.
-            </p>
-        </div>
+</div><!-- /bg-black font-opensans -->
 
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {% for category in categories %}
-            <a href="{% url 'products:catalog' %}?category={{ category.slug }}"
-                class="group block bg-gray-100 rounded-xl overflow-hidden hover:shadow-xl hover:shadow-zicada-accent/20 transition-all duration-300">
-                <div class="h-32 bg-gradient-to-r from-gray-700 to-gray-800 flex items-center justify-center">
-                    <span class="text-white text-xl font-bold group-hover:scale-110 transition">{{ category.name }}</span>
-                </div>
-                <div class="p-4 text-center bg-white">
-                    <span class="text-sm text-gray-600 group-hover:text-zicada-accent transition">{{ category.product_count }} productos</span>
-                </div>
-            </a>
-            {% endfor %}
-        </div>
-    </div>
-</section>
-{% endif %}
+<style>
+    @media (prefers-reduced-motion: reduce) {
+        #galleryTrack { transform: none !important; }
+    }
+</style>
+{% endblock %}
 
-<!-- Sección de personalización -->
-<section class="py-20 bg-gradient-to-r from-gray-100 to-gray-200">
-    <div class="container mx-auto px-4 text-center">
-        <div class="inline-block bg-zicada-accent/10 backdrop-blur-sm rounded-full px-6 py-2 mb-4">
-            <span class="text-zicada-accent font-semibold text-sm uppercase tracking-wide">Personalización</span>
-        </div>
-        <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">¿Buscas algo único?</h2>
-        <div class="w-20 h-1 bg-zicada-accent mx-auto my-4 rounded-full"></div>
-        <p class="text-gray-600 max-w-2xl mx-auto mb-8">
-            En Zicada cada prenda es especial. Contáctanos para consultar por personalizaciones o tallas especiales.
-        </p>
-        <a href="{% url 'core:contact' %}"
-            class="inline-block bg-zicada-accent hover:bg-red-700 text-white font-semibold px-8 py-3 rounded-lg transition-all duration-300 shadow-lg">
-            Contáctanos
-        </a>
-    </div>
-</section>
-
+{% block extra_js %}
+{{ block.super }}
+<script defer src="{% static 'js/core/gallery-carousel.js' %}"></script>
 <script>
     (function () {
-        // Esperar a que el DOM esté completamente cargado
+        // Carrusel del hero (aprobado por el cliente — no modificar)
         document.addEventListener('DOMContentLoaded', function () {
             const slides = document.querySelectorAll('.hero-slide');
             const dots = document.querySelectorAll('.carousel-dot');
@@ -322,5 +302,4 @@ reflejan tu estilo. Envíos a todo el país.{% endblock %}
         });
     })();
 </script>
-
 {% endblock %}

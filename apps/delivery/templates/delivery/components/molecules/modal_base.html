@@ -1,0 +1,19 @@
+{% comment %} Props: id, title, body, footer {% endcomment %}
+<div id="{{ id }}"
+     class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4
+            opacity-0 invisible transition-all duration-300"
+     role="dialog" aria-modal="true" aria-labelledby="{{ id }}-title">
+  <div class="bg-white rounded-xl max-w-sm w-full shadow-xl max-h-[90vh] overflow-y-auto">
+    <div class="px-6 py-4 border-b border-gray-200">
+      <h3 id="{{ id }}-title" class="font-semibold text-gray-900">{{ title }}</h3>
+    </div>
+    <div class="px-6 py-4">
+      {{ body }}
+    </div>
+    {% if footer %}
+      <div class="px-6 py-4 border-t border-gray-200 flex gap-3">
+        {{ footer }}
+      </div>
+    {% endif %}
+  </div>
+</div>

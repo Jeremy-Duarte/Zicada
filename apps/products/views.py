@@ -1,7 +1,7 @@
-import re
 import json
 import csv
 from datetime import timedelta
+from decimal import Decimal, ROUND_HALF_UP
 
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
@@ -16,10 +16,12 @@ from apps.core.crud.mixins import StaffPermissionRequiredMixin
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 from django.views.decorators.http import require_GET
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse, Http404
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 
 from apps.core.crud.mixins import PaginationMixin, FilterMixin, SortableDeleteMixin
-from .models import Product, ProductVariant, ProductColor, ProductImage, Collection, Category, Size, Color
+from .models import Product, ProductVariant, ProductColor, ProductImage, Collection, InteractiveZone, Category, Size, Color
 from .forms import (
     SizeCreateForm, SizeDeleteForm, SizeUpdateForm,
     CategoryCreateForm, CategoryDeleteForm, CategoryUpdateForm,
@@ -28,7 +30,7 @@ from .forms import (
     ProductUpdateForm, ProductDeleteForm, ProductCreateForm, ProductRestoreForm,
     ProductColorCreateForm, ProductColorUpdateForm, ProductColorDeleteForm,
     ProductVariantCreateForm, ProductVariantDeleteForm, ProductVariantRestoreForm, ProductVariantUpdateForm,
-    CollectionCreateForm, CollectionUpdateForm, CollectionDeleteForm, CollectionRestoreForm, CollectionStyleForm
+    CollectionCreateForm, CollectionUpdateForm, CollectionDeleteForm, CollectionRestoreForm
 )
 from apps.products.importers.size_importer import SizeImporter
 from apps.products.importers.color_importer import ColorImporter
@@ -51,7 +53,8 @@ from apps.core.url_names import (
     PRODUCTS_COLLECTION_DELETE,
     PRODUCTS_COLLECTION_RESTORE,
     PRODUCTS_COLLECTION_TRASHCAN,
-    PRODUCTS_COLLECTION_STYLE,
+    PRODUCTS_COLLECTION_ZONES,
+    PRODUCTS_COLLECTION_ZONES_API,
     PRODUCTS_VARIANT_EDIT,
 )
 
@@ -103,7 +106,7 @@ from .constants import (
     TEMPLATE_STOCK_DASHBOARD,
     TEMPLATE_CATALOG,
     TEMPLATE_COLLECTIONS_LIST_PUBLIC,
-    TEMPLATE_COLLECTION_DETAIL,
+    TEMPLATE_COLLECTION_INTERACTIVE,
     TEMPLATE_PRODUCT_DETAIL,
     # Backoffice Templates
     TEMPLATE_SIZE_LIST,
@@ -140,7 +143,7 @@ from .constants import (
     TEMPLATE_COLLECTION_CONFIRM_DELETE,
     TEMPLATE_COLLECTION_RESTORE,
     TEMPLATE_COLLECTION_TRASHCAN,
-    TEMPLATE_COLLECTION_STYLE_FORM,
+    TEMPLATE_COLLECTION_ZONE_EDITOR,
     # Form Context Keys
     CONTEXT_CANCEL_URL,
     CONTEXT_CANCEL_ARGS,
@@ -269,7 +272,6 @@ from .constants import (
     MSG_COLLECTION_UPDATED,
     MSG_COLLECTION_DELETED,
     MSG_COLLECTION_RESTORED,
-    MSG_COLLECTION_STYLE_UPDATED,
     # Import Template Filenames
     IMPORT_TEMPLATE_FILENAME_SIZE,
     IMPORT_TEMPLATE_FILENAME_COLOR,
@@ -506,6 +508,13 @@ class ProductCatalogView(BaseProductListView):
         # HU-007 | ESCENARIO 6 | H | Limpiar filtros (botón con clean_url)
         context['clean_url'] = reverse('products:catalog')
         
+        # Total de variantes (cada color = un producto en la grid)
+        queryset = self.get_queryset()
+        context['total_variants'] = ProductColor.objects.filter(
+            product__in=queryset.values('pk'),
+            is_active=True
+        ).count()
+        
         return context
 
 
@@ -558,9 +567,11 @@ class CollectionDetailView(BaseProductListView):
     """
     HU-005: Consultar detalle de colección
     HU-006: Ver productos de una colección
+    Navegación interactiva: si la colección tiene fondo interactivo, muestra la
+    imagen con zonas clicleables que redirigen a los productos.
     """
     model = Product
-    template_name = TEMPLATE_COLLECTION_DETAIL
+    template_name = TEMPLATE_COLLECTION_INTERACTIVE
     context_object_name = CONTEXT_PRODUCTS
     paginate_by = PAGINATE_BY_DEFAULT
     
@@ -577,33 +588,23 @@ class CollectionDetailView(BaseProductListView):
             status=STATUS_PUBLISHED, 
             is_active=True
         )
+        # Navegación interactiva: sin fondo interactivo la colección no está lista
+        if not self.collection.interactive_background:
+            raise Http404('Esta colección no tiene fondo interactivo configurado.')
         return super().dispatch(request, *args, **kwargs)
     
     def get_queryset(self):
-        # HU-006 | ESCENARIO 1 | H | Productos de la colección filtrados
         qs = super().get_queryset().filter(is_active=PRODUCT_FILTER_ACTIVE)
         qs = qs.filter(collections=self.collection)
-        return qs
+        return qs.select_related('category').prefetch_related(
+            Prefetch('product_colors', queryset=ProductColor.objects.filter(is_active=True).select_related('color').order_by('sort_order')),
+            'product_colors__images',
+        )
     
     def get_template_names(self):
         if self.request.headers.get('HX-Request'):
             return ['components/_product_list.html']
         return [self.template_name]
-    
-    def _sanitize_css(self, raw_css):
-        if not raw_css:
-            return ''
-        
-        dangerous = re.compile(
-            r'(javascript:|expression\(|behavior\s*:|vbscript:|<script|</script|on\w+\s*=|@import|@charset)',
-            re.IGNORECASE
-        )
-        cleaned = dangerous.sub('', raw_css)
-        
-        if len(cleaned) > 5000:
-            cleaned = cleaned[:5000]
-        
-        return format_html('{}', cleaned)
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -658,7 +659,10 @@ class CollectionDetailView(BaseProductListView):
         context['clean_url'] = reverse('products:collection_detail', kwargs={'slug': self.collection.slug})
         context['now'] = timezone.now()
         
-        context['safe_custom_css'] = self._sanitize_css(self.collection.custom_css)
+        context['zones'] = self.collection.interactive_zones.select_related(
+            'product_color__product',
+            'product_color__color',
+        )
         
         return context
 
@@ -669,110 +673,96 @@ def product_detail(request, slug):
     HU-006: Consultar detalle de producto
     HU-008: Consultar disponibilidad de talla
     """
-    # HU-006 | ESCENARIO 1 | H | Producto existe y está activo
-    # HU-006 | ESCENARIO 4 | E | Producto no existe o inactivo → HTTP 404
     product = get_object_or_404(Product, slug=slug, is_active=True)
+    selected_pc_id = request.GET.get('color')
     
     context = {
         CONTEXT_PRODUCT: product,
-        **build_gallery_context(product),
-        **build_variants_context(product),  # HU-008: tallas con stock
+        **build_product_detail_context(product, selected_pc_id),
         'related_products': get_related_products(product),
     }
     return render(request, TEMPLATE_PRODUCT_DETAIL, context)
 
 
-def build_gallery_context(product):
+def build_product_detail_context(product, selected_pc_id=None):
     """
-    HU-006: Construir galería de imágenes del producto
+    Construye el contexto para la pagina de detalle de producto:
+    - colors: lista de colores con sus imagenes agrupadas
+    - sizes: todas las tallas disponibles
+    - pc_sizes_map: mapeo product_color_id -> [size_ids con stock]
     """
-    # HU-006 | ESCENARIO 1 | H | Imágenes del producto cargadas
     product_colors = product.product_colors.filter(
         is_active=True
-    ).select_related('color').prefetch_related('images').order_by(ORDER_BY_SORT_ORDER)
-    
-    gallery_images = []
-    featured_image = None
-    
+    ).select_related('color', 'featured_image').prefetch_related(
+        Prefetch('images', queryset=ProductImage.objects.order_by('id'))
+    ).order_by('sort_order')
+
+    colors = []
     for pc in product_colors:
-        for img in pc.get_images():
-            image_url = img.image.url if img.image else ''
-            gallery_images.append({
-                'image': image_url,
-                'color_id': pc.color.id,
-                'color_name': pc.color.name,
-                'color_code': pc.color.code or '#cccccc',
-                'is_featured': pc.featured_image == img,
-            })
-            if not featured_image and pc.featured_image == img:
-                featured_image = image_url
-    
-    if not featured_image and gallery_images:
-        featured_image = gallery_images[0]['image']
-    
-    return {
-        'gallery_images': gallery_images,
-        'gallery_images_json': json.dumps(gallery_images),
-        'featured_image': featured_image,
-    }
+        pc_images = pc.get_images()
+        images_list = []
+        featured_url = ''
+        for img in pc_images:
+            url = img.image.url if img.image else ''
+            images_list.append(url)
+            if not featured_url and img == pc.featured_image:
+                featured_url = url
+        if not featured_url and images_list:
+            featured_url = images_list[0]
 
+        colors.append({
+            'pc_id': pc.id,
+            'color_id': pc.color.id,
+            'color_name': pc.color.name,
+            'color_code': pc.color.code or '#cccccc',
+            'images': images_list,
+            'featured_image': featured_url,
+        })
 
-def build_variants_context(product):
-    """
-    HU-008: Consultar disponibilidad de talla
-    """
     variants = product.variants.filter(
         is_active=True
-    ).select_related('product_color__color', 'size')
-    
-    variants_data = []
-    unique_colors = []
-    unique_sizes = []
-    seen_color_ids = set()
-    seen_size_ids = set()
-    
-    for variant in variants:
-        stock_display, stock_message = get_stock_display(variant.stock)
-        color = variant.product_color.color
-        size = variant.size
-        
-        variants_data.append({
-            'id': variant.id,
-            'color_id': color.id,
-            'color_name': color.name,
-            'color_code': color.code or '#cccccc',
-            'size_id': size.id,
-            'size_name': size.name,
-            'stock': variant.stock,
-            # HU-008 | ESCENARIO 1 | H | Talla disponible (stock > 0) → stock_display='available'
-            # HU-008 | ESCENARIO 2 | A | Talla agotada (stock = 0) → stock_display='out_of_stock'
-            'stock_display': stock_display,
-            'stock_message': stock_message,
-            'price': str(product.price),
-            'image': variant.product_color.featured_image.image.url if variant.product_color.featured_image and variant.product_color.featured_image.image else '',
-        })
-        
-        if color.id not in seen_color_ids:
-            seen_color_ids.add(color.id)
-            unique_colors.append({
-                'id': color.id,
-                'name': color.name,
-                'code': color.code or '#cccccc',
-            })
-        
-        if size.id not in seen_size_ids:
-            seen_size_ids.add(size.id)
-            unique_sizes.append({
-                'id': size.id,
-                'name': size.name,
-            })
-    
-    # HU-008 | ESCENARIO 3 | A | Producto sin tallas configuradas → variants vacío, template muestra mensaje
+    ).select_related('product_color', 'size')
+
+    pc_sizes_map = {}
+    all_sizes = {}
+    for v in variants:
+        pid = v.product_color_id
+        sid = v.size_id
+        if pid not in pc_sizes_map:
+            pc_sizes_map[pid] = {}
+        pc_sizes_map[pid][str(sid)] = {
+            'variant_id': v.id,
+            'stock': v.stock,
+            'available': v.stock > 0,
+        }
+        if sid not in all_sizes:
+            all_sizes[sid] = {'id': v.size.id, 'name': v.size.name}
+
+    sizes = sorted(all_sizes.values(), key=lambda s: s['id'])
+
+    first_color = None
+    if selected_pc_id:
+        selected_pc_id_int = int(selected_pc_id) if selected_pc_id.isdigit() else None
+        for c in colors:
+            if c['pc_id'] == selected_pc_id_int:
+                first_color = c
+                break
+    if not first_color:
+        first_color = colors[0] if colors else None
+
+    first_pc_id = first_color['pc_id'] if first_color else None
+    first_sizes = pc_sizes_map.get(first_pc_id, {}) if first_pc_id else {}
+
     return {
-        CONTEXT_VARIANTS: variants,
-        'unique_colors': unique_colors,
-        'unique_sizes': unique_sizes,
-        'variants_json': json.dumps(variants_data),
+        'colors_data': colors,
+        'colors_json': json.dumps(colors),
+        'sizes_data': sizes,
+        'sizes_json': json.dumps(sizes),
+        'pc_sizes_json': json.dumps(pc_sizes_map),
+        'first_color': first_color,
+        'first_color_images': first_color['images'] if first_color else [],
+        'first_pc_id': first_pc_id,
+        'first_sizes': first_sizes,
     }
 
 
@@ -2318,28 +2308,234 @@ class CollectionTrashcanView(StaffPermissionRequiredMixin, ListView):
         return context
 
 
-class CollectionStyleView(StaffPermissionRequiredMixin, UpdateView):
+class CollectionZoneEditorView(StaffPermissionRequiredMixin, TemplateView):
     """
-    HU-016 (parte): Configuración de estilos de colección
-    HU-015 | ESCENARIO 4 | H | Estilos visuales personalizados
+    Editor visual de zonas interactivas para una colección.
+    Permite dibujar/mover/redimensionar rectángulos sobre el fondo interactivo
+    y asociarlos a un ProductColor.
     """
-    model = Collection
-    form_class = CollectionStyleForm
-    template_name = TEMPLATE_COLLECTION_STYLE_FORM
-    permission_required = PERM_COLLECTION_CHANGE  # HU-016 | ESCENARIO 4 | E | Sin permisos
-    
+    template_name = TEMPLATE_COLLECTION_ZONE_EDITOR
+    permission_required = PERM_COLLECTION_CHANGE
+
+    def get_collection(self):
+        return get_object_or_404(Collection, pk=self.kwargs['pk'], is_active=True)
+
+    def _serialize_zones(self, zones):
+        """Serializa zonas para el editor (coordenadas en porcentaje)."""
+        return [{
+            'id': zone.pk,
+            'x': float(zone.x),
+            'y': float(zone.y),
+            'width': float(zone.width),
+            'height': float(zone.height),
+            'label': zone.label,
+            'product_color_id': zone.product_color_id,
+            'product_name': zone.product_color.product.name,
+            'color_name': zone.product_color.color.name,
+        } for zone in zones]
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context[CONTEXT_CANCEL_URL] = PRODUCTS_COLLECTION_LIST
-        context[CONTEXT_IS_UPDATE] = True
-        context['collection'] = self.get_object()
+        collection = self.get_collection()
+
+        zones = collection.interactive_zones.select_related(
+            'product_color__product',
+            'product_color__color',
+        ).order_by('sort_order', 'id')
+
+        product_colors = ProductColor.objects.filter(
+            product__collections=collection,
+            product__is_active=True,
+        ).select_related('product', 'color').order_by('product__name', 'color__name')
+
+        context['collection'] = collection
+        context['zones_json'] = json.dumps(self._serialize_zones(zones), ensure_ascii=False)
+        context['zones_url'] = reverse(PRODUCTS_COLLECTION_ZONES_API, kwargs={'pk': collection.pk})
+        context['product_colors'] = product_colors
+        context['csrftoken'] = self.request.COOKIES.get('csrftoken', '')
+
         return context
-    
-    def get_success_url(self):
-        return reverse(PRODUCTS_COLLECTION_LIST)
-    
-    def form_valid(self, form):
-        # HU-015 | ESCENARIO 4 | H | Estilos visuales guardados exitosamente
-        response = super().form_valid(form)
-        messages.success(self.request, MSG_COLLECTION_STYLE_UPDATED.format(name=form.instance.name))
-        return response
+
+
+class CollectionZoneAPIView(StaffPermissionRequiredMixin, View):
+    """
+    API JSON para crear/listar zonas interactivas.
+    """
+    permission_required = PERM_COLLECTION_CHANGE
+
+    def get_collection(self):
+        return get_object_or_404(Collection, pk=self.kwargs['pk'], is_active=True)
+
+    def _round_coord(self, value):
+        """Redondea una coordenada a 2 decimales (máximo del campo)."""
+        try:
+            return Decimal(str(value)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        except (TypeError, ValueError, decimal.InvalidOperation):
+            return value
+
+    def _validate_payload(self, data, exclude_zone_id=None):
+        """Valida coordenadas y producto de una zona, y que no se superponga a otras."""
+        errors = {}
+
+        for field in ('x', 'y', 'width', 'height'):
+            try:
+                value = float(data.get(field))
+            except (TypeError, ValueError):
+                errors[field] = 'Debe ser un número.'
+                continue
+            if value < 0 or value > 100:
+                errors[field] = 'Debe estar entre 0 y 100.'
+            if field in ('width', 'height') and value <= 0:
+                errors[field] = 'Debe ser mayor a 0.'
+
+        if (
+            'x' not in errors and 'width' not in errors
+            and float(data.get('x', 0)) + float(data.get('width', 0)) > 100
+        ):
+            errors['width'] = 'La zona se sale del ancho de la imagen.'
+        if (
+            'y' not in errors and 'height' not in errors
+            and float(data.get('y', 0)) + float(data.get('height', 0)) > 100
+        ):
+            errors['height'] = 'La zona se sale del alto de la imagen.'
+
+        overlap_error = self._check_overlap(data, exclude_zone_id)
+        if overlap_error:
+            errors['__all__'] = overlap_error
+
+        try:
+            product_color_id = int(data.get('product_color_id'))
+        except (TypeError, ValueError):
+            errors['product_color_id'] = 'Debe seleccionar un producto.'
+            return errors
+
+        if not ProductColor.objects.filter(
+            pk=product_color_id,
+            product__collections=self.get_collection(),
+        ).exists():
+            errors['product_color_id'] = 'El producto no pertenece a esta colección.'
+
+        return errors
+
+    def _check_overlap(self, data, exclude_zone_id=None):
+        """Retorna mensaje de error si la zona se superpone con otra de la colección."""
+        try:
+            x = float(data.get('x'))
+            y = float(data.get('y'))
+            width = float(data.get('width'))
+            height = float(data.get('height'))
+        except (TypeError, ValueError):
+            return None
+
+        zones = self.get_collection().interactive_zones.all()
+        if exclude_zone_id:
+            zones = zones.exclude(pk=exclude_zone_id)
+
+        for other in zones:
+            other_x = float(other.x)
+            other_y = float(other.y)
+            other_w = float(other.width)
+            other_h = float(other.height)
+
+            overlaps = not (
+                x + width <= other_x or
+                other_x + other_w <= x or
+                y + height <= other_y or
+                other_y + other_h <= y
+            )
+            if overlaps:
+                return 'La zona se superpone con otra zona. Ajusta la posición o el tamaño.'
+
+        return None
+
+    def get(self, request, *args, **kwargs):
+        collection = self.get_collection()
+        zones = collection.interactive_zones.select_related(
+            'product_color__product', 'product_color__color',
+        ).order_by('sort_order', 'id')
+        serializer = CollectionZoneEditorView()
+        return JsonResponse({'zones': serializer._serialize_zones(zones)})
+
+    def post(self, request, *args, **kwargs):
+        collection = self.get_collection()
+        try:
+            data = json.loads(request.body or '{}')
+        except json.JSONDecodeError:
+            return JsonResponse({'errors': {'__all__': 'JSON inválido.'}}, status=400)
+
+        errors = self._validate_payload(data)
+        if errors:
+            return JsonResponse({'errors': errors}, status=400)
+
+        zone = InteractiveZone(
+            collection=collection,
+            product_color_id=int(data['product_color_id']),
+            x=self._round_coord(data['x']),
+            y=self._round_coord(data['y']),
+            width=self._round_coord(data['width']),
+            height=self._round_coord(data['height']),
+            label=data.get('label', '')[:100],
+        )
+        zone.created_by = request.user
+        zone.updated_by = request.user
+        zone.save()
+        return JsonResponse({'zone': self._serialize_zone(zone)}, status=201)
+
+    def _serialize_zone(self, zone):
+        return {
+            'id': zone.pk,
+            'x': float(zone.x),
+            'y': float(zone.y),
+            'width': float(zone.width),
+            'height': float(zone.height),
+            'label': zone.label,
+            'product_color_id': zone.product_color_id,
+            'product_name': zone.product_color.product.name,
+            'color_name': zone.product_color.color.name,
+        }
+
+
+class CollectionZoneDetailAPIView(StaffPermissionRequiredMixin, View):
+    """
+    API JSON para actualizar/eliminar una zona interactiva.
+    """
+    permission_required = PERM_COLLECTION_CHANGE
+
+    def get_collection(self):
+        return get_object_or_404(Collection, pk=self.kwargs['pk'], is_active=True)
+
+    def get_zone(self):
+        return get_object_or_404(
+            InteractiveZone,
+            pk=self.kwargs['zone_pk'],
+            collection=self.get_collection(),
+        )
+
+    def put(self, request, *args, **kwargs):
+        zone = self.get_zone()
+        try:
+            data = json.loads(request.body or '{}')
+        except json.JSONDecodeError:
+            return JsonResponse({'errors': {'__all__': 'JSON inválido.'}}, status=400)
+
+        api_view = CollectionZoneAPIView()
+        api_view.kwargs = self.kwargs
+        errors = api_view._validate_payload(data, exclude_zone_id=zone.pk)
+        if errors:
+            return JsonResponse({'errors': errors}, status=400)
+
+        zone.product_color_id = int(data['product_color_id'])
+        zone.x = api_view._round_coord(data['x'])
+        zone.y = api_view._round_coord(data['y'])
+        zone.width = api_view._round_coord(data['width'])
+        zone.height = api_view._round_coord(data['height'])
+        zone.label = data.get('label', '')[:100]
+        zone.updated_by = request.user
+        zone.save()
+
+        return JsonResponse({'zone': api_view._serialize_zone(zone)})
+
+    def delete(self, request, *args, **kwargs):
+        zone = self.get_zone()
+        zone.soft_delete(user=request.user)
+        return JsonResponse({'status': 'ok'})

@@ -1,0 +1,10 @@
+{% comment %} Props: title, icon, body, extra_classes {% endcomment %}
+<div class="bg-white rounded-xl shadow-sm overflow-hidden mb-6 {{ extra_classes }}">
+  <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center gap-2">
+    {% if icon %}<i class="{{ icon }} text-gray-500"></i>{% endif %}
+    <h2 class="font-semibold text-gray-900 text-sm">{{ title }}</h2>
+  </div>
+  <div class="p-4">
+    {{ body }}
+  </div>
+</div>

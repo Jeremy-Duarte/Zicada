@@ -1,0 +1,1 @@
+{% comment %} Props: extra_classes, padding(none|sm|md|lg) — wrapper de apertura, el padre cierra el <div> {% endcomment %}<div class="bg-white rounded-xl shadow-sm{% if padding == 'none' %}{% elif padding == 'sm' %} p-4{% elif padding == 'lg' %} p-8{% else %} p-6{% endif %}{% if extra_classes %} {{ extra_classes }}{% endif %}">

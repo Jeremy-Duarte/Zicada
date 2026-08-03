@@ -1,0 +1,8 @@
+{% load delivery_tags %}
+{% comment %} Mapeo: listo → yellow, en_camino → blue, entregado → green, cancelado → red, default → gray {% endcomment %}
+{% with palette=status|delivery_status_color %}
+  <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium {{ palette.bg }} {{ palette.text }}">
+    <i class="fas fa-circle text-[0.5rem] mr-1.5 {{ palette.dot }}"></i>
+    {{ label|default:status }}
+  </span>
+{% endwith %}

@@ -75,6 +75,22 @@
                 {% endfor %}
             </div>
 
+            <div>
+                <label for="{{ form.interactive_background.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                    Fondo interactivo
+                </label>
+                {{ form.interactive_background }}
+                {% if form.instance.interactive_background %}
+                <div class="mt-2">
+                    <img src="{{ form.instance.interactive_background.url }}" alt="Fondo interactivo de {{ form.instance.name }}" class="w-32 h-32 object-cover rounded-lg shadow-md">
+                    <p class="text-xs text-gray-500 mt-1">Imagen actual (usada para las zonas clicables)</p>
+                </div>
+                {% endif %}
+                {% for error in form.interactive_background.errors %}
+                <p class="text-red-500 text-xs mt-1">{{ error }}</p>
+                {% endfor %}
+            </div>
+
             {% if form.instance.pk %}
                 <div class="grid grid-cols-2 gap-4">
                     <div>

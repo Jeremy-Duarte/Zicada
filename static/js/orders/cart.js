@@ -203,12 +203,12 @@ class CartSidebar {
         if (this.body) {
             this.body.innerHTML = `
                 <div class="text-center py-12">
-                    <svg class="mx-auto h-20 w-20 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg class="mx-auto h-20 w-20 text-neutral-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.5 6M17 13l1.5 6M9 21h6M6 21h.01M18 21h.01" />
                     </svg>
-                    <p class="mt-4 text-gray-500 text-lg">Tu carrito está vacío</p>
-                    <p class="text-sm text-gray-400 mt-1">¡Agrega productos para comenzar!</p>
-                    <button id="continue-shopping-empty" class="mt-6 bg-zicada-accent text-white px-6 py-2.5 rounded-lg font-medium hover:bg-opacity-90 transition shadow-sm">
+                    <p class="mt-4 text-neutral-400 text-lg">Tu carrito está vacío</p>
+                    <p class="text-sm text-neutral-500 mt-1">¡Agrega productos para comenzar!</p>
+                    <button id="continue-shopping-empty" class="mt-6 bg-zicada-accent text-white px-6 py-2.5 rounded-lg font-medium hover:bg-zicada-accent/90 transition shadow-sm">
                         Seguir comprando
                     </button>
                 </div>
@@ -223,24 +223,24 @@ class CartSidebar {
     renderItems(items) {
         if (!this.body) return;
         this.body.innerHTML = items.map(item => `
-            <div class="cart-item flex gap-4 mb-4 pb-4 border-b border-gray-100 last:border-0 hover:bg-gray-50 transition rounded-lg p-2 -mx-2" data-variant-id="${item.variant_id}">
+            <div class="cart-item flex gap-4 mb-4 pb-4 border-b border-neutral-800 last:border-0 hover:bg-neutral-900 transition rounded-lg p-2 -mx-2" data-variant-id="${item.variant_id}">
                 <img src="${item.image || this.getPlaceholderImage()}" 
                      alt="${this.escapeHtml(item.product_name)}" 
-                     class="w-20 h-20 object-cover rounded-lg bg-gray-100 shadow-sm"
+                     class="w-20 h-20 object-cover rounded-lg bg-neutral-900 shadow-sm"
                      onerror="this.src='${this.getPlaceholderImage()}'">
-                <div class="flex-1">
-                    <h4 class="font-semibold text-gray-900">${this.escapeHtml(item.product_name)}</h4>
-                    <p class="text-sm text-gray-500 mt-0.5">
-                        Talla: ${this.escapeHtml(item.size_name)} | Color: ${this.escapeHtml(item.color_name)}
+                <div class="flex-1 min-w-0">
+                    <h4 class="font-semibold text-white truncate">${this.escapeHtml(item.product_name)}</h4>
+                    <p class="text-sm text-neutral-400 mt-0.5">
+                        Talla: ${this.escapeHtml(item.size_name)} | ${this.escapeHtml(item.color_name)}
                     </p>
-                    <div class="flex items-center justify-between mt-3">
-                        <div class="flex items-center gap-2 bg-gray-100 rounded-full px-1 py-0.5">
-                            <button class="qty-decr w-7 h-7 bg-white hover:bg-gray-200 text-gray-700 rounded-full transition shadow-sm flex items-center justify-center font-bold">−</button>
-                            <span class="qty-value w-8 text-center font-medium text-gray-900 text-sm">${item.quantity}</span>
-                            <button class="qty-incr w-7 h-7 bg-white hover:bg-gray-200 text-gray-700 rounded-full transition shadow-sm flex items-center justify-center font-bold">+</button>
+                    <div class="flex items-center justify-between mt-3 gap-2">
+                        <div class="flex items-center gap-2 bg-neutral-800 rounded-full px-1 py-0.5 flex-shrink-0">
+                            <button class="qty-decr w-7 h-7 bg-neutral-900 hover:bg-neutral-700 text-neutral-300 rounded-full transition shadow-sm flex items-center justify-center font-bold">−</button>
+                            <span class="qty-value w-8 text-center font-medium text-white text-sm">${item.quantity}</span>
+                            <button class="qty-incr w-7 h-7 bg-neutral-900 hover:bg-neutral-700 text-neutral-300 rounded-full transition shadow-sm flex items-center justify-center font-bold">+</button>
                         </div>
-                        <div class="font-bold text-gray-900">$${(item.price * item.quantity).toLocaleString('es-CO')}</div>
-                        <button class="remove-item text-red-400 hover:text-red-600 transition p-1 rounded-full hover:bg-red-50" title="Eliminar">
+                        <div class="font-bold text-zicada-accent flex-shrink-0">$${(item.price * item.quantity).toLocaleString('es-CO')}</div>
+                        <button class="remove-item text-neutral-500 hover:text-zicada-accent transition p-1 rounded-full hover:bg-neutral-800 flex-shrink-0" title="Eliminar">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                             </svg>
@@ -265,8 +265,8 @@ class CartSidebar {
         if (subtotal > 0) {
             if (isFreeShipping) {
                 shippingMessage = `
-                    <div class="bg-green-50 rounded-lg p-3 text-sm">
-                        <p class="text-green-700 flex items-center gap-2">
+                    <div class="bg-neutral-800 rounded-lg p-3 text-sm">
+                        <p class="text-green-400 flex items-center gap-2">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                             </svg>
@@ -276,8 +276,8 @@ class CartSidebar {
                 `;
             } else {
                 shippingMessage = `
-                    <div class="bg-amber-50 rounded-lg p-3 text-sm">
-                        <p class="text-amber-700 flex items-center gap-2">
+                    <div class="bg-neutral-800 rounded-lg p-3 text-sm">
+                        <p class="text-amber-400 flex items-center gap-2">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
@@ -294,31 +294,31 @@ class CartSidebar {
             <div class="space-y-3">
                 ${shippingMessage}
                 
-                <div class="flex justify-between text-gray-700 text-sm">
+                <div class="flex justify-between text-neutral-300 text-sm">
                     <span>Subtotal</span>
-                    <span class="font-medium">$${subtotalFormatted}</span>
+                    <span class="font-medium text-white">$${subtotalFormatted}</span>
                 </div>
-                <div class="flex justify-between text-gray-700 text-sm">
+                <div class="flex justify-between text-neutral-300 text-sm">
                     <span>Envío</span>
-                    <span class="font-medium">${shippingText}</span>
+                    <span class="font-medium text-white">${shippingText}</span>
                 </div>
-                <div class="flex justify-between text-lg font-bold text-gray-900 pt-3 border-t border-gray-200">
+                <div class="flex justify-between text-lg font-bold text-white pt-3 border-t border-neutral-800">
                     <span>Total</span>
                     <span class="text-zicada-accent">$${totalFormatted}</span>
                 </div>
                 
                 <div class="grid grid-cols-3 gap-2 pt-4">
-                    <button id="clear-cart-btn" class="text-red-500 hover:text-red-700 text-sm font-medium py-2.5 rounded-lg hover:bg-red-50 transition flex items-center justify-center gap-1">
+                    <button id="clear-cart-btn" class="text-neutral-400 hover:text-zicada-accent text-sm font-medium py-2.5 rounded-lg hover:bg-neutral-800 transition flex items-center justify-center gap-1">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
                         Vaciar
                     </button>
-                    <button id="goto-cart-btn" class="col-span-2 bg-zicada-accent text-white py-2.5 rounded-lg font-semibold hover:bg-opacity-90 transition shadow-sm">
+                    <button id="goto-cart-btn" class="col-span-2 bg-zicada-accent text-white py-2.5 rounded-lg font-semibold hover:bg-zicada-accent/90 transition shadow-sm">
                         Ver carrito completo
                     </button>
                 </div>
-                <button id="close-sidebar-footer-btn" class="w-full border border-gray-300 text-gray-600 py-2 rounded-lg font-medium hover:bg-gray-50 transition text-sm">
+                <button id="close-sidebar-footer-btn" class="w-full border border-neutral-700 text-neutral-400 py-2 rounded-lg font-medium hover:border-neutral-500 hover:text-white transition text-sm">
                     Seguir comprando
                 </button>
             </div>
@@ -485,15 +485,15 @@ class CartSidebar {
         const modal = document.createElement('div');
         modal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50';
         modal.innerHTML = `
-            <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full mx-4 transform transition-all">
+            <div class="bg-neutral-900 rounded-2xl shadow-2xl max-w-sm w-full mx-4 transform transition-all border border-neutral-800">
                 <div class="p-6">
-                    <h3 class="text-lg font-bold text-gray-900 mb-2">${title}</h3>
-                    <p class="text-gray-600 mb-6">${message}</p>
+                    <h3 class="text-lg font-bold text-white mb-2">${title}</h3>
+                    <p class="text-neutral-400 mb-6">${message}</p>
                     <div class="flex gap-3">
-                        <button id="confirm-cancel" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition">
+                        <button id="confirm-cancel" class="flex-1 px-4 py-2 border border-neutral-700 rounded-lg text-neutral-300 hover:bg-neutral-800 hover:text-white transition">
                             Cancelar
                         </button>
-                        <button id="confirm-ok" class="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition">
+                        <button id="confirm-ok" class="flex-1 px-4 py-2 bg-zicada-accent text-white rounded-lg hover:bg-zicada-accent/90 transition">
                             Vaciar
                         </button>
                     </div>

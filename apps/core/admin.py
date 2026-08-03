@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.utils.html import format_html
-from .models import HeroConfig
+from .models import Gallery, HeroConfig, HomePromo
 from .forms import HeroConfigCreateForm, HeroConfigUpdateForm, HeroConfigDeleteForm
 
 
@@ -62,3 +62,43 @@ class HeroConfigAdmin(admin.ModelAdmin):
             'all': ('css/admin/hero_admin.css',)
         }
         js = ('js/admin/hero_admin.js',)
+
+
+@admin.register(Gallery)
+class GalleryAdmin(admin.ModelAdmin):
+    list_display = ('description_preview', 'image_preview', 'sort_order', 'is_active', 'updated_at')
+    list_editable = ('sort_order', 'is_active')
+    list_filter = ('is_active',)
+    search_fields = ('description', 'alt_text')
+    fields = ('is_active', 'sort_order', 'image', 'description', 'alt_text')
+
+    @admin.display(description='Descripción')
+    def description_preview(self, obj):
+        return format_html('<strong>{}</strong>', obj.description[:60])
+
+    @admin.display(description='Foto')
+    def image_preview(self, obj):
+        if obj.image and obj.image.url:
+            return format_html(
+                '<img src="{}" style="width: 40px; height: 60px; object-fit: cover; border-radius: 4px;" />',
+                obj.image.url
+            )
+        return '-'
+
+
+@admin.register(HomePromo)
+class HomePromoAdmin(admin.ModelAdmin):
+    list_display = ('title', 'image_preview', 'sort_order', 'is_active', 'updated_at')
+    list_editable = ('sort_order', 'is_active')
+    list_filter = ('is_active',)
+    search_fields = ('title', 'subtitle')
+    fields = ('is_active', 'sort_order', 'image', 'title', 'subtitle', 'link_url', 'link_text')
+
+    @admin.display(description='Imagen')
+    def image_preview(self, obj):
+        if obj.image and obj.image.url:
+            return format_html(
+                '<img src="{}" style="width: 80px; height: 40px; object-fit: cover; border-radius: 4px;" />',
+                obj.image.url
+            )
+        return '-'

@@ -1,0 +1,12 @@
+{% comment %} Props: text, href, type, extra_classes {% endcomment %}
+{% if href %}
+<a href="{{ href }}"
+   class="inline-flex items-center justify-center text-red-600 hover:text-red-800 font-medium transition {{ extra_classes }}">
+  {{ text }}
+</a>
+{% else %}
+<button type="{{ type|default:'button' }}"
+   class="inline-flex items-center justify-center text-red-600 hover:text-red-800 font-medium transition {{ extra_classes }}">
+  {{ text }}
+</button>
+{% endif %}

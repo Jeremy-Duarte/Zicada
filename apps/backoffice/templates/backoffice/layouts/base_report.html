@@ -4,6 +4,17 @@
     <meta charset="UTF-8">
     <title>{{ report_title }} - Zicada</title>
     <style>
+        :root {
+            --brand-accent: #a91600;
+            --brand-dark: #1a1a1a;
+            --brand-light: #f5f5f5;
+            --text-primary: #333;
+            --text-secondary: #666;
+            --text-muted: #999;
+            --border-color: #ddd;
+            --bg-header: #f2f2f2;
+            --bg-summary: #f5f5f5;
+        }
         @page {
             size: A4;
             margin: 2cm;
@@ -12,30 +23,30 @@
             font-family: 'Helvetica', 'Arial', sans-serif;
             font-size: 12px;
             line-height: 1.4;
-            color: #333;
+            color: var(--text-primary);
         }
         .header {
             text-align: center;
-            border-bottom: 2px solid #a91600;
+            border-bottom: 2px solid var(--brand-accent);
             padding-bottom: 20px;
             margin-bottom: 20px;
         }
         .header h1 {
-            color: #a91600;
+            color: var(--brand-accent);
             font-size: 24px;
             margin: 0 0 5px;
         }
         .header .date-range {
             font-size: 14px;
-            color: #666;
+            color: var(--text-secondary);
             margin: 5px 0;
         }
         .header .generated {
             font-size: 10px;
-            color: #999;
+            color: var(--text-muted);
         }
         .summary-box {
-            background: #f5f5f5;
+            background: var(--bg-summary);
             padding: 15px;
             margin-bottom: 30px;
             border-radius: 8px;
@@ -53,16 +64,16 @@
         .summary-value {
             font-size: 18px;
             font-weight: bold;
-            color: #a91600;
+            color: var(--brand-accent);
         }
         .summary-label {
             font-size: 11px;
-            color: #666;
+            color: var(--text-secondary);
         }
         h2 {
             font-size: 16px;
-            color: #a91600;
-            border-left: 3px solid #a91600;
+            color: var(--brand-accent);
+            border-left: 3px solid var(--brand-accent);
             padding-left: 10px;
             margin: 25px 0 15px;
         }
@@ -72,18 +83,18 @@
             margin-bottom: 20px;
         }
         th, td {
-            border: 1px solid #ddd;
+            border: 1px solid var(--border-color);
             padding: 8px;
             text-align: left;
         }
         th {
-            background-color: #f2f2f2;
+            background-color: var(--bg-header);
             font-weight: bold;
         }
         .footer {
             text-align: center;
             font-size: 9px;
-            color: #999;
+            color: var(--text-muted);
             border-top: 1px solid #eee;
             padding-top: 15px;
             margin-top: 30px;

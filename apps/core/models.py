@@ -249,3 +249,91 @@ class HeroConfig(BaseAuditModel):
         """
         self.full_clean()
         super().save(*args, **kwargs)
+
+
+class Gallery(BaseAuditModel):
+    """
+    Galería del home: carrusel vertical estilo TikTok con fotos de Instagram.
+    Solo necesita: descripción, fotografía y texto alternativo (SEO).
+    """
+    description = models.CharField(
+        max_length=255,
+        verbose_name='Descripción',
+        help_text='Descripción corta de la fotografía.'
+    )
+    image = models.ImageField(
+        upload_to='landingpage/gallery/',
+        verbose_name='Fotografía',
+        help_text='Imagen vertical recomendada (formato celular 9:16).'
+    )
+    alt_text = models.CharField(
+        max_length=255,
+        verbose_name='Texto alternativo (SEO)',
+        help_text='Texto alternativo de la imagen para SEO y accesibilidad.'
+    )
+    sort_order = models.PositiveIntegerField(
+        default=0,
+        verbose_name='Orden',
+        help_text='Orden de aparición en el carrusel de galería.'
+    )
+
+    class Meta:
+        ordering = ['sort_order']
+        verbose_name = 'Foto de Galería'
+        verbose_name_plural = 'Fotos de Galería'
+
+    def __str__(self) -> str:
+        return f"Galería: {self.description[:40]}"
+
+
+class HomePromo(BaseAuditModel):
+    """
+    Espacios publicitarios configurables del home (de 1 a 3 activos).
+    Banner de ancho completo con imagen publicitaria debajo de las colecciones.
+    """
+    title = models.CharField(
+        max_length=255,
+        blank=True,
+        default='',
+        verbose_name='Título',
+        help_text='Título opcional sobre la imagen.'
+    )
+    subtitle = models.CharField(
+        max_length=500,
+        blank=True,
+        default='',
+        verbose_name='Subtítulo',
+        help_text='Texto secundario opcional.'
+    )
+    image = models.ImageField(
+        upload_to='landingpage/promos/',
+        verbose_name='Imagen publicitaria',
+        help_text='Imagen del espacio publicitario (recomendado: 1920x800px).'
+    )
+    link_url = models.CharField(
+        max_length=500,
+        blank=True,
+        default='',
+        verbose_name='URL del enlace',
+        help_text='Destino al hacer clic (opcional).'
+    )
+    link_text = models.CharField(
+        max_length=50,
+        blank=True,
+        default='',
+        verbose_name='Texto del botón',
+        help_text='Texto del CTA (opcional).'
+    )
+    sort_order = models.PositiveIntegerField(
+        default=0,
+        verbose_name='Orden',
+        help_text='Orden de aparición (se muestran máximo 3 activos).'
+    )
+
+    class Meta:
+        ordering = ['sort_order']
+        verbose_name = 'Espacio Publicitario'
+        verbose_name_plural = 'Espacios Publicitarios'
+
+    def __str__(self) -> str:
+        return self.title or f"Promo #{self.pk}"
