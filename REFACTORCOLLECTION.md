@@ -294,3 +294,5 @@ Casos a probar:
 - ✅ Fase 4: `interactive_background` en forms create/update, inline en admin, botón "Zonas" en listado
 - ✅ Tests: 19 tests en `apps/products/tests/test_interactive_zones.py` + suite completa verde
 - ✅ Limpieza: eliminado el sistema de theming legacy (colores, fuentes, efectos, custom_css, style_config) del modelo, views, forms, admin, templates, JS y constantes
+- ✅ Regla de negocio: ninguna zona puede superponerse a otra (validada en JS al dibujar/mover/redimensionar y en la API)
+- ✅ UX editor: botones "Crear zona" y "Editar seleccionada" + botón editar por zona en la lista; el modo dibujar se desactiva al crear; clic sobre zona siempre la selecciona

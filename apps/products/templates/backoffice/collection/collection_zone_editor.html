@@ -29,7 +29,10 @@
                         <i class="fas fa-arrow-left mr-1"></i> Volver
                     </a>
                     <button id="btn-draw" type="button" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition">
-                        <i class="fas fa-draw-polygon mr-1"></i> Dibujar zona
+                        <i class="fas fa-plus mr-1"></i> Crear zona
+                    </button>
+                    <button id="btn-edit" type="button" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition" disabled>
+                        <i class="fas fa-edit mr-1"></i> Editar seleccionada
                     </button>
                     <button id="btn-save" type="button" class="px-6 py-2 bg-zicada-accent hover:bg-red-700 text-white rounded-lg font-semibold transition">
                         <i class="fas fa-save mr-1"></i> Guardar
@@ -60,10 +63,10 @@
                 </h2>
                 <ul id="zone-list" class="space-y-2"></ul>
                 <div class="mt-4 p-3 bg-gray-50 rounded-lg text-xs text-gray-500 space-y-1">
+                    <p><i class="fas fa-plus text-zicada-accent mr-1"></i> Usa "Crear zona" y arrastra sobre la imagen para agregar una zona clicable.</p>
                     <p><i class="fas fa-mouse-pointer text-zicada-accent mr-1"></i> Clic en una zona para seleccionarla y arrastra para moverla.</p>
                     <p><i class="fas fa-expand-alt text-zicada-accent mr-1"></i> Arrastra los bordes para redimensionar.</p>
-                    <p><i class="fas fa-draw-polygon text-zicada-accent mr-1"></i> Usa "Dibujar zona" para crear una nueva.</p>
-                    <p><i class="fas fa-double-click text-zicada-accent mr-1"></i> Doble clic sobre una zona para cambiar el producto.</p>
+                    <p><i class="fas fa-edit text-zicada-accent mr-1"></i> "Editar seleccionada" o doble clic para cambiar el producto o la etiqueta.</p>
                     <p><i class="fas fa-trash text-zicada-accent mr-1"></i> Pasa el cursor sobre una zona y usa <span class="text-red-600 font-semibold">×</span> para eliminarla.</p>
                     <p><i class="fas fa-save text-zicada-accent mr-1"></i> Confirma los cambios con el botón "Guardar".</p>
                 </div>

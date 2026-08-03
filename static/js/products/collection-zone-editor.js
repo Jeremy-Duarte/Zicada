@@ -91,6 +91,34 @@
         return zone;
     }
 
+    // ============================================
+    // OVERLAP DETECTION (regla de negocio: ninguna zona sobre otra)
+    // ============================================
+
+    const OVERLAP_EPSILON = 0.01;
+
+    function zonesOverlap(a, b) {
+        if (a.uid === b.uid) return false;
+        return !(
+            a.x + a.width <= b.x + OVERLAP_EPSILON ||
+            b.x + b.width <= a.x + OVERLAP_EPSILON ||
+            a.y + a.height <= b.y + OVERLAP_EPSILON ||
+            b.y + b.height <= a.y + OVERLAP_EPSILON
+        );
+    }
+
+    function findOverlap(zone) {
+        return zones.find((other) => zonesOverlap(zone, other)) || null;
+    }
+
+    function hasOverlapWithOthers(zone) {
+        return zones.some((other) => zonesOverlap(zone, other));
+    }
+
+    function isPlacementValid(zone) {
+        return !hasOverlapWithOthers(zone);
+    }
+
     function markDirty(zone) {
         zone.dirty = true;
         updateSidebarItem(zone);
@@ -225,6 +253,7 @@
                 zone.li.classList.toggle('bg-amber-50', selected);
             }
         });
+        if (el.btnEdit) el.btnEdit.disabled = !selectedUid;
     }
 
     function selectZone(uid) {
@@ -245,7 +274,7 @@
         el.zoneList.innerHTML = '';
         if (!zones.length) {
             el.zoneList.innerHTML =
-                '<li class="text-sm text-gray-400 text-center py-8">No hay zonas aún. Activa "Dibujar zona" para crear la primera.</li>';
+                '<li class="text-sm text-gray-400 text-center py-8">No hay zonas aún. Usa "Crear zona" para agregar la primera.</li>';
             return;
         }
         zones.forEach((zone) => {
@@ -259,8 +288,19 @@
                     <span class="zone-title block text-sm font-medium text-gray-700 truncate"></span>
                     <span class="zone-sub block text-xs text-gray-400 truncate"></span>
                 </span>
-                <span class="zone-badge text-[10px] font-semibold text-amber-600"></span>`;
-            item.addEventListener('click', () => selectZone(zone.uid));
+                <span class="zone-badge text-[10px] font-semibold text-amber-600"></span>
+                <button type="button" class="zone-edit-btn text-gray-400 hover:text-zicada-accent transition" title="Editar zona">
+                    <i class="fas fa-edit"></i>
+                </button>`;
+            item.addEventListener('click', (e) => {
+                if (e.target.closest('.zone-edit-btn')) return;
+                selectZone(zone.uid);
+            });
+            item.querySelector('.zone-edit-btn').addEventListener('click', (e) => {
+                e.stopPropagation();
+                selectZone(zone.uid);
+                openZoneForm(zone.uid);
+            });
             zone.li = item;
             el.zoneList.appendChild(item);
             updateSidebarItem(zone);
@@ -422,6 +462,8 @@
                 const saved = data.zone || data;
                 if (saved && saved.id != null) zone.id = saved.id;
                 applySavedZone(zone, saved);
+                toggleDrawMode(false);
+                selectZone(zone.uid);
                 showStatus('Zona creada correctamente');
             } catch (err) {
                 showStatus(err.message, true);
@@ -527,6 +569,13 @@
         if (widthPx < 3 || heightPx < 3) return;
 
         const zone = createDraftZone(leftPx, topPx, widthPx, heightPx);
+
+        if (hasOverlapWithOthers(zone)) {
+            removeZone(zone);
+            showStatus('No hay espacio para crear la zona aquí: se superpone con otra zona.', true);
+            return;
+        }
+
         openZoneForm(zone.uid);
     }
 
@@ -598,6 +647,19 @@
         clampZone(zone);
     }
 
+    function revertDrag(dragState) {
+        const zone = dragState.zone;
+        if (dragState.type === 'move') {
+            zone.x = dragState.startX;
+            zone.y = dragState.startY;
+        } else {
+            zone.x = dragState.startX;
+            zone.y = dragState.startY;
+            zone.width = dragState.startWidth;
+            zone.height = dragState.startHeight;
+        }
+    }
+
     function onMouseMove(e) {
         if (draw) {
             draw.currentX = e.clientX;
@@ -615,7 +677,14 @@
             } else {
                 resizeZone(drag, dxPx, dyPx);
             }
-            markDirty(drag.zone);
+            if (hasOverlapWithOthers(drag.zone)) {
+                revertDrag(drag);
+                drag.pointerX = e.clientX;
+                drag.pointerY = e.clientY;
+                showStatus('No puedes superponer zonas. Ajusta o mueve la zona existente.', true);
+            } else {
+                markDirty(drag.zone);
+            }
             requestRender();
         }
     }
@@ -718,17 +787,13 @@
             if (zone) deleteZone(zone);
             return;
         }
-        if (drawMode) {
-            e.preventDefault();
-            startDraw(e);
-            return;
-        }
         const handle = e.target.closest('.zone-handle');
         const rectEl = e.target.closest('.zone-rect');
         if (handle) {
             e.preventDefault();
             const zone = findZoneByElement(handle);
             if (zone) {
+                toggleDrawMode(false);
                 selectZone(zone.uid);
                 startResize(e, zone, handle.dataset.handle);
             }
@@ -738,9 +803,15 @@
             e.preventDefault();
             const zone = findZoneByElement(rectEl);
             if (zone) {
+                toggleDrawMode(false);
                 selectZone(zone.uid);
                 startMove(e, zone);
             }
+            return;
+        }
+        if (drawMode) {
+            e.preventDefault();
+            startDraw(e);
             return;
         }
         deselectZone();
@@ -776,6 +847,10 @@
 
     function bindEvents() {
         el.btnDraw.addEventListener('click', () => toggleDrawMode());
+        el.btnEdit?.addEventListener('click', () => {
+            const zone = selectedUid ? findZoneByUid(selectedUid) : null;
+            if (zone) openZoneForm(zone.uid);
+        });
         el.btnSave.addEventListener('click', saveAll);
         el.canvas.addEventListener('mousedown', onCanvasMouseDown);
         el.canvas.addEventListener('dblclick', onCanvasDoubleClick);
@@ -806,6 +881,7 @@
         el.canvas = document.getElementById('zone-canvas');
         el.zoneList = document.getElementById('zone-list');
         el.btnDraw = document.getElementById('btn-draw');
+        el.btnEdit = document.getElementById('btn-edit');
         el.btnSave = document.getElementById('btn-save');
         el.status = document.getElementById('zone-save-status');
 

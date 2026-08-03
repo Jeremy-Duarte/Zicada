@@ -305,6 +305,77 @@ class TestCollectionZoneAPI:
         assert response.status_code == 400
         assert 'x' in response.json()['errors']
 
+    def test_api_rejects_overlapping_zone(self, client, product_color_with_collection, ifactory):
+        collection, product, product_color = product_color_with_collection()
+        self._login_staff(client, ifactory)
+
+        InteractiveZone.objects.create(
+            collection=collection,
+            product_color=product_color,
+            x=Decimal('10'), y=Decimal('10'),
+            width=Decimal('30'), height=Decimal('30'),
+        )
+
+        url = reverse('products:collection_zones_api', kwargs={'pk': collection.pk})
+        response = client.post(
+            url,
+            data={
+                'x': 20, 'y': 20, 'width': 20, 'height': 15,
+                'product_color_id': product_color.pk,
+            },
+            content_type='application/json',
+        )
+
+        assert response.status_code == 400
+        assert '__all__' in response.json()['errors']
+
+    def test_api_allows_non_overlapping_zone(self, client, product_color_with_collection, ifactory):
+        collection, product, product_color = product_color_with_collection()
+        self._login_staff(client, ifactory)
+
+        InteractiveZone.objects.create(
+            collection=collection,
+            product_color=product_color,
+            x=Decimal('10'), y=Decimal('10'),
+            width=Decimal('30'), height=Decimal('30'),
+        )
+
+        url = reverse('products:collection_zones_api', kwargs={'pk': collection.pk})
+        response = client.post(
+            url,
+            data={
+                'x': 50, 'y': 50, 'width': 20, 'height': 15,
+                'product_color_id': product_color.pk,
+            },
+            content_type='application/json',
+        )
+
+        assert response.status_code == 201
+
+    def test_api_update_allows_same_zone_position(self, client, product_color_with_collection, ifactory):
+        collection, product, product_color = product_color_with_collection()
+        self._login_staff(client, ifactory)
+
+        zone = InteractiveZone.objects.create(
+            collection=collection,
+            product_color=product_color,
+            x=Decimal('10'), y=Decimal('10'),
+            width=Decimal('30'), height=Decimal('30'),
+        )
+
+        url = reverse('products:collection_zone_api_detail', kwargs={'pk': collection.pk, 'zone_pk': zone.pk})
+        response = client.put(
+            url,
+            data={
+                'x': 10, 'y': 10, 'width': 30, 'height': 30,
+                'label': 'Misma posición',
+                'product_color_id': product_color.pk,
+            },
+            content_type='application/json',
+        )
+
+        assert response.status_code == 200
+
     def test_api_updates_zone(self, client, product_color_with_collection, ifactory):
         collection, product, product_color = product_color_with_collection()
         self._login_staff(client, ifactory)

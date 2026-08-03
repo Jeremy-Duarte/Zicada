@@ -2373,8 +2373,8 @@ class CollectionZoneAPIView(StaffPermissionRequiredMixin, View):
         except (TypeError, ValueError, decimal.InvalidOperation):
             return value
 
-    def _validate_payload(self, data):
-        """Valida coordenadas y producto de una zona."""
+    def _validate_payload(self, data, exclude_zone_id=None):
+        """Valida coordenadas y producto de una zona, y que no se superponga a otras."""
         errors = {}
 
         for field in ('x', 'y', 'width', 'height'):
@@ -2399,6 +2399,10 @@ class CollectionZoneAPIView(StaffPermissionRequiredMixin, View):
         ):
             errors['height'] = 'La zona se sale del alto de la imagen.'
 
+        overlap_error = self._check_overlap(data, exclude_zone_id)
+        if overlap_error:
+            errors['__all__'] = overlap_error
+
         try:
             product_color_id = int(data.get('product_color_id'))
         except (TypeError, ValueError):
@@ -2412,6 +2416,37 @@ class CollectionZoneAPIView(StaffPermissionRequiredMixin, View):
             errors['product_color_id'] = 'El producto no pertenece a esta colección.'
 
         return errors
+
+    def _check_overlap(self, data, exclude_zone_id=None):
+        """Retorna mensaje de error si la zona se superpone con otra de la colección."""
+        try:
+            x = float(data.get('x'))
+            y = float(data.get('y'))
+            width = float(data.get('width'))
+            height = float(data.get('height'))
+        except (TypeError, ValueError):
+            return None
+
+        zones = self.get_collection().interactive_zones.all()
+        if exclude_zone_id:
+            zones = zones.exclude(pk=exclude_zone_id)
+
+        for other in zones:
+            other_x = float(other.x)
+            other_y = float(other.y)
+            other_w = float(other.width)
+            other_h = float(other.height)
+
+            overlaps = not (
+                x + width <= other_x or
+                other_x + other_w <= x or
+                y + height <= other_y or
+                other_y + other_h <= y
+            )
+            if overlaps:
+                return 'La zona se superpone con otra zona. Ajusta la posición o el tamaño.'
+
+        return None
 
     def get(self, request, *args, **kwargs):
         collection = self.get_collection()
@@ -2485,7 +2520,7 @@ class CollectionZoneDetailAPIView(StaffPermissionRequiredMixin, View):
 
         api_view = CollectionZoneAPIView()
         api_view.kwargs = self.kwargs
-        errors = api_view._validate_payload(data)
+        errors = api_view._validate_payload(data, exclude_zone_id=zone.pk)
         if errors:
             return JsonResponse({'errors': errors}, status=400)
 
