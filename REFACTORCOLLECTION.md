@@ -292,4 +292,5 @@ Casos a probar:
 - ✅ Fase 2: `CollectionDetailView` renderiza `collection_interactive.html` (404 si no hay fondo interactivo)
 - ✅ Fase 3: editor visual de zonas (divs overlay) + API JSON (crear/listar/actualizar/eliminar)
 - ✅ Fase 4: `interactive_background` en forms create/update, inline en admin, botón "Zonas" en listado
-- ✅ Tests: 15 tests en `apps/products/tests/test_interactive_zones.py` + suite completa verde
+- ✅ Tests: 19 tests en `apps/products/tests/test_interactive_zones.py` + suite completa verde
+- ✅ Limpieza: eliminado el sistema de theming legacy (colores, fuentes, efectos, custom_css, style_config) del modelo, views, forms, admin, templates, JS y constantes

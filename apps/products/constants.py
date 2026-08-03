@@ -75,7 +75,6 @@ DATE_FORMAT_DAY_MONTH_YEAR = '%d/%m/%Y'
 TEMPLATE_STOCK_DASHBOARD = 'products/stock_dashboard.html'
 TEMPLATE_CATALOG = 'products/catalog.html'
 TEMPLATE_COLLECTIONS_LIST_PUBLIC = 'products/collections_list.html'
-TEMPLATE_COLLECTION_DETAIL = 'products/collection_detail.html'
 TEMPLATE_COLLECTION_INTERACTIVE = 'products/collection_interactive.html'
 TEMPLATE_PRODUCT_DETAIL = 'products/product_detail.html'
 
@@ -121,7 +120,6 @@ TEMPLATE_COLLECTION_FORM = 'backoffice/collection/collection_form.html'
 TEMPLATE_COLLECTION_CONFIRM_DELETE = 'backoffice/collection/collection_confirm_delete.html'
 TEMPLATE_COLLECTION_RESTORE = 'backoffice/collection/collection_restore.html'
 TEMPLATE_COLLECTION_TRASHCAN = 'backoffice/collection/collection_trashcan.html'
-TEMPLATE_COLLECTION_STYLE_FORM = 'backoffice/collection/collection_style_form.html'
 TEMPLATE_COLLECTION_ZONE_EDITOR = 'backoffice/collection/collection_zone_editor.html'
 
 # Form Context Keys
@@ -296,7 +294,6 @@ MSG_COLLECTION_CREATED = 'Colección "{name}" creada exitosamente.'
 MSG_COLLECTION_UPDATED = 'Colección "{name}" actualizada exitosamente.'
 MSG_COLLECTION_DELETED = 'Colección "{name}" movida a la papelera.'
 MSG_COLLECTION_RESTORED = 'Colección "{name}" restaurada exitosamente.'
-MSG_COLLECTION_STYLE_UPDATED = 'Estilos de "{name}" actualizados correctamente.'
 
 # Import Template Filenames
 IMPORT_TEMPLATE_FILENAME_SIZE = 'plantilla_tallas.csv'

@@ -333,3 +333,57 @@ class TestCollectionZoneAPI:
         assert response.json()['status'] == 'ok'
         assert InteractiveZone.all_objects.filter(pk=zone.pk).count() == 1
         assert InteractiveZone.objects.filter(pk=zone.pk).count() == 0
+
+
+@pytest.mark.django_db
+class TestLegacyThemingRemoval:
+    """Guarda contra regresiones: el sistema de theming legacy fue eliminado."""
+
+    def test_collection_model_has_no_legacy_fields(self):
+        legacy_fields = {
+            'primary_color', 'secondary_color', 'background_color', 'text_color',
+            'background_image', 'title_font', 'effects_config', 'custom_css',
+            'style_config',
+        }
+        assert legacy_fields.isdisjoint(Collection._meta.get_fields() and {f.name for f in Collection._meta.get_fields()})
+
+    def test_collection_list_backoffice_renders(self, client, ifactory):
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        user = ifactory.create(User, username='admin_smoke', is_staff=True, is_superuser=True)
+        client.force_login(user)
+
+        ifactory.create(Collection, name='Smoke Col', status='borrador', is_active=True)
+        response = client.get(reverse('products:collection_list'))
+
+        assert response.status_code == 200
+        content = response.content.decode()
+        assert 'zonas' in content
+        assert 'collection_style' not in content
+
+    def test_collection_create_form_has_no_legacy_fields(self, client, ifactory):
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        user = ifactory.create(User, username='admin_smoke2', is_staff=True, is_superuser=True)
+        client.force_login(user)
+
+        response = client.get(reverse('products:collection_create'))
+
+        assert response.status_code == 200
+        content = response.content.decode()
+        assert 'interactive_background' in content
+        for legacy in ('primary_color', 'secondary_color', 'background_color',
+                       'text_color', 'background_image', 'title_font',
+                       'effects_config', 'custom_css', 'style_config'):
+            assert legacy not in content
+
+    def test_collection_style_url_no_longer_exists(self, client, ifactory):
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        user = ifactory.create(User, username='admin_smoke3', is_staff=True, is_superuser=True)
+        client.force_login(user)
+
+        with pytest.raises(Exception) as excinfo:
+            reverse('products:collection_style', kwargs={'pk': 1})
+        assert 'NoReverseMatch' in type(excinfo.value).__name__
+

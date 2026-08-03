@@ -1,4 +1,3 @@
-import re
 import json
 import csv
 from datetime import timedelta
@@ -30,7 +29,7 @@ from .forms import (
     ProductUpdateForm, ProductDeleteForm, ProductCreateForm, ProductRestoreForm,
     ProductColorCreateForm, ProductColorUpdateForm, ProductColorDeleteForm,
     ProductVariantCreateForm, ProductVariantDeleteForm, ProductVariantRestoreForm, ProductVariantUpdateForm,
-    CollectionCreateForm, CollectionUpdateForm, CollectionDeleteForm, CollectionRestoreForm, CollectionStyleForm
+    CollectionCreateForm, CollectionUpdateForm, CollectionDeleteForm, CollectionRestoreForm
 )
 from apps.products.importers.size_importer import SizeImporter
 from apps.products.importers.color_importer import ColorImporter
@@ -53,7 +52,6 @@ from apps.core.url_names import (
     PRODUCTS_COLLECTION_DELETE,
     PRODUCTS_COLLECTION_RESTORE,
     PRODUCTS_COLLECTION_TRASHCAN,
-    PRODUCTS_COLLECTION_STYLE,
     PRODUCTS_COLLECTION_ZONES,
     PRODUCTS_COLLECTION_ZONES_API,
     PRODUCTS_VARIANT_EDIT,
@@ -144,7 +142,6 @@ from .constants import (
     TEMPLATE_COLLECTION_CONFIRM_DELETE,
     TEMPLATE_COLLECTION_RESTORE,
     TEMPLATE_COLLECTION_TRASHCAN,
-    TEMPLATE_COLLECTION_STYLE_FORM,
     TEMPLATE_COLLECTION_ZONE_EDITOR,
     # Form Context Keys
     CONTEXT_CANCEL_URL,
@@ -274,7 +271,6 @@ from .constants import (
     MSG_COLLECTION_UPDATED,
     MSG_COLLECTION_DELETED,
     MSG_COLLECTION_RESTORED,
-    MSG_COLLECTION_STYLE_UPDATED,
     # Import Template Filenames
     IMPORT_TEMPLATE_FILENAME_SIZE,
     IMPORT_TEMPLATE_FILENAME_COLOR,
@@ -609,21 +605,6 @@ class CollectionDetailView(BaseProductListView):
             return ['components/_product_list.html']
         return [self.template_name]
     
-    def _sanitize_css(self, raw_css):
-        if not raw_css:
-            return ''
-        
-        dangerous = re.compile(
-            r'(javascript:|expression\(|behavior\s*:|vbscript:|<script|</script|on\w+\s*=|@import|@charset)',
-            re.IGNORECASE
-        )
-        cleaned = dangerous.sub('', raw_css)
-        
-        if len(cleaned) > 5000:
-            cleaned = cleaned[:5000]
-        
-        return format_html('{}', cleaned)
-    
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         
@@ -676,8 +657,6 @@ class CollectionDetailView(BaseProductListView):
         
         context['clean_url'] = reverse('products:collection_detail', kwargs={'slug': self.collection.slug})
         context['now'] = timezone.now()
-        
-        context['safe_custom_css'] = self._sanitize_css(self.collection.custom_css)
         
         context['zones'] = self.collection.interactive_zones.select_related(
             'product_color__product',
@@ -2327,37 +2306,6 @@ class CollectionTrashcanView(StaffPermissionRequiredMixin, ListView):
         
         return context
 
-
-class CollectionStyleView(StaffPermissionRequiredMixin, UpdateView):
-    """
-    HU-016 (parte): Configuración de estilos de colección
-    HU-015 | ESCENARIO 4 | H | Estilos visuales personalizados
-    """
-    model = Collection
-    form_class = CollectionStyleForm
-    template_name = TEMPLATE_COLLECTION_STYLE_FORM
-    permission_required = PERM_COLLECTION_CHANGE  # HU-016 | ESCENARIO 4 | E | Sin permisos
-    
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context[CONTEXT_CANCEL_URL] = PRODUCTS_COLLECTION_LIST
-        context[CONTEXT_IS_UPDATE] = True
-        context['collection'] = self.get_object()
-        return context
-    
-    def get_success_url(self):
-        return reverse(PRODUCTS_COLLECTION_LIST)
-    
-    def form_valid(self, form):
-        # HU-015 | ESCENARIO 4 | H | Estilos visuales guardados exitosamente
-        response = super().form_valid(form)
-        messages.success(self.request, MSG_COLLECTION_STYLE_UPDATED.format(name=form.instance.name))
-        return response
-
-
-# =============================================================================
-# COLLECTION INTERACTIVE ZONE EDITOR (navegación por imagen interactiva)
-# =============================================================================
 
 class CollectionZoneEditorView(StaffPermissionRequiredMixin, TemplateView):
     """

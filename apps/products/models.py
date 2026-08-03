@@ -14,22 +14,6 @@ from apps.products.constants import STOCK_LOW_THRESHOLD
 
 # Strings duplicados
 VERBOSE_CATEGORY = 'Categoría'
-DEFAULT_TITLE_FONT = "'Inter', sans-serif"
-
-# Valores por defecto para configuración de tarjetas
-DEFAULT_BADGE_TEXT_COLOR = '#ffffff'
-DEFAULT_CARD_BORDER_RADIUS = '0.5rem'
-DEFAULT_CARD_SHADOW = '0 1px 3px 0 rgba(0,0,0,0.1)'
-DEFAULT_CARD_HOVER_SHADOW = '0 20px 25px -5px rgba(0,0,0,0.15)'
-DEFAULT_HOVER_SCALE = 1.05
-DEFAULT_SHOW_CATEGORY = True
-DEFAULT_SHOW_STOCK_BADGE = True
-
-# Colores por defecto
-DEFAULT_PRIMARY_COLOR = '#c2a575'
-DEFAULT_SECONDARY_COLOR = '#8b5e3c'
-DEFAULT_BACKGROUND_COLOR = '#ffffff'
-DEFAULT_TEXT_COLOR = '#1a1a1a'
 
 
 # =============================================================================
@@ -600,71 +584,12 @@ class Collection(BaseAuditModel):
         verbose_name='Imagen de portada',
         help_text='Imagen que se mostrará en la tarjeta de la colección (recomendado: 800x600px)'
     )
-    primary_color = models.CharField(
-        max_length=20,
-        blank=True,
-        default=DEFAULT_PRIMARY_COLOR,
-        verbose_name='Color principal',
-        help_text='Color de botones, enlaces y acentos'
-    )
-    secondary_color = models.CharField(
-        max_length=20,
-        blank=True,
-        default=DEFAULT_SECONDARY_COLOR,
-        verbose_name='Color secundario',
-        help_text='Color para hover y detalles'
-    )
-    background_color = models.CharField(
-        max_length=20,
-        blank=True,
-        default=DEFAULT_BACKGROUND_COLOR,
-        verbose_name='Color de fondo',
-        help_text='Color de fondo de la página de la colección'
-    )
-    text_color = models.CharField(
-        max_length=20,
-        blank=True,
-        default=DEFAULT_TEXT_COLOR,
-        verbose_name='Color de texto',
-        help_text='Color principal del texto'
-    )
-    background_image = models.ImageField(
-        upload_to='collections/bg/',
-        blank=True,
-        null=True,
-        verbose_name='Imagen de fondo',
-        help_text='Imagen de fondo para la página de la colección'
-    )
     interactive_background = models.ImageField(
         upload_to='collections/interactive/',
         blank=True,
         null=True,
         verbose_name='Fondo interactivo',
         help_text='Imagen usada para delimitar las zonas clicleables que redirigen a productos'
-    )
-    title_font = models.CharField(
-        max_length=100,
-        blank=True,
-        default=DEFAULT_TITLE_FONT,
-        verbose_name='Fuente de títulos',
-        help_text='Ej: "Playfair Display", serif'
-    )
-    effects_config = models.JSONField(
-        blank=True,
-        null=True,
-        verbose_name='Configuración de efectos',
-        help_text='JSON para efectos avanzados (hover, animaciones)'
-    )
-    custom_css = models.TextField(
-        blank=True,
-        verbose_name='CSS personalizado',
-        help_text='CSS adicional para esta colección (solo si sabes lo que haces)'
-    )
-    style_config = models.JSONField(
-        blank=True,
-        null=True,
-        verbose_name='Configuración visual (legado)',
-        help_text='JSON con configuración visual (se genera automáticamente desde los campos)'
     )
     
     products = models.ManyToManyField(
@@ -686,61 +611,6 @@ class Collection(BaseAuditModel):
     
     def __str__(self):
         return self.name
-    
-    def get_style_config(self):
-        # HU-015 | ESCENARIO 4 | H | Obtiene configuración de estilos
-        if self.style_config and not self._has_individual_styles():
-            return self.style_config
-        
-        return {
-            'cover_image': self.cover_image.url if self.cover_image else None,
-            'colors': {
-                'primary': self.primary_color or DEFAULT_PRIMARY_COLOR,
-                'secondary': self.secondary_color or DEFAULT_SECONDARY_COLOR,
-                'background': self.background_color or DEFAULT_BACKGROUND_COLOR,
-                'text': self.text_color or DEFAULT_TEXT_COLOR,
-            },
-            'background_image': self.background_image.url if self.background_image else None,
-            'typography': {
-                'title_font': self.title_font or DEFAULT_TITLE_FONT,
-            },
-            'effects': self.effects_config or {},
-            'custom_css': self.custom_css or '',
-        }
-    
-    def get_card_config(self):
-        """Retorna la configuración de tarjetas para esta colección."""
-        self.get_style_config()
-        
-        if self.style_config and 'card_config' in self.style_config:
-            return self.style_config['card_config']
-        
-        return {
-            'background_color': self.background_color or DEFAULT_BACKGROUND_COLOR,
-            'text_color': self.text_color or DEFAULT_TEXT_COLOR,
-            'title_color': self.primary_color or DEFAULT_PRIMARY_COLOR,
-            'price_color': self.primary_color or DEFAULT_PRIMARY_COLOR,
-            'badge_background': self.primary_color or DEFAULT_PRIMARY_COLOR,
-            'badge_text_color': DEFAULT_BADGE_TEXT_COLOR,
-            'border_radius': DEFAULT_CARD_BORDER_RADIUS,
-            'shadow': DEFAULT_CARD_SHADOW,
-            'hover_shadow': DEFAULT_CARD_HOVER_SHADOW,
-            'hover_scale': DEFAULT_HOVER_SCALE,
-            'show_category': DEFAULT_SHOW_CATEGORY,
-            'show_stock_badge': DEFAULT_SHOW_STOCK_BADGE,
-        }
-    
-    def _has_individual_styles(self):
-        return any([
-            self.cover_image,
-            self.primary_color != DEFAULT_PRIMARY_COLOR,
-            self.secondary_color != DEFAULT_SECONDARY_COLOR,
-            self.background_color != DEFAULT_BACKGROUND_COLOR,
-            self.text_color != DEFAULT_TEXT_COLOR,
-            self.background_image,
-            self.title_font != DEFAULT_TITLE_FONT,
-            self.custom_css,
-        ])
 
     def update_products_type(self):
         """
@@ -805,16 +675,6 @@ class Collection(BaseAuditModel):
         # HU-015 | ESCENARIO 1 | H | Guarda colección generando slug automáticamente
         if not self.slug:
             self.slug = slugify(self.name)
-        
-        existing_card_config = None
-        if self.style_config and 'card_config' in self.style_config:
-            existing_card_config = self.style_config['card_config']
-        
-        if self._has_individual_styles():
-            self.style_config = self.get_style_config()
-        
-        if existing_card_config:
-            self.style_config['card_config'] = existing_card_config
         
         self.full_clean()
         super().save(*args, **kwargs)
