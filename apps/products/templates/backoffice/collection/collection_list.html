@@ -13,7 +13,7 @@
     
     {% include 'backoffice/components/crud/list_filters.html' with filters=filters_config %}
     
-    {% include 'backoffice/components/crud/list_table.html' with headers=headers rows=rows show_actions=True edit_url_name="products:collection_edit" style_url_name="products:collection_style" delete_url_name="products:collection_delete" empty_message="No hay colecciones registradas" page_obj=page_obj %}
+    {% include 'backoffice/components/crud/list_table.html' with headers=headers rows=rows show_actions=True edit_url_name="products:collection_edit" style_url_name="products:collection_style" zones_url_name="products:collection_zones" delete_url_name="products:collection_delete" empty_message="No hay colecciones registradas" page_obj=page_obj %}
     
     <div class="text-right">
         <a href="{% url 'products:collection_trashcan' %}" class="text-sm text-gray-400 hover:text-gray-600">

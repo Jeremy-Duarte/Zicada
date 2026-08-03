@@ -76,6 +76,7 @@ TEMPLATE_STOCK_DASHBOARD = 'products/stock_dashboard.html'
 TEMPLATE_CATALOG = 'products/catalog.html'
 TEMPLATE_COLLECTIONS_LIST_PUBLIC = 'products/collections_list.html'
 TEMPLATE_COLLECTION_DETAIL = 'products/collection_detail.html'
+TEMPLATE_COLLECTION_INTERACTIVE = 'products/collection_interactive.html'
 TEMPLATE_PRODUCT_DETAIL = 'products/product_detail.html'
 
 # Backoffice Templates
@@ -121,6 +122,7 @@ TEMPLATE_COLLECTION_CONFIRM_DELETE = 'backoffice/collection/collection_confirm_d
 TEMPLATE_COLLECTION_RESTORE = 'backoffice/collection/collection_restore.html'
 TEMPLATE_COLLECTION_TRASHCAN = 'backoffice/collection/collection_trashcan.html'
 TEMPLATE_COLLECTION_STYLE_FORM = 'backoffice/collection/collection_style_form.html'
+TEMPLATE_COLLECTION_ZONE_EDITOR = 'backoffice/collection/collection_zone_editor.html'
 
 # Form Context Keys
 CONTEXT_CANCEL_URL = 'cancel_url'

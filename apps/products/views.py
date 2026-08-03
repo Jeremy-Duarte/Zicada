@@ -16,10 +16,12 @@ from apps.core.crud.mixins import StaffPermissionRequiredMixin
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 from django.views.decorators.http import require_GET
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse, Http404
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 
 from apps.core.crud.mixins import PaginationMixin, FilterMixin, SortableDeleteMixin
-from .models import Product, ProductVariant, ProductColor, ProductImage, Collection, Category, Size, Color
+from .models import Product, ProductVariant, ProductColor, ProductImage, Collection, InteractiveZone, Category, Size, Color
 from .forms import (
     SizeCreateForm, SizeDeleteForm, SizeUpdateForm,
     CategoryCreateForm, CategoryDeleteForm, CategoryUpdateForm,
@@ -104,6 +106,7 @@ from .constants import (
     TEMPLATE_CATALOG,
     TEMPLATE_COLLECTIONS_LIST_PUBLIC,
     TEMPLATE_COLLECTION_DETAIL,
+    TEMPLATE_COLLECTION_INTERACTIVE,
     TEMPLATE_PRODUCT_DETAIL,
     # Backoffice Templates
     TEMPLATE_SIZE_LIST,
@@ -141,6 +144,7 @@ from .constants import (
     TEMPLATE_COLLECTION_RESTORE,
     TEMPLATE_COLLECTION_TRASHCAN,
     TEMPLATE_COLLECTION_STYLE_FORM,
+    TEMPLATE_COLLECTION_ZONE_EDITOR,
     # Form Context Keys
     CONTEXT_CANCEL_URL,
     CONTEXT_CANCEL_ARGS,
@@ -565,9 +569,11 @@ class CollectionDetailView(BaseProductListView):
     """
     HU-005: Consultar detalle de colección
     HU-006: Ver productos de una colección
+    Navegación interactiva: si la colección tiene fondo interactivo, muestra la
+    imagen con zonas clicleables que redirigen a los productos.
     """
     model = Product
-    template_name = TEMPLATE_COLLECTION_DETAIL
+    template_name = TEMPLATE_COLLECTION_INTERACTIVE
     context_object_name = CONTEXT_PRODUCTS
     paginate_by = PAGINATE_BY_DEFAULT
     
@@ -584,6 +590,9 @@ class CollectionDetailView(BaseProductListView):
             status=STATUS_PUBLISHED, 
             is_active=True
         )
+        # Navegación interactiva: sin fondo interactivo la colección no está lista
+        if not self.collection.interactive_background:
+            raise Http404('Esta colección no tiene fondo interactivo configurado.')
         return super().dispatch(request, *args, **kwargs)
     
     def get_queryset(self):
@@ -668,6 +677,11 @@ class CollectionDetailView(BaseProductListView):
         context['now'] = timezone.now()
         
         context['safe_custom_css'] = self._sanitize_css(self.collection.custom_css)
+        
+        context['zones'] = self.collection.interactive_zones.select_related(
+            'product_color__product',
+            'product_color__color',
+        )
         
         return context
 
@@ -2338,3 +2352,198 @@ class CollectionStyleView(StaffPermissionRequiredMixin, UpdateView):
         response = super().form_valid(form)
         messages.success(self.request, MSG_COLLECTION_STYLE_UPDATED.format(name=form.instance.name))
         return response
+
+
+# =============================================================================
+# COLLECTION INTERACTIVE ZONE EDITOR (navegación por imagen interactiva)
+# =============================================================================
+
+class CollectionZoneEditorView(StaffPermissionRequiredMixin, TemplateView):
+    """
+    Editor visual de zonas interactivas para una colección.
+    Permite dibujar/mover/redimensionar rectángulos sobre el fondo interactivo
+    y asociarlos a un ProductColor.
+    """
+    template_name = TEMPLATE_COLLECTION_ZONE_EDITOR
+    permission_required = PERM_COLLECTION_CHANGE
+
+    def get_collection(self):
+        return get_object_or_404(Collection, pk=self.kwargs['pk'], is_active=True)
+
+    def _serialize_zones(self, zones):
+        """Serializa zonas para el editor (coordenadas en porcentaje)."""
+        return [{
+            'id': zone.pk,
+            'x': float(zone.x),
+            'y': float(zone.y),
+            'width': float(zone.width),
+            'height': float(zone.height),
+            'label': zone.label,
+            'product_color_id': zone.product_color_id,
+            'product_name': zone.product_color.product.name,
+            'color_name': zone.product_color.color.name,
+        } for zone in zones]
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        collection = self.get_collection()
+
+        zones = collection.interactive_zones.select_related(
+            'product_color__product',
+            'product_color__color',
+        ).order_by('sort_order', 'id')
+
+        product_colors = ProductColor.objects.filter(
+            product__collections=collection,
+            product__is_active=True,
+        ).select_related('product', 'color').order_by('product__name', 'color__name')
+
+        context['collection'] = collection
+        context['zones_json'] = json.dumps(self._serialize_zones(zones), ensure_ascii=False)
+        context['zones_url'] = reverse(PRODUCTS_COLLECTION_ZONES_API, kwargs={'pk': collection.pk})
+        context['product_colors'] = product_colors
+        context['csrftoken'] = self.request.COOKIES.get('csrftoken', '')
+
+        return context
+
+
+class CollectionZoneAPIView(StaffPermissionRequiredMixin, View):
+    """
+    API JSON para crear/listar zonas interactivas.
+    """
+    permission_required = PERM_COLLECTION_CHANGE
+
+    def get_collection(self):
+        return get_object_or_404(Collection, pk=self.kwargs['pk'], is_active=True)
+
+    def _validate_payload(self, data):
+        """Valida coordenadas y producto de una zona."""
+        errors = {}
+
+        for field in ('x', 'y', 'width', 'height'):
+            try:
+                value = float(data.get(field))
+            except (TypeError, ValueError):
+                errors[field] = 'Debe ser un número.'
+                continue
+            if value < 0 or value > 100:
+                errors[field] = 'Debe estar entre 0 y 100.'
+            if field in ('width', 'height') and value <= 0:
+                errors[field] = 'Debe ser mayor a 0.'
+
+        if (
+            'x' not in errors and 'width' not in errors
+            and float(data.get('x', 0)) + float(data.get('width', 0)) > 100
+        ):
+            errors['width'] = 'La zona se sale del ancho de la imagen.'
+        if (
+            'y' not in errors and 'height' not in errors
+            and float(data.get('y', 0)) + float(data.get('height', 0)) > 100
+        ):
+            errors['height'] = 'La zona se sale del alto de la imagen.'
+
+        try:
+            product_color_id = int(data.get('product_color_id'))
+        except (TypeError, ValueError):
+            errors['product_color_id'] = 'Debe seleccionar un producto.'
+            return errors
+
+        if not ProductColor.objects.filter(
+            pk=product_color_id,
+            product__collections=self.get_collection(),
+        ).exists():
+            errors['product_color_id'] = 'El producto no pertenece a esta colección.'
+
+        return errors
+
+    def get(self, request, *args, **kwargs):
+        collection = self.get_collection()
+        zones = collection.interactive_zones.select_related(
+            'product_color__product', 'product_color__color',
+        ).order_by('sort_order', 'id')
+        serializer = CollectionZoneEditorView()
+        return JsonResponse({'zones': serializer._serialize_zones(zones)})
+
+    def post(self, request, *args, **kwargs):
+        collection = self.get_collection()
+        try:
+            data = json.loads(request.body or '{}')
+        except json.JSONDecodeError:
+            return JsonResponse({'errors': {'__all__': 'JSON inválido.'}}, status=400)
+
+        errors = self._validate_payload(data)
+        if errors:
+            return JsonResponse({'errors': errors}, status=400)
+
+        zone = InteractiveZone(
+            collection=collection,
+            product_color_id=int(data['product_color_id']),
+            x=data['x'],
+            y=data['y'],
+            width=data['width'],
+            height=data['height'],
+            label=data.get('label', '')[:100],
+        )
+        zone.created_by = request.user
+        zone.updated_by = request.user
+        zone.save()
+        return JsonResponse({'zone': self._serialize_zone(zone)}, status=201)
+
+    def _serialize_zone(self, zone):
+        return {
+            'id': zone.pk,
+            'x': float(zone.x),
+            'y': float(zone.y),
+            'width': float(zone.width),
+            'height': float(zone.height),
+            'label': zone.label,
+            'product_color_id': zone.product_color_id,
+            'product_name': zone.product_color.product.name,
+            'color_name': zone.product_color.color.name,
+        }
+
+
+class CollectionZoneDetailAPIView(StaffPermissionRequiredMixin, View):
+    """
+    API JSON para actualizar/eliminar una zona interactiva.
+    """
+    permission_required = PERM_COLLECTION_CHANGE
+
+    def get_collection(self):
+        return get_object_or_404(Collection, pk=self.kwargs['pk'], is_active=True)
+
+    def get_zone(self):
+        return get_object_or_404(
+            InteractiveZone,
+            pk=self.kwargs['zone_pk'],
+            collection=self.get_collection(),
+        )
+
+    def put(self, request, *args, **kwargs):
+        zone = self.get_zone()
+        try:
+            data = json.loads(request.body or '{}')
+        except json.JSONDecodeError:
+            return JsonResponse({'errors': {'__all__': 'JSON inválido.'}}, status=400)
+
+        api_view = CollectionZoneAPIView()
+        api_view.kwargs = self.kwargs
+        errors = api_view._validate_payload(data)
+        if errors:
+            return JsonResponse({'errors': errors}, status=400)
+
+        zone.product_color_id = int(data['product_color_id'])
+        zone.x = data['x']
+        zone.y = data['y']
+        zone.width = data['width']
+        zone.height = data['height']
+        zone.label = data.get('label', '')[:100]
+        zone.updated_by = request.user
+        zone.save()
+
+        return JsonResponse({'zone': api_view._serialize_zone(zone)})
+
+    def delete(self, request, *args, **kwargs):
+        zone = self.get_zone()
+        zone.soft_delete(user=request.user)
+        return JsonResponse({'status': 'ok'})

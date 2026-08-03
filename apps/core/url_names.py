@@ -111,6 +111,9 @@ PRODUCTS_COLLECTION_DELETE = 'products:collection_delete'
 PRODUCTS_COLLECTION_RESTORE = 'products:collection_restore'
 PRODUCTS_COLLECTION_TRASHCAN = 'products:collection_trashcan'
 PRODUCTS_COLLECTION_STYLE = 'products:collection_style'
+PRODUCTS_COLLECTION_ZONES = 'products:collection_zones'
+PRODUCTS_COLLECTION_ZONES_API = 'products:collection_zones_api'
+PRODUCTS_COLLECTION_ZONE_API_DETAIL = 'products:collection_zone_api_detail'
 
 # Users URLs
 USERS_LIST = 'users:user_list'

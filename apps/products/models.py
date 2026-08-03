@@ -2,6 +2,7 @@ from datetime import datetime
 
 from django.db import models
 from django.core.exceptions import ValidationError
+from django.urls import reverse
 from django.utils.text import slugify
 from apps.core.models import BaseAuditModel
 from django.utils import timezone
@@ -912,8 +913,10 @@ class InteractiveZone(BaseAuditModel):
         super().save(*args, **kwargs)
 
     def get_absolute_url(self):
-        product = self.product_color.product
-        return f"{product.get_absolute_url()}?color={self.product_color.pk}"
+        return (
+            f"{reverse('products:product_detail', kwargs={'slug': self.product_color.product.slug})}"
+            f"?color={self.product_color.pk}"
+        )
 
     @property
     def product(self):

@@ -1,0 +1,21 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}{{ collection.name }} - Zicada{% endblock %}
+
+{% block content %}
+<div class="bg-black text-white font-poppins">
+    <div class="relative w-full">
+        <img src="{{ collection.interactive_background.url }}"
+             alt="{{ collection.name }}"
+             class="w-full h-auto block">
+
+        {% for zone in zones %}
+        <a href="{% url 'products:product_detail' zone.product_color.product.slug %}?color={{ zone.product_color.pk }}"
+           style="left: {{ zone.x }}%; top: {{ zone.y }}%; width: {{ zone.width }}%; height: {{ zone.height }}%;"
+           class="absolute block cursor-pointer transition-all duration-300 hover:ring-2 hover:ring-white/80 hover:shadow-[0_0_20px_rgba(255,255,255,0.3)]"
+           title="{{ zone.product_color.product.name }} - {{ zone.product_color.color.name }}">
+        </a>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

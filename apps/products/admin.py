@@ -4,7 +4,7 @@ from django.urls import reverse
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 from django.db import models as django_models
-from .models import Size, Category, Color, Product, ProductVariant, Collection, ProductColor, ProductImage
+from .models import Size, Category, Color, Product, ProductVariant, Collection, ProductColor, ProductImage, InteractiveZone
 from django.core.management import call_command
 from django.contrib import messages
 
@@ -173,6 +173,13 @@ class ProductVariantInline(admin.TabularInline):
     fields = ('product_color', 'size', 'stock', 'sku')
     readonly_fields = ('sku',)
     classes = ('collapse',)
+
+
+class InteractiveZoneInline(admin.TabularInline):
+    model = InteractiveZone
+    extra = 0
+    fields = ('product_color', 'x', 'y', 'width', 'height', 'label', 'sort_order')
+    autocomplete_fields = ('product_color',)
 
 
 @admin.register(Product)
@@ -433,6 +440,7 @@ class CollectionAdmin(admin.ModelAdmin):
     readonly_fields = ('created_at', 'updated_at', 'created_by', 'updated_by')
     list_per_page = 20
     date_hierarchy = 'created_at'
+    inlines = [InteractiveZoneInline]
     
     def get_fieldsets(self, request, obj=None):
         """Construye los fieldsets dinámicamente para reducir complejidad cognitiva."""
@@ -454,7 +462,7 @@ class CollectionAdmin(admin.ModelAdmin):
                 'classes': ('collapse',)
             }),
             (LABEL_COVER, {
-                'fields': ('cover_image',),
+                'fields': ('cover_image', 'interactive_background'),
                 'description': 'Imagen que aparecerá en la tarjeta de la colección (recomendado: 800x600px)'
             }),
         ]

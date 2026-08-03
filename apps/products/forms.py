@@ -1232,6 +1232,7 @@ class CollectionCreateForm(FormStyleMixin, forms.ModelForm):
             'cover_image',
             'primary_color', 'secondary_color', 'background_color', 'text_color',
             'background_image',
+            'interactive_background',
             'title_font',
         ]
         widgets = {
@@ -1251,6 +1252,7 @@ class CollectionCreateForm(FormStyleMixin, forms.ModelForm):
             'background_color': forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_PICKER}),
             'text_color': forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_PICKER}),
             'background_image': forms.ClearableFileInput(attrs={'class': 'w-full'}),
+            'interactive_background': forms.ClearableFileInput(attrs={'class': 'w-full'}),
             'title_font': forms.Select(choices=FONT_FAMILY_CHOICES, attrs={'class': 'w-full'}),
         }
 
@@ -1310,6 +1312,7 @@ class CollectionUpdateForm(FormStyleMixin, forms.ModelForm):
             'cover_image',
             'primary_color', 'secondary_color', 'background_color', 'text_color',
             'background_image',
+            'interactive_background',
             'title_font',
         ]
         widgets = {
@@ -1322,12 +1325,12 @@ class CollectionUpdateForm(FormStyleMixin, forms.ModelForm):
             'background_color': forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_PICKER}),
             'text_color': forms.TextInput(attrs={'type': 'color', 'style': STYLE_COLOR_PICKER}),
             'background_image': forms.ClearableFileInput(attrs={'class': 'w-full'}),
+            'interactive_background': forms.ClearableFileInput(attrs={'class': 'w-full'}),
             'title_font': forms.Select(choices=FONT_FAMILY_CHOICES, attrs={'class': 'w-full'}),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # HU-018 | ESCENARIO 1 | H | Productos de fábrica y colección limitada disponibles
         self.fields['products'].queryset = Product.objects.filter(is_active=True)
         self.fields['primary_color'].required = False
         self.fields['secondary_color'].required = False
