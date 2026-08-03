@@ -279,7 +279,17 @@ Casos a probar:
 
 ## Notas
 
-- No se requieren librerías externas. El editor es canvas + vanilla JS (~350 líneas).
+- No se requieren librerías externas. El editor usa divs overlay + vanilla JS (~870 líneas).
 - `product_color.product` debe ser accesible para construir el link del product detail.
 - El display público no necesita JS: si JS falla, los `<a>` absolutos siguen funcionando.
 - Comentarios en el código en inglés; strings de UI en español.
+
+---
+
+## Estado de ejecución
+
+- ✅ Fase 1: modelo `InteractiveZone` + `interactive_background` + migración `0004`
+- ✅ Fase 2: `CollectionDetailView` renderiza `collection_interactive.html` (404 si no hay fondo interactivo)
+- ✅ Fase 3: editor visual de zonas (divs overlay) + API JSON (crear/listar/actualizar/eliminar)
+- ✅ Fase 4: `interactive_background` en forms create/update, inline en admin, botón "Zonas" en listado
+- ✅ Tests: 15 tests en `apps/products/tests/test_interactive_zones.py` + suite completa verde
