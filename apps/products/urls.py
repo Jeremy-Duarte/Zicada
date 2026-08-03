@@ -48,7 +48,7 @@ admin_patterns = [
     path('colecciones/papelera/', views.CollectionTrashcanView.as_view(), name='collection_trashcan'),
     path('colecciones/<int:pk>/zonas/', views.CollectionZoneEditorView.as_view(), name='collection_zones'),
     path('colecciones/<int:pk>/zonas/api/', views.CollectionZoneAPIView.as_view(), name='collection_zones_api'),
-    path('colecciones/<int:pk>/zonas/<int:zone_pk>/api/', views.CollectionZoneDetailAPIView.as_view(), name='collection_zone_api_detail'),
+    path('colecciones/<int:pk>/zonas/api/<int:zone_pk>/', views.CollectionZoneDetailAPIView.as_view(), name='collection_zone_api_detail'),
 ]
 
 urlpatterns = [
