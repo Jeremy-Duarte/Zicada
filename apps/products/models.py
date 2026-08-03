@@ -634,6 +634,13 @@ class Collection(BaseAuditModel):
         verbose_name='Imagen de fondo',
         help_text='Imagen de fondo para la página de la colección'
     )
+    interactive_background = models.ImageField(
+        upload_to='collections/interactive/',
+        blank=True,
+        null=True,
+        verbose_name='Fondo interactivo',
+        help_text='Imagen usada para delimitar las zonas clicleables que redirigen a productos'
+    )
     title_font = models.CharField(
         max_length=100,
         blank=True,
@@ -810,3 +817,104 @@ class Collection(BaseAuditModel):
         
         self.full_clean()
         super().save(*args, **kwargs)
+
+
+# =============================================================================
+# INTERACTIVE ZONE MODEL (colecciones navegables por imagen)
+# =============================================================================
+
+class InteractiveZone(BaseAuditModel):
+    """
+    Zona rectangular clicleable sobre el fondo interactivo de una colección.
+    Las coordenadas se guardan en porcentaje (0-100) para soporte responsive.
+    """
+    collection = models.ForeignKey(
+        Collection,
+        on_delete=models.CASCADE,
+        related_name='interactive_zones',
+        verbose_name='Colección'
+    )
+    product_color = models.ForeignKey(
+        ProductColor,
+        on_delete=models.CASCADE,
+        related_name='interactive_zones',
+        verbose_name='Color del producto',
+        help_text='Producto (y color) al que redirige esta zona'
+    )
+    x = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        verbose_name='Posición X (%)',
+        help_text='Porcentaje horizontal desde el borde izquierdo (0-100)'
+    )
+    y = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        verbose_name='Posición Y (%)',
+        help_text='Porcentaje vertical desde el borde superior (0-100)'
+    )
+    width = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        verbose_name='Ancho (%)',
+        help_text='Ancho de la zona en porcentaje (0-100)'
+    )
+    height = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        verbose_name='Alto (%)',
+        help_text='Alto de la zona en porcentaje (0-100)'
+    )
+    label = models.CharField(
+        max_length=100,
+        blank=True,
+        verbose_name='Etiqueta',
+        help_text='Etiqueta opcional mostrada al hacer hover'
+    )
+    sort_order = models.PositiveIntegerField(default=0, verbose_name='Orden')
+
+    class Meta:
+        ordering = ['sort_order', 'id']
+        verbose_name = 'Zona interactiva'
+        verbose_name_plural = 'Zonas interactivas'
+
+    def __str__(self):
+        return self.label or f"Zona {self.id} de {self.collection.name}"
+
+    def clean(self):
+        """HU: Valida que las coordenadas estén dentro del rango 0-100."""
+        errors = {}
+        for field in ('x', 'y', 'width', 'height'):
+            value = getattr(self, field, None)
+            if value is None:
+                errors[field] = 'Este campo es obligatorio.'
+            elif value < 0 or value > 100:
+                errors[field] = 'Debe estar entre 0 y 100.'
+        if errors:
+            raise ValidationError(errors)
+        if self.width is not None and self.width <= 0:
+            raise ValidationError({'width': 'El ancho debe ser mayor a 0.'})
+        if self.height is not None and self.height <= 0:
+            raise ValidationError({'height': 'El alto debe ser mayor a 0.'})
+        if (
+            self.x is not None and self.width is not None
+            and (self.x + self.width) > 100
+        ):
+            raise ValidationError({'width': 'La zona se sale del ancho de la imagen.'})
+        if (
+            self.y is not None and self.height is not None
+            and (self.y + self.height) > 100
+        ):
+            raise ValidationError({'height': 'La zona se sale del alto de la imagen.'})
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def get_absolute_url(self):
+        product = self.product_color.product
+        return f"{product.get_absolute_url()}?color={self.product_color.pk}"
+
+    @property
+    def product(self):
+        return self.product_color.product
