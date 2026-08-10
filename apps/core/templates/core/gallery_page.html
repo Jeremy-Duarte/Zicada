@@ -8,8 +8,8 @@
 <section class="bg-black text-white min-h-screen" aria-labelledby="gallery-page-title">
     {% if gallery_photos %}
     <div x-data="galleryLightbox()" class="flex flex-col lg:flex-row gap-0">
-        <!-- Título fijo a la izquierda -->
-        <aside class="lg:sticky lg:top-20 lg:self-start shrink-0 lg:w-72 xl:w-80 px-6 py-12 md:py-16 lg:py-24">
+        <!-- Título fijo a la izquierda, padding hasta la mitad -->
+        <aside class="lg:sticky lg:top-20 lg:self-start shrink-0 lg:w-72 xl:w-80 px-6 pt-8 md:pt-32 lg:pt-[35vh] pb-6">
             <h1 id="gallery-page-title" class="font-poppins text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight leading-none">
                 GALERÍA
             </h1>
@@ -18,10 +18,10 @@
             </p>
         </aside>
 
-        <!-- Grid masonry ocupa el espacio restante -->
+        <!-- Grid masonry 4 columnas fijas -->
         <div class="flex-1 px-4 md:px-6 lg:pr-8 pb-16 lg:py-24">
             <div
-                class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4 auto-rows-[150px] sm:auto-rows-[180px] md:auto-rows-[200px]"
+                class="grid grid-cols-4 gap-3 md:gap-4 auto-rows-[150px] sm:auto-rows-[180px] md:auto-rows-[200px]"
                 style="grid-auto-flow: dense;"
                 role="list"
             >
