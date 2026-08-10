@@ -20,12 +20,14 @@
         {% if gallery_photos %}
         <div class="flex-1 min-w-0" x-data="galleryLightbox()">
             <div
-                class="grid {{ default_layout.css_class|default:'grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 auto-rows-[180px] md:auto-rows-[220px]' }} gap-4"
+                class="grid grid-cols-1 {{ default_layout|grid_columns_css }} auto-rows-[auto] items-start gap-4"
                 role="list"
             >
                 {% for photo in gallery_photos %}
                 {% with photo_classes=photo|gallery_photo_classes %}
-                <figure class="{{ photo_classes }} relative group overflow-hidden rounded-xl bg-neutral-900" role="listitem">
+                <figure class="{{ photo_classes }} relative group overflow-hidden rounded-xl bg-neutral-900"
+                        role="listitem"
+                        style="aspect-ratio: {{ photo.native_aspect_ratio_css }}">
                     {% if photo.redirect_url %}
                     <a href="{{ photo.redirect_url }}"
                        target="{{ photo.redirect_url|is_external_url|yesno:'_blank,_self' }}"

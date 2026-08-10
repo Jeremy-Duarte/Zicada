@@ -44,7 +44,24 @@ def default_image_url(image_field):
 @register.filter
 def gallery_photo_classes(photo):
     """Retorna las clases CSS de span de grid de una foto."""
-    return photo.display_zone or 'col-span-1 row-span-1'
+    return photo.display_zone or 'col-span-1'
+
+
+@register.filter
+def grid_columns_css(layout):
+    """
+    Mapea el número de columnas de un layout a clases CSS responsivas.
+    Si no hay layout, usa 3 columnas por defecto.
+    """
+    columns_css = {
+        1: 'grid-cols-1',
+        2: 'sm:grid-cols-2',
+        3: 'sm:grid-cols-2 lg:grid-cols-3',
+        4: 'sm:grid-cols-2 lg:grid-cols-4',
+    }
+    if layout is None or layout.columns not in columns_css:
+        return 'sm:grid-cols-2 lg:grid-cols-3'
+    return columns_css[layout.columns]
 
 
 @register.filter

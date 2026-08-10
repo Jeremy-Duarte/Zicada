@@ -81,7 +81,7 @@ class TestGalleryPhotoModel:
             alt_text='Foto vertical',
         )
         assert photo.aspect_category == GalleryPhoto.ASPECT_PORTRAIT
-        assert 'row-span-2' in photo.display_zone
+        assert photo.display_zone == 'col-span-1'
 
     def test_wide_aspect_category(self, local_storage):
         photo = GalleryPhoto.objects.create(
@@ -89,6 +89,7 @@ class TestGalleryPhotoModel:
             alt_text='Foto panoramica',
         )
         assert photo.aspect_category == GalleryPhoto.ASPECT_WIDE
+        assert photo.display_zone == 'col-span-2'
 
     def test_square_aspect_category(self, local_storage):
         photo = GalleryPhoto.objects.create(
@@ -96,6 +97,18 @@ class TestGalleryPhotoModel:
             alt_text='Foto cuadrada',
         )
         assert photo.aspect_category == GalleryPhoto.ASPECT_SQUARE
+        assert photo.display_zone == 'col-span-1'
+
+    def test_native_aspect_ratio_css(self, local_storage):
+        photo = GalleryPhoto.objects.create(
+            image=_create_image(600, 400),
+            alt_text='Foto horizontal',
+        )
+        assert photo.native_aspect_ratio_css == '1.5'
+
+    def test_native_aspect_ratio_css_defaults_to_square(self):
+        photo = GalleryPhoto(alt_text='Foto sin imagen')
+        assert photo.native_aspect_ratio_css == '1'
 
     def test_soft_delete_and_restore(self, local_storage):
         photo = GalleryPhoto.objects.create(

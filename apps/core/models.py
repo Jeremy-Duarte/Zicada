@@ -495,30 +495,40 @@ class GalleryPhoto(BaseAuditModel):
             self.image.seek(0)
 
     def compute_aspect_category(self, ratio: float | None = None) -> str:
-        """Clasifica la foto según su relación de aspecto."""
+        """Clasifica la foto según su relación de aspecto nativa (formatos de teléfono)."""
         if ratio is None:
             ratio = self.aspect_ratio
         if ratio is None:
             return self.ASPECT_SQUARE
-        if ratio < 0.9:
+        if ratio < 0.95:
             return self.ASPECT_PORTRAIT
-        if ratio > 1.8:
+        if ratio > 2.0:
             return self.ASPECT_WIDE
-        if ratio > 1.1:
+        if ratio > 1.15:
             return self.ASPECT_LANDSCAPE
         return self.ASPECT_SQUARE
 
     def compute_display_zone(self, category: str | None = None) -> str:
-        """Genera clases CSS de span según la categoría de aspecto."""
+        """
+        Genera el span de columnas según la categoría de aspecto.
+        La altura la define el aspecto nativo (aspect-ratio en CSS), no filas fijas.
+        """
         if category is None:
             category = self.aspect_category
         zones = {
-            self.ASPECT_PORTRAIT: 'col-span-1 row-span-2',
-            self.ASPECT_LANDSCAPE: 'col-span-2 row-span-1',
-            self.ASPECT_WIDE: 'col-span-2 row-span-2',
-            self.ASPECT_SQUARE: 'col-span-1 row-span-1',
+            self.ASPECT_PORTRAIT: 'col-span-1',
+            self.ASPECT_SQUARE: 'col-span-1',
+            self.ASPECT_LANDSCAPE: 'col-span-2',
+            self.ASPECT_WIDE: 'col-span-2',
         }
-        return zones.get(category, 'col-span-1 row-span-1')
+        return zones.get(category, 'col-span-1')
+
+    @property
+    def native_aspect_ratio_css(self) -> str:
+        """Retorna la relación de aspecto nativa lista para la propiedad CSS aspect-ratio."""
+        if self.aspect_ratio:
+            return str(self.aspect_ratio)
+        return '1'
 
     def update_aspect_metadata(self):
         """Recalcula y asigna todos los metadatos de aspecto."""

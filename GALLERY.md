@@ -50,19 +50,21 @@ Campos:
 Métodos:
 - `compute_aspect_ratio() -> float | None`: lee las dimensiones de `image` y calcula ancho/alto.
 - `compute_aspect_category() -> str`: categoriza según el aspect ratio.
-- `compute_display_zone() -> str`: retorna clases CSS de span de grid según la categoría (ej. `col-span-1 row-span-2` para portrait).
+- `compute_display_zone() -> str`: retorna el span de columnas según la categoría (`col-span-1` para vertical/cuadrada, `col-span-2` para horizontal/panorámica).
+- `native_aspect_ratio_css -> str`: relación de aspecto nativa lista para la propiedad CSS `aspect-ratio`.
 - `get_cloudinary_url(width: int, **transforms) -> str`: genera URL transformada por Cloudinary.
 - `save()`: calcula aspecto y zona antes de guardar.
 
 ### 3.3 Decisiones de organización automática
-- Se detecta la relación de aspecto real de la imagen al guardar.
+- Se detecta la relación de aspecto real de la imagen al guardar y se respeta **primero el formato nativo** (fotos de teléfono vertical y horizontal).
 - Se asigna una `aspect_category` automática:
-  - `square`: 0.9 ≤ ratio ≤ 1.1
-  - `portrait`: ratio < 0.9
-  - `landscape`: 1.1 < ratio ≤ 1.8
-  - `wide`: ratio > 1.8
-- A partir de la categoría se genera `display_zone`, que el template usa para crear un masonry/grid dinámico.
-- El usuario puede sobrescribir el layout general asignando un `GalleryLayout` a la foto; la zona se recalcula respetando el layout máximo.
+  - `square`: 0.95 ≤ ratio ≤ 1.15
+  - `portrait`: ratio < 0.95 (foto de teléfono vertical)
+  - `landscape`: 1.15 < ratio ≤ 2.0 (foto de teléfono horizontal)
+  - `wide`: ratio > 2.0
+- La `display_zone` define el ancho (`col-span-1` o `col-span-2`); la **altura la fija el aspecto nativo** vía `aspect-ratio` en CSS, sin filas fijas ni recortes forzados.
+- Las fotos horizontales (típicamente asignadas a layouts 1×1) ocupan más ancho; las verticales mantienen su proporción alta.
+- El usuario puede sobrescribir el layout general asignando un `GalleryLayout` a la foto; el número de columnas del grid proviene del layout configurado.
 
 ## 4. Integración Cloudinary
 
