@@ -5,7 +5,7 @@
 
 {% block content %}
 <div class="space-y-6">
-    {% include 'backoffice/components/molecules/list_header.html' with title="Layouts de Galería" create_url="core:gallery_layout_create" create_label="Nuevo Layout" %}
+    {% include 'backoffice/components/crud/list_header.html' with title="Layouts de Galería" create_url="core:gallery_layout_create" create_label="Nuevo Layout" %}
 
     {% include 'backoffice/components/crud/list_table.html' with headers=headers rows=rows show_actions=True edit_url_name="core:gallery_layout_edit" delete_url_name="core:gallery_layout_delete" empty_message="No hay layouts registrados" page_obj=page_obj %}
 

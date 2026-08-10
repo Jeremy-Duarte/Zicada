@@ -4,6 +4,7 @@ import smtplib
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import logout
+from django.utils.html import format_html
 from django.contrib.auth.views import (
     LoginView,
     PasswordResetView as BasePasswordResetView,
@@ -634,16 +635,20 @@ def _build_gallery_photo_rows(photos):
     """Construye las filas para la tabla de listado de fotos."""
     rows = []
     for photo in photos:
+        badge_classes = BADGE_ACTIVE_CSS if photo.is_active else BADGE_INACTIVE_CSS
+        badge_label = STATUS_ACTIVE_LABEL if photo.is_active else STATUS_INACTIVE_LABEL
+        badge_html = format_html(
+            '<span class="px-2 py-1 text-xs rounded-full {}">{}</span>',
+            badge_classes,
+            badge_label,
+        )
         rows.append({
             'pk': photo.pk,
             'values': [
                 photo.title or f'Foto #{photo.pk}',
                 photo.layout.name if photo.layout else '-',
                 photo.sort_order,
-                '<span class="px-2 py-1 text-xs rounded-full {}">{}</span>'.format(
-                    BADGE_ACTIVE_CSS if photo.is_active else BADGE_INACTIVE_CSS,
-                    STATUS_ACTIVE_LABEL if photo.is_active else STATUS_INACTIVE_LABEL
-                ),
+                badge_html,
             ],
         })
     return rows
@@ -659,12 +664,6 @@ class GalleryPhotoListView(StaffPermissionRequiredMixin, ListView):
 
     def get_queryset(self):
         return GalleryPhoto.objects.select_related('layout').filter(is_active=True).order_by('sort_order')
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context[CONTEXT_ROWS] = _build_gallery_photo_rows(context[CONTEXT_GALLERY_PHOTOS])
-        context[CONTEXT_HEADERS] = HEADERS_GALLERY_PHOTO
-        return context
 
 
 class GalleryPhotoCreateView(StaffPermissionRequiredMixin, CreateView):
@@ -819,6 +818,13 @@ def _build_gallery_layout_rows(layouts):
     """Construye las filas para la tabla de listado de layouts."""
     rows = []
     for layout in layouts:
+        badge_classes = BADGE_ACTIVE_CSS if layout.is_active else BADGE_INACTIVE_CSS
+        badge_label = STATUS_ACTIVE_LABEL if layout.is_active else STATUS_INACTIVE_LABEL
+        badge_html = format_html(
+            '<span class="px-2 py-1 text-xs rounded-full {}">{}</span>',
+            badge_classes,
+            badge_label,
+        )
         rows.append({
             'pk': layout.pk,
             'values': [
@@ -827,10 +833,7 @@ def _build_gallery_layout_rows(layouts):
                 layout.rows,
                 layout.capacity(),
                 layout.sort_order,
-                '<span class="px-2 py-1 text-xs rounded-full {}">{}</span>'.format(
-                    BADGE_ACTIVE_CSS if layout.is_active else BADGE_INACTIVE_CSS,
-                    STATUS_ACTIVE_LABEL if layout.is_active else STATUS_INACTIVE_LABEL
-                ),
+                badge_html,
             ],
         })
     return rows
@@ -912,9 +915,7 @@ class GalleryLayoutDeleteView(StaffPermissionRequiredMixin, DeleteView):
         context[CONTEXT_CANCEL_URL] = CORE_GALLERY_LAYOUT_LIST
         return context
 
-    def delete(self, request, *args, **kwargs):
-        layout = self.get_object()
-        name = layout.name
-        response = super().delete(request, *args, **kwargs)
-        messages.success(request, MSG_GALLERY_LAYOUT_DELETED.format(name=name))
-        return response
+    def form_valid(self, form):
+        name = self.object.name
+        messages.success(self.request, MSG_GALLERY_LAYOUT_DELETED.format(name=name))
+        return super().form_valid(form)

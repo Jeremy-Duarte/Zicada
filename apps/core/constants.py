@@ -102,7 +102,7 @@ MSG_GALLERY_LAYOUT_DELETED = 'Layout "{name}" eliminado.'
 
 # Gallery Section Headers
 HEADERS_GALLERY_PHOTO = ['Foto', 'Título', 'Layout', 'Orden', 'Estado']
-HEADERS_GALLERY_PHOTO_TRASHCAN = ['Foto', 'Título', 'Layout', 'Orden', 'Eliminado el']
+HEADERS_GALLERY_PHOTO_TRASHCAN = ['Título', 'Layout', 'Orden', 'Eliminado el']
 HEADERS_GALLERY_LAYOUT = ['Nombre', 'Columnas', 'Filas', 'Capacidad', 'Orden', 'Estado']
 
 # Gallery Section Object Names
