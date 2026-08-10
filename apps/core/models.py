@@ -485,11 +485,14 @@ class GalleryPhoto(BaseAuditModel):
             return None
         try:
             from PIL import Image as PILImage
+            self.image.seek(0)
             with PILImage.open(self.image) as img:
                 width, height = img.size
                 return round(width / height, 4) if height else None
         except Exception:
             return None
+        finally:
+            self.image.seek(0)
 
     def compute_aspect_category(self, ratio: float | None = None) -> str:
         """Clasifica la foto según su relación de aspecto."""
