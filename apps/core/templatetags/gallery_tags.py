@@ -40,12 +40,10 @@ def default_image_url(image_field):
 
 @register.filter
 def gallery_photo_classes(photo):
-    """Clases CSS de span de grid según display_size (1x1 o 2x2)."""
+    """Clases CSS de span de columna según display_size."""
     if hasattr(photo, 'display_classes'):
         return photo.display_classes()
-    if hasattr(photo, 'display_size'):
-        return 'col-span-1 row-span-1' if photo.display_size == '1x1' else 'col-span-2 row-span-2'
-    return 'col-span-1 row-span-1'
+    return 'col-span-1'
 
 
 @register.filter
