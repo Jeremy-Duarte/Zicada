@@ -9,12 +9,12 @@
     {% if gallery_photos %}
     <div x-data="galleryLightbox()" class="px-4 md:px-8 py-6 md:py-10">
         <div
-            class="grid grid-cols-4 gap-3 md:gap-4"
-            style="grid-auto-rows: minmax(0, 30vh); grid-auto-flow: dense;"
+            class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4"
+            style="grid-auto-flow: dense;"
             role="list"
         >
             <!-- Título anclado a la esquina superior izquierda -->
-            <div class="col-span-2 row-span-2 md:row-span-3 flex flex-col justify-center px-2 md:px-4">
+            <div class="col-span-2 row-span-2 lg:row-span-3 flex flex-col justify-center px-2 md:px-4">
                 <h1 id="gallery-page-title" class="font-poppins text-3xl md:text-5xl lg:text-6xl font-extrabold tracking-tight leading-none">
                     GALERÍA
                 </h1>
@@ -31,18 +31,20 @@
                    target="{{ photo.redirect_url|is_external_url|yesno:'_blank,_self' }}"
                    rel="noopener noreferrer"
                    class="block w-full h-full"
+                   style="aspect-ratio: {% if photo.display_size == '2x2' %}9/16{% else %}3/2{% endif %};"
                    aria-label="{{ photo.title|default:photo.alt_text }}">
                 {% else %}
                 <button type="button"
                         @click="open('{{ photo.image|default_image_url }}', '{{ photo.title|default:photo.alt_text|escapejs }}')"
-                        class="w-full h-full text-left"
+                        class="block w-full h-full text-left"
+                        style="aspect-ratio: {% if photo.display_size == '2x2' %}9/16{% else %}3/2{% endif %};"
                         aria-label="Ampliar {{ photo.title|default:photo.alt_text }}">
                 {% endif %}
 
                     <img
                         src="{{ photo.image|cloudinary_url:600 }}"
                         srcset="{{ photo.image|cloudinary_srcset:'400,800,1200' }}"
-                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
                         alt="{{ photo.alt_text }}"
                         class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                         loading="lazy"
@@ -76,28 +78,17 @@
             aria-label="Vista ampliada"
             @keydown.escape.window="close()"
         >
-            <button
-                type="button"
-                @click="close()"
-                class="absolute top-4 right-4 md:top-6 md:right-6 text-white/80 hover:text-white transition z-10"
-                aria-label="Cerrar lightbox"
-            >
+            <button type="button" @click="close()"
+                    class="absolute top-4 right-4 md:top-6 md:right-6 text-white/80 hover:text-white transition z-10"
+                    aria-label="Cerrar lightbox">
                 <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
             </button>
-
-            <img
-                :src="imageUrl"
-                :alt="imageTitle"
-                class="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl"
-            >
-
-            <p
-                x-show="imageTitle"
-                x-text="imageTitle"
-                class="absolute bottom-6 left-0 right-0 text-center text-white text-sm md:text-base font-medium px-4"
-            ></p>
+            <img :src="imageUrl" :alt="imageTitle"
+                 class="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl">
+            <p x-show="imageTitle" x-text="imageTitle"
+               class="absolute bottom-6 left-0 right-0 text-center text-white text-sm md:text-base font-medium px-4"></p>
         </div>
     </div>
     {% else %}
