@@ -14,7 +14,7 @@ class TestHomeView:
     # UT - 006
     def test_home_context_has_new_sections(self, client):
         response = client.get(reverse('home'))
-        for key in ('hero_slides', 'featured_collections', 'promos', 'gallery_items'):
+        for key in ('hero_slides', 'featured_collections', 'promos', 'gallery_items', 'gallery_photos'):
             assert key in response.context
 
     # UT - 007

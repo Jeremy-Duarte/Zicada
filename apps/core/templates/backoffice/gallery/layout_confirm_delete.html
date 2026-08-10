@@ -1,0 +1,8 @@
+{% extends "backoffice/layouts/backoffice_base.html" %}
+{% load static %}
+
+{% block title %}Eliminar Layout - Zicada{% endblock %}
+
+{% block content %}
+{% include 'backoffice/components/crud/confirm_delete.html' with form=form object_name=object_name object_display=object_display cancel_url="core:gallery_layout_list" warning="Esta acción eliminará el layout permanentemente. Las fotos asociadas quedarán sin layout asignado." %}
+{% endblock %}

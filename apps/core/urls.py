@@ -12,7 +12,21 @@ admin_patterns = [
     path('hero/papelera/', views.HeroConfigTrashcanView.as_view(), name='hero_trashcan'),
 ]
 
+gallery_patterns = [
+    path('fotos/', views.GalleryPhotoListView.as_view(), name='gallery_photo_list'),
+    path('fotos/crear/', views.GalleryPhotoCreateView.as_view(), name='gallery_photo_create'),
+    path('fotos/<int:pk>/editar/', views.GalleryPhotoUpdateView.as_view(), name='gallery_photo_edit'),
+    path('fotos/<int:pk>/eliminar/', views.GalleryPhotoDeleteView.as_view(), name='gallery_photo_delete'),
+    path('fotos/<int:pk>/restaurar/', views.GalleryPhotoRestoreView.as_view(), name='gallery_photo_restore'),
+    path('fotos/papelera/', views.GalleryPhotoTrashcanView.as_view(), name='gallery_photo_trashcan'),
+    path('layouts/', views.GalleryLayoutListView.as_view(), name='gallery_layout_list'),
+    path('layouts/crear/', views.GalleryLayoutCreateView.as_view(), name='gallery_layout_create'),
+    path('layouts/<int:pk>/editar/', views.GalleryLayoutUpdateView.as_view(), name='gallery_layout_edit'),
+    path('layouts/<int:pk>/eliminar/', views.GalleryLayoutDeleteView.as_view(), name='gallery_layout_delete'),
+]
+
 urlpatterns = [
+    path('galeria/', views.gallery_page, name='gallery'),
     path('nosotros/', views.about, name='about'),
     path('contacto/', views.contact, name='contact'),
     path('contacto/success/', views.contact_success, name='contact_success'),
@@ -35,4 +49,5 @@ urlpatterns = [
         name='password_reset_complete'),
         #Crud Paths
     path('admin/', include(admin_patterns)),
+    path('admin/galeria/', include(gallery_patterns)),
 ]

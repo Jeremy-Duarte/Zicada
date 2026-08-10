@@ -264,6 +264,9 @@ from apps.core.url_names import (
     USERS_TRASHCAN,
     CORE_HERO_LIST,
     CORE_HERO_TRASHCAN,
+    CORE_GALLERY_PHOTO_LIST,
+    CORE_GALLERY_PHOTO_TRASHCAN,
+    CORE_GALLERY_LAYOUT_LIST,
 )
 
 
@@ -776,9 +779,36 @@ class AdminConfigView(BaseDashboardView):
                 'badge': BADGE_PLUS,
             },
             {
+                'url': reverse(CORE_GALLERY_PHOTO_LIST),
+                'icon': ICON_IMAGES,
+                'title': 'Galería de Fotos',
+                'bg_from': ICON_BG_ORANGE,
+                'bg_to': ICON_BG_ORANGE_100,
+                'icon_color': ICON_COLOR_ORANGE_600,
+                'badge': BADGE_PLUS,
+            },
+            {
+                'url': reverse(CORE_GALLERY_LAYOUT_LIST),
+                'icon': ICON_IMAGES,
+                'title': 'Layouts de Galería',
+                'bg_from': ICON_BG_BLUE_50,
+                'bg_to': ICON_BG_BLUE_100,
+                'icon_color': ICON_COLOR_BLUE_600,
+                'badge': BADGE_PLUS,
+            },
+            {
                 'url': reverse(CORE_HERO_TRASHCAN),
                 'icon': ICON_TRASH_ALT,
                 'title': BTN_TITLE_TRASHCAN,
+                'bg_from': ICON_BG_RED_50,
+                'bg_to': ICON_BG_RED_100,
+                'icon_color': ICON_COLOR_RED,
+                'badge': BADGE_TRASH,
+            },
+            {
+                'url': reverse(CORE_GALLERY_PHOTO_TRASHCAN),
+                'icon': ICON_TRASH_ALT,
+                'title': 'Papelera de Galería',
                 'bg_from': ICON_BG_RED_50,
                 'bg_to': ICON_BG_RED_100,
                 'icon_color': ICON_COLOR_RED,

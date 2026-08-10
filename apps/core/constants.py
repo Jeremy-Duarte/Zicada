@@ -70,6 +70,10 @@ CONTEXT_HERO_SLIDES = 'hero_slides'
 HERO_ORDER_BY_SORT = 'sort_order'
 HERO_ORDER_BY_DELETED_AT = '-deleted_at'
 
+# Gallery Section Order By
+GALLERY_ORDER_BY_SORT = 'sort_order'
+GALLERY_ORDER_BY_DELETED_AT = '-deleted_at'
+
 # Display Limits
 FEATURED_COLLECTIONS_LIMIT = 3
 LATEST_PRODUCTS_LIMIT = 8
@@ -86,6 +90,39 @@ PWA_THEME_COLOR = "#1a1a1a"
 
 # Hero Section Object Names
 HERO_OBJECT_NAME = 'Slide del Hero'
+
+# Gallery Section Messages
+MSG_GALLERY_PHOTO_CREATED = 'Foto "{title}" creada exitosamente.'
+MSG_GALLERY_PHOTO_UPDATED = 'Foto "{title}" actualizada exitosamente.'
+MSG_GALLERY_PHOTO_DELETED = 'Foto "{title}" movida a la papelera.'
+MSG_GALLERY_PHOTO_RESTORED = 'Foto "{title}" restaurada exitosamente.'
+MSG_GALLERY_LAYOUT_CREATED = 'Layout "{name}" creado exitosamente.'
+MSG_GALLERY_LAYOUT_UPDATED = 'Layout "{name}" actualizado exitosamente.'
+MSG_GALLERY_LAYOUT_DELETED = 'Layout "{name}" eliminado.'
+
+# Gallery Section Headers
+HEADERS_GALLERY_PHOTO = ['Foto', 'Título', 'Layout', 'Orden', 'Estado']
+HEADERS_GALLERY_PHOTO_TRASHCAN = ['Foto', 'Título', 'Layout', 'Orden', 'Eliminado el']
+HEADERS_GALLERY_LAYOUT = ['Nombre', 'Columnas', 'Filas', 'Capacidad', 'Orden', 'Estado']
+
+# Gallery Section Object Names
+GALLERY_PHOTO_OBJECT_NAME = 'Foto de Galería'
+GALLERY_LAYOUT_OBJECT_NAME = 'Layout de Galería'
+
+# Gallery Section Context Keys
+CONTEXT_GALLERY_PHOTOS = 'gallery_photos'
+CONTEXT_GALLERY_LAYOUTS = 'gallery_layouts'
+
+# Gallery Template Paths
+TEMPLATE_GALLERY_PAGE = 'core/gallery_page.html'
+TEMPLATE_GALLERY_PHOTO_FORM = 'backoffice/gallery/photo_form.html'
+TEMPLATE_GALLERY_PHOTO_LIST = 'backoffice/gallery/photo_list.html'
+TEMPLATE_GALLERY_PHOTO_CONFIRM_DELETE = 'backoffice/gallery/photo_confirm_delete.html'
+TEMPLATE_GALLERY_PHOTO_RESTORE = 'backoffice/gallery/photo_restore.html'
+TEMPLATE_GALLERY_PHOTO_TRASHCAN = 'backoffice/gallery/photo_trashcan.html'
+TEMPLATE_GALLERY_LAYOUT_FORM = 'backoffice/gallery/layout_form.html'
+TEMPLATE_GALLERY_LAYOUT_LIST = 'backoffice/gallery/layout_list.html'
+TEMPLATE_GALLERY_LAYOUT_CONFIRM_DELETE = 'backoffice/gallery/layout_confirm_delete.html'
 
 # Password Reset Templates
 TEMPLATE_PASSWORD_RESET_FORM = 'core/registration/password_reset_form.html'

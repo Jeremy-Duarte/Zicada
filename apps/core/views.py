@@ -19,10 +19,21 @@ from django.urls import reverse, reverse_lazy
 from django.views.generic import CreateView, UpdateView, DeleteView, ListView, TemplateView
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
-from .models import Gallery, HeroConfig, HomePromo
+from .models import Gallery, GalleryLayout, GalleryPhoto, HeroConfig, HomePromo
 from apps.products.models import Collection, Product, ProductColor
 from apps.core.crud.mixins import StaffPermissionRequiredMixin
-from .forms import ContactForm, StaffLoginForm, HeroConfigCreateForm, HeroConfigUpdateForm, HeroConfigDeleteForm, HeroConfigRestoreForm
+from .forms import (
+    ContactForm,
+    StaffLoginForm,
+    HeroConfigCreateForm,
+    HeroConfigUpdateForm,
+    HeroConfigDeleteForm,
+    HeroConfigRestoreForm,
+    GalleryLayoutForm,
+    GalleryPhotoForm,
+    GalleryPhotoDeleteForm,
+    GalleryPhotoRestoreForm,
+)
 from apps.products.views import (
     PAGINATE_BY_DEFAULT,
     CONTEXT_CANCEL_URL,
@@ -37,6 +48,10 @@ logger = logging.getLogger(__name__)
 from apps.core.url_names import (
     CORE_CONTACT,
     CORE_CONTACT_SUCCESS,
+    CORE_GALLERY,
+    CORE_GALLERY_PHOTO_LIST,
+    CORE_GALLERY_PHOTO_TRASHCAN,
+    CORE_GALLERY_LAYOUT_LIST,
     CORE_HERO_LIST,
     CORE_HERO_TRASHCAN,
     CORE_STAFF_LOGIN,
@@ -64,6 +79,34 @@ from .constants import (
     TEMPLATE_HERO_CONFIRM_DELETE,
     TEMPLATE_HERO_RESTORE,
     TEMPLATE_HERO_TRASHCAN,
+    # Gallery Templates
+    TEMPLATE_GALLERY_PAGE,
+    TEMPLATE_GALLERY_PHOTO_FORM,
+    TEMPLATE_GALLERY_PHOTO_LIST,
+    TEMPLATE_GALLERY_PHOTO_CONFIRM_DELETE,
+    TEMPLATE_GALLERY_PHOTO_RESTORE,
+    TEMPLATE_GALLERY_PHOTO_TRASHCAN,
+    TEMPLATE_GALLERY_LAYOUT_FORM,
+    TEMPLATE_GALLERY_LAYOUT_LIST,
+    TEMPLATE_GALLERY_LAYOUT_CONFIRM_DELETE,
+    # Gallery Messages
+    MSG_GALLERY_PHOTO_CREATED,
+    MSG_GALLERY_PHOTO_UPDATED,
+    MSG_GALLERY_PHOTO_DELETED,
+    MSG_GALLERY_PHOTO_RESTORED,
+    MSG_GALLERY_LAYOUT_CREATED,
+    MSG_GALLERY_LAYOUT_UPDATED,
+    MSG_GALLERY_LAYOUT_DELETED,
+    # Gallery Headers
+    HEADERS_GALLERY_PHOTO,
+    HEADERS_GALLERY_PHOTO_TRASHCAN,
+    HEADERS_GALLERY_LAYOUT,
+    # Gallery Context Keys
+    CONTEXT_GALLERY_PHOTOS,
+    CONTEXT_GALLERY_LAYOUTS,
+    # Gallery Object Names
+    GALLERY_PHOTO_OBJECT_NAME,
+    GALLERY_LAYOUT_OBJECT_NAME,
     # Password Reset Templates
     TEMPLATE_PASSWORD_RESET_FORM,
     TEMPLATE_PASSWORD_RESET_DONE,
@@ -109,7 +152,13 @@ from .constants import (
     # Hero Section Order By
     HERO_ORDER_BY_SORT,
     HERO_ORDER_BY_DELETED_AT,
+
+    # Gallery Section Order By
+    GALLERY_ORDER_BY_SORT,
+    GALLERY_ORDER_BY_DELETED_AT,
+
     # Display Limits
+
     FEATURED_COLLECTIONS_LIMIT,
     HOME_PROMOS_LIMIT,
     # PWA Manifest Configuration
@@ -160,11 +209,15 @@ def home(request):
     # Galería de fotos estilo TikTok
     gallery_items = Gallery.objects.order_by(HERO_ORDER_BY_SORT)
 
+    # Galería de fotos con layouts dinámicos
+    gallery_photos = GalleryPhoto.objects.select_related('layout').order_by(GALLERY_ORDER_BY_SORT)[:8]
+
     context = {
         CONTEXT_HERO_SLIDES: hero_slides,
         'featured_collections': featured_collections,
         'promos': promos,
         'gallery_items': gallery_items,
+        CONTEXT_GALLERY_PHOTOS: gallery_photos,
     }
     return render(request, TEMPLATE_HOME, context)
 
@@ -552,3 +605,316 @@ class PasswordResetConfirmView(BasePasswordResetConfirmView):
 
 class PasswordResetCompleteView(BasePasswordResetCompleteView):
     template_name = TEMPLATE_PASSWORD_RESET_COMPLETE
+
+
+# =============================================================================
+# PUBLIC GALLERY PAGE
+# =============================================================================
+
+@require_GET
+def gallery_page(request):
+    """Pública: muestra la galería de fotos organizada por layouts."""
+    photos = GalleryPhoto.objects.select_related('layout').order_by('sort_order')
+    layouts = GalleryLayout.objects.filter(is_active=True).order_by('sort_order')
+    default_layout = layouts.first()
+
+    context = {
+        CONTEXT_GALLERY_PHOTOS: photos,
+        CONTEXT_GALLERY_LAYOUTS: layouts,
+        'default_layout': default_layout,
+    }
+    return render(request, TEMPLATE_GALLERY_PAGE, context)
+
+
+# =============================================================================
+# GALLERY PHOTO CRUD
+# =============================================================================
+
+def _build_gallery_photo_rows(photos):
+    """Construye las filas para la tabla de listado de fotos."""
+    rows = []
+    for photo in photos:
+        rows.append({
+            'pk': photo.pk,
+            'values': [
+                photo.title or f'Foto #{photo.pk}',
+                photo.layout.name if photo.layout else '-',
+                photo.sort_order,
+                '<span class="px-2 py-1 text-xs rounded-full {}">{}</span>'.format(
+                    BADGE_ACTIVE_CSS if photo.is_active else BADGE_INACTIVE_CSS,
+                    STATUS_ACTIVE_LABEL if photo.is_active else STATUS_INACTIVE_LABEL
+                ),
+            ],
+        })
+    return rows
+
+
+class GalleryPhotoListView(StaffPermissionRequiredMixin, ListView):
+    """Listado de fotos activas de la galería."""
+    model = GalleryPhoto
+    template_name = TEMPLATE_GALLERY_PHOTO_LIST
+    context_object_name = CONTEXT_GALLERY_PHOTOS
+    permission_required = 'core.view_galleryphoto'
+    paginate_by = PAGINATE_BY_DEFAULT
+
+    def get_queryset(self):
+        return GalleryPhoto.objects.select_related('layout').filter(is_active=True).order_by('sort_order')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context[CONTEXT_ROWS] = _build_gallery_photo_rows(context[CONTEXT_GALLERY_PHOTOS])
+        context[CONTEXT_HEADERS] = HEADERS_GALLERY_PHOTO
+        return context
+
+
+class GalleryPhotoCreateView(StaffPermissionRequiredMixin, CreateView):
+    """Crear nueva foto de galería."""
+    model = GalleryPhoto
+    form_class = GalleryPhotoForm
+    template_name = TEMPLATE_GALLERY_PHOTO_FORM
+    permission_required = 'core.add_galleryphoto'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context[CONTEXT_CANCEL_URL] = CORE_GALLERY_PHOTO_LIST
+        context[CONTEXT_IS_CREATE] = True
+        context[CONTEXT_BACKGROUND_IMAGE_URL] = ''
+        return context
+
+    def get_success_url(self):
+        return reverse(CORE_GALLERY_PHOTO_LIST)
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        messages.success(self.request, MSG_GALLERY_PHOTO_CREATED.format(title=form.instance.title or f'Foto #{form.instance.pk}'))
+        return response
+
+
+class GalleryPhotoUpdateView(StaffPermissionRequiredMixin, UpdateView):
+    """Editar foto de galería existente."""
+    model = GalleryPhoto
+    form_class = GalleryPhotoForm
+    template_name = TEMPLATE_GALLERY_PHOTO_FORM
+    permission_required = 'core.change_galleryphoto'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context[CONTEXT_CANCEL_URL] = CORE_GALLERY_PHOTO_LIST
+        context[CONTEXT_IS_UPDATE] = True
+        context[CONTEXT_BACKGROUND_IMAGE_URL] = self.object.image.url if self.object.image else ''
+        return context
+
+    def get_success_url(self):
+        return reverse(CORE_GALLERY_PHOTO_LIST)
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        messages.success(self.request, MSG_GALLERY_PHOTO_UPDATED.format(title=form.instance.title or f'Foto #{form.instance.pk}'))
+        return response
+
+
+class GalleryPhotoDeleteView(StaffPermissionRequiredMixin, DeleteView):
+    """Archivar foto de galería (soft-delete)."""
+    model = GalleryPhoto
+    form_class = GalleryPhotoDeleteForm
+    template_name = TEMPLATE_GALLERY_PHOTO_CONFIRM_DELETE
+    permission_required = 'core.delete_galleryphoto'
+    success_url = reverse_lazy(CORE_GALLERY_PHOTO_LIST)
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['photo'] = self.get_object()
+        return kwargs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context[CONTEXT_OBJECT_NAME] = GALLERY_PHOTO_OBJECT_NAME
+        context[CONTEXT_OBJECT_DISPLAY] = self.get_object().title or f'Foto #{self.get_object().pk}'
+        context[CONTEXT_CANCEL_URL] = CORE_GALLERY_PHOTO_LIST
+        return context
+
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        form = self.get_form()
+        if form.is_valid():
+            return self.delete(request, *args, **kwargs)
+        return self.render_to_response(self.get_context_data(form=form))
+
+    def delete(self, request, *args, **kwargs):
+        photo = self.get_object()
+        title = photo.title or f'Foto #{photo.pk}'
+        photo.soft_delete(user=request.user)
+        messages.success(request, MSG_GALLERY_PHOTO_DELETED.format(title=title))
+        return redirect(self.success_url)
+
+
+class GalleryPhotoRestoreView(StaffPermissionRequiredMixin, TemplateView):
+    """Restaurar foto de galería archivada."""
+    model = GalleryPhoto
+    form_class = GalleryPhotoRestoreForm
+    template_name = TEMPLATE_GALLERY_PHOTO_RESTORE
+    permission_required = 'core.change_galleryphoto'
+    success_url = reverse_lazy(CORE_GALLERY_PHOTO_LIST)
+
+    def get_object(self):
+        return get_object_or_404(GalleryPhoto.all_objects, pk=self.kwargs['pk'])
+
+    def get_form(self):
+        return self.form_class(photo=self.get_object(), data=self.request.POST or None)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        photo = self.get_object()
+        context[CONTEXT_GALLERY_PHOTOS] = photo
+        context['form'] = self.get_form()
+        context[CONTEXT_CANCEL_URL] = CORE_GALLERY_PHOTO_TRASHCAN
+        context[CONTEXT_OBJECT_NAME] = GALLERY_PHOTO_OBJECT_NAME
+        context[CONTEXT_OBJECT_DISPLAY] = photo.title or f'Foto #{photo.pk}'
+        return context
+
+    def post(self, request, *args, **kwargs):
+        photo = self.get_object()
+        form = self.get_form()
+        if form.is_valid():
+            photo.restore(user=request.user)
+            messages.success(request, MSG_GALLERY_PHOTO_RESTORED.format(title=photo.title or f'Foto #{photo.pk}'))
+            return redirect(CORE_GALLERY_PHOTO_LIST)
+        return self.render_to_response(self.get_context_data(form=form))
+
+
+class GalleryPhotoTrashcanView(StaffPermissionRequiredMixin, ListView):
+    """Papelera de fotos de galería."""
+    model = GalleryPhoto
+    template_name = TEMPLATE_GALLERY_PHOTO_TRASHCAN
+    context_object_name = CONTEXT_GALLERY_PHOTOS
+    permission_required = 'core.view_galleryphoto'
+    paginate_by = PAGINATE_BY_DEFAULT
+
+    def get_queryset(self):
+        return GalleryPhoto.all_objects.select_related('layout').filter(is_active=False).order_by(GALLERY_ORDER_BY_DELETED_AT)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        rows = []
+        for photo in context[CONTEXT_GALLERY_PHOTOS]:
+            rows.append({
+                'pk': photo.pk,
+                'values': [
+                    photo.title or f'Foto #{photo.pk}',
+                    photo.layout.name if photo.layout else '-',
+                    photo.sort_order,
+                    photo.deleted_at.strftime('%d/%m/%Y %H:%M') if photo.deleted_at else '-',
+                ],
+            })
+        context[CONTEXT_ROWS] = rows
+        context[CONTEXT_HEADERS] = HEADERS_GALLERY_PHOTO_TRASHCAN
+        return context
+
+
+# =============================================================================
+# GALLERY LAYOUT CRUD
+# =============================================================================
+
+def _build_gallery_layout_rows(layouts):
+    """Construye las filas para la tabla de listado de layouts."""
+    rows = []
+    for layout in layouts:
+        rows.append({
+            'pk': layout.pk,
+            'values': [
+                layout.name,
+                layout.columns,
+                layout.rows,
+                layout.capacity(),
+                layout.sort_order,
+                '<span class="px-2 py-1 text-xs rounded-full {}">{}</span>'.format(
+                    BADGE_ACTIVE_CSS if layout.is_active else BADGE_INACTIVE_CSS,
+                    STATUS_ACTIVE_LABEL if layout.is_active else STATUS_INACTIVE_LABEL
+                ),
+            ],
+        })
+    return rows
+
+
+class GalleryLayoutListView(StaffPermissionRequiredMixin, ListView):
+    """Listado de layouts de galería."""
+    model = GalleryLayout
+    template_name = TEMPLATE_GALLERY_LAYOUT_LIST
+    context_object_name = CONTEXT_GALLERY_LAYOUTS
+    permission_required = 'core.view_gallerylayout'
+    paginate_by = PAGINATE_BY_DEFAULT
+
+    def get_queryset(self):
+        return GalleryLayout.objects.filter(is_active=True).order_by('sort_order')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context[CONTEXT_ROWS] = _build_gallery_layout_rows(context[CONTEXT_GALLERY_LAYOUTS])
+        context[CONTEXT_HEADERS] = HEADERS_GALLERY_LAYOUT
+        return context
+
+
+class GalleryLayoutCreateView(StaffPermissionRequiredMixin, CreateView):
+    """Crear nuevo layout de galería."""
+    model = GalleryLayout
+    form_class = GalleryLayoutForm
+    template_name = TEMPLATE_GALLERY_LAYOUT_FORM
+    permission_required = 'core.add_gallerylayout'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context[CONTEXT_CANCEL_URL] = CORE_GALLERY_LAYOUT_LIST
+        context[CONTEXT_IS_CREATE] = True
+        return context
+
+    def get_success_url(self):
+        return reverse(CORE_GALLERY_LAYOUT_LIST)
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        messages.success(self.request, MSG_GALLERY_LAYOUT_CREATED.format(name=form.instance.name))
+        return response
+
+
+class GalleryLayoutUpdateView(StaffPermissionRequiredMixin, UpdateView):
+    """Editar layout de galería existente."""
+    model = GalleryLayout
+    form_class = GalleryLayoutForm
+    template_name = TEMPLATE_GALLERY_LAYOUT_FORM
+    permission_required = 'core.change_gallerylayout'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context[CONTEXT_CANCEL_URL] = CORE_GALLERY_LAYOUT_LIST
+        context[CONTEXT_IS_UPDATE] = True
+        return context
+
+    def get_success_url(self):
+        return reverse(CORE_GALLERY_LAYOUT_LIST)
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        messages.success(self.request, MSG_GALLERY_LAYOUT_UPDATED.format(name=form.instance.name))
+        return response
+
+
+class GalleryLayoutDeleteView(StaffPermissionRequiredMixin, DeleteView):
+    """Eliminar layout de galería (hard delete con confirmación)."""
+    model = GalleryLayout
+    template_name = TEMPLATE_GALLERY_LAYOUT_CONFIRM_DELETE
+    permission_required = 'core.delete_gallerylayout'
+    success_url = reverse_lazy(CORE_GALLERY_LAYOUT_LIST)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context[CONTEXT_OBJECT_NAME] = GALLERY_LAYOUT_OBJECT_NAME
+        context[CONTEXT_OBJECT_DISPLAY] = self.get_object().name
+        context[CONTEXT_CANCEL_URL] = CORE_GALLERY_LAYOUT_LIST
+        return context
+
+    def delete(self, request, *args, **kwargs):
+        layout = self.get_object()
+        name = layout.name
+        response = super().delete(request, *args, **kwargs)
+        messages.success(request, MSG_GALLERY_LAYOUT_DELETED.format(name=name))
+        return response

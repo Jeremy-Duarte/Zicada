@@ -1,0 +1,17 @@
+{% extends "backoffice/layouts/backoffice_base.html" %}
+{% load static %}
+
+{% block title %}Papelera de Fotos - Zicada{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex justify-between items-center">
+        <h1 class="text-2xl font-bold text-gray-800">Papelera de Fotos</h1>
+        <a href="{% url 'core:gallery_photo_list' %}" class="text-gray-500 hover:text-gray-700">
+            <i class="fas fa-arrow-left mr-1"></i> Volver a fotos
+        </a>
+    </div>
+
+    {% include 'backoffice/components/crud/trashcan_table.html' with headers=headers rows=rows restore_url_name="core:gallery_photo_restore" empty_message="No hay fotos eliminadas" page_obj=page_obj %}
+</div>
+{% endblock %}

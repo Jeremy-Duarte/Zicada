@@ -24,6 +24,18 @@ CORE_HERO_DELETE = 'core:hero_delete'
 CORE_HERO_RESTORE = 'core:hero_restore'
 CORE_HERO_TRASHCAN = 'core:hero_trashcan'
 
+CORE_GALLERY = 'core:gallery'
+CORE_GALLERY_PHOTO_LIST = 'core:gallery_photo_list'
+CORE_GALLERY_PHOTO_CREATE = 'core:gallery_photo_create'
+CORE_GALLERY_PHOTO_EDIT = 'core:gallery_photo_edit'
+CORE_GALLERY_PHOTO_DELETE = 'core:gallery_photo_delete'
+CORE_GALLERY_PHOTO_RESTORE = 'core:gallery_photo_restore'
+CORE_GALLERY_PHOTO_TRASHCAN = 'core:gallery_photo_trashcan'
+CORE_GALLERY_LAYOUT_LIST = 'core:gallery_layout_list'
+CORE_GALLERY_LAYOUT_CREATE = 'core:gallery_layout_create'
+CORE_GALLERY_LAYOUT_EDIT = 'core:gallery_layout_edit'
+CORE_GALLERY_LAYOUT_DELETE = 'core:gallery_layout_delete'
+
 # Orders URLs
 ORDERS_LIST = 'orders:order_list'
 ORDERS_CREATE = 'orders:order_create'

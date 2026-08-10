@@ -1,0 +1,94 @@
+{% extends "backoffice/layouts/backoffice_base.html" %}
+{% load static %}
+
+{% block title %}Fotos de Galería - Zicada{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    {% include 'backoffice/components/molecules/list_header.html' with title="Fotos de Galería" create_url="core:gallery_photo_create" create_label="Nueva Foto" %}
+
+    <div class="overflow-x-auto rounded-xl border border-gray-200 shadow-sm">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vista previa</th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Título</th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Layout</th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Orden</th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                {% for photo in gallery_photos %}
+                <tr class="hover:bg-gray-50 transition">
+                    <td class="px-6 py-4">
+                        {% if photo.image %}
+                        <img src="{{ photo.image.url }}" alt="{{ photo.alt_text }}" class="w-16 h-16 object-cover rounded-lg shadow-sm">
+                        {% else %}
+                        <div class="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400">
+                            <i class="fas fa-image"></i>
+                        </div>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="text-sm font-medium text-gray-900">{{ photo.title|default:"Sin título" }}</div>
+                        <div class="text-xs text-gray-500">{{ photo.alt_text|truncatechars:40 }}</div>
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-500">{{ photo.layout.name|default:"Automático" }}</td>
+                    <td class="px-6 py-4 text-sm text-gray-500">{{ photo.sort_order }}</td>
+                    <td class="px-6 py-4">
+                        {% if photo.is_active %}
+                            {% include 'backoffice/components/atoms/badge_status.html' with status="activo" label="Activo" %}
+                        {% else %}
+                            {% include 'backoffice/components/atoms/badge_status.html' with status="inactivo" label="Inactivo" %}
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4 text-right space-x-2">
+                        <a href="{% url 'core:gallery_photo_edit' photo.pk %}" class="inline-flex items-center justify-center w-8 h-8 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition" aria-label="Editar" title="Editar">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                        <a href="{% url 'core:gallery_photo_delete' photo.pk %}" class="inline-flex items-center justify-center w-8 h-8 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition" aria-label="Eliminar" title="Eliminar">
+                            <i class="fas fa-trash-alt"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="px-6 py-12">
+                        {% include 'backoffice/components/atoms/empty_state.html' with title="No hay fotos registradas" icon="fas fa-images" %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if is_paginated %}
+    <div class="flex justify-center mt-6">
+        <nav class="flex gap-2">
+            {% if page_obj.has_previous %}
+            <a href="?page=1" class="px-3 py-1 rounded border border-gray-300 hover:bg-gray-50">&laquo;</a>
+            <a href="?page={{ page_obj.previous_page_number }}" class="px-3 py-1 rounded border border-gray-300 hover:bg-gray-50">&lsaquo;</a>
+            {% endif %}
+
+            <span class="px-3 py-1 rounded bg-zicada-accent text-white">{{ page_obj.number }}</span>
+
+            {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}" class="px-3 py-1 rounded border border-gray-300 hover:bg-gray-50">&rsaquo;</a>
+            <a href="?page={{ page_obj.paginator.num_pages }}" class="px-3 py-1 rounded border border-gray-300 hover:bg-gray-50">&raquo;</a>
+            {% endif %}
+        </nav>
+    </div>
+    {% endif %}
+
+    <div class="flex justify-between items-center text-sm">
+        <a href="{% url 'core:gallery_layout_list' %}" class="text-gray-500 hover:text-gray-700">
+            <i class="fas fa-th-large mr-1"></i> Gestionar layouts
+        </a>
+        <a href="{% url 'core:gallery_photo_trashcan' %}" class="text-gray-400 hover:text-gray-600">
+            <i class="fas fa-trash-alt mr-1"></i> Ver fotos eliminadas
+        </a>
+    </div>
+</div>
+{% endblock %}

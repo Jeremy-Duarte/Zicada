@@ -1,0 +1,8 @@
+{% extends "backoffice/layouts/backoffice_base.html" %}
+{% load static %}
+
+{% block title %}Eliminar Foto de Galería - Zicada{% endblock %}
+
+{% block content %}
+{% include 'backoffice/components/crud/confirm_delete.html' with form=form object_name=object_name object_display=object_display cancel_url="core:gallery_photo_list" warning="Esta acción moverá la foto a la papelera. Podrás restaurarla después." %}
+{% endblock %}

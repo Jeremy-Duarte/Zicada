@@ -337,3 +337,194 @@ class HomePromo(BaseAuditModel):
 
     def __str__(self) -> str:
         return self.title or f"Promo #{self.pk}"
+
+
+class GalleryLayout(BaseAuditModel):
+    """
+    Configuración de layouts para la galería de fotos (1x1, 2x2, 3x3, 4x4).
+    """
+    name = models.CharField(
+        max_length=100,
+        verbose_name='Nombre del layout',
+        help_text='Ej: Grid 3x3, Mosaico 2x2.'
+    )
+    columns = models.PositiveSmallIntegerField(
+        default=3,
+        verbose_name='Columnas',
+        help_text='Número de columnas del grid (1-4).'
+    )
+    rows = models.PositiveSmallIntegerField(
+        default=3,
+        verbose_name='Filas',
+        help_text='Número de filas del grid (1-4).'
+    )
+    css_class = models.CharField(
+        max_length=100,
+        default='grid-cols-3',
+        verbose_name='Clase CSS',
+        help_text='Clases Tailwind para el contenedor del grid.'
+    )
+    max_photos = models.PositiveSmallIntegerField(
+        default=9,
+        verbose_name='Máximo de fotos',
+        help_text='Capacidad máxima del layout (columnas x filas).'
+    )
+    sort_order = models.PositiveIntegerField(
+        default=0,
+        verbose_name='Orden',
+        help_text='Orden de aparición en la lista de layouts.'
+    )
+
+    class Meta:
+        ordering = ['sort_order']
+        verbose_name = 'Layout de Galería'
+        verbose_name_plural = 'Layouts de Galería'
+
+    def __str__(self) -> str:
+        return self.name
+
+    def capacity(self) -> int:
+        """Retorna la capacidad total del layout."""
+        return self.columns * self.rows
+
+    def clean(self):
+        expected_capacity = self.columns * self.rows
+        if self.max_photos != expected_capacity:
+            from django.core.exceptions import ValidationError
+            raise ValidationError({
+                'max_photos': f'La capacidad debe ser {expected_capacity} ({self.columns}x{self.rows}).'
+            })
+
+
+class GalleryPhoto(BaseAuditModel):
+    """
+    Fotografía de la galería interactiva del landing page.
+    """
+    ASPECT_SQUARE = 'square'
+    ASPECT_PORTRAIT = 'portrait'
+    ASPECT_LANDSCAPE = 'landscape'
+    ASPECT_WIDE = 'wide'
+
+    ASPECT_CATEGORY_CHOICES = [
+        (ASPECT_SQUARE, 'Cuadrada'),
+        (ASPECT_PORTRAIT, 'Vertical'),
+        (ASPECT_LANDSCAPE, 'Horizontal'),
+        (ASPECT_WIDE, 'Panorámica'),
+    ]
+
+    image = models.ImageField(
+        upload_to='landingpage/gallery/photos/',
+        verbose_name='Fotografía',
+        help_text='Imagen de la galería (máximo 5MB).'
+    )
+    redirect_url = models.URLField(
+        blank=True,
+        default='',
+        verbose_name='URL de redirección',
+        help_text='Destino al hacer clic (opcional).'
+    )
+    title = models.CharField(
+        max_length=200,
+        blank=True,
+        default='',
+        verbose_name='Título',
+        help_text='Título o leyenda de la foto.'
+    )
+    alt_text = models.CharField(
+        max_length=255,
+        verbose_name='Texto alternativo (SEO)',
+        help_text='Descripción para SEO y accesibilidad.'
+    )
+    layout = models.ForeignKey(
+        GalleryLayout,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='photos',
+        verbose_name='Layout asignado',
+        help_text='Layout explícito para esta foto (opcional).'
+    )
+    aspect_ratio = models.FloatField(
+        null=True,
+        blank=True,
+        verbose_name='Relación de aspecto',
+        help_text='Ancho / alto detectado automáticamente.'
+    )
+    aspect_category = models.CharField(
+        max_length=20,
+        choices=ASPECT_CATEGORY_CHOICES,
+        blank=True,
+        default='',
+        verbose_name='Categoría de aspecto',
+        help_text='Clasificación automática según la relación de aspecto.'
+    )
+    display_zone = models.CharField(
+        max_length=50,
+        blank=True,
+        default='',
+        verbose_name='Zona visual',
+        help_text='Clases CSS de span de grid generadas automáticamente.'
+    )
+    sort_order = models.PositiveIntegerField(
+        default=0,
+        verbose_name='Orden',
+        help_text='Orden de aparición en la galería.'
+    )
+
+    class Meta:
+        ordering = ['sort_order']
+        verbose_name = 'Foto de Galería'
+        verbose_name_plural = 'Fotos de Galería'
+
+    def __str__(self) -> str:
+        return self.title or f"Gallery Photo #{self.pk}"
+
+    def compute_aspect_ratio(self) -> float | None:
+        """Calcula la relación de aspecto de la imagen."""
+        if not self.image:
+            return None
+        try:
+            from PIL import Image as PILImage
+            with PILImage.open(self.image) as img:
+                width, height = img.size
+                return round(width / height, 4) if height else None
+        except Exception:
+            return None
+
+    def compute_aspect_category(self, ratio: float | None = None) -> str:
+        """Clasifica la foto según su relación de aspecto."""
+        if ratio is None:
+            ratio = self.aspect_ratio
+        if ratio is None:
+            return self.ASPECT_SQUARE
+        if ratio < 0.9:
+            return self.ASPECT_PORTRAIT
+        if ratio > 1.8:
+            return self.ASPECT_WIDE
+        if ratio > 1.1:
+            return self.ASPECT_LANDSCAPE
+        return self.ASPECT_SQUARE
+
+    def compute_display_zone(self, category: str | None = None) -> str:
+        """Genera clases CSS de span según la categoría de aspecto."""
+        if category is None:
+            category = self.aspect_category
+        zones = {
+            self.ASPECT_PORTRAIT: 'col-span-1 row-span-2',
+            self.ASPECT_LANDSCAPE: 'col-span-2 row-span-1',
+            self.ASPECT_WIDE: 'col-span-2 row-span-2',
+            self.ASPECT_SQUARE: 'col-span-1 row-span-1',
+        }
+        return zones.get(category, 'col-span-1 row-span-1')
+
+    def update_aspect_metadata(self):
+        """Recalcula y asigna todos los metadatos de aspecto."""
+        ratio = self.compute_aspect_ratio()
+        self.aspect_ratio = ratio
+        self.aspect_category = self.compute_aspect_category(ratio)
+        self.display_zone = self.compute_display_zone(self.aspect_category)
+
+    def save(self, *args, **kwargs):
+        self.update_aspect_metadata()
+        self.full_clean()
+        super().save(*args, **kwargs)

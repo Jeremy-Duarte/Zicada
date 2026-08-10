@@ -1,0 +1,89 @@
+{% extends "backoffice/layouts/backoffice_base.html" %}
+{% load static %}
+
+{% block title %}{% if form.instance.pk %}Editar{% else %}Nueva{% endif %} Foto de Galería - Zicada{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="bg-white rounded-xl shadow-sm p-6">
+        <h1 class="text-2xl font-bold text-gray-800 mb-6">
+            {% if form.instance.pk %}Editar{% else %}Nueva{% endif %} Foto de Galería
+        </h1>
+
+        {% if form.errors %}
+        <div class="bg-red-100 text-red-700 p-4 rounded-lg mb-6 border-l-4 border-red-500">
+            <strong class="block mb-2">Por favor corrige los siguientes errores:</strong>
+            <ul class="list-disc list-inside space-y-1">
+                {% for field, errors in form.errors.items %}
+                <li><strong>{{ field|capfirst }}:</strong> {{ errors|join:", " }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        <form id="gallery-photo-form" method="post" enctype="multipart/form-data" class="space-y-6" novalidate>
+            {% csrf_token %}
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label for="{{ form.image.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">Fotografía <span class="text-red-500">*</span></label>
+                    {{ form.image }}
+                    <p class="text-xs text-gray-400 mt-1">Formatos: JPG, PNG, WebP. Máximo 5MB.</p>
+                </div>
+
+                <div>
+                    <label for="{{ form.layout.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">Layout asignado</label>
+                    {{ form.layout }}
+                    <p class="text-xs text-gray-400 mt-1">Opcional. Si no se selecciona, se usa el layout por defecto.</p>
+                </div>
+
+                <div>
+                    <label for="{{ form.title.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">Título</label>
+                    {{ form.title }}
+                </div>
+
+                <div>
+                    <label for="{{ form.alt_text.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">Texto alternativo (SEO) <span class="text-red-500">*</span></label>
+                    {{ form.alt_text }}
+                </div>
+
+                <div>
+                    <label for="{{ form.redirect_url.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">URL de redirección</label>
+                    {{ form.redirect_url }}
+                    <p class="text-xs text-gray-400 mt-1">Destino al hacer clic en la foto (opcional).</p>
+                </div>
+
+                <div>
+                    <label for="{{ form.sort_order.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">Orden</label>
+                    {{ form.sort_order }}
+                </div>
+
+                <div class="flex items-center gap-3">
+                    {{ form.is_active }}
+                    <label for="{{ form.is_active.id_for_label }}" class="text-sm font-medium text-gray-700 cursor-pointer">Activo</label>
+                </div>
+            </div>
+
+            {% if form.instance.pk %}
+            <div class="border-t border-gray-200 pt-6">
+                <h2 class="text-lg font-semibold text-gray-800 mb-4">Orden de las fotos</h2>
+                <p class="text-sm text-gray-500 mb-2">Arrastra para reordenar las fotos activas.</p>
+                {{ form.photo_order }}
+            </div>
+            {% endif %}
+
+            <div class="flex justify-end gap-3 pt-4 border-t border-gray-200">
+                <a href="{% url 'core:gallery_photo_list' %}" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition">Cancelar</a>
+                <button type="submit" class="px-6 py-2 bg-zicada-accent hover:bg-red-700 text-white rounded-lg font-semibold transition">
+                    <i class="fas fa-save mr-1"></i> Guardar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+{{ form.media }}
+{% endblock %}
