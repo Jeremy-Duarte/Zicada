@@ -13,9 +13,13 @@ def local_storage(settings):
     """Usa almacenamiento local de archivos para evitar llamadas a Cloudinary."""
     tmpdir = tempfile.mkdtemp()
     storage = FileSystemStorage(location=tmpdir)
+    image_field = GalleryPhoto._meta.get_field('image')
+    original_storage = image_field.storage
+    image_field.storage = storage
     original_storages = settings.STORAGES.copy()
     settings.STORAGES['default'] = {'BACKEND': 'django.core.files.storage.FileSystemStorage', 'OPTIONS': {'location': tmpdir}}
     yield storage
+    image_field.storage = original_storage
     settings.STORAGES = original_storages
 
 
