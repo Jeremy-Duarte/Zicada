@@ -9,8 +9,8 @@
     {% if gallery_photos %}
     <div x-data="galleryLightbox()" class="px-4 md:px-8 py-6 md:py-10">
         <div
-            class="grid grid-cols-4 gap-3 md:gap-4"
-            style="grid-auto-flow: dense; grid-auto-rows: auto;"
+            class="grid grid-cols-4 gap-3 md:gap-4 auto-rows-[33vh] sm:auto-rows-[36vh] md:auto-rows-[40vh]"
+            style="grid-auto-flow: dense;"
             role="list"
         >
             <!-- Título anclado a la esquina superior izquierda -->
@@ -25,9 +25,7 @@
 
             {% for photo in gallery_photos %}
             {% with photo_classes=photo|gallery_photo_classes %}
-            <figure class="{{ photo_classes }} relative group overflow-hidden rounded-xl bg-neutral-900"
-                    style="aspect-ratio: {% if photo.display_size == '2x2' %}9/16{% else %}3/2{% endif %};"
-                    role="listitem">
+            <figure class="{{ photo_classes }} relative group overflow-hidden rounded-xl bg-neutral-900" role="listitem">
                 {% if photo.redirect_url %}
                 <a href="{{ photo.redirect_url }}"
                    target="{{ photo.redirect_url|is_external_url|yesno:'_blank,_self' }}"
