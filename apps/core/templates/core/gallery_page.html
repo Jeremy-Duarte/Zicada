@@ -7,21 +7,23 @@
 {% block content %}
 <section class="bg-black text-white min-h-screen" aria-labelledby="gallery-page-title">
     {% if gallery_photos %}
-    <div x-data="galleryLightbox()" class="flex flex-col lg:flex-row gap-0">
-        <!-- Título fijo a la izquierda, padding hasta la mitad -->
-        <aside class="lg:sticky lg:top-20 lg:self-start shrink-0 lg:w-72 xl:w-80 px-6 pt-8 md:pt-32 lg:pt-[35vh] pb-6">
-            <h1 id="gallery-page-title" class="font-poppins text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight leading-none">
-                GALERÍA
-            </h1>
-            <p class="text-gray-400 mt-4 md:mt-6 text-sm md:text-base max-w-xs">
-                Descubre los looks y momentos que definen el estilo Zicada.
-            </p>
+    <div x-data="galleryLightbox()" class="flex flex-col md:flex-row min-h-screen">
+        <!-- Texto — 50% izquierda, centrado verticalmente -->
+        <aside class="md:w-1/2 flex items-center justify-center px-8 md:px-12 lg:px-16 py-12 md:py-0">
+            <div class="max-w-md">
+                <h1 id="gallery-page-title" class="font-poppins text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight leading-none">
+                    GALERÍA
+                </h1>
+                <p class="text-gray-400 mt-4 md:mt-6 text-sm md:text-base">
+                    Descubre los looks y momentos que definen el estilo Zicada.
+                </p>
+            </div>
         </aside>
 
-        <!-- Grid masonry 4 columnas fijas -->
-        <div class="flex-1 px-4 md:px-6 lg:pr-8 pb-16 lg:py-24">
+        <!-- Grid — 50% derecha, 2 columnas fijas -->
+        <div class="md:w-1/2 px-4 md:px-6 lg:px-8 pb-12 md:py-12 lg:py-16">
             <div
-                class="grid grid-cols-4 gap-3 md:gap-4 auto-rows-[150px] sm:auto-rows-[180px] md:auto-rows-[200px]"
+                class="grid grid-cols-2 gap-3 md:gap-4 auto-rows-[150px] sm:auto-rows-[180px] md:auto-rows-[200px]"
                 style="grid-auto-flow: dense;"
                 role="list"
             >
@@ -44,7 +46,7 @@
                         <img
                             src="{{ photo.image|cloudinary_url:600 }}"
                             srcset="{{ photo.image|cloudinary_srcset:'400,800,1200' }}"
-                            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                            sizes="(max-width: 768px) 50vw, 25vw"
                             alt="{{ photo.alt_text }}"
                             class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                             loading="lazy"
@@ -69,7 +71,7 @@
             </div>
         </div>
 
-        <!-- Lightbox — dentro del scope de x-data -->
+        <!-- Lightbox -->
         <div
             x-show="active"
             x-transition.opacity
