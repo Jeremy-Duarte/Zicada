@@ -455,8 +455,8 @@ class GalleryPhoto(BaseAuditModel):
 
     def display_classes(self) -> str:
         """Clases CSS de span del grid (4 cols, filas ~35vh).
-        - 1x1 = 1 celda (col-span-1 row-span-1) — rectangular/cuadrada.
-        - 2x2 = 4 celdas (col-span-2 row-span-2) — caben 2 fotos verticales."""
+        - 1x1 = 4 celdas (col-span-2 row-span-2) — foto grande.
+        - 2x2 = 1 celda (col-span-1 row-span-1) — foto chica."""
         if self.display_size == self.DISPLAY_1X1:
-            return 'col-span-1 row-span-1'
-        return 'col-span-2 row-span-2'
+            return 'col-span-2 row-span-2'
+        return 'col-span-1 row-span-1'

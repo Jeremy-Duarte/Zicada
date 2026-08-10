@@ -35,7 +35,7 @@ class TestGalleryPhotoModel:
             alt_text='Foto horizontal',
         )
         assert photo.display_size == GalleryPhoto.DISPLAY_1X1
-        assert 'col-span-1 row-span-1' in photo.display_classes()
+        assert 'col-span-2 row-span-2' in photo.display_classes()
 
     def test_set_2x2_display_size(self, local_storage):
         photo = GalleryPhoto.objects.create(
@@ -44,7 +44,7 @@ class TestGalleryPhotoModel:
             display_size=GalleryPhoto.DISPLAY_2X2,
         )
         assert photo.display_size == GalleryPhoto.DISPLAY_2X2
-        assert 'col-span-2 row-span-2' in photo.display_classes()
+        assert 'col-span-1 row-span-1' in photo.display_classes()
 
     def test_soft_delete_and_restore(self, local_storage):
         photo = GalleryPhoto.objects.create(
