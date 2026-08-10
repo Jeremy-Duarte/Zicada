@@ -20,14 +20,14 @@
 {% block content %}
 <section class="bg-black text-white min-h-screen" aria-labelledby="gallery-page-title">
     {% if gallery_photos %}
-    <div x-data="galleryLightbox()" class="px-4 md:px-8 py-6 md:py-10">
+    <div x-data="galleryLightbox()" class="px-2 md:px-4 lg:px-8 py-6 md:py-10">
         <div
             class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4"
             style="grid-auto-flow: dense;"
             role="list"
         >
-            <!-- Título anclado a la esquina superior izquierda -->
-            <div class="col-span-2 row-span-2 lg:row-span-3 flex flex-col justify-center px-2 md:px-4">
+            <!-- Título anclado a la esquina superior izquierda, efecto descuadrado -->
+            <div class="col-span-1 sm:col-span-1 lg:col-span-2 row-span-2 lg:row-span-3 flex flex-col justify-center pr-0 md:pr-4">
                 <h1 id="gallery-page-title" class="font-poppins text-3xl md:text-5xl lg:text-6xl font-extrabold tracking-tight leading-none">
                     GALERÍA
                 </h1>
