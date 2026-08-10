@@ -454,5 +454,11 @@ class GalleryPhoto(BaseAuditModel):
         return self.title or f"Gallery Photo #{self.pk}"
 
     def display_classes(self) -> str:
-        """Clases CSS de span del grid según display_size."""
-        return 'col-span-1 row-span-1' if self.display_size == self.DISPLAY_1X1 else 'col-span-2 row-span-2'
+        """Clases CSS de span del grid según display_size.
+        En un grid de 2 columnas:
+        - 1x1 ocupa todo el ancho (col-span-2), altura normal (row-span-1).
+        - 2x2 ocupa todo el ancho + doble altura para respetar el formato vertical 16:9 de teléfono.
+        """
+        if self.display_size == self.DISPLAY_1X1:
+            return 'col-span-2 row-span-1'
+        return 'col-span-2 row-span-2'
