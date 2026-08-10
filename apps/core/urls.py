@@ -19,10 +19,6 @@ gallery_patterns = [
     path('fotos/<int:pk>/eliminar/', views.GalleryPhotoDeleteView.as_view(), name='gallery_photo_delete'),
     path('fotos/<int:pk>/restaurar/', views.GalleryPhotoRestoreView.as_view(), name='gallery_photo_restore'),
     path('fotos/papelera/', views.GalleryPhotoTrashcanView.as_view(), name='gallery_photo_trashcan'),
-    path('layouts/', views.GalleryLayoutListView.as_view(), name='gallery_layout_list'),
-    path('layouts/crear/', views.GalleryLayoutCreateView.as_view(), name='gallery_layout_create'),
-    path('layouts/<int:pk>/editar/', views.GalleryLayoutUpdateView.as_view(), name='gallery_layout_edit'),
-    path('layouts/<int:pk>/eliminar/', views.GalleryLayoutDeleteView.as_view(), name='gallery_layout_delete'),
 ]
 
 urlpatterns = [

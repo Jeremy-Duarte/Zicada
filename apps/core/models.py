@@ -399,17 +399,14 @@ class GalleryLayout(BaseAuditModel):
 class GalleryPhoto(BaseAuditModel):
     """
     Fotografía de la galería interactiva del landing page.
+    El admin elige explícitamente si la foto ocupa 1x1 o 2x2 celdas del grid.
     """
-    ASPECT_SQUARE = 'square'
-    ASPECT_PORTRAIT = 'portrait'
-    ASPECT_LANDSCAPE = 'landscape'
-    ASPECT_WIDE = 'wide'
+    DISPLAY_1X1 = '1x1'
+    DISPLAY_2X2 = '2x2'
 
-    ASPECT_CATEGORY_CHOICES = [
-        (ASPECT_SQUARE, 'Cuadrada'),
-        (ASPECT_PORTRAIT, 'Vertical'),
-        (ASPECT_LANDSCAPE, 'Horizontal'),
-        (ASPECT_WIDE, 'Panorámica'),
+    DISPLAY_SIZE_CHOICES = [
+        (DISPLAY_1X1, '1×1 — Rectangular / cuadrada'),
+        (DISPLAY_2X2, '2×2 — Vertical (formato celular)'),
     ]
 
     image = models.ImageField(
@@ -435,35 +432,12 @@ class GalleryPhoto(BaseAuditModel):
         verbose_name='Texto alternativo (SEO)',
         help_text='Descripción para SEO y accesibilidad.'
     )
-    layout = models.ForeignKey(
-        GalleryLayout,
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name='photos',
-        verbose_name='Layout asignado',
-        help_text='Layout explícito para esta foto (opcional).'
-    )
-    aspect_ratio = models.FloatField(
-        null=True,
-        blank=True,
-        verbose_name='Relación de aspecto',
-        help_text='Ancho / alto detectado automáticamente.'
-    )
-    aspect_category = models.CharField(
-        max_length=20,
-        choices=ASPECT_CATEGORY_CHOICES,
-        blank=True,
-        default='',
-        verbose_name='Categoría de aspecto',
-        help_text='Clasificación automática según la relación de aspecto.'
-    )
-    display_zone = models.CharField(
-        max_length=50,
-        blank=True,
-        default='',
-        verbose_name='Zona visual',
-        help_text='Clases CSS de span de grid generadas automáticamente.'
+    display_size = models.CharField(
+        max_length=3,
+        choices=DISPLAY_SIZE_CHOICES,
+        default=DISPLAY_1X1,
+        verbose_name='Tamaño de celda',
+        help_text='1×1 para fotos rectangulares, 2×2 para verticales destacadas (formato celular).'
     )
     sort_order = models.PositiveIntegerField(
         default=0,
@@ -479,65 +453,6 @@ class GalleryPhoto(BaseAuditModel):
     def __str__(self) -> str:
         return self.title or f"Gallery Photo #{self.pk}"
 
-    def compute_aspect_ratio(self) -> float | None:
-        """Calcula la relación de aspecto de la imagen."""
-        if not self.image:
-            return None
-        try:
-            from PIL import Image as PILImage
-            self.image.seek(0)
-            with PILImage.open(self.image) as img:
-                width, height = img.size
-                return round(width / height, 4) if height else None
-        except Exception:
-            return None
-        finally:
-            self.image.seek(0)
-
-    def compute_aspect_category(self, ratio: float | None = None) -> str:
-        """Clasifica la foto según su relación de aspecto nativa (formatos de teléfono)."""
-        if ratio is None:
-            ratio = self.aspect_ratio
-        if ratio is None:
-            return self.ASPECT_SQUARE
-        if ratio < 0.95:
-            return self.ASPECT_PORTRAIT
-        if ratio > 2.0:
-            return self.ASPECT_WIDE
-        if ratio > 1.15:
-            return self.ASPECT_LANDSCAPE
-        return self.ASPECT_SQUARE
-
-    def compute_display_zone(self, category: str | None = None) -> str:
-        """
-        Genera el span de columnas según la categoría de aspecto.
-        La altura la define el aspecto nativo (aspect-ratio en CSS), no filas fijas.
-        """
-        if category is None:
-            category = self.aspect_category
-        zones = {
-            self.ASPECT_PORTRAIT: 'col-span-1',
-            self.ASPECT_SQUARE: 'col-span-1',
-            self.ASPECT_LANDSCAPE: 'col-span-2',
-            self.ASPECT_WIDE: 'col-span-2',
-        }
-        return zones.get(category, 'col-span-1')
-
-    @property
-    def native_aspect_ratio_css(self) -> str:
-        """Retorna la relación de aspecto nativa lista para la propiedad CSS aspect-ratio."""
-        if self.aspect_ratio:
-            return str(self.aspect_ratio)
-        return '1'
-
-    def update_aspect_metadata(self):
-        """Recalcula y asigna todos los metadatos de aspecto."""
-        ratio = self.compute_aspect_ratio()
-        self.aspect_ratio = ratio
-        self.aspect_category = self.compute_aspect_category(ratio)
-        self.display_zone = self.compute_display_zone(self.aspect_category)
-
-    def save(self, *args, **kwargs):
-        self.update_aspect_metadata()
-        self.full_clean()
-        super().save(*args, **kwargs)
+    def display_classes(self) -> str:
+        """Clases CSS de span del grid según display_size."""
+        return 'col-span-1 row-span-1' if self.display_size == self.DISPLAY_1X1 else 'col-span-2 row-span-2'

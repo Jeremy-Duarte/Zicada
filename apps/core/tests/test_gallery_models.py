@@ -5,7 +5,7 @@ from django.core.files.base import ContentFile
 from django.core.files.storage import FileSystemStorage
 from io import BytesIO
 
-from apps.core.models import GalleryLayout, GalleryPhoto
+from apps.core.models import GalleryPhoto
 
 
 @pytest.fixture
@@ -13,18 +13,13 @@ def local_storage(settings):
     """Usa almacenamiento local de archivos para evitar llamadas a Cloudinary."""
     tmpdir = tempfile.mkdtemp()
     storage = FileSystemStorage(location=tmpdir)
-    image_field = GalleryPhoto._meta.get_field('image')
-    original_storage = image_field.storage
-    image_field.storage = storage
     original_storages = settings.STORAGES.copy()
     settings.STORAGES['default'] = {'BACKEND': 'django.core.files.storage.FileSystemStorage', 'OPTIONS': {'location': tmpdir}}
     yield storage
-    image_field.storage = original_storage
     settings.STORAGES = original_storages
 
 
 def _create_image(width: int = 600, height: int = 400, color: tuple = (255, 0, 0)):
-    """Crea una imagen en memoria para usar en tests."""
     image = PILImage.new('RGB', (width, height), color)
     buffer = BytesIO()
     image.save(buffer, format='JPEG')
@@ -33,82 +28,23 @@ def _create_image(width: int = 600, height: int = 400, color: tuple = (255, 0, 0
 
 
 @pytest.mark.django_db
-class TestGalleryLayoutModel:
-    def test_create_layout(self):
-        layout = GalleryLayout.objects.create(
-            name='Grid 2x2',
-            columns=2,
-            rows=2,
-            css_class='grid-cols-2',
-            max_photos=4,
-        )
-        assert layout.capacity() == 4
-        assert str(layout) == 'Grid 2x2'
-
-    def test_clean_validates_capacity(self):
-        layout = GalleryLayout(
-            name='Grid 2x2',
-            columns=2,
-            rows=2,
-            max_photos=9,
-        )
-        with pytest.raises(Exception):
-            layout.full_clean()
-
-
-@pytest.mark.django_db
 class TestGalleryPhotoModel:
-    def test_create_photo_computes_aspect_ratio(self, local_storage):
-        layout = GalleryLayout.objects.create(
-            name='Grid 3x3',
-            columns=3,
-            rows=3,
-            css_class='grid-cols-3',
-            max_photos=9,
-        )
+    def test_create_photo_defaults_to_1x1(self, local_storage):
         photo = GalleryPhoto.objects.create(
             image=_create_image(600, 400),
             alt_text='Foto horizontal',
-            layout=layout,
         )
-        assert photo.aspect_ratio == pytest.approx(1.5, 0.1)
-        assert photo.aspect_category == GalleryPhoto.ASPECT_LANDSCAPE
-        assert 'col-span-2' in photo.display_zone
+        assert photo.display_size == GalleryPhoto.DISPLAY_1X1
+        assert 'col-span-1 row-span-1' in photo.display_classes()
 
-    def test_portrait_aspect_category(self, local_storage):
+    def test_set_2x2_display_size(self, local_storage):
         photo = GalleryPhoto.objects.create(
             image=_create_image(400, 800),
             alt_text='Foto vertical',
+            display_size=GalleryPhoto.DISPLAY_2X2,
         )
-        assert photo.aspect_category == GalleryPhoto.ASPECT_PORTRAIT
-        assert photo.display_zone == 'col-span-1'
-
-    def test_wide_aspect_category(self, local_storage):
-        photo = GalleryPhoto.objects.create(
-            image=_create_image(1200, 400),
-            alt_text='Foto panoramica',
-        )
-        assert photo.aspect_category == GalleryPhoto.ASPECT_WIDE
-        assert photo.display_zone == 'col-span-2'
-
-    def test_square_aspect_category(self, local_storage):
-        photo = GalleryPhoto.objects.create(
-            image=_create_image(500, 500),
-            alt_text='Foto cuadrada',
-        )
-        assert photo.aspect_category == GalleryPhoto.ASPECT_SQUARE
-        assert photo.display_zone == 'col-span-1'
-
-    def test_native_aspect_ratio_css(self, local_storage):
-        photo = GalleryPhoto.objects.create(
-            image=_create_image(600, 400),
-            alt_text='Foto horizontal',
-        )
-        assert photo.native_aspect_ratio_css == '1.5'
-
-    def test_native_aspect_ratio_css_defaults_to_square(self):
-        photo = GalleryPhoto(alt_text='Foto sin imagen')
-        assert photo.native_aspect_ratio_css == '1'
+        assert photo.display_size == GalleryPhoto.DISPLAY_2X2
+        assert 'col-span-2 row-span-2' in photo.display_classes()
 
     def test_soft_delete_and_restore(self, local_storage):
         photo = GalleryPhoto.objects.create(

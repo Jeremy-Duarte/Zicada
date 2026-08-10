@@ -266,7 +266,6 @@ from apps.core.url_names import (
     CORE_HERO_TRASHCAN,
     CORE_GALLERY_PHOTO_LIST,
     CORE_GALLERY_PHOTO_TRASHCAN,
-    CORE_GALLERY_LAYOUT_LIST,
 )
 
 
@@ -785,15 +784,6 @@ class AdminConfigView(BaseDashboardView):
                 'bg_from': ICON_BG_ORANGE,
                 'bg_to': ICON_BG_ORANGE_100,
                 'icon_color': ICON_COLOR_ORANGE_600,
-                'badge': BADGE_PLUS,
-            },
-            {
-                'url': reverse(CORE_GALLERY_LAYOUT_LIST),
-                'icon': ICON_IMAGES,
-                'title': 'Layouts de Galería',
-                'bg_from': ICON_BG_BLUE_50,
-                'bg_to': ICON_BG_BLUE_100,
-                'icon_color': ICON_COLOR_BLUE_600,
                 'badge': BADGE_PLUS,
             },
             {

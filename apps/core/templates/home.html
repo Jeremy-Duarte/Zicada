@@ -219,7 +219,7 @@ reflejan tu estilo. Envíos a todo el país.{% endblock %}
     </section>
     {% endif %}
 
-    <!-- Galería destacada con layouts dinámicos -->
+    <!-- Galería destacada -->
     {% if gallery_photos %}
     <section class="py-12 md:py-20 bg-black" aria-labelledby="home-gallery-layout-title">
         <div class="container mx-auto px-4 mb-8 md:mb-12 flex items-end justify-between gap-4">
@@ -230,11 +230,10 @@ reflejan tu estilo. Envíos a todo el país.{% endblock %}
         </div>
 
         <div class="container mx-auto px-4">
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 auto-rows-[auto] items-start gap-4">
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 auto-rows-[140px] sm:auto-rows-[160px] md:auto-rows-[180px]" style="grid-auto-flow: dense;">
                 {% for photo in gallery_photos|slice:':8' %}
                 {% with photo_classes=photo|gallery_photo_classes %}
-                <figure class="{{ photo_classes }} relative group overflow-hidden rounded-xl bg-neutral-900"
-                        style="aspect-ratio: {{ photo.native_aspect_ratio_css }}">
+                <figure class="{{ photo_classes }} relative group overflow-hidden rounded-xl bg-neutral-900">
                     {% if photo.redirect_url %}
                     <a href="{{ photo.redirect_url }}" class="block w-full h-full" aria-label="{{ photo.title|default:photo.alt_text }}">
                     {% else %}
@@ -248,7 +247,7 @@ reflejan tu estilo. Envíos a todo el país.{% endblock %}
                             loading="lazy">
                         <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
                             {% if photo.title %}
-                            <span class="font-poppins text-white font-semibold text-sm translate-y-2 group-hover:translate-y-0 transition-transform duration-300">{{ photo.title }}</span>
+                            <span class="text-white font-semibold text-sm translate-y-2 group-hover:translate-y-0 transition-transform duration-300">{{ photo.title }}</span>
                             {% endif %}
                         </div>
                     </a>

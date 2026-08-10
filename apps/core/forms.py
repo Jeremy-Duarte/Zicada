@@ -2,14 +2,13 @@ from django import forms
 from django.contrib.auth.forms import AuthenticationForm
 from apps.core.crud.mixins import FormStyleMixin, SortableUpdateMixin, SortableCreateMixin, SortableDeleteMixin
 from django.core.exceptions import ValidationError
-from .models import HeroConfig
+from .models import GalleryPhoto, HeroConfig
 from apps.products.models import Collection, Product
 from apps.core.crud.widgets import CloudinarySingleImageWidget, SortableOrderWidget
 from django.core.cache import cache
 from apps.core.utils import safe_reverse
 from django.contrib.auth import get_user_model
 from .constants import LOGIN_ERROR_MESSAGE, LOGIN_INACTIVE_MESSAGE
-from .models import GalleryLayout, GalleryPhoto
 
 # =============================================================================
 # CONSTANTS
@@ -680,55 +679,13 @@ class HeroConfigRestoreForm(FormStyleMixin, forms.Form):
 
 
 # =============================================================================
-# GALLERY LAYOUT FORM
-# =============================================================================
-
-class GalleryLayoutForm(FormStyleMixin, forms.ModelForm):
-    """
-    Formulario para crear/editar layouts de galería.
-    """
-
-    class Meta:
-        model = GalleryLayout
-        fields = [
-            'name',
-            'columns',
-            'rows',
-            'css_class',
-            'max_photos',
-            'sort_order',
-            'is_active',
-        ]
-        widgets = {
-            'name': forms.TextInput(attrs={'placeholder': 'Ej: Grid 3x3'}),
-            'columns': forms.NumberInput(attrs={'min': 1, 'max': 4}),
-            'rows': forms.NumberInput(attrs={'min': 1, 'max': 4}),
-            'css_class': forms.TextInput(attrs={'placeholder': 'grid-cols-3 md:grid-cols-3'}),
-            'max_photos': forms.NumberInput(attrs={'min': 1, 'max': 16}),
-            'sort_order': forms.NumberInput(attrs={'min': 0}),
-        }
-
-    def clean(self):
-        cleaned_data = super().clean()
-        columns = cleaned_data.get('columns', 1)
-        rows = cleaned_data.get('rows', 1)
-        max_photos = cleaned_data.get('max_photos')
-        expected = columns * rows
-        if max_photos and max_photos != expected:
-            self.add_error(
-                'max_photos',
-                f'La capacidad máxima debe ser {expected} ({columns}x{rows}).'
-            )
-        return cleaned_data
-
-
-# =============================================================================
 # GALLERY PHOTO FORM
 # =============================================================================
 
 class GalleryPhotoForm(FormStyleMixin, SortableCreateMixin, SortableUpdateMixin, forms.ModelForm):
     """
     Formulario para crear/editar fotos de la galería.
+    El admin elige explícitamente display_size (1x1 o 2x2).
     """
 
     sortable_queryset = None
@@ -743,7 +700,7 @@ class GalleryPhotoForm(FormStyleMixin, SortableCreateMixin, SortableUpdateMixin,
             'redirect_url',
             'title',
             'alt_text',
-            'layout',
+            'display_size',
             'sort_order',
             'is_active',
         ]
@@ -752,6 +709,7 @@ class GalleryPhotoForm(FormStyleMixin, SortableCreateMixin, SortableUpdateMixin,
             'redirect_url': forms.URLInput(attrs={'placeholder': 'https://...'}),
             'title': forms.TextInput(attrs={'placeholder': 'Título de la foto'}),
             'alt_text': forms.TextInput(attrs={'placeholder': 'Descripción para SEO'}),
+            'display_size': forms.Select(choices=GalleryPhoto.DISPLAY_SIZE_CHOICES),
             'sort_order': forms.NumberInput(attrs={'min': 0}),
         }
 
@@ -759,8 +717,6 @@ class GalleryPhotoForm(FormStyleMixin, SortableCreateMixin, SortableUpdateMixin,
         super().__init__(*args, **kwargs)
         self.sortable_queryset = GalleryPhoto.objects.filter(is_active=True).order_by('sort_order')
         self._setup_sortable_widget()
-        self.fields['layout'].queryset = GalleryLayout.objects.filter(is_active=True).order_by('sort_order')
-        self.fields['layout'].required = False
 
     def clean_image(self):
         image = self.cleaned_data.get('image')
@@ -775,13 +731,6 @@ class GalleryPhotoForm(FormStyleMixin, SortableCreateMixin, SortableUpdateMixin,
     def clean_redirect_url(self):
         url = self.cleaned_data.get('redirect_url', '')
         return url.strip()
-
-    def save(self, commit=True):
-        instance = super().save(commit=False)
-        instance.update_aspect_metadata()
-        if commit:
-            instance.save()
-        return instance
 
 
 # =============================================================================
