@@ -230,10 +230,10 @@ reflejan tu estilo. Envíos a todo el país.{% endblock %}
         </div>
 
         <div class="container mx-auto px-4">
-            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3" style="grid-auto-rows: 38vh; grid-auto-flow: dense;">
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3" style="grid-auto-flow: dense;">
                 {% for photo in gallery_photos|slice:':8' %}
                 {% with photo_classes=photo|gallery_photo_classes %}
-                <figure class="{{ photo_classes }} relative group overflow-hidden rounded-xl bg-neutral-900 min-h-0">
+                <figure class="{{ photo_classes }} relative group overflow-hidden rounded-xl bg-neutral-900 min-h-0 gallery-photo" data-display="{{ photo.display_size }}">
                     {% if photo.redirect_url %}
                     <a href="{{ photo.redirect_url }}" class="block w-full h-full" aria-label="{{ photo.title|default:photo.alt_text }}">
                     {% else %}

@@ -4,13 +4,26 @@
 {% block title %}Galería - Zicada{% endblock %}
 {% block description %}Explora la galería de fotos de Zicada. Moda urbana, streetwear y estilo personalizado en Colombia.{% endblock %}
 
+{% block extra_css %}
+<style>
+    .gallery-photo[data-display="2x2"] { aspect-ratio: 2/3; }
+    .gallery-photo[data-display="1x1"] { aspect-ratio: 2/1; }
+    @media (min-width: 640px) {
+        .gallery-photo[data-display="2x2"] { aspect-ratio: 3/4; }
+    }
+    @media (min-width: 1024px) {
+        .gallery-photo[data-display="2x2"] { aspect-ratio: 4/5; }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <section class="bg-black text-white min-h-screen" aria-labelledby="gallery-page-title">
     {% if gallery_photos %}
     <div x-data="galleryLightbox()" class="px-4 md:px-8 py-6 md:py-10">
         <div
             class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4"
-            style="grid-auto-rows: 45vh; grid-auto-flow: dense;"
+            style="grid-auto-flow: dense;"
             role="list"
         >
             <!-- Título anclado a la esquina superior izquierda -->
@@ -25,7 +38,8 @@
 
             {% for photo in gallery_photos %}
             {% with photo_classes=photo|gallery_photo_classes %}
-            <figure class="{{ photo_classes }} relative group overflow-hidden rounded-xl bg-neutral-900 min-h-0" role="listitem">
+            <figure class="{{ photo_classes }} relative group overflow-hidden rounded-xl bg-neutral-900 min-h-0 gallery-photo"
+                    data-display="{{ photo.display_size }}" role="listitem">
                 {% if photo.redirect_url %}
                 <a href="{{ photo.redirect_url }}"
                    target="{{ photo.redirect_url|is_external_url|yesno:'_blank,_self' }}"
