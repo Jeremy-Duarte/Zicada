@@ -7,68 +7,63 @@
 {% block content %}
 <section class="bg-black text-white min-h-screen" aria-labelledby="gallery-page-title">
     {% if gallery_photos %}
-    <div x-data="galleryLightbox()" class="flex flex-col md:flex-row min-h-screen">
-        <!-- Texto — 50% ancho, 45vh altura, centrado -->
-        <aside class="md:w-1/2 h-[45vh] md:h-auto flex items-center justify-center px-8 md:px-12 lg:px-16 py-12 md:py-0">
-            <div class="text-center max-w-md">
-                <h1 id="gallery-page-title" class="font-poppins text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight leading-none">
+    <div x-data="galleryLightbox()" class="px-4 md:px-8 py-6 md:py-10">
+        <div
+            class="grid grid-cols-4 gap-3 md:gap-4 auto-rows-[160px] sm:auto-rows-[200px] md:auto-rows-[240px]"
+            style="grid-auto-flow: dense;"
+            role="list"
+        >
+            <!-- Título anclado a la esquina superior izquierda -->
+            <div class="col-span-2 row-span-2 md:row-span-3 flex flex-col justify-center px-2 md:px-4">
+                <h1 id="gallery-page-title" class="font-poppins text-3xl md:text-5xl lg:text-6xl font-extrabold tracking-tight leading-none">
                     GALERÍA
                 </h1>
-                <p class="text-gray-400 mt-4 md:mt-6 text-sm md:text-base">
+                <p class="text-gray-400 mt-2 md:mt-4 text-xs md:text-base">
                     Descubre los looks y momentos que definen el estilo Zicada.
                 </p>
             </div>
-        </aside>
 
-        <!-- Grid — 2 columnas a la derecha -->
-        <div class="md:w-1/2 px-4 md:px-6 lg:px-8 pb-12 md:py-12 lg:py-16">
-            <div
-                class="grid grid-cols-2 gap-3 md:gap-4 auto-rows-[160px] sm:auto-rows-[200px] md:auto-rows-[240px]"
-                style="grid-auto-flow: dense;"
-                role="list"
-            >
-                {% for photo in gallery_photos %}
-                {% with photo_classes=photo|gallery_photo_classes %}
-                <figure class="{{ photo_classes }} relative group overflow-hidden rounded-xl bg-neutral-900" role="listitem">
-                    {% if photo.redirect_url %}
-                    <a href="{{ photo.redirect_url }}"
-                       target="{{ photo.redirect_url|is_external_url|yesno:'_blank,_self' }}"
-                       rel="noopener noreferrer"
-                       class="block w-full h-full"
-                       aria-label="{{ photo.title|default:photo.alt_text }}">
-                    {% else %}
-                    <button type="button"
-                            @click="open('{{ photo.image|default_image_url }}', '{{ photo.title|default:photo.alt_text|escapejs }}')"
-                            class="w-full h-full text-left"
-                            aria-label="Ampliar {{ photo.title|default:photo.alt_text }}">
-                    {% endif %}
+            {% for photo in gallery_photos %}
+            {% with photo_classes=photo|gallery_photo_classes %}
+            <figure class="{{ photo_classes }} relative group overflow-hidden rounded-xl bg-neutral-900" role="listitem">
+                {% if photo.redirect_url %}
+                <a href="{{ photo.redirect_url }}"
+                   target="{{ photo.redirect_url|is_external_url|yesno:'_blank,_self' }}"
+                   rel="noopener noreferrer"
+                   class="block w-full h-full"
+                   aria-label="{{ photo.title|default:photo.alt_text }}">
+                {% else %}
+                <button type="button"
+                        @click="open('{{ photo.image|default_image_url }}', '{{ photo.title|default:photo.alt_text|escapejs }}')"
+                        class="w-full h-full text-left"
+                        aria-label="Ampliar {{ photo.title|default:photo.alt_text }}">
+                {% endif %}
 
-                        <img
-                            src="{{ photo.image|cloudinary_url:600 }}"
-                            srcset="{{ photo.image|cloudinary_srcset:'400,800,1200' }}"
-                            sizes="(max-width: 768px) 100vw, 33vw"
-                            alt="{{ photo.alt_text }}"
-                            class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                            loading="lazy"
-                        >
+                    <img
+                        src="{{ photo.image|cloudinary_url:600 }}"
+                        srcset="{{ photo.image|cloudinary_srcset:'400,800,1200' }}"
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                        alt="{{ photo.alt_text }}"
+                        class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                        loading="lazy"
+                    >
 
-                        <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
-                            {% if photo.title %}
-                            <span class="text-white font-semibold text-sm md:text-base translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
-                                {{ photo.title }}
-                            </span>
-                            {% endif %}
-                        </div>
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
+                        {% if photo.title %}
+                        <span class="text-white font-semibold text-sm md:text-base translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
+                            {{ photo.title }}
+                        </span>
+                        {% endif %}
+                    </div>
 
-                    {% if photo.redirect_url %}
-                    </a>
-                    {% else %}
-                    </button>
-                    {% endif %}
-                </figure>
-                {% endwith %}
-                {% endfor %}
-            </div>
+                {% if photo.redirect_url %}
+                </a>
+                {% else %}
+                </button>
+                {% endif %}
+            </figure>
+            {% endwith %}
+            {% endfor %}
         </div>
 
         <!-- Lightbox -->
