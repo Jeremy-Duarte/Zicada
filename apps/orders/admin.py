@@ -84,6 +84,13 @@ class OrderItemInline(admin.TabularInline):
             return f"${obj.variant.product.price:,.0f} COP"
         return "-"
 
+    @admin.display(description='Subtotal')
+    def subtotal_display(self, obj):
+        if obj.variant and obj.quantity:
+            total = obj.variant.product.price * obj.quantity
+            return f"${total:,.0f} COP"
+        return "-"
+
 
 class PaymentInline(admin.TabularInline):
     model = Payment
@@ -92,13 +99,6 @@ class PaymentInline(admin.TabularInline):
     fields = ('gateway', 'gateway_transaction_id', 'gateway_session_id', 'status', 'amount', 'currency', 'processed_at', 'error_message')
     can_delete = False
     show_change_link = True
-
-    @admin.display(description='Subtotal')
-    def subtotal_display(self, obj):
-        if obj.variant and obj.quantity:
-            total = obj.variant.product.price * obj.quantity
-            return f"${total:,.0f} COP"
-        return "-"
 
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
