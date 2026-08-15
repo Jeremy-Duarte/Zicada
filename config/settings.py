@@ -213,7 +213,11 @@ WOMPI_EVENTS_SECRET = env("WOMPI_EVENTS_SECRET", default="")
 WOMPI_INTEGRITY_SECRET = env("WOMPI_INTEGRITY_SECRET", default="")
 WOMPI_API_URL = env("WOMPI_API_URL", default="https://sandbox.wompi.co/v1")
 
-# Celery
+# Tareas asíncronas: 'celery' | 'threading' | 'sync'
+# 'sync' no requiere infraestructura (máxima economía, bloquea el request).
+# 'threading' no requiere infraestructura y responde 200 rápido (hilo en background).
+# 'celery' requiere broker Redis + worker (más gasto de servidor).
+ASYNC_BACKEND = env("ASYNC_BACKEND", default="sync")
 CELERY_BROKER_URL = env("CELERY_BROKER_URL", default="memory://")
 CELERY_RESULT_BACKEND = env("CELERY_RESULT_BACKEND", default="django-db")
 CELERY_TASK_ALWAYS_EAGER = env.bool("CELERY_TASK_ALWAYS_EAGER", default=True)

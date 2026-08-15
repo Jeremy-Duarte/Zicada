@@ -805,12 +805,10 @@ def _process_webhook(request, gateway_name: str):
         logger.error(f'Evento inválido en webhook {gateway_name}: {exc}')
         return HttpResponse(status=400)
 
-    try:
-        use_cases.process_payment_event(gateway_name, event)
-    except Exception as exc:
-        logger.exception(f'Error procesando evento {gateway_name}: {exc}')
-        return HttpResponse(status=500)
+    from apps.orders.async_tasks import run_async
+    from apps.orders.tasks import process_payment_event_task
 
+    run_async(process_payment_event_task, gateway_name, event)
     return HttpResponse(status=200)
 
 

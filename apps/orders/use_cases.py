@@ -254,7 +254,8 @@ def cancel_expired_pending_orders() -> int:
 
 
 def _notify_result(order: Order, status: str) -> None:
-    """Encola la notificación por correo según el resultado del pago."""
+    """Encola la notificación por correo según el backend asíncrono configurado."""
+    from apps.orders.async_tasks import run_async
     from apps.orders.tasks import notify_payment_result
 
-    notify_payment_result.delay(order.id, status)
+    run_async(notify_payment_result, order.id, status)
