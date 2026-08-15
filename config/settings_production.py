@@ -240,6 +240,18 @@ AXES_FAILURE_LIMIT = 5
 AXES_COOLOFF_TIME = 1
 AXES_LOCKOUT_PARAMETERS = [['username', 'ip_address']]
 AXES_RESET_ON_SUCCESS = True
+# Detectar IP real detrás del proxy de Railway (si no, todos parecen la misma IP)
+AXES_IPWARE_META_PRECEDENCE_ORDER = [
+    'HTTP_X_FORWARDED_FOR',
+    'REMOTE_ADDR',
+]
+AXES_IPWARE_PROXY_COUNT = 1
+
+AUTHENTICATION_BACKENDS = [
+    # AxesStandaloneBackend debe ser el primero (renombrado desde AxesModelBackend)
+    'axes.backends.AxesStandaloneBackend',
+    'django.contrib.auth.backends.ModelBackend',
+]
 
 # LOGGING PARA PRODUCCIÓN
 LOGGING = {

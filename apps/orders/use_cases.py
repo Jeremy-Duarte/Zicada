@@ -1,6 +1,5 @@
 import logging
 from datetime import timedelta
-from decimal import Decimal
 from typing import Any, Dict, Optional
 
 from django.conf import settings

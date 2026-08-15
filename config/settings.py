@@ -49,9 +49,16 @@ SECURE_REFERRER_POLICY = 'same-origin'
 # django-axes: proteccion contra fuerza bruta
 AXES_FAILURE_LIMIT = 5
 AXES_COOLOFF_TIME = 0.5
-AXES_LOCKOUT_PARAMETERS = [['username']]
+# Bloquea por combinación de username + IP para impedir bypass rotando user-agent
+AXES_LOCKOUT_PARAMETERS = [['username', 'ip_address']]
 AXES_RESET_ON_SUCCESS = True
 AXES_LOCKOUT_CALLABLE = None
+
+AUTHENTICATION_BACKENDS = [
+    # AxesStandaloneBackend debe ser el primero (renombrado desde AxesModelBackend)
+    'axes.backends.AxesStandaloneBackend',
+    'django.contrib.auth.backends.ModelBackend',
+]
 
 INSTALLED_APPS = [
     'django.contrib.admin',
