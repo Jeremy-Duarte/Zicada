@@ -14,7 +14,7 @@ if (BASE_DIR / '.env').exists():
 
 SECRET_KEY = env('DJANGO_SECRET_KEY')
 DEBUG = env.bool('DJANGO_DEBUG', default=False)
-ALLOWED_HOSTS = env.list('DJANGO_ALLOWED_HOSTS', default=['localhost', '127.0.0.1', 'testserver', '[::1]'])
+ALLOWED_HOSTS = env.list('DJANGO_ALLOWED_HOSTS', default=['localhost', '127.0.0.1', 'testserver', '[::1]','.trycloudflare.com'])
 
 # =============================================================================
 # SEGURIDAD HTTP — solo activo en producción (DEBUG=False)
@@ -191,6 +191,8 @@ STORAGES = {
 CRONJOBS = [
     # Actualizar colecciones: cada domingo a las 2:00 AM
     ('0 2 * * 0', 'django.core.management.call_command', ['update_collections_status']),
+    # Expirar pedidos pendientes sin pago: todos los días a las 3:00 AM
+    ('0 3 * * *', 'django.core.management.call_command', ['expire_pending_orders']),
 ]
 
 CRONTAB_LOCK_JOBS = True
@@ -203,6 +205,18 @@ CRONTAB_DJANGO_SETTINGS_MODULE = 'config.settings'
 STRIPE_PUBLISHABLE_KEY= env("STRIPE_PUBLISHABLE_KEY")
 STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY")
 STRIPE_WEBHOOK_KEY= env("STRIPE_WEBHOOK_KEY")
+
+# Configuración API wompi pasarela de pagos
+WOMPI_PUBLIC_KEY = env("WOMPI_PUBLIC_KEY", default="")
+WOMPI_PRIVATE_KEY = env("WOMPI_PRIVATE_KEY", default="")
+WOMPI_EVENTS_SECRET = env("WOMPI_EVENTS_SECRET", default="")
+WOMPI_INTEGRITY_SECRET = env("WOMPI_INTEGRITY_SECRET", default="")
+WOMPI_API_URL = env("WOMPI_API_URL", default="https://sandbox.wompi.co/v1")
+
+# Celery
+CELERY_BROKER_URL = env("CELERY_BROKER_URL", default="memory://")
+CELERY_RESULT_BACKEND = env("CELERY_RESULT_BACKEND", default="django-db")
+CELERY_TASK_ALWAYS_EAGER = env.bool("CELERY_TASK_ALWAYS_EAGER", default=True)
 
 # PWA Metadata
 PWA_NAME = "Zicada Delivery"

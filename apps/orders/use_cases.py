@@ -257,4 +257,4 @@ def _notify_result(order: Order, status: str) -> None:
     """Encola la notificación por correo según el resultado del pago."""
     from apps.orders.tasks import notify_payment_result
 
-    notify_payment_result(order.id, status)
+    notify_payment_result.delay(order.id, status)

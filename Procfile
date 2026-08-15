@@ -1,1 +1,2 @@
 web: DJANGO_SETTINGS_MODULE=config.settings_production python manage.py migrate && DJANGO_SETTINGS_MODULE=config.settings_production python manage.py setup_roles && DJANGO_SETTINGS_MODULE=config.settings_production python manage.py collectstatic --noinput && DJANGO_SETTINGS_MODULE=config.settings_production gunicorn config.wsgi --log-file -
+worker: DJANGO_SETTINGS_MODULE=config.settings_production celery -A config worker --loglevel=info --concurrency=2

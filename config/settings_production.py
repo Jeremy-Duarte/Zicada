@@ -194,9 +194,22 @@ STRIPE_PUBLISHABLE_KEY = env("STRIPE_PUBLISHABLE_KEY")
 STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY")
 STRIPE_WEBHOOK_KEY = env("STRIPE_WEBHOOK_KEY")
 
+# WOMPI
+WOMPI_PUBLIC_KEY = env("WOMPI_PUBLIC_KEY", default="")
+WOMPI_PRIVATE_KEY = env("WOMPI_PRIVATE_KEY", default="")
+WOMPI_EVENTS_SECRET = env("WOMPI_EVENTS_SECRET", default="")
+WOMPI_INTEGRITY_SECRET = env("WOMPI_INTEGRITY_SECRET", default="")
+WOMPI_API_URL = env("WOMPI_API_URL", default="https://sandbox.wompi.co/v1")
+
+# CELERY
+CELERY_BROKER_URL = env("CELERY_BROKER_URL", default="")
+CELERY_RESULT_BACKEND = env("CELERY_RESULT_BACKEND", default="django-db")
+CELERY_TASK_ALWAYS_EAGER = env.bool("CELERY_TASK_ALWAYS_EAGER", default=False)
+
 # CRON TASKS
 CRONJOBS = [
     ('0 2 * * 0', 'django.core.management.call_command', ['update_collections_status']),
+    ('0 3 * * *', 'django.core.management.call_command', ['expire_pending_orders']),
 ]
 CRONTAB_LOCK_JOBS = True
 CRONTAB_COMMAND_PREFIX = 'TZ=America/Bogota'

@@ -746,24 +746,16 @@ def create_stripe_checkout_session(request):
 def order_confirmation(request, order_number):
     """
     HU-025: Recibir confirmación de pedido (pantalla y envío de correo/WhatsApp)
+    Lee el estado actual del pedido y su último pago sin bloqueo.
     """
     try:
-        order = Order.objects.prefetch_related('items').get(order_number=order_number)
+        order = Order.objects.prefetch_related('items', 'payments').get(order_number=order_number)
     except Order.DoesNotExist:
         messages.error(request, MESSAGE_ORDER_NOT_FOUND)
         return redirect(PRODUCTS_CATALOG)
 
-    if not order.is_paid:
-        for _ in range(WEBHOOK_MAX_RETRIES):
-            if order.is_paid:
-                break
-            time.sleep(WEBHOOK_RETRY_DELAY)
-            order.refresh_from_db()
-
     if order.is_paid:
         # HU-025 | ESCENARIO 1 | H | Confirmación en pantalla con número de pedido
-        # HU-025 | ESCENARIO 2 | H | Envío de enlace por WhatsApp (se hace en el webhook)
-        # HU-025 | ESCENARIO 3 | H | Envío de correo opcional (se hace en webhook con send_order_confirmation_email)
         cart = Cart(request)
         if not cart.is_empty():
             cart.clear()
@@ -774,6 +766,7 @@ def order_confirmation(request, order_number):
     context = {
         CONTEXT_ORDER: order,
         CONTEXT_ITEMS: order.items.all(),
+        'last_payment': order.payments.first(),
     }
     return render(request, TEMPLATE_ORDER_CONFIRMATION, context)
 
