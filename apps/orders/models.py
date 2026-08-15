@@ -34,6 +34,13 @@ class Order(models.Model):
         ('cancelado', 'Cancelado'),
     ]
     
+    PAYMENT_METHOD_CHOICES = [
+        ('sin_registrar', 'Sin Registrar'),
+        ('stripe', 'Stripe'),
+        ('wompi', 'Wompi'),
+        ('contraentrega', 'Contraentrega'),
+    ]
+    
     # ======================================================================
     # CAMPOS DEL MODELO
     # ======================================================================
@@ -102,6 +109,14 @@ class Order(models.Model):
         default=False,
         verbose_name='Pagado',
         help_text='Indica si el cliente pagó contraentrega'
+    )
+    payment_method = models.CharField(
+        max_length=20,
+        choices=PAYMENT_METHOD_CHOICES,
+        default='sin_registrar',
+        verbose_name='Método de pago',
+        db_index=True,
+        help_text='Pasarela o medio de pago utilizado'
     )
     
     # Estado
@@ -486,3 +501,151 @@ class OrderItem(models.Model):
             self.full_clean()
         
         super().save(*args, **kwargs)
+
+
+# =============================================================================
+# PAYMENT MODEL (pasarelas de pago)
+# =============================================================================
+
+class Payment(models.Model):
+    """
+    Registro transaccional de un intento/cobro asociado a un Order.
+    Puede haber varios por pedido (reintentos, devoluciones).
+    """
+
+    STATUS_CHOICES = [
+        ('pending', 'Pendiente'),
+        ('in_process', 'En proceso'),
+        ('approved', 'Aprobado'),
+        ('rejected', 'Rechazado'),
+        ('refunded', 'Reembolsado'),
+        ('cancelled', 'Cancelado'),
+        ('error', 'Error'),
+    ]
+
+    GATEWAY_CHOICES = [
+        ('stripe', 'Stripe'),
+        ('wompi', 'Wompi'),
+    ]
+
+    order = models.ForeignKey(
+        Order,
+        on_delete=models.CASCADE,
+        related_name='payments',
+        verbose_name='Pedido'
+    )
+    gateway = models.CharField(
+        max_length=20,
+        choices=GATEWAY_CHOICES,
+        verbose_name='Pasarela'
+    )
+    gateway_transaction_id = models.CharField(
+        max_length=255,
+        blank=True,
+        default='',
+        verbose_name='ID de transacción en pasarela',
+        db_index=True
+    )
+    gateway_session_id = models.CharField(
+        max_length=255,
+        blank=True,
+        default='',
+        verbose_name='ID de sesión/intención en pasarela',
+        db_index=True
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='pending',
+        verbose_name='Estado del pago'
+    )
+    amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        verbose_name='Monto cobrado'
+    )
+    currency = models.CharField(
+        max_length=3,
+        default='COP',
+        verbose_name='Moneda'
+    )
+    raw_request = models.JSONField(
+        default=dict,
+        blank=True,
+        verbose_name='Payload recibido (webhook)'
+    )
+    raw_response = models.JSONField(
+        default=dict,
+        blank=True,
+        verbose_name='Respuesta enviada a pasarela'
+    )
+    processed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name='Fecha de procesamiento'
+    )
+    error_message = models.TextField(
+        blank=True,
+        default='',
+        verbose_name='Mensaje de error'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Pago'
+        verbose_name_plural = 'Pagos'
+        indexes = [
+            models.Index(fields=['gateway', 'gateway_transaction_id']),
+            models.Index(fields=['gateway', 'gateway_session_id']),
+            models.Index(fields=['status']),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['gateway', 'gateway_transaction_id'],
+                condition=~models.Q(gateway_transaction_id=''),
+                name='unique_gateway_transaction_id'
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.gateway} - {self.gateway_transaction_id or self.gateway_session_id} - {self.get_status_display()}"
+
+
+# =============================================================================
+# PAYMENT EVENT MODEL (idempotencia de webhooks)
+# =============================================================================
+
+class PaymentEvent(models.Model):
+    """
+    Registro de eventos de pasarela ya procesados para garantizar idempotencia.
+    Evita que un webhook duplicado reprocese acciones irreversibles.
+    """
+
+    payment = models.ForeignKey(
+        Payment,
+        on_delete=models.CASCADE,
+        related_name='events',
+        verbose_name='Pago'
+    )
+    gateway = models.CharField(max_length=20)
+    event_id = models.CharField(
+        max_length=255,
+        verbose_name='ID del evento en pasarela',
+        db_index=True
+    )
+    event_type = models.CharField(
+        max_length=100,
+        verbose_name='Tipo de evento'
+    )
+    received_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ['gateway', 'event_id']
+        verbose_name = 'Evento de pago'
+        verbose_name_plural = 'Eventos de pago'
+
+    def __str__(self):
+        return f"{self.gateway} - {self.event_type} - {self.event_id}"
