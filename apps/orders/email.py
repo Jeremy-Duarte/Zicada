@@ -6,7 +6,7 @@ from django.urls import reverse
 
 logger = logging.getLogger(__name__)
 
-def send_order_confirmation_email(order):    
+def send_order_confirmation_email(order):
     subject = f"Zicada - Tu pedido {order.order_number} ha sido confirmado"
     
     tracking_url = f"{settings.SITE_URL}{reverse('orders:order_tracking', kwargs={'tracking_token': order.tracking_token})}"
@@ -31,3 +31,27 @@ def send_order_confirmation_email(order):
         )
     except Exception:
         logger.exception(f"Failed to send confirmation email for order {order.order_number}")
+
+
+def send_order_cancellation_email(order):
+    subject = f"Zicada - Tu pedido {order.order_number} ha sido cancelado"
+
+    context = {
+        'order': order,
+        'items': order.items.all(),
+    }
+
+    text_message = render_to_string('orders/emails/order_cancellation.txt', context)
+    html_message = render_to_string('orders/emails/order_cancellation.html', context)
+
+    try:
+        send_mail(
+            subject=subject,
+            message=text_message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[order.customer_email],
+            html_message=html_message,
+            fail_silently=False,
+        )
+    except Exception:
+        logger.exception(f"Failed to send cancellation email for order {order.order_number}")

@@ -1,0 +1,18 @@
+Tu pedido ha sido cancelado
+
+Hola {{ order.customer_name }},
+
+Tu pedido #{{ order.order_number }} ha sido cancelado{% if order.cancelled_reason %} por el siguiente motivo: {{ order.cancelled_reason }}{% endif %}.
+
+Si realizaste un pago, el reembolso será procesado por la pasarela.
+
+Detalles del pedido:
+{% for item in items %}
+- {{ item.product_name_snapshot }} (Talla {{ item.size_snapshot }}) x{{ item.quantity }} = ${{ item.subtotal|floatformat:0 }}
+{% endfor %}
+
+Total: ${{ order.total_amount|floatformat:0 }}
+
+Si tienes dudas, contáctanos.
+
+¡Gracias por confiar en Zicada!
