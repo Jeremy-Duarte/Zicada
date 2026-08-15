@@ -1,6 +1,5 @@
 import json
 import logging
-import time
 from datetime import timedelta
 from decimal import Decimal
 
@@ -21,16 +20,13 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 from django.views.generic import CreateView, DetailView, FormView, ListView, UpdateView
 
-import stripe
 from apps.core.crud.mixins import FilterMixin, PaginationMixin
 from apps.orders import use_cases
 from apps.orders.gateways.registry import get_gateway
-from apps.orders.stripe_client import get_stripe
 from apps.products.models import ProductVariant
 from apps.users.models import User
 
 from .cart import Cart
-from .email import send_order_confirmation_email
 from .forms import (
     CheckoutOrderForm, OrderAssignDeliveryForm, OrderCancelForm,
     OrderConfirmForm, OrderCreateForm, OrderItemCreateForm,
@@ -53,18 +49,11 @@ from apps.core.url_names import (
 )
 
 from .constants import (
-    DEFAULT_SHIPPING_COST,
-    CART_EXPIRATION_DAYS,
     MAX_QUANTITY_PER_ITEM,
-    FREE_SHIPPING_THRESHOLD,
     # Order statuses
     STATUS_PENDING,
-    STATUS_CONFIRMED,
-    STATUS_PREPARING,
     STATUS_READY,
     STATUS_ON_THE_WAY,
-    STATUS_DELIVERED,
-    STATUS_CANCELLED,
     # Status progression
     STATUS_PROGRESSION,
     # Status badge mapping
@@ -93,7 +82,6 @@ from .constants import (
     TEMPLATE_ORDER_ITEM_CONFIRM_DELETE,
     # Messages
     MESSAGE_CART_EMPTY,
-    MESSAGE_CART_CLEARED,
     MESSAGE_ORDER_NOT_FOUND,
     MESSAGE_PAYMENT_PROCESSING,
     MESSAGE_NO_SHIPPING_DATA,
@@ -116,12 +104,6 @@ from .constants import (
     STOCK_STATUS_LOW_STOCK,
     STOCK_STATUS_AVAILABLE,
     STOCK_STATUS_UNAVAILABLE,
-    # Stripe product data templates
-    STRIPE_PRODUCT_NAME_TEMPLATE,
-    STRIPE_PRODUCT_DESCRIPTION_TEMPLATE,
-    # Webhook retry settings
-    WEBHOOK_MAX_RETRIES,
-    WEBHOOK_RETRY_DELAY,
     # Context keys
     CONTEXT_ORDER,
     CONTEXT_ITEMS,
