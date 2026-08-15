@@ -66,10 +66,11 @@ class StripeGateway(PaymentGateway):
                 'payment_id': str(payment.id),
             },
         )
+        raw_response = checkout_session.to_dict_recursive() if hasattr(checkout_session, 'to_dict_recursive') else checkout_session.to_dict()
         return {
             'gateway_session_id': checkout_session.id,
             'redirect_url': checkout_session.url,
-            'raw_response': dict(checkout_session),
+            'raw_response': raw_response,
         }
 
     def verify_signature(self, request_body: bytes, signature: str, secret: str) -> bool:

@@ -265,6 +265,10 @@ class Order(models.Model):
         
         from apps.products.models import ProductVariant
 
+        # El stock solo se libera si el pedido ya lo había descontado
+        # (estado confirmado o posterior). Un pedido pendiente nunca descontó stock.
+        releases_stock = self.status != 'pendiente'
+
         with transaction.atomic():
             items = list(self.items.select_related('variant').all())
             variant_ids = [item.variant_id for item in items if item.variant_id]
@@ -281,11 +285,12 @@ class Order(models.Model):
             self.cancelled_reason = reason
             self.save()
 
-            for item in items:
-                variant = variant_map.get(item.variant_id) if item.variant_id else None
-                if variant:
-                    variant.stock += item.quantity
-                    variant.save()
+            if releases_stock:
+                for item in items:
+                    variant = variant_map.get(item.variant_id) if item.variant_id else None
+                    if variant:
+                        variant.stock += item.quantity
+                        variant.save()
 
     def mark_as_ready(self, user=None):
         """
