@@ -23,6 +23,8 @@ from django.views.generic import CreateView, DetailView, FormView, ListView, Upd
 
 import stripe
 from apps.core.crud.mixins import FilterMixin, PaginationMixin
+from apps.orders import use_cases
+from apps.orders.gateways.registry import get_gateway
 from apps.orders.stripe_client import get_stripe
 from apps.products.models import ProductVariant
 from apps.users.models import User
@@ -665,15 +667,16 @@ def _render_checkout_form(request, cart, form=None):
 
 
 @require_http_methods(['GET', 'POST'])
-def create_stripe_checkout_session(request):
+def create_payment_intent_view(request, gateway: str):
     """
-    HU-024: Confirmar pedido (creación de pedido y redirección a Stripe)
-    HU-025: Recibir confirmación de pedido (después del pago)
-    NOTA: Acepta GET porque el flujo de checkout redirige aquí vía GET
-    (redirect-after-POST). El checkout_data en sesión actúa como guardia
-    contra ejecuciones accidentales.
+    HU-024: Confirmar pedido (creación de pedido e intención de pago).
+    Recibe la pasarela ('stripe' | 'wompi') y delega la creación de la
+    intención al use case correspondiente.
     """
-    stripe = get_stripe()
+    if gateway not in ('stripe', 'wompi'):
+        messages.error(request, MSG_INVALID_DATA)
+        return redirect(ORDERS_CHECKOUT)
+
     cart = Cart(request)
 
     if cart.is_empty():
@@ -694,19 +697,12 @@ def create_stripe_checkout_session(request):
         messages.error(request, MESSAGE_NO_SHIPPING_DATA)
         return redirect(ORDERS_CHECKOUT)
 
-    customer_name = checkout_data.get('customer_name')
-    customer_phone = checkout_data.get('customer_phone')
-    customer_email = checkout_data.get('customer_email')
-    shipping_address = checkout_data.get('shipping_address')
-    delivery_notes = checkout_data.get('delivery_notes', '')
-
-    # HU-024 | ESCENARIO 1 | H | Creación del pedido en estado pendiente
     order = Order(
-        customer_name=customer_name,
-        customer_phone=customer_phone,
-        customer_email=customer_email or '',
-        shipping_address=shipping_address,
-        delivery_notes=delivery_notes,
+        customer_name=checkout_data.get('customer_name'),
+        customer_phone=checkout_data.get('customer_phone'),
+        customer_email=checkout_data.get('customer_email') or '',
+        shipping_address=checkout_data.get('shipping_address'),
+        delivery_notes=checkout_data.get('delivery_notes', ''),
         subtotal=cart.get_subtotal(),
         shipping_cost=cart.get_shipping_cost(),
         total_amount=cart.get_total(),
@@ -714,79 +710,36 @@ def create_stripe_checkout_session(request):
         is_paid=False,
     )
     order.save()
+    cart.to_order_items(order)
 
-    # Guardar totales del carrito antes de vaciarlo
-    cart_total = cart.get_total()
-    cart_items_count = cart.get_total_items()
+    success_url = settings.SITE_URL + reverse(
+        ORDERS_CONFIRMATION,
+        kwargs={'order_number': order.order_number}
+    )
+    cancel_url = settings.SITE_URL + reverse(ORDERS_CART_DETAIL)
 
     try:
-        success_url = settings.SITE_URL + reverse(
-            ORDERS_CONFIRMATION,
-            kwargs={'order_number': order.order_number}
-        )
-        cancel_url = settings.SITE_URL + reverse(ORDERS_CART_DETAIL)
-
-        checkout_session = stripe.checkout.Session.create(
-            idempotency_key=str(order.order_number),
-            payment_method_types=['card'],
-            line_items=[{
-                'price_data': {
-                    'currency': 'cop',
-                    'unit_amount': int(cart_total * 100),
-                    'product_data': {
-                        'name': STRIPE_PRODUCT_NAME_TEMPLATE.format(customer_name=customer_name),
-                        'description': STRIPE_PRODUCT_DESCRIPTION_TEMPLATE.format(total_items=cart_items_count),
-                    },
-                },
-                'quantity': 1,
-            }],
-            mode='payment',
+        result = use_cases.create_payment_intent(
+            order,
+            gateway,
             success_url=success_url,
             cancel_url=cancel_url,
-            client_reference_id=str(order.order_number),
-            customer_email=customer_email or None,
-            metadata={
-                'order_number': order.order_number,
-                'session_key': request.session.session_key,
-            }
         )
-
-        # Crear OrderItems y vaciar carrito solo despues de crear la sesion de Stripe
-        cart.to_order_items(order)
-
-        order.payment_session_id = checkout_session.id
-        order.save(update_fields=['payment_session_id'])
-        return redirect(checkout_session.url)
-
-    except stripe.error.CardError as e:
-        messages.error(request, f'Error con la tarjeta: {e.user_message}')
-        return redirect(ORDERS_CHECKOUT)
-    except stripe.error.APIConnectionError:
-        messages.error(request, 'Error de conexión con el servicio de pago. Por favor, intenta de nuevo en unos segundos.')
-        return redirect(ORDERS_CHECKOUT)
-    except stripe.error.RateLimitError:
-        messages.error(request, 'Demasiadas solicitudes. Por favor, intenta de nuevo en unos segundos.')
-        return redirect(ORDERS_CHECKOUT)
-    except stripe.error.AuthenticationError as e:
-        order.status = 'cancelado'
-        order.cancelled_reason = f'Error de autenticación en Stripe: {str(e)}'
-        order.save()
-        messages.error(request, 'Error de configuración del pago. Contacta al administrador.')
-        return redirect(ORDERS_CHECKOUT)
-    except stripe.error.InvalidRequestError as e:
-        order.status = 'cancelado'
-        order.cancelled_reason = f'Error en solicitud a Stripe: {str(e)}'
-        order.save()
-        messages.error(request, f'Error al procesar el pago: {str(e)}')
-        return redirect(ORDERS_CHECKOUT)
-    except stripe.error.StripeError as e:
-        logger.exception(f"Error de Stripe al crear sesión para {order.order_number}: {e}")
+    except Exception as exc:
+        logger.exception(f"Error al crear intención {gateway} para {order.order_number}: {exc}")
+        order.cancel(reason=f'Error al iniciar el pago con {gateway}.', user=None)
         messages.error(request, 'Error al procesar el pago. Intenta de nuevo.')
         return redirect(ORDERS_CHECKOUT)
-    except Exception as e:
-        logger.exception(f"Error inesperado al crear sesión de pago para {order.order_number}: {e}")
-        messages.error(request, 'Error al procesar el pago. Intenta de nuevo.')
-        return redirect(ORDERS_CHECKOUT)
+
+    if gateway == 'stripe':
+        return redirect(result['redirect_url'])
+
+    return JsonResponse(result['raw_response'])
+
+
+def create_stripe_checkout_session(request):
+    """Compatibilidad: delega en la vista genérica de Stripe."""
+    return create_payment_intent_view(request, 'stripe')
 
 
 @require_GET
@@ -852,71 +805,52 @@ def order_tracking(request, tracking_token):
 
 
 # =============================================================================
-# STRIPE WEBHOOK (HU-024, HU-025)
+# PAYMENT WEBHOOKS (HU-024, HU-025)
 # =============================================================================
+
+def _process_webhook(request, gateway_name: str):
+    """Valida firma, parsea el evento y delega al use case. Retorna HttpResponse."""
+    gateway = get_gateway(gateway_name)
+    payload = request.body
+
+    if gateway_name == 'stripe':
+        signature = request.META.get('HTTP_STRIPE_SIGNATURE', '')
+        secret = settings.STRIPE_WEBHOOK_KEY
+    else:
+        signature = request.META.get('HTTP_X_EVENT_CHECKSUM', '')
+        secret = settings.WOMPI_EVENTS_SECRET
+
+    if not gateway.verify_signature(payload, signature, secret):
+        logger.warning(f'Firma inválida en webhook {gateway_name}')
+        return HttpResponse(status=400)
+
+    try:
+        event = gateway.parse_event(payload, signature)
+    except (ValueError, KeyError, TypeError) as exc:
+        logger.error(f'Evento inválido en webhook {gateway_name}: {exc}')
+        return HttpResponse(status=400)
+
+    try:
+        use_cases.process_payment_event(gateway_name, event)
+    except Exception as exc:
+        logger.exception(f'Error procesando evento {gateway_name}: {exc}')
+        return HttpResponse(status=500)
+
+    return HttpResponse(status=200)
+
 
 @require_POST
 @csrf_exempt
 def stripe_webhook(request):
-    """Handle Stripe webhook events."""
-    import stripe
+    """Webhook de Stripe: valida firma, procesa el evento y responde 200."""
+    return _process_webhook(request, 'stripe')
 
-    payload = request.body
-    sig_header = request.META.get('HTTP_STRIPE_SIGNATURE')
 
-    try:
-        webhook_keys = getattr(settings, 'STRIPE_WEBHOOK_KEYS', [settings.STRIPE_WEBHOOK_KEY])
-        event = stripe.Webhook.construct_event(
-            payload, sig_header, webhook_keys[0] if len(webhook_keys) == 1 else webhook_keys
-        )
-    except ValueError:
-        return HttpResponse(status=400)
-    except stripe.error.SignatureVerificationError:
-        return HttpResponse(status=400)
-
-    if event['type'] == 'checkout.session.completed':
-        session = event['data']['object']
-        session_id = session['id']
-
-        try:
-            order = Order.objects.get(payment_session_id=session_id)
-            logger.info(f"Webhook recibido para pedido {order.order_number}")
-
-            stripe_session = stripe.checkout.Session.retrieve(session_id)
-            stripe_amount = stripe_session.get('amount_total', 0)
-            if int(order.total_amount * 100) != stripe_amount:
-                logger.error(f"Discrepancia de monto: order={order.total_amount}, stripe={stripe_amount / 100}")
-                return HttpResponse(status=400)
-
-        except Order.DoesNotExist:
-            logger.error(f"Pedido no encontrado para session_id: {session_id}")
-            return HttpResponse(status=200)
-
-        if order.is_paid:
-            logger.info(f"Pedido {order.order_number} ya estaba pagado")
-            return HttpResponse(status=200)
-
-        try:
-            # HU-024 | ESCENARIO 1 | H | Confirmar pedido y reducir stock ANTES de marcar pagado
-            if order.status == STATUS_PENDING:
-                order.confirm(user=None)
-
-            order.is_paid = True
-            order.save(update_fields=['is_paid'])
-            logger.info(f"Pedido {order.order_number} confirmado y marcado como pagado")
-
-            # HU-025 | ESCENARIO 3 | H | Envío de correo de confirmación
-            if order.customer_email:
-                send_order_confirmation_email(order)
-                logger.info(f"Correo de confirmación enviado a {order.customer_email}")
-            else:
-                logger.warning(f"Pedido {order.order_number} no tiene email asociado")
-
-        except Exception as e:
-            logger.exception(f"Error al procesar pedido {order.order_number}: {e}")
-            return HttpResponse(status=500)
-
-    return HttpResponse(status=200)
+@require_POST
+@csrf_exempt
+def wompi_webhook(request):
+    """Webhook de Wompi: valida X-Event-Checksum, procesa el evento y responde 200."""
+    return _process_webhook(request, 'wompi')
 
 
 # =============================================================================
