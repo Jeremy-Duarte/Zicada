@@ -143,6 +143,12 @@ STRIPE_PUBLISHABLE_KEY = 'pk_test_mock_key'
 STRIPE_SECRET_KEY = 'sk_test_mock_key'
 STRIPE_WEBHOOK_KEY = 'whsec_mock_key'
 
+WOMPI_PUBLIC_KEY = 'pub_test_mock_key'
+WOMPI_PRIVATE_KEY = 'prv_test_mock_key'
+WOMPI_EVENTS_SECRET = 'wompi_events_mock_secret'
+WOMPI_INTEGRITY_SECRET = 'wompi_integrity_mock_secret'
+WOMPI_API_URL = 'https://sandbox.wompi.co/v1'
+
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.dummy.DummyCache',
