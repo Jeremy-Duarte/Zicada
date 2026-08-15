@@ -73,6 +73,46 @@ class TestProcessPaymentEvent:
             'raw': {},
         }
 
+    def test_event_race_duplicate_is_ignored(self, order_factory, order_item_factory, product_with_stock, monkeypatch):
+        product, variant = product_with_stock(stock=5, price=Decimal('10000.00'))
+        order = order_factory(
+            status='pendiente',
+            order_number='ZCD-9007',
+            customer_email='a@b.com',
+        )
+        order.payment_session_id = 'cs_1'
+        order.save(update_fields=['payment_session_id'])
+        order_item_factory(order=order, variant=variant, quantity=1, price=Decimal('10000.00'))
+        order.refresh_from_db()
+
+        from django.db import IntegrityError
+        import apps.orders.use_cases as uc
+
+        event = self._approved_event(amount=int(order.total_amount * 100))
+
+        # Simula la carrera: primer check pasa, pero el create lanza IntegrityError
+        original_filter = uc.PaymentEvent.objects.filter
+        call_count = {'n': 0}
+
+        def flaky_filter(*args, **kwargs):
+            result = original_filter(*args, **kwargs)
+            call_count['n'] += 1
+            if call_count['n'] == 1:
+                return result.none()
+            return result
+
+        monkeypatch.setattr(uc.PaymentEvent.objects, 'filter', flaky_filter)
+        monkeypatch.setattr(
+            uc.PaymentEvent.objects,
+            'create',
+            lambda **kwargs: (_ for _ in ()).throw(IntegrityError('dup')),
+        )
+
+        uc.process_payment_event('stripe', event)
+
+        order.refresh_from_db()
+        assert order.status == 'pendiente'
+
     def test_approved_event_confirms_order_and_stock(self, order_factory, order_item_factory, product_with_stock):
         product, variant = product_with_stock(stock=5, price=Decimal('10000.00'))
         order = order_factory(

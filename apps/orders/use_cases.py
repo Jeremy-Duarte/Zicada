@@ -4,7 +4,7 @@ from typing import Any, Dict, Optional
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.urls import reverse
 from django.utils import timezone
 
@@ -212,13 +212,17 @@ def process_payment_event(gateway_name: str, event: Dict[str, Any]) -> None:
     payment.raw_request = event.get('raw', {})
     payment.save(update_fields=['gateway_transaction_id', 'raw_request', 'updated_at'])
 
-    with transaction.atomic():
-        PaymentEvent.objects.create(
-            payment=payment,
-            gateway=gateway_name,
-            event_id=event_id,
-            event_type=event.get('event_type', ''),
-        )
+    try:
+        with transaction.atomic():
+            PaymentEvent.objects.create(
+                payment=payment,
+                gateway=gateway_name,
+                event_id=event_id,
+                event_type=event.get('event_type', ''),
+            )
+    except IntegrityError:
+        logger.info(f'Evento duplicado (carrera) ignorado: {gateway_name} {event_id}')
+        return
 
     status = event.get('status')
     if status == 'approved':
