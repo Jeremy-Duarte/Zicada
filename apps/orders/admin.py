@@ -5,7 +5,7 @@ from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 from django.core.exceptions import ValidationError
 from django.db.models import Sum
-from .models import Order, OrderItem
+from .models import Order, OrderItem, Payment, PaymentEvent
 from apps.products.models import ProductVariant
 
 
@@ -84,6 +84,15 @@ class OrderItemInline(admin.TabularInline):
             return f"${obj.variant.product.price:,.0f} COP"
         return "-"
 
+
+class PaymentInline(admin.TabularInline):
+    model = Payment
+    extra = 0
+    readonly_fields = ('gateway', 'gateway_transaction_id', 'gateway_session_id', 'status', 'amount', 'currency', 'processed_at', 'error_message', 'created_at')
+    fields = ('gateway', 'gateway_transaction_id', 'gateway_session_id', 'status', 'amount', 'currency', 'processed_at', 'error_message')
+    can_delete = False
+    show_change_link = True
+
     @admin.display(description='Subtotal')
     def subtotal_display(self, obj):
         if obj.variant and obj.quantity:
@@ -114,7 +123,7 @@ class OrderAdmin(admin.ModelAdmin):
         'total_display_readonly',
         'is_paid',
     )
-    inlines = [OrderItemInline]
+    inlines = [OrderItemInline, PaymentInline]
     list_per_page = 25
     date_hierarchy = 'created_at'
     
@@ -301,5 +310,44 @@ class OrderItemAdmin(admin.ModelAdmin):
     def has_add_permission(self, request):
         return False
     
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(Payment)
+class PaymentAdmin(admin.ModelAdmin):
+    list_display = ('id', 'order_link', 'gateway', 'gateway_transaction_id', 'status', 'amount', 'processed_at')
+    list_filter = ('gateway', 'status', 'currency', 'processed_at')
+    search_fields = ('order__order_number', 'gateway_transaction_id', 'gateway_session_id')
+    readonly_fields = ('created_at', 'updated_at', 'raw_request', 'raw_response')
+    list_per_page = 30
+
+    @admin.display(description='Pedido')
+    def order_link(self, obj):
+        url = reverse('admin:orders_order_change', args=[obj.order_id])
+        return format_html('<a href="{}">{}</a>', url, obj.order.order_number)
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(PaymentEvent)
+class PaymentEventAdmin(admin.ModelAdmin):
+    list_display = ('id', 'payment_link', 'gateway', 'event_type', 'event_id', 'received_at')
+    list_filter = ('gateway', 'event_type', 'received_at')
+    search_fields = ('event_id', 'payment__order__order_number', 'payment__gateway_transaction_id')
+    readonly_fields = ('payment', 'gateway', 'event_id', 'event_type', 'received_at')
+
+    @admin.display(description='Pago')
+    def payment_link(self, obj):
+        url = reverse('admin:orders_payment_change', args=[obj.payment_id])
+        return format_html('<a href="{}">Pago #{}</a>', url, obj.payment_id)
+
+    def has_add_permission(self, request):
+        return False
+
     def has_delete_permission(self, request, obj=None):
         return False
